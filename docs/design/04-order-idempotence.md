@@ -84,8 +84,9 @@ agree and that every rule appears once.
     read as before: `т.е.` → `т.` and `е.` (abbreviation parts, read only by `nbsp.abbreviations`,
     which matches both forms); `т.д…` → `т.` and `д…` (both abbreviation parts, the second through
     its stop); `№5` → `№` and `5` (a label number in both forms, section 3.6, so no rule that reads
-    a quantity or a year starts to match); `100%` → `100` and `%` with `PercentSpacing::Language`
-    (ru) or `Spaced` (a percentage in both forms, section 8.2);
+    a quantity or a year starts to match; the sign alone is a `Sign` fragment); `¶IV` → `¶` and `IV`
+    (a Roman numeral after a sign is a label in both forms); `100%` → `100` and `%` with
+    `PercentSpacing::Language` (ru) or `Spaced` (a percentage in both forms, section 8.2);
   - a removed space merges fragments only into a kind that the rules read as before. The
     closed-style dash removes its two spaces, each a single U+0020, only between two plain words
     (section 8.4), so `word`, `—`, `word` become one `Joined` fragment (check 22), never a technical
@@ -96,9 +97,10 @@ agree and that every rule appears once.
     `PercentSpacing::Attached` or `Language` (en) merges a percentage into a percentage.
 
   Each case has a fixed seed in the idempotence property (section 13.5): `Школа №5 г. Москвы`,
-  `§5 ч. 2`, `т.е.`, `и т.д...`, `Moscow - the capital`, `See https://example.com/docs - the guide`,
-  `He said - "a cat"`, `100%` and `100 %` under every `PercentSpacing`, `100⍽%` under `Attached` and
-  `Language` (en), en Closed `word⍽- word`, `Sign in - it's free`.
+  `§5 ч. 2`, `¶IV`, `т.е.`, `и т.д...`, `Moscow - the capital`,
+  `See https://example.com/docs - the guide`, `He said - "a cat"`, `100%` and `100 %` under every
+  `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed `word⍽- word`,
+  `Sign in - it's free`.
 
 - **I3. Products are not triggers.** A rule changes only plain forms: straight `"` and `'`, `-`,
   `--`, `---`, a run of exactly three full stops, `(c)` `(C)` `(с)` `(С)` `(r)` `(R)` `(tm)` `(TM)`,
@@ -150,11 +152,11 @@ strings and on the corpus, with a fixed-point oracle (section 13.5).
 
 Typographic characters (`«»„“”‘’`, `—`, `–`, `…`, U+00A0, `−`, `×`, `©`, `→`) are never rewritten
 (I3). They take part in context: typed quotes count in nesting levels (section 6.7), and a typed `—`
-between words in Russian gets glue before it from `nbsp.dash` (`Москва — столица` →
-`Москва⍽— столица`). That is a normalization of the space, not damage, and it is idempotent. A
-"wrong" typographic character is not corrected: `10—20` keeps its em dash, `Что?…` in Russian keeps
-its ellipsis character. Test sets `*.already.*` check that typeset input comes back as
-`Cow::Borrowed` wherever no normalization of spaces applies.
+or `–` between words in Russian gets glue before it from `nbsp.dash` (`Москва — столица` →
+`Москва⍽— столица`, `Москва – столица` → `Москва⍽– столица`). That is a normalization of the space,
+not damage, and it is idempotent. A "wrong" typographic character is not corrected: `10—20` keeps
+its em dash, `Что?…` in Russian keeps its ellipsis character. Test sets `*.already.*` check that
+typeset input comes back as `Cow::Borrowed` wherever no normalization of spaces applies.
 
 ### 4.6 Output kinds and idempotence
 

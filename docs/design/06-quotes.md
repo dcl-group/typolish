@@ -20,9 +20,11 @@ diagnostic.
 
 A straight quote in the wrapper of a frozen fragment is a candidate only if the core of that
 fragment contains no straight quote. So `"host:8080"` → `«host:8080»` (the address stays intact),
-while in `key="value"` both quotes belong to the technical notation and are left alone. The end
-wrapper of a frozen core that ends in `=` holds no candidate either: `key=""` stays as written, like
-`key="value"`.
+while in `key="value"` both quotes belong to the technical notation and are left alone. When a
+frozen core ends in `=` and the start wrapper of its fragment holds no straight quote, the end
+wrapper holds no candidate either: `key=""` stays as written, like `key="value"`. If the start
+wrapper holds a straight quote, the end wrapper is a candidate as usual: `"SGVsbG8="` →
+`«SGVsbG8=»`.
 
 ### 6.2 Step 1: certain apostrophes and primes
 
@@ -159,7 +161,10 @@ paired or a prime. Then:
 - weak quotes resolved as primes get `″` or `′` (if `quotes.primes` is enabled);
 - a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
   section 6.8, are in a pair and stay straight) directly after the letter `s` and before a
-  non-letter becomes `’` if the language has the trailing-possessive flag (`dogs'`, `the Joneses'`);
+  non-letter becomes `’` if the language has the trailing-possessive flag (`dogs'`, `the Joneses'`),
+  unless a typed opener whose closer is `’` (English `‘`) that stayed neutral (left on the stack at
+  the end of the window, section 6.4) stands before it anywhere in the window; then it stays
+  straight (a second pass would let that `’` close the opener);
 - a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
   section 6.8, are in a pair and stay straight) at a word start before exactly two digits and then a
   character that is neither a letter nor a digit becomes `’` if the language has the decade flag
@@ -236,8 +241,9 @@ pair share a family. Typed glyphs that were neutral on the first pass can pair w
 the second, but they never change, and such a re-pairing cannot enclose a straight `'` pair that was
 cancelled: that pair lay outside every pair of straight `"` and every typed pair of the first pass,
 and a re-pairing with a glyph inside a first-pass pair would have been a crossing, which contradicts
-convergence. So cancelled `'` pairs stay cancelled and count for no level, unpaired `'` stay
-unpaired, primes are not candidates, and nothing changes.
+convergence. A trailing-possessive `’` could close a neutral `‘` on the second pass; section 6.6
+therefore does not produce it after a neutral `‘`. So cancelled `'` pairs stay cancelled and count
+for no level, unpaired `'` stay unpaired, primes are not candidates, and nothing changes.
 
 (b) **Not converged.** No straight quote changed. The quotes with roles and their families are the
 same on the second pass, so the window again does not converge, and nothing changes.
@@ -252,55 +258,57 @@ Outputs show the edits of the three quote rules only; in the full sets the no-br
 as well (`и⍽«ручка»`, `to⍽confirm`). "(Prose)" and "(Interface)" mark whether `quotes.primes` is
 enabled.
 
-| Language   | Input                                | Output                               | Note                                                          |
-| ---------- | ------------------------------------ | ------------------------------------ | ------------------------------------------------------------- |
-| ru         | `Он сказал "привет" и ушёл.`         | `Он сказал «привет» и ушёл.`         |                                                               |
-| ru         | `"Он сказал "привет""`               | `«Он сказал „привет“»`               | levels                                                        |
-| en         | `He said, "I read "War and Peace"".` | `He said, “I read ‘War and Peace’”.` |                                                               |
-| en         | `"He said 'hi'"`                     | `“He said ‘hi’”`                     | nested `'`                                                    |
-| en         | `She said 'hi' to him.`              | unchanged                            | `NestedOnly`                                                  |
-| ru         | `Он сказал "привет.`                 | unchanged, `UnmatchedQuote`          | not guessed                                                   |
-| ru         | `"Один "два три"`                    | unchanged, `UnmatchedQuote`          | the paragraph keeps straight quotes                           |
-| ru         | `Слово " в тексте.`                  | unchanged, `AmbiguousQuote`          | no role                                                       |
-| ru         | `«a "b» c"`                          | unchanged, `CrossingQuotes`          |                                                               |
-| en         | `He said ‘x’(see note)`              | unchanged, `UnmatchedQuote` (info)   | `’` before `(` is an apostrophe                               |
-| ru, pieces | `Файл "` `{Word}` `" не найден`      | `Файл «` `{Word}` `» не найден`      | across pieces                                                 |
-| en         | `I don't know. It's the '90s.`       | `I don’t know. It’s the ’90s.`       | step 1                                                        |
-| en         | `Rock 'n' roll, the dogs' bowls`     | `Rock 'n' roll, the dogs’ bowls`     | top-level single pair; possessive                             |
-| en         | `She loves 'the dogs'`               | unchanged                            | cancelled pair, not a possessive                              |
-| en         | `She loves 'the dogs'` (`Never`)     | `She loves 'the dogs’`               | `Never`: every `'` is unpaired                                |
-| ru         | `Это rock'n'roll и don't.`           | `Это rock’n’roll и don’t.`           | any script                                                    |
-| en         | `Press '42' to confirm`              | unchanged                            | a pair, not a decade                                          |
-| en         | `Press 'y' or 'n' now`               | unchanged                            | `'n'` is not an elision                                       |
-| en         | `Set the time to '12:30'`            | unchanged                            | a pair, not a decade                                          |
-| en         | `"Enter '42' now"`                   | `“Enter ‘42’ now”`                   | the weak quote pairs                                          |
-| en         | `"a 'b c" 5'` (Prose)                | `“a 'b c” 5′`                        | an opener popped by a fixed pair is not taken by a weak quote |
-| en         | `"a 'b c" 5'` (Interface)            | `“a 'b c” 5'`                        |                                                               |
-| en         | `The class of '26`                   | `The class of ’26`                   | unpaired: decade                                              |
-| en         | `She said 'he told "no"'`            | `She said 'he told “no”'`            | cancelled pair: no level                                      |
-| ru         | `Он ответил 'мы сказали "нет"'`      | `Он ответил 'мы сказали «нет»'`      | the same                                                      |
-| ru         | `Файл ".env" не найден`              | `Файл «.env» не найден`              | look-through past `.`                                         |
-| ru         | `Папка "/etc/" пуста`                | `Папка «/etc/» пуста`                |                                                               |
-| en         | `Run "x->" now`                      | `Run “x->” now`                      |                                                               |
-| ru         | `Адрес "::1"`                        | `Адрес «::1»`                        |                                                               |
-| ru         | `Нажмите "?" для справки`            | `Нажмите «?» для справки`            | sign-only pair                                                |
-| ru         | `Он писал: "...и всё".`              | `Он писал: «...и всё».`              | look-through past `...`                                       |
-| ru         | `Введите "-" или "—"`                | `Введите «-» или «—»`                | sign-only pairs                                               |
-| ru         | `Он сказал "" и ушёл.`               | `Он сказал «» и ушёл.`               | empty sign-only pair                                          |
-| ru         | `Пустая строка "".`                  | `Пустая строка «».`                  | empty sign-only pair before `.`                               |
-| ru         | `Он сказал """ и ушёл.`              | unchanged, `AmbiguousQuote` ×3       | no pair in a series of three                                  |
-| ru         | `Экран 27" и "ручка"` (Prose)        | `Экран 27″ и «ручка»`                | weak quote is a prime                                         |
-| ru         | `Экран 27" и "ручка"` (Interface)    | `Экран 27" и «ручка»`                | `quotes.primes` is not in Interface                           |
-| ru         | `"Экран 27" дюймов"` (Prose)         | `«Экран 27″ дюймов»`                 |                                                               |
-| en         | `“Say "hi" at 5”`                    | `“Say ‘hi’ at 5”`                    | a typed closer after a digit is strong                        |
-| ru         | `Цена 27»`                           | unchanged, `UnmatchedQuote` (info)   |                                                               |
-| en         | `He is 5'10" tall.` (Prose)          | `He is 5′10″ tall.`                  |                                                               |
-| ru         | `Угол 30° 15' 20" и точка.` (Prose)  | `Угол 30° 15′ 20″ и точка.`          |                                                               |
-| ru         | `Он сказал «привет „мир“»`           | unchanged (`Cow::Borrowed`)          | already typeset                                               |
-| ru         | `Задайте key="value" в файле.`       | unchanged                            | quotes belong to a frozen fragment                            |
-| ru         | `Он сказал:"привет" и ушёл.`         | unchanged                            | frozen fragment (section 10.8)                                |
-| ru         | `Задайте key="" и нажмите "OK".`     | `Задайте key="" и нажмите «OK».`     | assignment: frozen                                            |
-| ru         | `a""b`                               | unchanged, no diagnostic             | frozen core (section 3.6)                                     |
+| Language   | Input                                           | Output                               | Note                                                          |
+| ---------- | ----------------------------------------------- | ------------------------------------ | ------------------------------------------------------------- |
+| ru         | `Он сказал "привет" и ушёл.`                    | `Он сказал «привет» и ушёл.`         |                                                               |
+| ru         | `"Он сказал "привет""`                          | `«Он сказал „привет“»`               | levels                                                        |
+| en         | `He said, "I read "War and Peace"".`            | `He said, “I read ‘War and Peace’”.` |                                                               |
+| en         | `"He said 'hi'"`                                | `“He said ‘hi’”`                     | nested `'`                                                    |
+| en         | `She said 'hi' to him.`                         | unchanged                            | `NestedOnly`                                                  |
+| ru         | `Он сказал "привет.`                            | unchanged, `UnmatchedQuote`          | not guessed                                                   |
+| ru         | `"Один "два три"`                               | unchanged, `UnmatchedQuote`          | the paragraph keeps straight quotes                           |
+| ru         | `Слово " в тексте.`                             | unchanged, `AmbiguousQuote`          | no role                                                       |
+| ru         | `«a "b» c"`                                     | unchanged, `CrossingQuotes`          |                                                               |
+| en         | `He said ‘x’(see note)`                         | unchanged, `UnmatchedQuote` (info)   | `’` before `(` is an apostrophe                               |
+| ru, pieces | `Файл "` `{Word}` `" не найден`                 | `Файл «` `{Word}` `» не найден`      | across pieces                                                 |
+| en         | `I don't know. It's the '90s.`                  | `I don’t know. It’s the ’90s.`       | step 1                                                        |
+| en         | `Rock 'n' roll, the dogs' bowls`                | `Rock 'n' roll, the dogs’ bowls`     | top-level single pair; possessive                             |
+| en         | `She loves 'the dogs'`                          | unchanged                            | cancelled pair, not a possessive                              |
+| en         | `She loves 'the dogs'` (`Never`)                | `She loves 'the dogs’`               | `Never`: every `'` is unpaired                                |
+| ru         | `Это rock'n'roll и don't.`                      | `Это rock’n’roll и don’t.`           | any script                                                    |
+| en         | `Press '42' to confirm`                         | unchanged                            | a pair, not a decade                                          |
+| en         | `Press 'y' or 'n' now`                          | unchanged                            | `'n'` is not an elision                                       |
+| en         | `Set the time to '12:30'`                       | unchanged                            | a pair, not a decade                                          |
+| en         | `"Enter '42' now"`                              | `“Enter ‘42’ now”`                   | the weak quote pairs                                          |
+| en         | `"a 'b c" 5'` (Prose)                           | `“a 'b c” 5′`                        | an opener popped by a fixed pair is not taken by a weak quote |
+| en         | `"a 'b c" 5'` (Interface)                       | `“a 'b c” 5'`                        |                                                               |
+| en         | `The class of '26`                              | `The class of ’26`                   | unpaired: decade                                              |
+| en         | `She said 'he told "no"'`                       | `She said 'he told “no”'`            | cancelled pair: no level                                      |
+| ru         | `Он ответил 'мы сказали "нет"'`                 | `Он ответил 'мы сказали «нет»'`      | the same                                                      |
+| ru         | `Файл ".env" не найден`                         | `Файл «.env» не найден`              | look-through past `.`                                         |
+| ru         | `Папка "/etc/" пуста`                           | `Папка «/etc/» пуста`                |                                                               |
+| en         | `Run "x->" now`                                 | `Run “x->” now`                      |                                                               |
+| ru         | `Адрес "::1"`                                   | `Адрес «::1»`                        |                                                               |
+| ru         | `Нажмите "?" для справки`                       | `Нажмите «?» для справки`            | sign-only pair                                                |
+| ru         | `Он писал: "...и всё".`                         | `Он писал: «...и всё».`              | look-through past `...`                                       |
+| ru         | `Введите "-" или "—"`                           | `Введите «-» или «—»`                | sign-only pairs                                               |
+| ru         | `Он сказал "" и ушёл.`                          | `Он сказал «» и ушёл.`               | empty sign-only pair                                          |
+| ru         | `Пустая строка "".`                             | `Пустая строка «».`                  | empty sign-only pair before `.`                               |
+| ru         | `Он сказал """ и ушёл.`                         | unchanged, `AmbiguousQuote` ×3       | no pair in a series of three                                  |
+| ru         | `Экран 27" и "ручка"` (Prose)                   | `Экран 27″ и «ручка»`                | weak quote is a prime                                         |
+| ru         | `Экран 27" и "ручка"` (Interface)               | `Экран 27" и «ручка»`                | `quotes.primes` is not in Interface                           |
+| ru         | `"Экран 27" дюймов"` (Prose)                    | `«Экран 27″ дюймов»`                 |                                                               |
+| en         | `“Say "hi" at 5”`                               | `“Say ‘hi’ at 5”`                    | a typed closer after a digit is strong                        |
+| ru         | `Цена 27»`                                      | unchanged, `UnmatchedQuote` (info)   |                                                               |
+| en         | `He is 5'10" tall.` (Prose)                     | `He is 5′10″ tall.`                  |                                                               |
+| ru         | `Угол 30° 15' 20" и точка.` (Prose)             | `Угол 30° 15′ 20″ и точка.`          |                                                               |
+| ru         | `Он сказал «привет „мир“»`                      | unchanged (`Cow::Borrowed`)          | already typeset                                               |
+| ru         | `Задайте key="value" в файле.`                  | unchanged                            | quotes belong to a frozen fragment                            |
+| ru         | `Он сказал:"привет" и ушёл.`                    | unchanged                            | frozen fragment (section 10.8)                                |
+| ru         | `Задайте key="" и нажмите "OK".`                | `Задайте key="" и нажмите «OK».`     | assignment: frozen                                            |
+| ru         | `Токен "SGVsbG8gd29ybGQ=" и "имя".`             | `Токен «SGVsbG8gd29ybGQ=» и «имя».`  | a quoted frozen core ending in `=`                            |
+| en         | `‘Note: 'beta' builds of the developers' tools` | unchanged, `UnmatchedQuote` (info)   | no possessive after a neutral `‘`                             |
+| ru         | `a""b`                                          | unchanged, no diagnostic             | frozen core (section 3.6)                                     |
 
 ### 6.13 Rejected
 

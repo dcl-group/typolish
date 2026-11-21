@@ -152,10 +152,11 @@ An en dash between two numbers is written in exactly these cases:
    (`range.digits`), or a literal range with a context word (`range.context`), or a time range
    (`range.time`).
 
-Interface has neither 3 nor any other literal path, so `8000-8100`, `ports 8000-8100` and
-`Порты 8000-8100 с балансировкой` never change there. In Prose `8000-8100` becomes `8000–8100`
-deliberately: the task asks for en dashes in numeric ranges, and technical text belongs in Interface
-or in backticks (open point 7).
+Interface has neither 3 nor any other literal path, so the range in `8000-8100`, `ports 8000-8100`
+and `Порты 8000-8100 с балансировкой` never changes there (the last gets only the glue of
+`nbsp.short-words`: `с⍽балансировкой`). In Prose `8000-8100` becomes `8000–8100` deliberately: the
+task asks for en dashes in numeric ranges, and technical text belongs in Interface or in backticks
+(open point 7).
 
 ### 10.7 Additional stress strings
 

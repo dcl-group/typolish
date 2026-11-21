@@ -281,10 +281,12 @@ impl TypographerBuilder {
     // nbsp.units, range.context
     pub fn add_units<I>(self, units: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     pub fn remove_units<I>(self, units: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
-    // nbsp.short-words, nbsp.short-length
+    // nbsp.short-words
     pub fn add_short_words<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     pub fn remove_short_words<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
+    // nbsp.short-length
     pub fn short_word_length(self, max_chars: u8) -> Self;       // 0 makes nbsp.short-length inert
+    // nbsp.short-words, nbsp.short-length
     pub fn short_words_any_script(self, yes: bool) -> Self;
     // nbsp.particles
     pub fn add_particles<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;

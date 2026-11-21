@@ -116,8 +116,9 @@ or examples. Therefore every root file of a non-library target starts with a `//
 `#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing, clippy::print_stdout, clippy::print_stderr, clippy::dbg_macro)]`,
 which also covers `tests/common/mod.rs` through `mod common;`; `benches/load.rs` and every
 `examples/*.rs` have
-`#![allow(clippy::print_stdout, clippy::print_stderr, clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)]`.
-`src/` keeps the full deny set and has no `allow` of these lints.
+`#![allow(clippy::print_stdout, clippy::print_stderr, clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic)]`
+(`examples/fluent_generator.rs` fails loudly on an unknown `TemplatePart`, section 2.14). `src/`
+keeps the full deny set and has no `allow` of these lints.
 
 License files: `LICENSE-MIT` and `LICENSE-APACHE` at the root and byte-identical copies in
 `dev/typolish/`, copied verbatim from zonewright; the MIT file keeps the line
@@ -190,7 +191,7 @@ dev/
       common/mod.rs  rules_*.rs  negative.rs  parts.rs  numbers.rs  output.rs  fluent_isolation.rs
       reference/{ru,en_us}.rs  properties.rs  graphemes.rs  roundtrip.rs  corpus.rs  alloc.rs
       load.rs  conformance.rs  data.rs  api.rs  lint.rs
-      corpus/  fixtures/unicode/
+      corpus/  fixtures/unicode/  fixtures/whatwg-entities.txt
     benches/load.rs
     examples/fluent_generator.rs  examples/per_request.rs  examples/numbers.rs
 ```
