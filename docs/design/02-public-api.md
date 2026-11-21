@@ -49,7 +49,8 @@ pub struct Language { repr: Repr } // Static(&'static LanguageData) | Shared(Arc
 impl Language {
     pub const RU_RU: Language;
     pub const EN_US: Language;
-    /// No language data: only rules that need none are active (section 7.4).
+    /// No language data: only rules that need none are active (values: the table of section
+    /// 7.4).
     pub const COMMON: Language;
 
     /// Resolves a BCP 47 tag: ASCII case-insensitive, `_` read as `-`. An exact tag matches;

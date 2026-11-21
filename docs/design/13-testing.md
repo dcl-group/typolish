@@ -50,7 +50,10 @@ with the right rule in `report`. Specific rows and further tables:
 - `tests/rules_nbsp.rs` (stage 3): ru `А.С. Пушкин` → `А.С.⍽Пушкин` (`nbsp.initials`); `и т.д...` →
   `и⍽т.⍽д…`; `и т. д…` → `и⍽т.⍽д…`; en `etc...` → `etc…` (`etc` with its stop is `Dictionary`);
   `nbsp.signs`: `¶IV` → `¶⍽IV`, not borrowed; ru `и т. д.` with `narrow_glue` for abbreviations →
-  `и\u{A0}т.\u{202F}д.`.
+  `и\u{A0}т.\u{202F}д.`; ru `5 м2` → `5⍽м2`, `5–10 м2` → `5–10⍽м2` (Prose), `5 м2x` → unchanged; en
+  `I said no. Then I left.` → unchanged; en `See No. 5` → `See No.⍽5`; ru `См. рис. 5` →
+  `См.⍽рис.⍽5`; ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` → unchanged; en `on 5 May` →
+  `on 5⍽May`; ru `Привезли 5 т груза` → `Привезли 5⍽т груза`.
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
   decimals (`Number::decimal` keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`,
   `f32::MAX`), `i128::MIN`, `u128::MAX`, `f64::NAN`, infinities, `-0.0`, the grouping thresholds (4
@@ -258,11 +261,19 @@ unit test next to the prefilter checks, for every built-in set and language, tha
 equals the union of the trigger constants of the active rules. Checks that read `docs/design/` skip
 when the file is absent (the published package has no design).
 
-`tests/data.rs` runs the validation of section 7.6 on every built-in table and compares the CLDR
-values (quote pairs, decimal, group, minimum grouping digits where not overridden, percent pattern,
-range pattern, `nan`, `infinity`, month names, units marked "CLDR 49") with an extract of cldr-json
-49.0.0 kept in the test, so a CLDR update is a visible change. It also checks that a table whose
-`QuotePairs` holds `「」` is rejected with `Error::InvalidLanguageData`.
+`tests/data.rs` runs the validation of section 7.6 on every built-in table (so the order and
+duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,
+minimum grouping digits where not overridden, percent pattern, range pattern, `nan`, `infinity`,
+month names (the union of format wide and abbreviated forms, without duplicates), units marked "CLDR
+49") with an extract of cldr-json 49.0.0 kept in the test, so a CLDR update is a visible change. It
+compares `LanguageData::COMMON` with the table of section 7.4 and checks `LanguageData::new("xx")`
+field by field. It also checks that a table whose `QuotePairs` holds `「」` is rejected with
+`Error::InvalidLanguageData`; that `LanguageBuilder` with the pairs `(«, »)` and `(«, „)` gives
+`Error::InvalidLanguageData` and the typographer builder with the same pairs
+`Error::InvalidSetting`; that `LanguageBuilder` with `apostrophe('ʼ')` gives
+`Error::InvalidLanguageData`; that `Language::from_data` with the tag `EN-gb` gives
+`Error::InvalidLanguageData`; and that `LanguageBuilder::new("EN-gb").build()` gives a language with
+`tag() == "en-GB"`.
 
 ### 13.10 Documentation
 

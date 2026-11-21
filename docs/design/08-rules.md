@@ -68,9 +68,9 @@ a city, not a year: `Школа №⍽5 г.⍽Москвы`.
   protected span, an opening quote or an opening bracket, except where a rule names the next token
   (`nbsp.dash` before a dash, `nbsp.units` before a unit). Never before a fragment that starts with
   `-` (`ls -la` stays intact whatever the lists say).
-- A trigger word is a whole core, compared without case for word lists and with case for units. The
-  wrapper does not hide it: `(в 2026)` → `(в⍽2026)`. A word followed by closing punctuation (`и,`)
-  triggers nothing.
+- A trigger word is a whole core, compared as section 7.1 (Lookups) says for its list. The wrapper
+  does not hide it: `(в 2026)` → `(в⍽2026)`. A word followed by closing punctuation (`и,`) triggers
+  nothing.
 - Rules that insert a space: `nbsp.abbreviations` (`т.е.`), `nbsp.signs` (`№5`), `nbsp.units` with
   `PercentSpacing::Language` (ru) or `Spaced` (`100%` → `100⍽%`). Rules that remove spaces:
   `dash.spaced-hyphen` and `dash.double-hyphen` with the `Closed` style, only between two plain
@@ -227,7 +227,7 @@ unchanged. `и т.д...` → `и т.д…`: the run keeps the full stop of the a
 - **`nbsp.units`.** A number (not a label or a percentage), a `Number` slot or a range, one space,
   then a unit of the list (longest match, case-sensitive, followed by a non-letter and non-digit) →
   glue: `5⍽МБ`, `30⍽с.`, `12⍽дн.`, `5–10⍽кг`, `{n}⍽дн.`, `5⍽ГБ/с`, `60⍽км/ч`. An ambiguous unit
-  (`с`, `т`, `in`) is glued only before punctuation, a line break or the end: `Ждать 30⍽с.`, but
+  (`с`, `in`) is glued only before punctuation, a line break or the end: `Ждать 30⍽с.`, but
   `30 с друзьями` stays. Only existing spaces: `5MB` is an identifier and stays. `%` and `‰` follow
   `PercentSpacing`: `AsWritten` (default) glues an existing space and leaves an attached sign;
   `Language` applies the CLDR pattern (ru `100%` → `100⍽%`, en `100 %` → `100%`); `Attached` removes
@@ -369,7 +369,7 @@ they become the table of expected differences, each with a reason code (section 
 | `LegalMarkContext`  | `Вариант (c)`, `(R) знак`                     | `Вариант ©`, `® знак`              | unchanged                               | `(c)` without a year is a list item; `(r)` only after a brand name       |
 | `Primes`            | `5'10"`, `Угол 30° 15' 20"`                   | `5'10″`, `15' 20″`                 | `5′10″`, `15′ 20″`                      | primes for both quote characters                                         |
 | `WideGlue`          | `Документ № 5`                                | `№⎵5` (U+202F)                     | `№⍽5` (U+00A0)                          | one glue character by default; open point 10                             |
-| `NoDigitChange`     | `5 м2`, `20C`, `$100`                         | `5⍽м²`, `20⏐°C`, (off)             | `5⍽м2`, `20C`, `$100`                   | letters and digits never change                                          |
+| `NoDigitChange`     | `5 м2`, `20C`, `$100`                         | `5⍽м²`, `20⏐°C`, (off)             | `5⍽м2`, `20C`, `$100`                   | letters and digits never change; `м2` is a listed unit, so it is glued   |
 | `AlreadyTypeset`    | `Что?…` (ru)                                  | `Что?..`                           | unchanged                               | typographic characters are never rewritten                               |
 | `NoTrim`            | trailing spaces, tabs, repeated blank lines   | removed or replaced                | unchanged                               | whitespace is the caller's                                               |
 | `KeepSpaces`        | `Размер 10 x 5.`                              | `10×5`                             | `10 × 5`                                | the author's spaces are kept                                             |
