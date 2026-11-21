@@ -10,15 +10,17 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   breaking one.
 - API changes follow SemVer; the commitments of section 2.13 keep extensions additive.
 - **Output changes.** The output of `PROSE` and `INTERFACE` for built-in languages changes only in a
-  release that raises the breaking number: new rules in a set, changed lists, changed language data.
-  A patch release may only fix output that contradicts this design or the rustdoc, and every such
-  fix is recorded in the CHANGELOG with a "before → after" example. A new rule may arrive in a minor
-  or patch release, but outside both sets. This keeps the snapshots of build-time generators and the
-  tests of callers stable across `cargo update` (open point 13).
+  release that raises the breaking number (new rules in a set, changed lists, changed language
+  data), with one exception: a patch release fixes output that contradicts this design, the README
+  or the rustdoc, and records every such fix in the CHANGELOG with a "before → after" example.
+  Output that matches the design but is wrong is a defect of the design; it is corrected in the
+  design and in the code in a release that raises the breaking number. A new rule may arrive in any
+  release, but outside both sets. This keeps the snapshots of build-time generators and the tests of
+  callers stable across `cargo update` (open point 13).
 - `RuleSet::ALL` and the base `all` of `RuleSet::from_str` mean every rule of the running version,
-  so a rule added in a minor or patch release joins them and their output may change with
-  `cargo update`. Their rustdoc says so; callers who need stable output use `PROSE`, `INTERFACE` or
-  an explicit list of rules (open point 13).
+  so a rule added in any release joins them and their output may change with `cargo update`. Their
+  rustdoc says so; callers who need stable output use `PROSE`, `INTERFACE` or an explicit list of
+  rules (open point 13).
 - Adding a language does not change output for existing tags. A tag that was unknown starts to
   resolve; the CHANGELOG says so.
 - Rule ids are permanent (section 2.3).
@@ -42,7 +44,10 @@ Decided by the maintainer on 2026-11-21; not reopened here:
 7. License, authors and copyright exactly as in zonewright: `license = "MIT OR Apache-2.0"`, no
    `authors` field (zonewright has none), the license texts copied verbatim with the copyright line
    `Copyright (c) 2026 Dmitry Bikman`; only the year changes when needed (section 14.5).
-8. Stages 2 to 5 run without stops after this design is approved; stage 6 (HTML) is not done.
+8. Stages 2 to 5 run one after another after this design is approved, without waiting for the
+   maintainer between stages; open points do not stop them (section 15.5 applies the defaults), and
+   a decision received later is applied in the running stage, together with the change of the
+   design, in the same commit. Stage 6 (HTML) is not done.
 9. Working notes and Cargo's target directory live outside the repository.
 
 The task itself fixes further points used throughout: the minus sign U+2212 for numbers, the
@@ -119,7 +124,9 @@ switches the same tables to the full sets. Ready when:
 `symbols.*`; `LanguageData` complete with the ru-RU, en-US and COMMON tables of section 7,
 `Language::from_data` with validation; every builder setting; `PROSE` and `INTERFACE` complete;
 `format_number` and `format_range`; `Output::Html` (all styles, nowrap) and `Output::Escaped` (all
-syntaxes). Ready when:
+syntaxes); `examples/numbers.rs` (`format_number` and `format_range` for ru-RU and en-US, section
+2.7) and `examples/per_request.rs` (the statics of section 2.15 and a `LazyLock` typographer built
+as in section 2.4). Ready when:
 
 - all rule tables pass, the set-level tables of stage 2 now in the full sets, and every row of
   section 10.5 passes as that section states for the full Interface;
@@ -132,19 +139,23 @@ syntaxes). Ready when:
 - the Fluent isolation tests pass;
 - the allocation test confirms section 2.12 (zero allocations for an unchanged string after warm-up,
   one for a changed string, zero for numbers written into a buffer with room);
-- invariant I3 and the determinism-of-order property pass with all 27 rules.
+- invariant I3 and the determinism-of-order property pass with all 27 rules;
+- both examples build under the gates and run without error (`cargo run --example numbers`,
+  `cargo run --example per_request`).
 
 **Stage 4: reverse transformation, source check, explain mode.** `to_plain`, `to_plain_template`,
 `lint`, `lint_template`, every diagnostic of section 12.4, `report_template` and the `Display` of
 `Report` (`report` itself exists since stage 2); the own corpus (section 13.7) with snapshots and
-`roundtrip-known.tsv`. Ready when:
+`roundtrip-known.tsv`; `examples/fluent_generator.rs` (the generator of section 2.14 over a few
+hard-coded messages, `report_template` with `Output::Escaped(EscapeStyle::RUST)`). Ready when:
 
 - P1 and P2 pass on the corpus and on generated strings as section 12.2 states, and every row of
   `roundtrip-known.tsv` still shows its loss;
 - the to_plain stability property passes;
 - recorder independence passes, and applying `changes()` reproduces the result;
 - every diagnostic has a table test, and `report` names the expected `TechKind` for every frozen row
-  of section 10.5.
+  of section 10.5;
+- `cargo run --example fluent_generator` runs without error.
 
 **Stage 5: comparison, load, documentation, release preparation (no release).** The reference tables
 for all 820 cases; `benches/load.rs` and the linearity tests; rustdoc with an example on every

@@ -138,9 +138,9 @@ Choices:
   compares the whole data table, so two languages with the same tag and different data are not
   equal; the hash uses the tag only, which is consistent with that equality.
 - `LanguageData` has private fields and `const fn` setters (section 7.1); it is `Clone`, not `Copy`,
-  so that its representation stays free. New fields can be added in minor releases: a setter is
-  added and existing tables keep the value of the table they started from. Whether language data is
-  public in version 1 is open point 14; this design assumes it is.
+  so that its representation stays free. New fields can be added without a breaking release: a
+  setter is added and existing tables keep the value of the table they started from. Whether
+  language data is public in version 1 is open point 14; this design assumes it is.
 
 Rejected: a string tag in the builder with the error deferred to `build()` (a typo surfaces late);
 `enum Language { RuRu, EnUs }` (a language would be code, and adding one would change a public

@@ -67,13 +67,14 @@ number, a slot, a protected span, a technical fragment or punctuation it keeps t
 (`Hello, — he said`, `See https://example.com — the guide`), so a URL never swallows the next word
 (section 8.4).
 
-**7.** **Literal numeric ranges in Prose** (`1941-1945`, `10-20`, `8000-8100`). Options: (a) in
-Prose `range.digits` (two ascending numbers without leading zeros) and `range.context` (a unit,
-year, century or page word next to it), in Interface neither; (b) only the context rule, as the
-reference implementation does for Russian; (c) never in text, only `range.placeholders` and
-`format_range`. **Recommendation: (a)**: the task asks for en dashes in numeric ranges and ranges of
-years, and technical text is protected by Interface and by backticks. Known cost in Prose:
-`8000-8100` and a telephone fragment `123-4567` get an en dash.
+**7.** **Literal numeric ranges in Prose** (`1941-1945`, `10-20`, `12-15`). Options: (a) in Prose
+`range.digits` (two ascending numbers without leading zeros) and `range.context` (a unit, year,
+century or page word next to it), in Interface neither; (b) only the context rule, as the reference
+implementation does for Russian; (c) never in text, only `range.placeholders` and `format_range`.
+**Recommendation: (a)**: the task asks for en dashes in numeric ranges and ranges of years, and
+technical text is protected by Interface and by backticks. Known cost in Prose: a port range
+`8000-8100` written as plain text and a telephone fragment `123-4567` get an en dash (section 10.5,
+row 10); Interface and backticks keep them (sections 9.2, 10.6).
 
 **8.** **Scope of an unpaired quote.** Options: (a) all or nothing per paragraph: an unpaired or
 crossing straight quote leaves every straight quote of its paragraph (of its template, for pieces)
@@ -105,14 +106,15 @@ which breaks Markdown lists. Options: (a) in Prose for Russian; callers with Mar
 start of dialogue, and the core works on plain text, not Markdown.
 
 **13.** **Output stability policy** (section 15.1). Options: (a) the output of Prose and Interface
-changes only in releases that raise the breaking number, and patch releases only fix output that
-contradicts the documentation, with a "before → after" entry in the CHANGELOG; (b) output
-improvements in any release. **Recommendation: (a)**: build-time generators and snapshot tests of
-callers must not break on `cargo update`. A related choice: `RuleSet::ALL` and the base `all` either
-(i) mean every rule of the running version and stay outside the policy, with rustdoc saying so, or
-(ii) are frozen at the rules of 0.1, so that a new rule is only ever enabled by name.
-**Recommendation: (i)**: a frozen `ALL` that lacks rules would mislead, and callers who want stable
-output already have the two sets and explicit lists.
+changes only in releases that raise the breaking number, except that patch releases fix output that
+contradicts the documentation (the design, the README or the rustdoc), with a "before → after" entry
+in the CHANGELOG, and a wrong design is corrected in a breaking release; (b) output improvements in
+any release. **Recommendation: (a)**: build-time generators and snapshot tests of callers must not
+break on `cargo update`. A related choice: `RuleSet::ALL` and the base `all` either (i) mean every
+rule of the running version and stay outside the policy, with rustdoc saying so, or (ii) are frozen
+at the rules of 0.1, so that a new rule is only ever enabled by name. **Recommendation: (i)**: a
+frozen `ALL` that lacks rules would mislead, and callers who want stable output already have the two
+sets and explicit lists.
 
 **14.** **Public language data in version 1.** Options: (a) `LanguageData` is public with private
 fields and `const fn` setters, `Language::from_data` (validated) and `Language::from_static` (for a
@@ -121,8 +123,8 @@ section 7.7), and `LanguageBuilder` builds languages at run time from owned list
 compile-time `LanguageData` is public, without a run-time builder; (c) language data stays internal
 in version 1 and a language is added by changing the crate. **Recommendation: (a)**: it meets
 "languages are data" for users, not only for maintainers; private fields and the absence of `Copy`
-let the format grow in minor releases. Cost: the setters and builder methods are API, and renaming
-one is a breaking change.
+let the format grow without a breaking release. Cost: the setters and builder methods are API, and
+renaming one is a breaking change.
 
 **15.** **`nbsp.phone` in Interface.** The rule glues telephone numbers typed with ordinary spaces
 by a pattern (a country code or a bracketed area code, groups of digits, 10 to 15 digits). Options:
@@ -136,9 +138,10 @@ digits" and `?..` rest on Wikipedia articles; Mil'chin's handbook and GOST were 
 English short words (23), elisions, abbreviations and the closed dash rest on project choices and
 secondary sources; the Chicago Manual of Style was not read. Options for the English short words:
 (a) the 23-word list of section 7.3; (b) `a`, `an`, `the` only; (c) none. Options for the Russian
-lists: (a) as in section 7.2; (b) the maintainer edits them before stage 3. **Recommendation:**
-English (a), Russian (a); the maintainer's edits are welcome before stage 3, after which list
-changes follow the output stability policy.
+lists: (a) as in section 7.2; (b) the maintainer edits them before the first release.
+**Recommendation:** English (a), Russian (a); the maintainer's edits are welcome at any time before
+the first release; until 0.1.0 they are ordinary changes of the design, and after it list changes
+follow the output stability policy (section 15.1).
 
 **17.** **Digit grouping in text** (`1000000 рублей` → `1⍽000⍽000 рублей`). The task asks for
 numbers formatted by the language; `format_number` does that for values (section 2.7). A text rule

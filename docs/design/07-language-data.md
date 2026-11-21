@@ -84,8 +84,8 @@ Why `const` tables in Rust and not TOML or JSON:
   build script; reading such files at run time means allocation and error paths on the hot path.
 - "Data, not code" is ensured by the structure, not the file format: a language file is one struct
   literal, and a downstream crate declares a language as a `const` built with `const fn` setters
-  (section 2.2). Fields stay private so that the format can grow in minor releases: a new field gets
-  a setter, and existing tables keep the value of the table they started from.
+  (section 2.2). Fields stay private so that the format can grow without a breaking release: a new
+  field gets a setter, and existing tables keep the value of the table they started from.
 
 `LanguageData` holds only `&'static` references and plain values, so it has no drop glue and its
 setters can be `const fn`; it is `Clone` but deliberately not `Copy`, which keeps its representation

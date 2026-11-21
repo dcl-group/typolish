@@ -24,7 +24,7 @@ The two sets differ only in their rule lists; settings and language data are the
 ### 9.2 Composition
 
 `PROSE` holds all 27 rules of version 1. It equals `ALL` in 0.1.0 only: a rule added in a later
-minor release joins `ALL` but not the built-in sets (section 15.1).
+release joins `ALL` but not the built-in sets (section 15.1).
 
 `INTERFACE = PROSE − {symbols.copyright, symbols.arrows, symbols.math, ellipsis.inner, dash.dialogue, dash.double-hyphen, range.digits, range.context, range.time, number.minus, number.times, quotes.primes, nbsp.phone, nbsp.short-length}`
 (13 rules): `ellipsis.dots`, `dash.spaced-hyphen`, `range.placeholders`, `quotes.apostrophe`,
