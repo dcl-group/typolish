@@ -460,7 +460,9 @@ impl<'t, S> Template<'t, S> {
     /// Parts in order; empty texts are skipped.
     pub fn iter(&self) -> impl Iterator<Item = TemplatePart<'_, S>>;
     pub fn into_parts(self) -> (Vec<Cow<'t, str>>, Vec<(S, Slot)>);
-    /// Joins texts with slot values (tests, run-time use without code generation).
+    /// Joins texts with slot values (tests, run-time use without code generation). Values are
+    /// inserted as they are: with `Output::Html` or `Output::Escaped` the closure must return values
+    /// already encoded for that output (section 11.1).
     pub fn fill<'v>(&self, value: impl FnMut(&S) -> Cow<'v, str>) -> String;
 }
 
@@ -1054,7 +1056,9 @@ fn emit(id: &str, pieces: Vec<Piece<'_, usize>>, t: &Typographer) -> String {
 between quotes without escaping of its own (the container is escaped completely, section 11.6). At
 run time the application formats `Number` arguments with `format_number` of the same typographer
 (the same `typographer(tag)` function in a shared crate), so template and value fit together. A
-generator of a JS bundle uses `EscapeStyle::JSON` or `EscapeStyle::JS` the same way.
+generator of a JS bundle uses `EscapeStyle::JSON` or `EscapeStyle::JS` the same way. With
+`Output::Html`, the run-time code escapes `Word`, `Date` and `Other` values itself; the crate
+encodes only the texts (section 11.1).
 
 ### 2.15 Per-request use
 

@@ -17,6 +17,13 @@ the output is uniform. It applies to `Text` and `Protected` alike (protection me
 not "not encoded") and never touches slots. `Markup` pieces are written as is in Unicode and HTML
 output and escaped like text in escaped output, where they are part of the string.
 
+Slot values are not encoded and not checked: the crate never sees them. The caller encodes a value
+for the output kind of its template (HTML-escapes it for `Output::Html`, escapes it for the string
+syntax for `Output::Escaped`) before inserting it; a value from `format_number` or `format_range`
+called with the same output kind is already encoded. The safety statements of sections 11.4 and 11.6
+and the decoding guarantee of section 11.8 are about the texts the crate writes. A value with spaces
+inserted into a nowrap element (section 11.5) cannot break inside the element.
+
 ### 11.2 Typographic set
 
 The characters the rules produce, and the same characters in the input:
@@ -116,10 +123,13 @@ backslashes; escaping after the crate would ruin its own escapes.
   literal.
 - `JS_CODE_POINT` escapes the same characters as `JS` in the ES2015 form `\u{A0}` (`\u{27}` for `'`,
   `\u{1F600}` above the BMP, no surrogate pairs), for codebases that target modern engines only.
-- `CSS` writes the body of a CSS string (`content: "…"`): `\` → `\\`, `"` → `\"`, `'` → `\'`, line
-  breaks and other controls and `<` → a hexadecimal escape followed by a space (`\a `, `\3c `), the
-  typographic set → the same form (`\a0 `, `\2014 `). The trailing space ends the escape and is part
-  of it, as CSS defines.
+- `CSS` writes the body of a CSS string (`content: "…"`): `\` → `\\`, `"` → `\"`, `'` → `\'`, the
+  controls U+0001 to U+001F and U+007F (among them LF, CR, FF and tab, the newlines of CSS) and `<`
+  → a hexadecimal escape followed by a space (`\a `, `\c `, `\3c `); U+0000, which CSS cannot carry
+  (it reads both a raw U+0000 and `\0 ` as U+FFFD), → `\fffd `; U+0085, U+2028 and U+2029 are not
+  newlines in CSS and are written as they are (escaped only with `non_ascii()`); the typographic set
+  → the same form (`\a0 `, `\2014 `). The trailing space ends the escape and is part of it, as CSS
+  defines.
 - With the default scope only the typographic set and the characters above are escaped; Cyrillic and
   other text stays UTF-8. `non_ascii()` escapes every non-ASCII character for pipelines that require
   ASCII.
@@ -141,8 +151,10 @@ change the meaning of the literal, and a second escaping by the caller would rui
 Idempotence holds for `Output::Unicode`. For the other kinds the guarantee is
 `decode(typeset(x, out)) == typeset(x, Unicode)` and
 `typeset(decode(typeset(x, out)), out) == typeset(x, out)`, with `decode` the inverse of the encoder
-(section 4.6). Both are property tests with decoders written as test helpers (section 13.5), for
-every kind including the nowrap styles: the decoder turns an element back into its content, reads an
-ordinary space inside it as U+00A0 and every reference as its character. Encoded output fed back as
-input is plain text with literal ampersands and backslashes, and is encoded again; this is
-documented, not a defect.
+(section 4.6). The one exception is `Output::Escaped(EscapeStyle::CSS)` on text with U+0000: CSS has
+no way to write it, the encoder writes U+FFFD (section 11.6), and the decoder property compares with
+U+0000 replaced by U+FFFD. Both are property tests with decoders written as test helpers (section
+13.5), for every kind including the nowrap styles: the decoder turns an element back into its
+content, reads an ordinary space inside it as U+00A0 and every reference as its character. Encoded
+output fed back as input is plain text with literal ampersands and backslashes, and is encoded
+again; this is documented, not a defect.

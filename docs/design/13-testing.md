@@ -87,7 +87,9 @@ with the right rule in `report`. Specific rows and further tables:
   with quotes on both sides, in every output kind, `<script>`, `${`, characters above the BMP;
   inputs that no rule touches but the style must encode (`a</script>b` in `JS` with Interface,
   `AT&T` in `JSON`, `Да` with `non_ascii()`), which must never come back borrowed; nowrap groups
-  with U+202F, U+2011 and a protected span next to glue.
+  with U+202F, U+2011 and a protected span next to glue; for `CSS`, the inputs `a\u{0}b`, `a\u{c}b`,
+  `a\r\nb`, `a\u{85}b` and `a\u{2028}b` give `a\fffd b`, `a\c b`, `a\d \a b`, `a\u{85}b` (a raw
+  U+0085) and `a\u{2028}b` (a raw U+2028).
 - `tests/parts.rs`: templates, including the walk-through of section 2.14, select variants, `Other`
   slots, nowrap groups starting and ending at slots, the slot participation table of section 2.6 row
   by row (with `{Date}-{Date}` → `{Date}–{Date}` and `{Number}-{Date}` unchanged), labels
@@ -99,7 +101,8 @@ with the right rule in `report`. Specific rows and further tables:
   borrowed; `{a}-5 кг` → `{a}-5⍽кг`; `5-{d} г.` → unchanged; ru `{d} г. Затем` (a `Date` slot) → no
   glue after `г.`; ru `Text("Скажи \"раз\n")`, `Slot(Other)`, `Text("\nдва\"")` → quotes paired
   `«раз … два»`, one window; an empty list of pieces → `texts() == [""]` (borrowed), no slots,
-  `changed() == false`.
+  `changed() == false`; `fill` inserts values unchanged (a value `<b>` stays `<b>` in
+  `Output::Html`), as section 11.1 states.
 - `tests/api.rs`: the API contracts of section 2 that are not output: builder validation and error
   choice, `FromStr` of `Rule`, `RuleSet` and `Language`, tag round trips, accessors of `Report`,
   `Change`, `ProtectedSpan` and `Diagnostic`. Rows: a builder with two violations (`RuleConflict`
@@ -213,7 +216,7 @@ insertions; and arbitrary Unicode strings for the no-panic test.
 12. **Output kinds**: `decode(typeset(x, out)) == typeset(x, Unicode)` and
     `typeset(decode(typeset(x, out)), out) == typeset(x, out)` for every output kind, nowrap styles
     included (an ordinary space inside an element decodes to U+00A0, section 11.5); decoders are
-    test helpers.
+    test helpers (for `CSS`, U+0000 is compared as U+FFFD, section 11.8).
 13. **Round trip**: P1 on generated canonical strings (without the `NestedPossessive` pattern), P2
     on generated strings (section 12.2).
 14. **No panic** on arbitrary strings and arbitrary pieces, including lone combining marks, control
