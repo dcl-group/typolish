@@ -138,7 +138,9 @@ syntaxes). Ready when:
 `Report` (`report` itself exists since stage 2); the own corpus (section 13.7) with snapshots and
 `roundtrip-known.tsv`. Ready when:
 
-- P1 and P2 pass on the corpus with only the listed mismatches, and on generated strings;
+- P1 and P2 pass on the corpus and on generated strings as section 12.2 states, and every row of
+  `roundtrip-known.tsv` still shows its loss;
+- the to_plain stability property passes;
 - recorder independence passes, and applying `changes()` reproduces the result;
 - every diagnostic has a table test, and `report` names the expected `TechKind` for every frozen row
   of section 10.5.

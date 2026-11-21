@@ -744,7 +744,7 @@ impl Typographer {
     pub fn report<'a>(&self, text: &'a str, output: Output) -> Report<'a>;
     pub fn report_template<'t, S>(&self, pieces: impl IntoIterator<Item = Piece<'t, S>>, output: Output)
         -> Report<'t, Template<'t, S>>;
-    /// Source check: diagnostics only, no output is built (section 12.3).
+    /// Source check: diagnostics only, no output is built (section 12.3), in the same order.
     pub fn lint(&self, text: &str) -> Vec<Diagnostic>;
     pub fn lint_template<'t, S>(&self, pieces: impl IntoIterator<Item = Piece<'t, S>>) -> Vec<Diagnostic>;
 }
@@ -758,6 +758,7 @@ impl<'a, T> Report<'a, T> {
     pub fn changes(&self) -> &[Change];
     /// Spans that no rule may touch, with the reason (section 12.5).
     pub fn protected(&self) -> &[ProtectedSpan];
+    /// Ordered by piece, byte range, then kind (section 12.4).
     pub fn diagnostics(&self) -> &[Diagnostic];
     /// The input text an edit replaced.
     pub fn original(&self, change: &Change) -> &'a str;
@@ -860,7 +861,7 @@ in every signature).
 ```rust
 impl Typographer {
     /// Maps typeset Unicode text back to the canonical plain form, undoing exactly the enabled
-    /// rules (section 12.1). Protected spans, slots and markup are left alone.
+    /// rules (section 12.1). The spans of `protected()` (section 12.5) and markup are left alone.
     /// The input is Unicode text (`Output::Unicode`); HTML entities and escapes are not decoded and
     /// are read as ordinary characters (section 12.1).
     pub fn to_plain<'a>(&self, text: &'a str) -> Cow<'a, str>;
@@ -877,8 +878,9 @@ assert_eq!(
 );
 ```
 
-It is a method, not a free function, because it needs the protection settings, the dash style and
-the quote pairs of the language, and the set of enabled rules.
+It is a method, not a free function, because it needs the protection settings, the quote pairs,
+single-quote mode and dash style of the typographer (with the builder's overrides), and the set of
+enabled rules.
 
 ### 2.11 Errors
 

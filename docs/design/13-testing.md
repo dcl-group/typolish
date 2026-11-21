@@ -117,6 +117,9 @@ with the right rule in `report`. Specific rows and further tables:
   `InvalidSetting`; `Language::RU_RU` equals a copy built by
   `LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")` with no changes, and their hashes are
   equal; a copy with a different list of short words is not equal.
+- `tests/lint.rs`: every diagnostic kind of section 12.4 with a firing and a non-firing row;
+  `TypographicChar` is absent inside `https://example.com/a–b`, inside backticks and in `Markup`,
+  absent for `©` with `symbols.copyright` off, present for `—` between words with the dash rules on.
 - `tests/fluent_isolation.rs`: run-time strings with U+2068 and U+2069 around values give the same
   typesetting as without them, with the isolates unchanged (section 5.4).
 
@@ -205,8 +208,9 @@ insertions; and arbitrary Unicode strings for the no-panic test.
    `(c)` → `©` replaces three clusters.
 8. **Cow**: the output is `Borrowed` exactly when it equals the input byte for byte, for every
    output kind (`Html` and `Escaped` included), so the prefilter can never skip encoding.
-9. **Recorder independence**: `typeset`, `typeset_with`, `report` and `lint` agree on the result and
-   on the diagnostics; applying `report(x).changes()` to `x` yields the result.
+9. **Recorder independence**: `typeset`, `typeset_with` and `report` give the same result; `lint(x)`
+   without its `TypographicChar` entries equals `report(x, Output::Unicode).diagnostics()`; applying
+   `report(x).changes()` to `x` yields the result.
 10. **Pieces and strings**: a template of `Text` pieces only gives the same as `typeset` of their
     concatenation, protection delimiters included (they are matched across pieces, section 3.4),
     with the text cut at every byte boundary of a character, including inside runs of dots, dashes
@@ -217,10 +221,17 @@ insertions; and arbitrary Unicode strings for the no-panic test.
     `typeset(decode(typeset(x, out)), out) == typeset(x, out)` for every output kind, nowrap styles
     included (an ordinary space inside an element decodes to U+00A0, section 11.5); decoders are
     test helpers (for `CSS`, U+0000 is compared as U+FFFD, section 11.8).
-13. **Round trip**: P1 on generated canonical strings (without the `NestedPossessive` pattern), P2
-    on generated strings (section 12.2).
+13. **Round trip**: P1 on generated canonical strings (the canonical form of section 12.1 for the
+    settings under test, percentages included, without the `NestedPossessive` pattern) and on the
+    corpus as section 12.2 says; P2 on generated plain strings and on the corpus; the table test of
+    `roundtrip-known.tsv` (section 12.2). Generated strings run for {ru, en} × {Prose, Interface,
+    each rule alone, random subsets}; the corpus runs with Prose and Interface only.
 14. **No panic** on arbitrary strings and arbitrary pieces, including lone combining marks, control
     characters and noncharacters: 10 000 cases in a normal run, 1 000 000 in an `#[ignore]` test.
+15. **lint matches to_plain**: `lint(x)` contains a `TypographicChar` exactly when
+    `to_plain(x) != x`, and each such entry covers one character that `to_plain` changes.
+16. **to_plain is stable**: `to_plain(to_plain(x)) == to_plain(x)` for {ru, en} × {Prose, Interface}
+    on generated strings and the corpus, and `to_plain(x)` is `Borrowed` exactly when it equals `x`.
 
 ### 13.6 Unicode conformance
 
@@ -252,7 +263,8 @@ insertions; and arbitrary Unicode strings for the no-panic test.
 ### 13.7 Own corpus
 
 There is no external corpus (decided by the maintainer on 2026-11-21); the corpus is written for the
-project, in the canonical plain form, with no third-party texts:
+project, with no third-party texts; `prose.txt` and `ui.tmpl` are in the canonical plain form for
+both sets, `tech.txt` for Interface (section 12.2):
 
 ```text
 tests/corpus/
