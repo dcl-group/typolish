@@ -25,14 +25,14 @@ while in `key="value"` both quotes belong to the technical notation and are left
 Local context removes from pairing what is certainly not a quote. The decision is the same for the
 plain (`'`) and the typed (`’`) form, so a second pass removes the same tokens (invariant I4).
 
-| Context of `'` or `’`                                                                | Result     | Rule                |
-| ------------------------------------------------------------------------------------ | ---------- | ------------------- |
-| a letter on both sides, any script (`don't`, `O'Brien`, `rock'n'roll`, `Д'Артаньян`) | `’` U+2019 | `quotes.apostrophe` |
-| a `Word` or `Number` slot on the left, a letter on the right (`{name}'s`)            | `’`        | `quotes.apostrophe` |
-| a digit on the left, a letter on the right (`90's`)                                  | `’`        | `quotes.apostrophe` |
-| word start and an elision of the language's list (`'tis`, `'em`, `'cause`)           | `’`        | `quotes.apostrophe` |
-| word start, two digits, then `s`, if the language has the decade flag (`'90s`)       | `’`        | `quotes.apostrophe` |
-| a digit on both sides (`5'10`)                                                       | `′` U+2032 | `quotes.primes`     |
+| Context of `'` or `’`                                                                                   | Result     | Rule                |
+| ------------------------------------------------------------------------------------------------------- | ---------- | ------------------- |
+| a letter on both sides, any script (`don't`, `O'Brien`, `rock'n'roll`, `Д'Артаньян`)                    | `’` U+2019 | `quotes.apostrophe` |
+| a `Word` or `Number` slot on the left, a letter on the right (`{name}'s`)                               | `’`        | `quotes.apostrophe` |
+| a digit on the left, a letter on the right (`90's`)                                                     | `’`        | `quotes.apostrophe` |
+| word start and an elision of the language's list (`'tis`, `'em`, `'cause`)                              | `’`        | `quotes.apostrophe` |
+| word start, two digits, then `s`, if the language has the decade flag (`'90s`)                          | `’`        | `quotes.apostrophe` |
+| a number of one to three digits on the left and one or two digits ending the core on the right (`5'10`) | `′` U+2032 | `quotes.primes`     |
 
 The apostrophe is U+2019 for every language, as the Unicode Standard (chapter 6) recommends for
 typeset text. A straight `"` has no step 1: after a digit it is decided in section 6.5.
@@ -189,8 +189,8 @@ in pass 2 → `«{n}»`; `{n}"` alone becomes a prime `{n}″` (with `quotes.pri
 ### 6.10 Scope
 
 The scope of pairing is the window, a paragraph (section 3.3). For pieces it is the same over the
-text of the pieces, so a message without blank lines is one scope, and a quote opened in one text
-closes in another.
+text of the pieces (an atom between line breaks is content, section 3.3), so a message without blank
+lines is one scope, and a quote opened in one text closes in another.
 
 Quotes spanning paragraphs (the book convention of an opening quote at the start of every paragraph
 of a long quotation) do not converge in each paragraph and stay straight, with `UnmatchedQuote`.

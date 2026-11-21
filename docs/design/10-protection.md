@@ -179,5 +179,6 @@ expectation given: `rm -rf --no-preserve-root /`, `git commit -m msg --amend`,
   `number.minus` turns `tail -5` into `tail −5`; `range.digits` turns a telephone fragment
   `123-4567` into a range. Prose assumes commands are protected; Interface has none of these rules.
 - `ellipsis.inner` turns `...args` into `…args` in Prose.
+- Swiss grouping `1'000'000` and digit separators `0b1'0000` are frozen (section 3.6) and keep `'`.
 - Frozen fragments are left alone even where a rule would be welcome: `50%-ный`, `C#`, `AT&T`
   (sections 3.6, 4.3). This errs on the safe side by design.

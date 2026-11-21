@@ -114,7 +114,8 @@ byte range. `Severity` is ordered (`Info < Warning`). `Diagnostic` implements `D
 
 `report` and `report_template` (section 2.9) return the result of `typeset` together with:
 
-- `changes()`: one record per applied edit: rule, piece, byte range in the input, replacement in
+- `changes()`: one record per applied edit and piece (an edit across a boundary of `Text` pieces
+  gives one record per piece, section 2.9): rule, piece, byte range in the input, replacement in
   Unicode. Records are ordered by position, then by rule order; if two rules touched one position (a
   replacement and a glue next to it), there are two records. Empty edits ("already done") are not
   recorded.
@@ -122,7 +123,7 @@ byte range. `Severity` is ordered (`Info < Warning`). `Diagnostic` implements `D
   `ProtectedPiece`, `Slot`, or `Technical(TechKind)` for a frozen fragment (`Url`, `Email`, `Flag`,
   `Path`, `TimeRange` (the times only), `Colon`, `Operator`, `Identifier`, `Angle`, `Uuid`, `Hex`,
   `IsoDate`, `Version`, `Dotted`, `List`, `CompoundHyphens`, `Unclassified`). This is the main tool
-  for "why did no rule fire here".
+  for "why did no rule fire here". A `Punctuation` fragment is not a protected span.
 - `diagnostics()`: as in section 12.4.
 
 `Display` prints a table for reports of differences. For Russian Prose, input

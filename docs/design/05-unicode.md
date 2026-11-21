@@ -15,8 +15,8 @@ Rules work on whole clusters:
 - A replacement replaces a whole cluster. A cluster of several characters led by a non-letter is a
   `Symbol`: a straight quote with a combining mark attached (`"` + U+0301) is not a quote candidate,
   and a keycap (`1️⃣`, `#️⃣`) is not a number or a sign. The ASCII fast path of section 3.5 hands the
-  last ASCII byte before a non-ASCII byte to the segmenter, so this holds right after ASCII text
-  too.
+  ASCII bytes on both sides of a non-ASCII character to the segmenter, so this holds right before
+  and right after ASCII text too.
 - An insertion (`т.е.` → `т.⍽е.`, `№5` → `№⍽5`) is made only between clusters.
 - Glue is set only on a `Space` token, which is a whole cluster.
 - Emoji sequences (ZWJ, skin-tone modifiers, flags, keycaps, tag sequences) are single `Symbol`

@@ -238,8 +238,10 @@ callers need not sort them. The built-in tables pass the same check in a test, s
 cannot reach a user.
 
 - The tag has the form `ll`, `ll-RR`, `ll-DDD` (ASCII) or is `und`.
-- Quote glyphs are not `"` or `'` (output would become input again), not whitespace, letters or
-  digits; the two glyphs of a pair differ; the primary pair differs from the nested pair.
+- The four glyphs of `QuotePairs` are pairwise distinct; each is a character the lexer reads as
+  `Quote` (section 3.5) other than `"`, `'`, `′` and `″` (so output never becomes input again, and
+  the wrapper of section 3.6 strips it). The `apostrophe` is such a character too (so not U+02BC,
+  which is a letter); it may equal one of the glyphs (`’` in English).
 - List entries are non-empty and contain no whitespace; word lists are lowercase, strictly sorted
   and free of duplicates; units are strictly sorted by code point and do not start with a digit;
   ambiguous units are also in `units`.

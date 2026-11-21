@@ -487,7 +487,9 @@ Output contract:
 3. Rules see the whole message as one stream: a slot does not break context (`{n} дн.` is glued
    although the number and the unit are in different pieces), and a quote opened in one text closes
    in another (`"{name}"`). Edits land in the texts next to slots; a slot is never part of an edit.
-4. The n + 1 form always has room for markup around a slot: a nowrap group that starts with slot i
+4. Tokens may span adjacent `Text` pieces, so a template of `Text` pieces gives the same as their
+   concatenation; a slot, a `Protected` or a `Markup` piece ends a token (section 3.4).
+5. The n + 1 form always has room for markup around a slot: a nowrap group that starts with slot i
    opens at the end of `texts()[i]`, one that ends with slot j closes at the start of
    `texts()[j + 1]` (section 11.5).
 
@@ -512,7 +514,8 @@ No glue sticks to an `Other` slot: its value may be long, and a nowrap group aro
 breaks the layout. A `Number` slot after `№`, `§` or `¶` (`№ {n}`, `№{n}`) is a label number
 (section 8.2): `nbsp.signs` glues it to the sign, and the rules that read a quantity or a year
 (`nbsp.units`, `nbsp.dates`) leave it alone. Two `Number` slots or two `Date` slots joined by `-`
-form a `Range` core (check 17 of section 3.6), which is how `range.placeholders` reaches them.
+form a `Range` core (check 17 of section 3.6), which is how `range.placeholders` reaches them; a
+`Number` slot and a literal number form one too, but no rule edits its dash.
 
 Choices:
 
@@ -784,9 +787,11 @@ assert_eq!(r.diagnostics()[0].range(), 18..19);
 
 Choices:
 
-- **Edits are atomic and relative to the input.** Each replaces one contiguous byte range of one
-  piece. A report of differences against the reference implementation is printed from them without a
-  second run.
+- **Edits are atomic and relative to the input.** Each record replaces one contiguous byte range of
+  one piece. An edit across a boundary of adjacent `Text` pieces (`Text("Ждём.")`, `Text("..")`)
+  becomes several records in input order: the first holds the replacement, the others delete the
+  rest; `original()` of each returns the slice of its own piece. A report of differences against the
+  reference implementation is printed from them without a second run.
 - **`report` and `typeset` are one engine**; `report` turns on a recorder that the plain path
   compiles out (section 3.11). A property test checks `report(x).result() == typeset(x)` and that
   applying `changes()` to the input yields the result.

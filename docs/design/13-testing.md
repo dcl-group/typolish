@@ -24,22 +24,46 @@ every rule and every language, an array of `(&str, &str)` pairs. Each rule is te
 (`RuleSet::EMPTY.with(rule)`) and inside both built-in sets. Required rows per rule: firing; not
 firing at each boundary of its pattern ("does not touch" items of section 8); typeset input (no
 change, `Cow::Borrowed`); a slot next to it; the rule disabled (no change); and the `Change` record
-with the right rule in `report`. Further tables:
+with the right rule in `report`. Specific rows and further tables:
 
+- classifier tables (unit tests of `engine/classify.rs`, stage 2): `Ph.D.` and `А.С.` are
+  `Abbreviation`, `report().protected()` is empty.
+- `tests/rules_quotes.rs`: ru `"?"` → `«?»`, `«»` unchanged, `report().protected()` empty; en
+  `He is 5'10" tall.` (Prose) → `He is 5′10″ tall.`; en `the 90's` → `the 90’s`; en `1'000'000` →
+  unchanged.
+- `tests/rules_dash.rs`: ru `Ждите - ...` with `dash.spaced-hyphen` alone → unchanged, no
+  `AmbiguousHyphen`, `report().protected()` empty.
+- `tests/rules_ellipsis.rs`: `Ждите - ...` with `ellipsis.dots` alone → `Ждите - …`; `...` alone →
+  `…`; in both `report().protected()` is empty. `и т.д...` → `и т.д…`.
+- `tests/rules_number.rs` (`number.times`): `10 x 5` with `add_units(["x"])` → `10 × 5`; `a × b` →
+  unchanged, `report` lists `Technical(Unclassified)` for `×`; `10 X 5` → `10 × 5`; `10 Х 5` →
+  `10 × 5`; `010 x 5` → unchanged.
+- `tests/rules_symbols.rs` (`symbols.copyright`): `Brand(Tm)` → unchanged.
+- `tests/rules_nbsp.rs` (stage 3): ru `А.С. Пушкин` → `А.С.⍽Пушкин` (`nbsp.initials`); `и т.д...` →
+  `и⍽т.⍽д…`; `и т. д…` → `и⍽т.⍽д…`; en `etc...` → `etc…` (`etc` with its stop is `Dictionary`);
+  `nbsp.signs`: `¶IV` → `¶⍽IV`, not borrowed; ru `и т. д.` with `narrow_glue` for abbreviations →
+  `и\u{A0}т.\u{202F}д.`.
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
   decimals (`Number::decimal` keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`,
   `f32::MAX`), `i128::MIN`, `u128::MAX`, `f64::NAN`, infinities, `-0.0`, the grouping thresholds (4
   and 5 digits), `Number::fixed` ties, every output kind, and nowrap with and without glue (`1234`
   in ru has no element).
 - `tests/output.rs`: every output kind on a fixed set of inputs, including unpaired quotes,
-  backslashes in protected spans, line breaks, U+2028, `<script>`, `${`, characters above the BMP;
+  backslashes in protected spans, line breaks, U+2028, U+2029 and blank lines between paragraphs
+  with quotes on both sides, in every output kind, `<script>`, `${`, characters above the BMP;
   inputs that no rule touches but the style must encode (`a</script>b` in `JS` with Interface,
   `AT&T` in `JSON`, `Да` with `non_ascii()`), which must never come back borrowed; nowrap groups
   with U+202F, U+2011 and a protected span next to glue.
 - `tests/parts.rs`: templates, including the walk-through of section 2.14, select variants, `Other`
   slots, nowrap groups starting and ending at slots, the slot participation table of section 2.6 row
   by row (with `{Date}-{Date}` → `{Date}–{Date}` and `{Number}-{Date}` unchanged), labels
-  (`№{n} г. Москвы`), and backtick protection across pieces (``Run `git checkout -- { $b }` ``).
+  (`№{n} г. Москвы`), and backtick protection across pieces (``Run `git checkout -- { $b }` ``);
+  tokens across pieces: `[Text("Ждём."), Text("..")]` → `Ждём…` with two `Change` records, and
+  `[Text("Ждём."), Markup("<b>"), Text("..")]` → unchanged; percent and signs next to slots: `{n}%`
+  in ru with `PercentSpacing::Spaced` and with `Language` → `{n}⍽%`; `{n}‰` with
+  `RuleSet::EMPTY.with(Rule::NbspUnits)` and `Spaced` → `{n}⍽‰`; `¶{n}` → `¶⍽{n}`; none of them
+  borrowed; `{a}-5 кг` → `{a}-5⍽кг`; `5-{d} г.` → unchanged; ru `Text("Скажи \"раз\n")`,
+  `Slot(Other)`, `Text("\nдва\"")` → quotes paired `«раз … два»`, one window.
 - `tests/fluent_isolation.rs`: run-time strings with U+2068 and U+2069 around values give the same
   typesetting as without them, with the isolates unchanged (section 5.4).
 
@@ -56,6 +80,7 @@ with the right rule in `report`. Further tables:
   the expectation is the last column of section 10.5. The comment of each test names its mechanisms,
   and the test also checks that `report` lists the expected `TechKind` for frozen fragments;
 - the stress strings of section 10.7;
+- Swiss grouping `1'000'000` (frozen, section 10.8): unchanged in both sets, for ru and en;
 - all 405 negative cases of the scouting corpus (groups `neg.flags`, `neg.net`, `neg.ver`,
   `neg.ids`, `neg.ident`, `neg.list`, `neg.html`, `neg.mixed`, `neg.shortlat`, `neg.lookalike`; ru
   207, en 198, frames included), converted once by a script outside the repository into a plain
@@ -95,9 +120,10 @@ insertions; and arbitrary Unicode strings for the no-panic test.
 
 1. **Idempotence**: `f(f(x)) == f(x)` for {ru, en, COMMON} × {Prose, Interface, all, random subsets}
    × the three `SingleQuotes` modes, with fixed seeds for every split and merge of invariant I2
-   (`Школа №5 г. Москвы`, `§5 ч. 2`, `т.е.`, `Moscow - the capital`,
-   `See https://example.com/docs - the guide`, `He said - "a cat"`, `100%` and `100 %` under every
-   `PercentSpacing`).
+   (`Школа №5 г. Москвы`, `§5 ч. 2`, `т.е.`, `и т.д...`, `Moscow - the capital`,
+   `See https://example.com/docs - the guide`, `He said - "a cat"`, `5'10"`, `90's`, `'90s`, `'tis`,
+   `‚Wort‘` with a `LanguageBuilder` language whose pairs are `„“` and `‚‘`, `100%` and `100 %`
+   under every `PercentSpacing`).
 2. **Fixed-point oracle**: `f` repeated until nothing changes (at most three times) equals `f`; a
    difference prints the reports of both passes.
 3. **Invariants**, one property each: I1 (edits never change a token kind; insertions and removals
@@ -118,7 +144,9 @@ insertions; and arbitrary Unicode strings for the no-panic test.
 9. **Recorder independence**: `typeset`, `typeset_with`, `report` and `lint` agree on the result and
    on the diagnostics; applying `report(x).changes()` to `x` yields the result.
 10. **Pieces and strings**: a template of `Text` pieces only gives the same as `typeset` of their
-    concatenation, protection delimiters included (they are matched across pieces, section 3.4).
+    concatenation, protection delimiters included (they are matched across pieces, section 3.4),
+    with the text cut at every byte boundary of a character, including inside runs of dots, dashes
+    and spaces; applying `report_template(...).changes()` piece by piece yields the result.
 11. **Determinism of order**: a set built in different orders of `with`/`without` gives byte-equal
     output.
 12. **Output kinds**: `decode(typeset(x, out)) == typeset(x, Unicode)` and
@@ -146,7 +174,12 @@ insertions; and arbitrary Unicode strings for the no-panic test.
   `Word`).
 - Tables for clusters led by a non-letter: keycaps `1️⃣` and `#️⃣`, `"` + U+0301, each alone and right
   after ASCII text (`Шаги 1️⃣-3️⃣`, `a"\u{301}b`), so that the ASCII fast path of section 3.5 hands
-  them to the segmenter; they come out unchanged and are not numbers, signs or quotes.
+  them to the segmenter; they come out unchanged and are not numbers, signs or quotes. Clusters led
+  by a `Prepend` character before ASCII: `\u{600}123`, `\u{6DD}` + space at the end of the text,
+  `a\u{600}b`. They come out unchanged; `\u{600}1` is a `Symbol`, and no edit falls between U+0600
+  and the ASCII character after it. A lexer unit test compares the cluster boundaries of the fast
+  path with `grapheme_indices(true)` on every line of the fixture and on generated strings that mix
+  ASCII with `Prepend`, `Extend`, `ZWJ` and `SpacingMark` characters.
 
 ### 13.7 Own corpus
 
@@ -177,7 +210,8 @@ U+00A0 and must not be normalized.
   (MB/s); one interface string of about 60 bytes and one without trigger bytes (prefilter), median
   and p99 over 100 000 runs, with and without `typeset_with`; time per byte for 1 KiB, 64 KiB, 1 MiB
   and 16 MiB of joined corpus and for one 1 MiB paragraph; and the pathological inputs of section
-  3.12.
+  3.12, with the peak memory for one paragraph of 10^5 ZWJ emoji clusters (section 3.12 estimates
+  about 4 MB of tokens in each of the two buffers).
 - `#[ignore]` test `load_is_linear`: time per byte for 16 MiB is at most twice that for 64 KiB,
   separately for each pathological input. No absolute thresholds: the machine is shared. Indicative
   targets, measured in stage 5 and not promised: at least 20 MB/s on the corpus in Unicode output, a
@@ -185,7 +219,8 @@ U+00A0 and must not be normalized.
 - `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` checks the table of
   section 2.12: zero allocations for an unchanged string after warm-up (both through the prefilter
   and through the full pipeline), one for a changed string, zero for `format_number` written into a
-  buffer with room, zero in `Typographer::new`.
+  buffer with room, zero in `Typographer::new`; ru `Сохранить` in Interface → `Cow::Borrowed`, no
+  lexing.
 
 Rejected: `criterion` (a heavy tree: `clap`, `serde`, `regex`, `rayon`) and `divan` (last release in
 2025-04); linear behavior needs no statistics package.
@@ -200,13 +235,16 @@ documented form, `Rule::from_str(r.id()) == Ok(r)`; `s.to_string().parse() == Ok
 `RuleSet::EMPTY` (printed `empty`), `ALL`, `PROSE`, `INTERFACE` and generated sets; the composition
 of Prose and Interface matches section 9.2; `src/` contains no `std::env`, `std::fs`, `std::net`,
 `std::time` or `unsafe`; `src/lang/*.rs` contain no `fn`, `impl`, `match` or `if`; replacement
-tables produce no letter and no digit; built-in languages × built-in sets build without error.
-Checks that read `docs/design/` skip when the file is absent (the published package has no design).
+tables produce no letter and no digit; built-in languages × built-in sets build without error. A
+unit test next to the prefilter checks, for every built-in set and language, that the trigger set
+equals the union of the trigger constants of the active rules. Checks that read `docs/design/` skip
+when the file is absent (the published package has no design).
 
 `tests/data.rs` runs the validation of section 7.6 on every built-in table and compares the CLDR
 values (quote pairs, decimal, group, minimum grouping digits where not overridden, percent pattern,
 range pattern, `nan`, `infinity`, month names, units marked "CLDR 49") with an extract of cldr-json
-49.0.0 kept in the test, so a CLDR update is a visible change.
+49.0.0 kept in the test, so a CLDR update is a visible change. It also checks that a table whose
+`QuotePairs` holds `「」` is rejected with `Error::InvalidLanguageData`.
 
 ### 13.10 Documentation
 

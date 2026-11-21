@@ -65,7 +65,7 @@ agree and that every rule appears once.
 6. **No-break spaces last.** They bind final tokens: dashes, quotes, abbreviations, units.
    `nbsp.dash` depends on the dashes produced in the dash phase, which comes earlier. Within the
    phase, rules that want the same space want the same result (a glue mark); the order only decides
-   which rule a report names, and `Glue::NoBreak` beats `Glue::Narrow` whatever the order.
+   which rule a report names.
 
 ### 4.3 Invariants
 
@@ -76,13 +76,15 @@ agree and that every rule appears once.
   only in the cases listed here, and none of them changes what a rule reads:
   - checks accept plain and typographic forms alike: a range with `-` or `–`, dimensions with `x`,
     `х` or `×`, a signed number with `-` or `−`, `+-` or `±`, an abbreviation as `т.д.`, `т. д.` or
-    `т.⍽д.`, a joined form with `...` or `…`, a dash fragment in any form, a year and month with `-`
-    or `–`;
+    `т.⍽д.`, its last full stop also as the first of `...` or as `…`, a joined form with `...` or
+    `…`, a dash fragment in any form, a year and month with `-` or `–`, a punctuation-only fragment
+    with `...` or `…`, a quote at a word start as `'` or `’`;
   - an inserted space splits only a non-technical fragment, into non-technical parts that the rules
     read as before: `т.е.` → `т.` and `е.` (abbreviation parts, read only by `nbsp.abbreviations`,
-    which matches both forms); `№5` → `№` and `5` (a label number in both forms, section 3.6, so no
-    rule that reads a quantity or a year starts to match); `100%` → `100` and `%` with
-    `PercentSpacing::Language` (ru) or `Spaced` (a percentage in both forms, section 8.2);
+    which matches both forms); `т.д…` → `т.` and `д…` (both abbreviation parts, the second through
+    its stop); `№5` → `№` and `5` (a label number in both forms, section 3.6, so no rule that reads
+    a quantity or a year starts to match); `100%` → `100` and `%` with `PercentSpacing::Language`
+    (ru) or `Spaced` (a percentage in both forms, section 8.2);
   - a removed space merges fragments only into a kind that the rules read as before. The
     closed-style dash removes its two spaces only between two plain words (section 8.4), so `word`,
     `—`, `word` become one `Joined` fragment (check 22), never a technical one: a rule that matched
@@ -93,7 +95,7 @@ agree and that every rule appears once.
     into a percentage.
 
   Each case has a fixed seed in the idempotence property (section 13.5): `Школа №5 г. Москвы`,
-  `§5 ч. 2`, `т.е.`, `Moscow - the capital`, `See https://example.com/docs - the guide`,
+  `§5 ч. 2`, `т.е.`, `и т.д...`, `Moscow - the capital`, `See https://example.com/docs - the guide`,
   `He said - "a cat"`, `100%` and `100 %` under every `PercentSpacing`.
 
 - **I3. Products are not triggers.** A rule changes only plain forms: straight quotes, `-`, runs of

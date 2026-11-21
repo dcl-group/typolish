@@ -45,8 +45,9 @@ Prose: 27 rules (every rule of version 1). Interface: 13 rules.
 ### 8.2 Common conditions
 
 Terms: a **word** is a `Word` token; a **number** is a `Number` fragment or a `Number` slot; an
-**operand** is a word, a number, a slot, a protected span or a fragment whose core is technical. Two
-kinds of number name or measure something other than a quantity:
+**operand** is a word, a number, a slot, a protected span or a fragment whose core is technical. A
+`Punctuation` fragment (wrapper tokens only, such as a lone `...`, section 3.6) is not an operand.
+Two kinds of number name or measure something other than a quantity:
 
 - A **label number** follows a sign (`№5`, `№ 5`, `§⍽12`, `№ {n}`; flag `LABEL`, section 3.6).
 - A **percentage** is a number with `%` or `‰`, attached (`5%`) or after spaces (`5 %`, `5⍽%`).
@@ -150,7 +151,8 @@ and the classifier freezes the hyphens of compounds (check 21 of section 3.6).
 
 - **`range.placeholders`** (both sets): a `-` without spaces between two `Number` slots or two
   `Date` slots → the range dash of the language. The caller declared both sides as values, so this
-  is a range of values. With spaces (`{a} - {b}`) nothing changes: it may be a subtraction.
+  is a range of values. With spaces (`{a} - {b}`) nothing changes: it may be a subtraction. A slot
+  next to a literal (`{a}-5`) is not edited by any range rule.
 - **`range.digits`** (Prose): a core `D+-D+` (check 17) with exactly two numbers, both without
   leading zeros, the left smaller than the right → `D–D`: `1941-1945`, `10-20`, `5-10`. Not
   `2026-11` (a year and month, check 12), `1-2-3` (three numbers), `01-12` (leading zero), `20-10`
@@ -184,18 +186,23 @@ The rule for port ranges such as `8000-8100` is section 10.6.
   `...args` and `a...b` occur in code.
 
 Examples: `Подождите...` → `Подождите…`; ru `Что?...` → `Что?..`; en `What?...` → `What?…`; `Что?…`
-unchanged.
+unchanged. `и т.д...` → `и т.д…`: the run keeps the full stop of the abbreviation, and
+`nbsp.abbreviations` still reads it (section 8.7).
 
 ### 8.7 No-break spaces
 
 - **`nbsp.abbreviations`.** Multi-part abbreviations of the list (`Inner`): the spaces inside are
   glued, a missing space after a full stop is inserted, and a leading word that belongs to the entry
   (`и`, `в`, `до`) is part of the pattern: `т.е.` → `т.⍽е.`, `и т. д.` → `и⍽т.⍽д.`, `и т.п.` →
-  `и⍽т.⍽п.`. Entries with `Next` glue the space to the following operand (`см.⍽рис.⍽5`,
+  `и⍽т.⍽п.`. The full stop that ends an entry may be the first full stop of a `Dots` token in any
+  form: `и т.д...` → `и⍽т.⍽д…` (the ellipsis phase has already replaced the run), `и т. д…` →
+  `и⍽т.⍽д…`. Entries with `Next` glue the space to the following operand (`см.⍽рис.⍽5`,
   `ул.⍽Ленина`, `Mr.⍽Smith`); `NextCapitalized` only before a capitalized word (`г.⍽Москва`). A
   `Next` or `NextCapitalized` entry directly after a number does not bind forward: it is a unit or a
   year with a sentence full stop (`5 ч. Потом`, `2026 г. Затем`). A label number is not a number
-  here: `Школа №5 г. Москвы` → `Школа №⍽5 г.⍽Москвы`, `§5 ч. 2` → `§⍽5 ч.⍽2`.
+  here: `Школа №5 г. Москвы` → `Школа №⍽5 г.⍽Москвы`, `§5 ч. 2` → `§⍽5 ч.⍽2`. With `narrow_glue` for
+  abbreviations, `Narrow` goes only to the spaces between the parts of an entry (`т.⎵д.`); the space
+  after a leading word (`и⍽т.`) and the forward glue of `Next` entries are always `NoBreak`.
 - **`nbsp.initials`.** `И. О. Фамилия`, `И. Фамилия`, `Фамилия И. О.`, `Фамилия И.`: an initial is
   one capital letter of the language's script with a full stop (up to three), a surname is a
   capitalized word of the language's script of at least two letters. The spaces inside the pattern
@@ -270,9 +277,9 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
   line start or `(` → minus sign: `Минус -5 градусов` → `Минус −5 градусов`, `-12 °C` → `−12⍽°C`.
   Not in Interface (`head -1`, `tail -5`); in Prose such commands are protected with backticks.
 - **`number.times`** (Prose): a `Dimensions` core (check 16) → `×` in place of the letter
-  (`1920x1080` → `1920×1080`, Cyrillic `х` too); a lone `x` fragment between two number fragments →
-  `×` with the author's spaces kept (`10 x 5` → `10 × 5`). `0x1F` (hex, check 10) and `x86`
-  (identifier) never change.
+  (`1920x1080` → `1920×1080`, Cyrillic `х` too); a lone `x`, `X`, `х` or `Х` fragment between two
+  number fragments, the left one without a leading zero → `×` with the author's spaces kept
+  (`10 x 5` → `10 × 5`). `0x1F` (hex, check 10) and `x86` (identifier) never change.
 - Digit grouping in text (`1000000` → `1⍽000⍽000`) is not a rule of version 1. A run of digits is
   one `Number` token, rules insert spaces only between tokens, and English groups with a comma,
   which is not a space at all; numbers in text are also often ports, years and codes (`port 65535`).
