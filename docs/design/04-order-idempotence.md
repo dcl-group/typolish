@@ -152,11 +152,12 @@ strings and on the corpus, with a fixed-point oracle (section 13.5).
 
 Typographic characters (`«»„“”‘’`, `—`, `–`, `…`, U+00A0, `−`, `×`, `©`, `→`) are never rewritten
 (I3). They take part in context: typed quotes count in nesting levels (section 6.7), and a typed `—`
-or `–` between words in Russian gets glue before it from `nbsp.dash` (`Москва — столица` →
-`Москва⍽— столица`, `Москва – столица` → `Москва⍽– столица`). That is a normalization of the space,
-not damage, and it is idempotent. A "wrong" typographic character is not corrected: `10—20` keeps
-its em dash, `Что?…` in Russian keeps its ellipsis character. Test sets `*.already.*` check that
-typeset input comes back as `Cow::Borrowed` wherever no normalization of spaces applies.
+or `–` with spaces between operands in Russian, numbers included, gets glue before it from
+`nbsp.dash` (`Москва — столица` → `Москва⍽— столица`, `Москва – столица` → `Москва⍽– столица`,
+`10 – 20` → `10⍽– 20`, section 8.7). That is a normalization of the space, not damage, and it is
+idempotent. A "wrong" typographic character is not corrected: `10—20` keeps its em dash, `Что?…` in
+Russian keeps its ellipsis character. Test sets `*.already.*` check that typeset input comes back as
+`Cow::Borrowed` wherever no normalization of spaces applies.
 
 ### 4.6 Output kinds and idempotence
 

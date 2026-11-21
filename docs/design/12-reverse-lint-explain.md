@@ -25,12 +25,15 @@ never touched.
 | `quotes.primes`                            | `″`, `′`                                                                  | `"`, `'`                                                    |
 | `dash.spaced-hyphen`, `dash.double-hyphen` | `—` with spaces (glued or not) between operands; `—` closed between words | `-` with the same spaces; spaced `-` for the closed form    |
 | `dash.dialogue`                            | `—⍽` at a line start                                                      | `- `                                                        |
-| `range.*`                                  | `–` between numbers, slots, times, Roman numerals                         | `-`                                                         |
+| `range.*`                                  | `–` without spaces between numbers, slots, times, Roman numerals          | `-`                                                         |
 | `ellipsis.*`                               | `…`                                                                       | `...`; `?..` and `!..` stay (they are plain)                |
 | `nbsp.*`                                   | glue (U+00A0, U+202F) set by a rule's pattern                             | a space; inserted glue (`т.⍽е.`, `№⍽5`) becomes a space too |
 | `number.minus`                             | `−` before a number                                                       | `-`                                                         |
 | `number.times`                             | `×` between numbers                                                       | `x`                                                         |
 | `symbols.*`                                | `©` `®` `™` `→` `←` `↔` `≥` `≤` `≠` `±`                                   | `(c)` `(r)` `(tm)` `->` `<-` `<->` `>=` `<=` `!=` `+-`      |
+
+A typed `–` with spaces (`Москва⍽– столица`, `10⍽– 20`) is not a product of the range rules and
+stays; only the glue that `nbsp.dash` set before it becomes a space (section 8.7).
 
 `to_plain` changes only the typographic characters of the table above. Plain forms (`--`, `т.д.`,
 `?...`, `(C)`) are not normalized: `to_plain("a -- b")` returns the input. Its output contains no

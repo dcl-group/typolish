@@ -128,7 +128,8 @@ Choices:
   chooses" without a policy type in the API.
 - A region is never substituted: `en-GB` is unknown until its data exists. Substituting `en-US`
   would change the output silently on the day `en-GB` data ships. A bare `ru` or `en` is unambiguous
-  (the CLDR likely-subtags rule).
+  (the CLDR likely-subtags rule). New built-in languages arrive as section 15.1 states: only in a
+  release that raises the breaking number.
 - `Language` is `Clone` but not `Copy`: inside it is either a `&'static LanguageData` or an `Arc` of
   owned data (`LanguageBuilder`). Built-in languages and caller tables wrapped by the `const fn`
   `from_static` are usable in `const` items and in `Typographer::new`. `from_data` cannot be
@@ -139,8 +140,8 @@ Choices:
   equal; the hash uses the tag only, which is consistent with that equality.
 - `LanguageData` has private fields and `const fn` setters (section 7.1); it is `Clone`, not `Copy`,
   so that its representation stays free. New fields can be added without a breaking release: a
-  setter is added and existing tables keep the value of the table they started from. Whether
-  language data is public in version 1 is open point 14; this design assumes it is.
+  setter is added and existing tables keep the value of the table they started from. Language data
+  is public in version 1 (settled in section 15.5, item 14).
 
 Rejected: a string tag in the builder with the error deferred to `build()` (a typo surfaces late);
 `enum Language { RuRu, EnUs }` (a language would be code, and adding one would change a public
@@ -582,7 +583,7 @@ impl Typographer {
     /// Formats a number by the language: decimal separator, grouping from the configured digit
     /// count, minus sign. Lazy: implements `Display`, allocates nothing.
     pub fn format_number<'n>(&self, number: impl Into<Number<'n>>, output: Output) -> NumberDisplay<'_, 'n>;
-    /// Two numbers with the language's range pattern (`8000–8100`): the explicit way to get a
+    /// Two numbers with the language's range pattern (`{0}–{1}`): the explicit way to get a
     /// dash between two values.
     pub fn format_range<'n>(&self, from: impl Into<Number<'n>>, to: impl Into<Number<'n>>, output: Output)
         -> RangeDisplay<'_, 'n>;
@@ -596,20 +597,20 @@ static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
 static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::PROSE);
 
 assert_eq!(RU.format_number(-1234567.5, Output::Unicode).to_string(), "\u{2212}1\u{a0}234\u{a0}567,5");
-assert_eq!(RU.format_number(1234, Output::Unicode).to_string(), "1234");    // ru: from 5 digits
+assert_eq!(RU.format_number(1234, Output::Unicode).to_string(), "1\u{a0}234"); // ru: from 4 digits
 assert_eq!(RU.format_number(12345, Output::Unicode).to_string(), "12\u{a0}345");
 assert_eq!(EN.format_number(1234, Output::Unicode).to_string(), "1,234");   // en: from 4 digits
 assert_eq!(RU.format_number(Number::decimal("1.50")?, Output::Unicode).to_string(), "1,50");
 assert_eq!(RU.format_number(0.1f32, Output::Unicode).to_string(), "0,1");   // f32 is not widened
 assert_eq!(RU.format_number(f64::NAN, Output::Unicode).to_string(), "не\u{a0}число");
-assert_eq!(RU.format_range(8000, 8100, Output::Unicode).to_string(), "8000–8100");
+assert_eq!(RU.format_range(8000, 8100, Output::Unicode).to_string(), "8\u{a0}000–8\u{a0}100");
 assert_eq!(RU.format_number(-12345, Output::Html(HtmlStyle::NAMED)).to_string(), "&minus;12&nbsp;345");
 assert_eq!(
     RU.format_number(-12345, Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"))).to_string(),
     "<span class=\"nowrap\">&minus;12 345</span>",
 );
 // No glue, no element (section 11.5).
-assert_eq!(RU.format_number(1234, Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"))).to_string(), "1234");
+assert_eq!(RU.format_number(123, Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"))).to_string(), "123");
 
 // No allocation: straight into a response buffer.
 use core::fmt::Write;
@@ -629,13 +630,14 @@ Formatting rules:
 - Grouping: with `min_grouping_digits` from 1 to 4 (the CLDR meaning of the parameter), the integer
   part is split by three digits when it has at least `3 + min_grouping_digits` digits; 0 is not a
   CLDR value and turns grouping off for numbers of every length (`COMMON` uses it, section 7.4).
-  Defaults: ru 2 (from 5 digits), en 1 (from 4 digits); open point 4. The fraction is not grouped.
+  Defaults: ru and en 1 (from 4 digits), as in CLDR 49 (settled in section 15.5, item 4). The
+  fraction is not grouped.
 - Minus: U+2212 for both languages by default, as the task requires; a deviation from CLDR 49, where
   the minus sign is U+002D (section 7.5). Setting `minus_sign`.
 - Range: the language's CLDR range pattern, `{0}–{1}` (U+2013, no spaces) for both languages, for
   every pair of values. Negative ends are written as they are (`−5–−1`), and equal ends are not
-  collapsed (`8000–8000`): the pattern applies to every pair, and the caller decides what is a
-  range. Rejected: the CLDR `approximately` pattern for equal ends (`≈8000`), which changes the
+  collapsed (ru `8⍽000–8⍽000`): the pattern applies to every pair, and the caller decides what is a
+  range. Rejected: the CLDR `approximately` pattern for equal ends (`≈8⍽000`), which changes the
   meaning of a range. A group separator that is a space is glue (only U+00A0 and U+202F are allowed,
   section 2.11), so `{n}⍽МБ` and `12⍽345` never break apart; a separator that is not a space (`,` in
   English) needs no glue.
@@ -991,7 +993,7 @@ included); streaming without a buffer (quote pairing defers decisions to the end
   `summary()` and of the `Display` of `Error`, `Diagnostic` and `Report`. The `Display` of `Rule`,
   `RuleSet` and `Language` is part of the contract: it prints the id, the id list and the tag, and
   `FromStr` reads it back.
-- The policy for changes of output is section 15.1.
+- The policy for changes of output, for new built-in languages and for the MSRV is section 15.1.
 - `cargo-semver-checks` is not installed on the development machine. For 0.1.0 there is no previous
   release; the public surface is fixed by the doctests. From the second release on, the preparation
   of each release compares the public surface with the previous release (`cargo semver-checks` where

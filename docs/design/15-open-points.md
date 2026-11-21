@@ -4,157 +4,139 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 
 ### 15.5 Open points for the maintainer
 
-None of these points blocks stage 2. Each names the default that this design applies until the
-maintainer decides; the default is the recommendation. The decisions already made by the maintainer
-are listed in section 15.2. Numbers never change; settled points will keep their number and record
-the date of the decision.
+No point is open. The maintainer settled all seventeen points on 2026-11-22; each records the option
+chosen, and the rest of the design follows it. The other decisions of the maintainer, those of
+2026-11-21 and the review decisions of 2026-11-22, are listed in section 15.2. Numbers never change;
+settled points keep their number and record the date of the decision.
 
-| Item | Subject                                     | Status         | Default applied                                      |
-| ---- | ------------------------------------------- | -------------- | ---------------------------------------------------- |
-| 1    | Language of `docs/design/`                  | Open: confirm  | English, as in zonewright                            |
-| 2    | Repository URL                              | Open: data     | no `repository` field                                |
-| 3    | Checking the name on crates.io              | Open: decision | one query in stage 5                                 |
-| 4    | Grouping threshold for ru                   | Open: decision | from 5 digits                                        |
-| 5    | Group separator for ru                      | Open: decision | U+00A0                                               |
-| 6    | Em dash style for en-US                     | Open: decision | closed, `word—word`                                  |
-| 7    | Literal numeric ranges in Prose             | Open: decision | shape and context rules in Prose, none in Interface  |
-| 8    | Scope of an unpaired quote                  | Open: decision | all or nothing per paragraph                         |
-| 9    | Single quotes at the top level              | Open: decision | `NestedOnly`                                         |
-| 10   | Narrow no-break space                       | Open: decision | U+00A0 everywhere                                    |
-| 11   | Default spacing before `%`                  | Open: decision | as written                                           |
-| 12   | Dialogue dash in Prose                      | Open: decision | in Prose                                             |
-| 13   | Output stability policy                     | Open: decision | output of the sets changes only in breaking releases |
-| 14   | Public language data in version 1           | Open: decision | public `LanguageData` and `LanguageBuilder`          |
-| 15   | `nbsp.phone` in Interface                   | Open: decision | Prose only                                           |
-| 16   | Word lists and norms from secondary sources | Open: decision | lists as in section 7                                |
-| 17   | Digit grouping in text                      | Open: decision | no text rule; `format_number` groups values          |
+| Item | Subject                                     | Status             | Decision                                                            |
+| ---- | ------------------------------------------- | ------------------ | ------------------------------------------------------------------- |
+| 1    | Language of `docs/design/`                  | Settled 2026-11-22 | American English, as in zonewright                                  |
+| 2    | Repository URL                              | Settled 2026-11-22 | `https://github.com/dcl-group/typolish`                             |
+| 3    | Checking the name on crates.io              | Settled 2026-11-22 | one query to the crates.io API in stage 5, none before              |
+| 4    | Grouping threshold for ru                   | Settled 2026-11-22 | 1, as in CLDR 49: from 4 digits                                     |
+| 5    | Group separator for ru                      | Settled 2026-11-22 | U+00A0                                                              |
+| 6    | Em dash style for en-US                     | Settled 2026-11-22 | closed, `word—word`                                                 |
+| 7    | Literal numeric ranges in Prose             | Settled 2026-11-22 | shape and context rules in Prose, none in Interface                 |
+| 8    | Scope of an unpaired quote                  | Settled 2026-11-22 | all or nothing per paragraph                                        |
+| 9    | Single quotes at the top level              | Settled 2026-11-22 | `NestedOnly`                                                        |
+| 10   | Narrow no-break space                       | Settled 2026-11-22 | U+00A0 everywhere, U+202F by setting                                |
+| 11   | Default spacing before `%`                  | Settled 2026-11-22 | `AsWritten`                                                         |
+| 12   | Dialogue dash in Prose                      | Settled 2026-11-22 | in Prose for Russian                                                |
+| 13   | Output stability policy                     | Settled 2026-11-22 | output of the sets changes only in breaking releases; `ALL` outside |
+| 14   | Public language data in version 1           | Settled 2026-11-22 | public `LanguageData` and `LanguageBuilder`                         |
+| 15   | `nbsp.phone` in Interface                   | Settled 2026-11-22 | Prose only                                                          |
+| 16   | Word lists and norms from secondary sources | Settled 2026-11-22 | lists as in section 7                                               |
+| 17   | Digit grouping in text                      | Settled 2026-11-22 | no text rule; `format_number` groups values                         |
 
-#### Open: needs the maintainer's decision or data
+#### Settled on 2026-11-22
 
-**1.** **Language of `docs/design/`.** The task requires English only for README and CHANGELOG. In
-zonewright everything in the repository, the design included, is in American English, and this
-design follows it; code refers to it as "design section N". Options: (a) English, as in zonewright;
-(b) Russian; (c) English, with a Russian summary in each stage report. **Recommendation: (a).**
+**1.** **Language of `docs/design/`.** Settled 2026-11-22: (a) American English, as in zonewright,
+where everything in the repository, the design included, is in American English; code refers to it
+as "design section N". Rejected: (b) Russian; (c) English with a Russian summary in each stage
+report.
 
-**2.** **Repository URL.** `Cargo.toml` of zonewright has
-`repository = "https://github.com/dcl-group/zonewright"`; no URL is given for typolish, and the
-decision about license, authors and copyright does not cover it. Options: (a) the maintainer names
-the URL now (by analogy it would be `https://github.com/dcl-group/typolish`, which is a guess); (b)
-the field stays out of `Cargo.toml` until the maintainer names it, at the latest in stage 5.
-**Recommendation: (b)** until the URL is confirmed; the field is never invented.
+**2.** **Repository URL.** Settled 2026-11-22: (a) the maintainer named the URL,
+`https://github.com/dcl-group/typolish`; `dev/Cargo.toml` states it as `repository` (section 14.5).
+Rejected: (b) leaving the field out of `Cargo.toml` until stage 5.
 
-**3.** **Checking the name on crates.io.** Whether `typolish` is free was not checked: the query
-would disclose the project name to an outside service without permission. Options: (a) the
-maintainer checks; (b) the lead makes one query to the crates.io API in stage 5; (c) the query is
-made now. **Recommendation: (b).** If the name is taken, the maintainer chooses another.
+**3.** **Checking the name on crates.io.** Settled 2026-11-22: (b) the lead makes one query to the
+crates.io API in stage 5. This decision is the maintainer's permission for that one query, which
+discloses the project name to an outside service; no query is made before stage 5 (section 15.4). If
+the name is taken, the maintainer chooses another. Rejected: (a) the maintainer checks; (c) the
+query is made now.
 
-**4.** **Grouping threshold for ru.** CLDR 49 gives `minimumGroupingDigits = 1` (`1 000`). The
-Russian norm, confirmed only by a secondary source, groups from five digits (`1000`, `10 000`).
-Options: (a) 2, from five digits; (b) 1, as CLDR. **Recommendation: (a)**; en stays at 1 (from four
-digits); `min_grouping_digits` changes either.
+**4.** **Grouping threshold for ru.** Settled 2026-11-22: (b) `min_grouping_digits = 1`, as in CLDR
+49: Russian numbers are grouped from four digits (`1⍽000`, `12⍽345`), as English ones are (sections
+2.7, 7.2). Rejected: (a) 2, grouping from five digits (`1000`, `10⍽000`), a Russian norm confirmed
+only by a secondary source. `min_grouping_digits` changes the threshold for a typographer.
 
-**5.** **Group separator for ru.** CLDR 49 uses U+00A0; U+202F is often preferred in typesetting but
-has weaker font support and no named HTML entity. Options: (a) U+00A0; (b) U+202F. **Recommendation:
-(a)**; `group_separator` gives (b).
+**5.** **Group separator for ru.** Settled 2026-11-22: (a) U+00A0, as in CLDR 49. Rejected: (b)
+U+202F, often preferred in typesetting but with weaker font support and no named HTML entity;
+`group_separator` gives it.
 
-**6.** **Em dash style for en-US.** Options: (a) closed `word—word` (Chicago Manual of Style,
-through secondary sources); (b) `word⍽— word` with glue before the dash, as in Russian (the
-reference implementation does this); (c) spaced `word — word` without glue (AP style).
-**Recommendation: (a)**; `dash_style` gives (b) and (c). With the default `PercentSpacing`, (a) is
-the only rule of Interface that removes spaces (a non-default `PercentSpacing` also removes the
-space before `%` and `‰`, section 8.2), and it does so only between two plain words: next to a
-number, a slot, a protected span, a technical fragment or punctuation it keeps the author's spaces
-(`Hello, — he said`, `See https://example.com — the guide`), so a URL never swallows the next word
-(section 8.4).
+**6.** **Em dash style for en-US.** Settled 2026-11-22: (a) closed `word—word` (Chicago Manual of
+Style, through secondary sources), joining only two plain words: next to a number, a slot, a
+protected span, a technical fragment or punctuation the author's spaces stay, so a URL never
+swallows the next word (section 8.4). Rejected: (b) `word⍽— word` with glue before the dash, as in
+Russian (the reference implementation does this); (c) spaced `word — word` without glue (AP style);
+`dash_style` gives both.
 
-**7.** **Literal numeric ranges in Prose** (`1941-1945`, `10-20`, `12-15`). Options: (a) in Prose
-`range.digits` (two ascending numbers without leading zeros) and `range.context` (a unit, year,
-century or page word next to it), in Interface neither; (b) only the context rule, as the reference
-implementation does for Russian; (c) never in text, only `range.placeholders` and `format_range`.
-**Recommendation: (a)**: the task asks for en dashes in numeric ranges and ranges of years, and
-technical text is protected by Interface and by backticks. Known cost in Prose: a port range
-`8000-8100` written as plain text and a telephone fragment `123-4567` get an en dash (section 10.5,
-row 10); Interface and backticks keep them (sections 9.2, 10.6).
+**7.** **Literal numeric ranges in Prose** (`1941-1945`, `10-20`, `12-15`). Settled 2026-11-22: (a)
+in Prose `range.digits` (two ascending numbers without leading zeros) and `range.context` (a unit,
+year, century or page word next to it), in Interface neither. Rejected: (b) only the context rule,
+as the reference implementation does for Russian; (c) never in text, only `range.placeholders` and
+`format_range`. Known cost in Prose: a port range `8000-8100` written as plain text and a telephone
+fragment `123-4567` get an en dash (section 10.5, row 10); Interface and backticks keep them
+(sections 9.2, 10.6).
 
-**8.** **Scope of an unpaired quote.** Options: (a) all or nothing per paragraph: an unpaired or
-crossing straight quote leaves every straight quote of its paragraph (of its template, for pieces)
-unchanged, with a diagnostic; (b) partial placement: pair what pairs, leave the unpaired quote; (c)
-all or nothing per sentence. **Recommendation: (a)**: it is the only option that never guesses which
-quotes form pairs and is provably idempotent (section 6.11); (b) guesses and is not idempotent;
-sentence boundaries for (c) are unreliable. Cost of (a): one typo leaves a whole paragraph with
-straight quotes, reported exactly.
+**8.** **Scope of an unpaired quote.** Settled 2026-11-22: (a) all or nothing per paragraph: an
+unpaired or crossing straight quote leaves every straight quote of its paragraph (of its template,
+for pieces) unchanged, with a diagnostic; it never guesses which quotes form pairs and is provably
+idempotent (section 6.11). Rejected: (b) partial placement, which guesses and is not idempotent; (c)
+all or nothing per sentence, whose boundaries are unreliable. Cost: one typo leaves a whole
+paragraph with straight quotes, reported exactly.
 
-**9.** **Single quotes at the top level** (`She said 'hi'`). Options: (a) `NestedOnly`: converted
-only inside double quotes; (b) `Everywhere`: converted by level like double quotes; (c) `Never`.
-**Recommendation: (a)**: a straight `'` in plain text is more often an apostrophe or code than a
-quote; `single_quotes` gives (b) and (c).
+**9.** **Single quotes at the top level** (`She said 'hi'`). Settled 2026-11-22: (a) `NestedOnly`:
+converted only inside double quotes, because a straight `'` in plain text is more often an
+apostrophe or code than a quote. Rejected as the default: (b) `Everywhere`; (c) `Never`;
+`single_quotes` gives both.
 
-**10.** **Narrow no-break space.** Options: (a) U+00A0 everywhere, U+202F by the `narrow_glue`
-setting; (b) U+202F after `№` and `§` in Russian (as the reference implementation does); (c) U+202F
-also in abbreviations and between initials (as the Russian Wikipedia suggests). **Recommendation:
-(a)**: one character in the whole output, better font support, a named entity, a simpler reverse
-transformation; the norms behind (b) and (c) were not checked against a primary source.
+**10.** **Narrow no-break space.** Settled 2026-11-22: (a) U+00A0 everywhere, U+202F by the
+`narrow_glue` setting: one character in the whole output, better font support, a named entity, a
+simpler reverse transformation. Rejected: (b) U+202F after `№` and `§` in Russian (as the reference
+implementation does); (c) U+202F also in abbreviations and between initials (as the Russian
+Wikipedia suggests); the norms behind (b) and (c) were not checked against a primary source.
 
-**11.** **Default spacing before `%`.** The task says "by setting"; CLDR 49 writes `5⍽%` in Russian
-and `5%` in English. Options: (a) `AsWritten`: glue an existing space, leave an attached sign; (b)
-`Language`: the CLDR pattern (insert in ru, remove in en); (c) `Attached`. **Recommendation: (a)**:
-by default the crate neither inserts nor removes characters around `%`; `percent` gives the others.
+**11.** **Default spacing before `%`.** Settled 2026-11-22: (a) `AsWritten`: an existing space is
+glued, an attached sign stays, so by default the crate neither inserts nor removes characters around
+`%`. Rejected as the default: (b) `Language`, the CLDR 49 pattern (`5⍽%` in Russian, `5%` in
+English); (c) `Attached`; `percent` gives them.
 
-**12.** **Dialogue dash in Prose.** `dash.dialogue` turns `- item` at a line start into `—⍽item`,
-which breaks Markdown lists. Options: (a) in Prose for Russian; callers with Markdown disable it;
-(b) in neither set, enabled explicitly. **Recommendation: (a)**: the task asks for the dash at the
-start of dialogue, and the core works on plain text, not Markdown.
+**12.** **Dialogue dash in Prose.** Settled 2026-11-22: (a) `dash.dialogue` is in Prose for Russian;
+callers whose text has Markdown lists (`- item`) disable it. Rejected: (b) in neither set, enabled
+explicitly. The task asks for the dash at the start of dialogue, and the core works on plain text.
 
-**13.** **Output stability policy** (section 15.1). Options: (a) the output of Prose and Interface
-changes only in releases that raise the breaking number, except that patch releases fix output that
-contradicts the documentation (the design, the README or the rustdoc), with a "before → after" entry
-in the CHANGELOG, and a wrong design is corrected in a breaking release; (b) output improvements in
-any release. **Recommendation: (a)**: build-time generators and snapshot tests of callers must not
-break on `cargo update`. A related choice: `RuleSet::ALL` and the base `all` either (i) mean every
-rule of the running version and stay outside the policy, with rustdoc saying so, or (ii) are frozen
-at the rules of 0.1, so that a new rule is only ever enabled by name. **Recommendation: (i)**: a
-frozen `ALL` that lacks rules would mislead, and callers who want stable output already have the two
-sets and explicit lists.
+**13.** **Output stability policy** (section 15.1). Settled 2026-11-22: (a) the output of Prose and
+Interface changes only in releases that raise the breaking number, except that patch releases fix
+output that contradicts the documentation (the design, the README or the rustdoc), with a "before →
+after" entry in the CHANGELOG; a wrong design is corrected in a breaking release. For `RuleSet::ALL`
+and the base `all`: (i) they mean every rule of the running version and stay outside the policy,
+with rustdoc saying so. New built-in languages and raises of the MSRV also wait for a release that
+raises the breaking number (section 15.1). Rejected: (b) output improvements in any release; (ii)
+`ALL` frozen at the rules of 0.1.
 
-**14.** **Public language data in version 1.** Options: (a) `LanguageData` is public with private
-fields and `const fn` setters, `Language::from_data` (validated) and `Language::from_static` (for a
-`static` typographer) accept compile-time tables (a downstream crate declares `en-GB` as a `const`,
-section 7.7), and `LanguageBuilder` builds languages at run time from owned lists; (b) only the
-compile-time `LanguageData` is public, without a run-time builder; (c) language data stays internal
-in version 1 and a language is added by changing the crate. **Recommendation: (a)**: it meets
-"languages are data" for users, not only for maintainers; private fields and the absence of `Copy`
-let the format grow without a breaking release. Cost: the setters and builder methods are API, and
-renaming one is a breaking change.
+**14.** **Public language data in version 1.** Settled 2026-11-22: (a) `LanguageData` is public with
+private fields and `const fn` setters, `Language::from_data` (validated) and `Language::from_static`
+(for a `static` typographer) accept compile-time tables, and `LanguageBuilder` builds languages at
+run time from owned lists (sections 2.2, 7.1). Rejected: (b) only the compile-time `LanguageData`;
+(c) language data internal in version 1. Cost: the setters and builder methods are API, and renaming
+one is a breaking change.
 
-**15.** **`nbsp.phone` in Interface.** The rule glues telephone numbers typed with ordinary spaces
-by a pattern (a country code or a bracketed area code, groups of digits, 10 to 15 digits). Options:
-(a) Prose only; (b) both sets; (c) neither, enabled explicitly. **Recommendation: (a)**: it is a
-heuristic, and Interface does not guess; callers who type numbers with U+00A0 or U+2011 get nowrap
-groups in every set, and Interface callers can enable the rule.
+**15.** **`nbsp.phone` in Interface.** Settled 2026-11-22: (a) Prose only: the pattern is a
+heuristic, and Interface does not guess; Interface callers can enable the rule, and numbers typed
+with U+00A0 or U+2011 form nowrap groups in every set. Rejected: (b) both sets; (c) neither, enabled
+explicitly.
 
-**16.** **Word lists and norms from secondary sources.** The Russian short words (37), particles,
-abbreviations and the norms "glue before a dash", "glue after a dialogue dash", "group from five
-digits" and `?..` rest on Wikipedia articles; Mil'chin's handbook and GOST were not read. The
-English short words (23), elisions, abbreviations and the closed dash rest on project choices and
-secondary sources; the Chicago Manual of Style was not read. Options for the English short words:
-(a) the 23-word list of section 7.3; (b) `a`, `an`, `the` only; (c) none. Options for the Russian
-lists: (a) as in section 7.2; (b) the maintainer edits them before the first release.
-**Recommendation:** English (a), Russian (a); the maintainer's edits are welcome at any time before
-the first release; until 0.1.0 they are ordinary changes of the design, and after it list changes
-follow the output stability policy (section 15.1).
+**16.** **Word lists and norms from secondary sources.** Settled 2026-11-22: (a) for English, the 23
+short words of section 7.3; (a) for Russian, the lists of section 7.2. Rejected: for English, (b)
+`a`, `an`, `the` only and (c) none; for Russian, (b) edits by the maintainer before the first
+release. The Russian lists and the norms "glue before a dash", "glue after a dialogue dash" and
+`?..` rest on Wikipedia articles (Mil'chin's handbook and GOST were not read); the English lists,
+elisions, abbreviations and the closed dash rest on project choices and secondary sources (the
+Chicago Manual of Style was not read). After 0.1.0 list changes follow the output stability policy
+(section 15.1).
 
-**17.** **Digit grouping in text** (`1000000 рублей` → `1⍽000⍽000 рублей`). The task asks for
-numbers formatted by the language; `format_number` does that for values (section 2.7). A text rule
-does not fit the engine: a run of digits is one token, rules insert spaces only between tokens, and
-English groups with a comma, which is not a space; numbers in text are also often ports, years and
-codes (`port 65535`). The first draft had such a rule (`number.grouping`, in no set); it was dropped
-before any release, so its id was never published. Options: (a) no grouping rule in version 1;
-values are grouped by `format_number`; (b) a rule in no set that only glues a number the author
-already grouped by single spaces in threes (`1 000 000` → `1⍽000⍽000`), inert where the language's
-group separator is not a space; (c) full grouping in text, which needs digit runs lexed in groups
-and an insertion of commas for English. **Recommendation: (a)**; (b) can be added later as a new
-rule outside both sets (section 15.1).
+**17.** **Digit grouping in text** (`1000000 рублей` → `1⍽000⍽000 рублей`). Settled 2026-11-22: (a)
+no grouping rule in version 1; values are grouped by `format_number` (sections 2.7, 8.8). A run of
+digits is one token, rules insert spaces only between tokens, English groups with a comma, and
+numbers in text are often ports, years and codes (`port 65535`). The first draft had such a rule
+(`number.grouping`, in no set); it was dropped before any release, so its id was never published.
+Rejected: (b) a rule in no set that only glues a number the author already grouped by single spaces
+in threes (`1 000 000` → `1⍽000⍽000`); (c) full grouping in text, which needs digit runs lexed in
+groups and commas inserted for English. (b) can still be added later as a new rule outside both sets
+(section 15.1).
 
-#### Settled
+#### Earlier decisions
 
-The decisions of 2026-11-21 are in section 15.2.
+The decisions of 2026-11-21 and the review decisions of 2026-11-22 are in section 15.2.

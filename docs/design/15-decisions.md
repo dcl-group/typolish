@@ -16,13 +16,18 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   Output that matches the design but is wrong is a defect of the design; it is corrected in the
   design and in the code in a release that raises the breaking number. A new rule may arrive in any
   release, but outside both sets. This keeps the snapshots of build-time generators and the tests of
-  callers stable across `cargo update` (open point 13).
+  callers stable across `cargo update` (settled in section 15.5, item 13).
 - `RuleSet::ALL` and the base `all` of `RuleSet::from_str` mean every rule of the running version,
   so a rule added in any release joins them and their output may change with `cargo update`. Their
   rustdoc says so; callers who need stable output use `PROSE`, `INTERFACE` or an explicit list of
-  rules (open point 13).
-- Adding a language does not change output for existing tags. A tag that was unknown starts to
-  resolve; the CHANGELOG says so.
+  rules (settled in section 15.5, item 13).
+- A new built-in language arrives only in a release that raises the breaking number: its tag stops
+  returning `Error::UnknownLanguage`, so callers that fall back to `Language::COMMON` get different
+  output. It never changes output for tags that already resolve; the CHANGELOG lists the new tags
+  (decided by the maintainer on 2026-11-22).
+- MSRV: `rust-version` is raised only in a release that raises the breaking number, and the
+  CHANGELOG says so; a dependency update that needs a newer Rust waits for such a release (decided
+  by the maintainer on 2026-11-22).
 - Rule ids are permanent (section 2.3).
 
 ### 15.2 Settled by the maintainer
@@ -41,14 +46,32 @@ Decided by the maintainer on 2026-11-21; not reopened here:
 5. Dependency versions are the latest published, checked against crates.io, not memory (section
    14.1).
 6. Rust 1.100 is both the MSRV and the installed toolchain; `rust-version = "1.100"` (section 14.4).
+   MSRV policy: section 15.1 (decided by the maintainer on 2026-11-22).
 7. License, authors and copyright exactly as in zonewright: `license = "MIT OR Apache-2.0"`, no
    `authors` field (zonewright has none), the license texts copied verbatim with the copyright line
    `Copyright (c) 2026 Dmitry Bikman`; only the year changes when needed (section 14.5).
 8. Stages 2 to 5 run one after another after this design is approved, without waiting for the
-   maintainer between stages; open points do not stop them (section 15.5 applies the defaults), and
-   a decision received later is applied in the running stage, together with the change of the
-   design, in the same commit. Stage 6 (HTML) is not done.
+   maintainer between stages; open points do not stop them (every point of section 15.5 was settled
+   on 2026-11-22), and a decision received later is applied in the running stage, together with the
+   change of the design, in the same commit. Stage 6 (HTML) is not done.
 9. Working notes and Cargo's target directory live outside the repository.
+
+Decided by the maintainer on 2026-11-22; not reopened here:
+
+10. Every point of section 15.5 is settled with the option recorded there. Among them: the design is
+    in American English (item 1); `repository = "https://github.com/dcl-group/typolish"` (item 2,
+    section 14.5); the lead makes one query to the crates.io API in stage 5, which this decision
+    allows, and none before (item 3, sections 1.1, 15.4); Russian numbers are grouped from four
+    digits, `min_grouping_digits = 1` as in CLDR 49 (item 4, sections 2.7, 7.2).
+11. A single initial before a surname is glued wherever it stands, also after a lowercase word that
+    is not a short word (`сказал А.⍽Петров`). The cost, glue across a sentence end after a
+    one-letter label (`вариант А.⍽После`, `plan B.⍽Then`), is a known limit (sections 8.7, 10.8).
+12. The MSRV is raised only in a release that raises the breaking number (sections 14.4, 15.1).
+13. A new built-in language arrives only in a release that raises the breaking number (sections 2.2,
+    7.7, 15.1).
+14. `nbsp.dash` glues the space before every typed `–` with spaces between operands, numbers
+    included: ru `10 – 20` → `10⍽– 20`, `Москва – столица` → `Москва⍽– столица` (sections 4.5, 8.7).
+    This is approved behavior, not an open point.
 
 The task itself fixes further points used throughout: the minus sign U+2212 for numbers, the
 mandatory negative cases, HTML outside the core, `thiserror` for errors, `cargo deny check` clean,
@@ -58,18 +81,18 @@ English.
 ### 15.3 Design choices
 
 Each is the lead's choice, recorded with its reason so that the maintainer can overrule it. Items
-with an open point are marked.
+that the maintainer settled in section 15.5 name the item.
 
 | No. | Choice                                                                                                                                                   | Rejected                                                             | Section   |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------- |
 | C1  | A pass over grapheme tokens with a fragment classifier and phases; no regular expressions                                                                | regular expressions over the string, in-place editing, one automaton | 3         |
 | C2  | Technical fragments frozen by a white-list classifier, dictionary first; the engine refuses edits to frozen tokens in one place                          | black lists of patterns; protection inside each rule                 | 3.6, 3.7  |
 | C3  | Class-invariant tokens; idempotence argued from invariants I1 to I5 and tested with a fixed-point oracle                                                 | iterating rules to a fixed point at run time                         | 4         |
-| C4  | Quotes: roles, families and a stack; quotes after numbers decided one by one; all or nothing per paragraph (open point 8)                                | partial placement; global attempts; scope of a string or a sentence  | 6         |
+| C4  | Quotes: roles, families and a stack; quotes after numbers decided one by one; all or nothing per paragraph (settled, 15.5 item 8)                        | partial placement; global attempts; scope of a string or a sentence  | 6         |
 | C5  | Glue as a mark on space tokens; nowrap groups as an output kind                                                                                          | writing U+00A0 into the text                                         | 3.9, 11.5 |
 | C6  | `const fn Typographer::new`; the rule set is mandatory; builder order-independent with a conflict error                                                  | `Default`; "last call wins"                                          | 2.4       |
 | C7  | Unknown language: `Result` plus `Language::COMMON`; no region substitution                                                                               | a policy enum; `en-GB` → `en-US`                                     | 2.2       |
-| C8  | `LanguageData` public, private fields, `const fn` setters, not `Copy`; `LanguageBuilder` for run-time languages (open point 14)                          | internal only; public fields; TOML or JSON                           | 7.1       |
+| C8  | `LanguageData` public, private fields, `const fn` setters, not `Copy`; `LanguageBuilder` for run-time languages (settled, 15.5 item 14)                  | internal only; public fields; TOML or JSON                           | 7.1       |
 | C9  | Pieces with a caller payload; output in the n + 1 form; `Protected` and `Markup` from the start                                                          | index-based output parts; strings with markers                       | 2.6       |
 | C10 | Numbers as lazy `Display`, CLDR symbols for NaN and infinity                                                                                             | `String` results; errors on NaN                                      | 2.7       |
 | C11 | Output kind per call; HTML escapes `& < > " '`; escaped bodies with complete container escaping (`JS`, `JS_HEX`, `JS_CODE_POINT`, `JSON`, `RUST`, `CSS`) | entities without markup escaping; escapes that leave `\` and quotes  | 11        |
@@ -81,14 +104,14 @@ with an open point are marked.
 | C17 | Regular-expression engines banned in `deny.toml`                                                                                                         | a rule in AGENTS.md only                                             | 14.5      |
 | C18 | No whitespace normalization and no spaces after punctuation                                                                                              | space rules in Prose                                                 | 1.5       |
 | C19 | Interface composition of section 9.2                                                                                                                     | a stricter Interface without no-break rules                          | 9         |
-| C20 | En dash between numbers only from declared values in Interface; literal shapes and contexts in Prose (open point 7)                                      | context words only; never in text                                    | 10.6      |
-| C21 | One glue character, U+00A0, by default; U+202F by setting (open point 10)                                                                                | U+202F after `№` and `§` by default                                  | 2.4       |
+| C20 | En dash between numbers only from declared values in Interface; literal shapes and contexts in Prose (settled, 15.5 item 7)                              | context words only; never in text                                    | 10.6      |
+| C21 | One glue character, U+00A0, by default; U+202F by setting (settled, 15.5 item 10)                                                                        | U+202F after `№` and `§` by default                                  | 2.4       |
 | C22 | `dash.spaced-hyphen` refuses two numbers, single letters, foreign words or technical fragments, and flags; closed style joins only plain words           | converting every lone hyphen; joining any operands                   | 8.4       |
 | C23 | Snapshots as plain files; load measured with std only                                                                                                    | `insta`, `criterion`, `divan`                                        | 13        |
 | C24 | The corpus is written for the project; no third-party texts                                                                                              | public-domain prose                                                  | 13.7      |
 | C25 | One error enum; application never fails and never panics                                                                                                 | `Result` from `typeset`                                              | 2.11      |
 | C26 | A number after `№`, `§`, `¶` is a label in both its attached and spaced forms; labels and percentages are not quantities for unit and date rules         | treating every digit run as a quantity                               | 3.6, 8.2  |
-| C27 | No digit grouping in text; values are grouped by `format_number` (open point 17)                                                                         | a `number.grouping` rule                                             | 8.8       |
+| C27 | No digit grouping in text; values are grouped by `format_number` (settled, 15.5 item 17)                                                                 | a `number.grouping` rule                                             | 8.8       |
 
 ### 15.4 Stage plan
 
@@ -165,11 +188,14 @@ hard-coded messages, `report_template` with `Output::Escaped(EscapeStyle::RUST)`
 **Stage 5: comparison, load, documentation, release preparation (no release).** The reference tables
 for all 820 cases; `benches/load.rs` and the linearity tests; rustdoc with an example on every
 public item; README (with the known limits of section 10.8) and CHANGELOG (a prepared `0.1.0`
-entry); `cargo package --list` reviewed. Ready when:
+entry); `cargo package --list` reviewed; the name check on crates.io (section 15.5, item 3). Ready
+when:
 
 - every reference case is `AGREE` or `DIVERGE` with a reason code, and the report prints the summary
   per code;
 - `load_is_linear` passes for every pathological input, and the measured numbers are in the report;
 - `missing_docs` passes and every doctest passes;
 - the package builds from its own tarball (`cargo package`), and nothing is published;
-- the name check is done as the maintainer decides in open point 3.
+- the name check is done: one query to the crates.io API, allowed by the maintainer (section 15.5,
+  item 3), made in this stage and not before; the report gives its result, and a taken name goes to
+  the maintainer.

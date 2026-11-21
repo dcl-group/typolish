@@ -64,7 +64,7 @@ MSRV 1.100, decided by the maintainer: `rust-version = "1.100"`. It is also the 
 (`rustc 1.100.0`, checked). Every dependency needs less (at most 1.88 for `proptest`, dev only).
 Language features relied on: edition 2024, `const fn` with `Vec::new`, `thread_local!` with `const`
 initialization, `LazyLock` in examples. The MSRV is checked by a gate with the pinned toolchain
-(section 14.7).
+(section 14.7). It is raised only in a release that raises the breaking number (section 15.1).
 
 ### 14.5 Cargo, lints, cargo-deny
 
@@ -79,7 +79,7 @@ resolver = "3"
 edition = "2024"
 rust-version = "1.100"
 license = "MIT OR Apache-2.0"
-# repository: open point 2; absent until the maintainer names the URL
+repository = "https://github.com/dcl-group/typolish"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

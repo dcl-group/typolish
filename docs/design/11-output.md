@@ -82,7 +82,7 @@ ordinary space inside the element can only be U+00A0 glue, which keeps decoding 
   with U+00A0 and U+2011 → `<span class="nowrap">+7 495 123&#x2011;45&#x2011;67</span>`.
 - Numbers: `format_number` and `format_range` in nowrap mode write one element around the whole
   result when it contains glue (a group separator U+00A0 or U+202F), and no element otherwise: ru
-  `-12345` → `<span class="nowrap">&minus;12 345</span>`, ru `1234` → `1234`, en `1234` → `1,234`.
+  `-12345` → `<span class="nowrap">&minus;12 345</span>`, ru `123` → `123`, en `1234` → `1,234`.
 - Templates: the n + 1 form always has room for the tags. A group that starts with slot i opens at
   the end of `texts()[i]`; a group that ends with slot j closes at the start of `texts()[j + 1]`; a
   slot inside a group stays inside the element (`в {city}` → texts

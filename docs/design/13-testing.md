@@ -55,11 +55,12 @@ gives the output of the whole set.
   `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` with
   `dash.spaced-hyphen` alone → unchanged, `Cow::Borrowed` (the sets give `Moscow — the⍽capital`); ru
   `Москва – столица` with `nbsp.dash` alone → `Москва⍽– столица` (en dash kept, glue from
-  `nbsp.dash`); en and ru, Interface: `git checkout -- file` and `Запустите -- сейчас.` → unchanged,
-  `Cow::Borrowed` (`dash.spaced-hyphen` does not match `--`, section 8.4);
-  `RuleSet::PROSE.without(Rule::DashDoubleHyphen)` with `Запустите -- сейчас.` → unchanged;
-  `-- file` at a line start: ru (Prose) → `—⍽file` (`dash.dialogue`), en → unchanged; en Closed
-  `word  -  word` → unchanged, no diagnostic; `5 - x`, `x - 5`, `{a} - x` → unchanged,
+  `nbsp.dash`); ru `10 – 20` with `nbsp.dash` alone and in both sets → `10⍽– 20` (a typed dash
+  between numbers gets the glue too, section 8.7); en and ru, Interface: `git checkout -- file` and
+  `Запустите -- сейчас.` → unchanged, `Cow::Borrowed` (`dash.spaced-hyphen` does not match `--`,
+  section 8.4); `RuleSet::PROSE.without(Rule::DashDoubleHyphen)` with `Запустите -- сейчас.` →
+  unchanged; `-- file` at a line start: ru (Prose) → `—⍽file` (`dash.dialogue`), en → unchanged; en
+  Closed `word  -  word` → unchanged, no diagnostic; `5 - x`, `x - 5`, `{a} - x` → unchanged,
   `AmbiguousHyphen`; ru `Глава 5 - введение` with `dash.spaced-hyphen` and `nbsp.dash` →
   `Глава 5⍽— введение` (`dash.spaced-hyphen` alone gives `Глава 5 — введение`); en
   `He said - " a cat"` in Prose and Interface → `He said - " a⍽cat"` (no dash: a quote without a
@@ -91,19 +92,24 @@ gives the output of the whole set.
   glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` → `г.⍽Москвы` (a label range); ru
   `21.11.2026 г.` → `21.11.2026⍽г.`; ru `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and
   `report().protected()` lists `Technical(Version)` for the date; ru, Prose and Interface: `в §5` →
-  `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en `J. R. R. R. Tolkien` → unchanged (Interface); ru
-  `Выберите вариант Д. После этого` and en `I chose plan P. Then I left.` → unchanged (a single
-  letter with a full stop matches an abbreviation only as written, section 7.1).
+  `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en `J. R. R. R. Tolkien` → unchanged (Interface);
+  `nbsp.initials`: ru `Об этом сказал А. Петров.` → `Об этом сказал А.⍽Петров.`, ru
+  `Выберите вариант А. После этого` → `Выберите вариант А.⍽После этого`, en
+  `I chose plan B. Then I left.` → `I chose plan B.⍽Then I left.` (a single initial is glued after
+  any word, section 10.8); ru `Выберите вариант Д. После этого` and en
+  `I chose plan P. Then I left.` with `nbsp.abbreviations` alone → unchanged (a single letter with a
+  full stop matches an abbreviation only as written, section 7.1), and with `nbsp.initials` →
+  `Выберите вариант Д.⍽После этого`, `I chose plan P.⍽Then I left.`.
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
-  ranges with negative ends (`−5–−1`) and equal ends (`8000–8000`), decimals (`Number::decimal`
-  keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`, `f32::MAX`), `i128::MIN`,
-  `u128::MAX`, `f64::NAN`, infinities, `-0.0`, the grouping thresholds (4 and 5 digits),
-  `min_grouping_digits(0)` (no grouping for `1234567890`), `min_grouping_digits(4)` (`123456`
-  ungrouped, `1234567` grouped), `COMMON` (`1234567` ungrouped), `Number::fixed` ties, every output
-  kind, and nowrap with and without glue (`1234` in ru has no element); the builder rejects
-  `group_separator(' ')`, `group_separator('\u{2009}')`, `minus_sign(' ')` and `minus_sign('"')`
-  with `InvalidSetting`; `group_separator('\u{202F}')` builds, and nowrap output wraps `12⎵345` in
-  one element.
+  ranges with negative ends (`−5–−1`) and equal ends (ru `8⍽000–8⍽000`, en `8,000–8,000`), decimals
+  (`Number::decimal` keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`,
+  `f32::MAX`), `i128::MIN`, `u128::MAX`, `f64::NAN`, infinities, `-0.0`, the grouping threshold (3
+  and 4 digits: ru `999`, `1⍽000`, en `999`, `1,000`), `min_grouping_digits(0)` (no grouping for
+  `1234567890`), `min_grouping_digits(4)` (`123456` ungrouped, `1234567` grouped), `COMMON`
+  (`1234567` ungrouped), `Number::fixed` ties, every output kind, and nowrap with and without glue
+  (`123` in ru has no element); the builder rejects `group_separator(' ')`,
+  `group_separator('\u{2009}')`, `minus_sign(' ')` and `minus_sign('"')` with `InvalidSetting`;
+  `group_separator('\u{202F}')` builds, and nowrap output wraps `12⎵345` in one element.
 - `tests/output.rs`: every output kind on a fixed set of inputs, including unpaired quotes,
   backslashes in protected spans, line breaks, U+2028, U+2029 and blank lines between paragraphs
   with quotes on both sides, in every output kind, `<script>`, `${`, characters above the BMP;
@@ -388,17 +394,17 @@ when the file is absent (the published package has no design).
 
 `tests/data.rs` runs the validation of section 7.6 on every built-in table (so the order and
 duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,
-minimum grouping digits where not overridden, percent pattern, range pattern, `nan`, `infinity`,
-month names (the union of format wide and abbreviated forms, without duplicates), units marked "CLDR
-49") with an extract of cldr-json 49.0.0 kept in the test (for en-US the extract holds the values of
-`en`, section 7.3), so a CLDR update is a visible change. It compares `LanguageData::COMMON` with
-the table of section 7.4 and checks `LanguageData::new("xx")` field by field. It also checks that a
-table whose `QuotePairs` holds `「」` is rejected with `Error::InvalidLanguageData`; that
-`LanguageBuilder` with the pairs `(«, »)` and `(«, „)` gives `Error::InvalidLanguageData` and the
-typographer builder with the same pairs `Error::InvalidSetting`; that `LanguageBuilder` with
-`apostrophe('ʼ')` gives `Error::InvalidLanguageData`; that `Language::from_data` with the tag
-`EN-gb` gives `Error::InvalidLanguageData`; and that `LanguageBuilder::new("EN-gb").build()` gives a
-language with `tag() == "en-GB"`.
+minimum grouping digits, percent pattern, range pattern, `nan`, `infinity`, month names (the union
+of format wide and abbreviated forms, without duplicates), units marked "CLDR 49") with an extract
+of cldr-json 49.0.0 kept in the test (for en-US the extract holds the values of `en`, section 7.3),
+so a CLDR update is a visible change. It compares `LanguageData::COMMON` with the table of section
+7.4 and checks `LanguageData::new("xx")` field by field. It also checks that a table whose
+`QuotePairs` holds `「」` is rejected with `Error::InvalidLanguageData`; that `LanguageBuilder` with
+the pairs `(«, »)` and `(«, „)` gives `Error::InvalidLanguageData` and the typographer builder with
+the same pairs `Error::InvalidSetting`; that `LanguageBuilder` with `apostrophe('ʼ')` gives
+`Error::InvalidLanguageData`; that `Language::from_data` with the tag `EN-gb` gives
+`Error::InvalidLanguageData`; and that `LanguageBuilder::new("EN-gb").build()` gives a language with
+`tag() == "en-GB"`.
 
 ### 13.10 Documentation
 

@@ -78,9 +78,10 @@ settings. Section 8.12 summarizes its recorded behavior. Nine of the 820 outputs
 
 **Not checked:**
 
-- Whether the name `typolish` is free on crates.io (open point 3).
+- Whether the name `typolish` is free on crates.io: the maintainer allowed one query to the
+  crates.io API in stage 5 (section 15.5, item 3), and none was made before.
 - Mil'chin's handbook, GOST standards and the Chicago Manual of Style were not read; the Russian and
-  English norms marked "secondary" rest on Wikipedia articles (open point 16).
+  English norms marked "secondary" rest on Wikipedia articles (section 15.5, item 16).
 - The design was not compiled as a whole; the allocation and linearity claims are verified by tests
   in stages 3 and 5 (section 15.4).
 - The atom and token representation without references (sections 3.4, 3.5), which lets `Scratch`

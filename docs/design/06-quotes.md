@@ -178,7 +178,7 @@ which of the other quotes are pairs. `"a" b "c` reads as `«a» b "c` or as `"a 
 not to guess. Partial placement is also not idempotent: there are inputs where a second pass pairs
 what the first left alone (`"x 'y" z'` with single quotes converted everywhere, `"x 'y «z" w'`). The
 cost of this choice: one typo leaves its whole paragraph, or a whole template, with straight quotes,
-with an exact diagnostic. This is open point 8.
+with an exact diagnostic. Settled in section 15.5, item 8.
 
 ### 6.7 Levels
 
@@ -208,7 +208,7 @@ rejected: Russian has no single-quote pair to map `'` to.
   of section 6.6 apply (every `'` is unpaired, so `'42'` becomes `’42'`: the caller said that `'` is
   never a quote).
 
-Open point 9.
+Settled in section 15.5, item 9.
 
 ### 6.9 Slots and protected spans
 

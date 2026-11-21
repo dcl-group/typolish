@@ -147,8 +147,8 @@ where the language has it (ru, Prose): `-- file` → `—⍽file`; in English, a
 
 **`dash.dialogue`** (Prose, languages with `dialogue`). At the start of the text or of a line, after
 optional indentation: `-` or `--`, one space, then a word or an opening quote → `—`, and the space
-after it is glued. Not in Interface: a line starting with `- ` in UI text is a list item. Open
-point 12.
+after it is glued. Not in Interface: a line starting with `- ` in UI text is a list item. Settled in
+section 15.5, item 12.
 
 Outputs show the rules named in the last column (with `quotes.pairs` where quotes appear); in the
 full sets other no-break rules add glue too (`Moscow—the⍽capital`, `“a⍽cat”`).
@@ -246,12 +246,10 @@ abbreviation, and `nbsp.abbreviations` still reads it (section 8.7).
   match, no single-initial match inside it); a surname is a capitalized word of the language's
   script of at least two letters. The spaces inside the pattern are glued: `А. С. Пушкин` →
   `А.⍽С.⍽Пушкин`, `J. R. R. Tolkien` → `J.⍽R.⍽R.⍽Tolkien`. A compact `А.С.` gets no inserted space;
-  only the space before the surname is glued. A single initial before a surname is not glued when a
-  lowercase word that is not in the language's short-word list stands directly before it:
-  `Выберите вариант А. После этого` and `I chose plan B. Then I left.` end a sentence with a
-  one-letter label, which the pattern cannot tell from `сказал А. Петров` (section 10.8). Two or
-  more initials, the reversed form, and a single initial after a short word, a capitalized word,
-  punctuation or a line start are glued (`от⍽И.⍽Петрова`, `Автор: А.⍽Пушкин`).
+  only the space before the surname is glued. Two or more initials, the reversed form and a single
+  initial before a surname are glued wherever they stand (`от⍽И.⍽Петрова`, `Автор: А.⍽Пушкин`,
+  `сказал А.⍽Петров`). A one-letter label at a sentence end before a capitalized word gets the same
+  glue (`вариант А.⍽После`), which only forbids a line break there (section 10.8).
 - **`nbsp.dates`.** By `month_position`: `AfterDay` (ru) glues a day number 1 to 31 (or a `Number`
   slot) before a month form (`21⍽ноября`); `BeforeDay` glues a month form before a day number;
   `Both` (en) glues both orders (`November⍽21`, `21⍽November`). With year and century words (only in
@@ -269,7 +267,7 @@ abbreviation, and `nbsp.abbreviations` still reads it (section 8.7).
   `Language` applies the CLDR pattern (`NumberData::percent_spaced`; ru `100%` → `100⍽%`, en `100 %`
   → `100%` (only a single U+0020 is removed)); `Attached` removes a single U+0020 between the number
   and the sign; a U+00A0 or U+202F typed by the author, a tab or a run of spaces stays (section
-  5.3); `Spaced` glues or inserts. Open point 11.
+  5.3); `Spaced` glues or inserts. Settled in section 15.5, item 11.
 - **`nbsp.signs`.** `№`, `§`, `¶` before a number (its label number, section 8.2), a Roman numeral
   or a slot (not `Other`): a space is glued, a missing space is inserted (`№5` → `№⍽5`, `¶IV` →
   `¶⍽IV`; the attached forms are words by check 23 of section 3.6, and the sign alone is a `Sign`
@@ -283,8 +281,8 @@ abbreviation, and `nbsp.abbreviations` still reads it (section 8.7).
   `<span class="nowrap">+7 495 123-45-67</span>`. This rule changes no hyphen; in Prose
   `range.digits` has already turned the hyphen of a two-group fragment into an en dash
   (`+7 495 123-4567` → `+7⍽495⍽123–4567`, section 10.8), and the pattern reads both forms (invariant
-  I4). Not in Interface: the pattern is a heuristic (open point 15). A number typed with U+00A0 or
-  U+2011 by the caller forms a nowrap group in every set.
+  I4). Not in Interface: the pattern is a heuristic (section 15.5, item 15). A number typed with
+  U+00A0 or U+2011 by the caller forms a nowrap group in every set.
 - **`nbsp.short-words`.** A word of the list (no case), one space, then an operand, an opening quote
   or bracket, or a sign of the language's `signs` (`№`, `§`, `¶`) → glue. Chains glue whole:
   `и в Москве` → `и⍽в⍽Москве`. With `short_words_any_script(false)` (default) the word must be in
@@ -296,30 +294,35 @@ abbreviation, and `nbsp.abbreviations` still reads it (section 8.7).
   followed by a boundary → glue: `сказал⍽бы`, `Знаешь⍽ли`, `{name}⍽же`.
 - **`nbsp.dash`.** The space before a dash fragment that stands for a spaced dash (a produced or
   typed `—`, or a typed `–`, section 8.4) between operands is glued when the style is `SpacedGlued`:
-  `Москва — столица` → `Москва⍽— столица`, `Москва – столица` → `Москва⍽– столица`.
+  `Москва — столица` → `Москва⍽— столица`, `Москва – столица` → `Москва⍽– столица`. The refusals of
+  `dash.spaced-hyphen` do not apply here: a typed dash gets the glue between any operands, numbers
+  included (`10 – 20` → `10⍽– 20`), while a plain `-` that `dash.spaced-hyphen` refused is not a
+  dash and gets none.
 
-| Language | Input                                 | Output                          | Rule                             |
-| -------- | ------------------------------------- | ------------------------------- | -------------------------------- |
-| ru       | `в 2026 году`                         | `в⍽2026 году`                   | short-words                      |
-| ru       | `Как бы то ни было`                   | `Как⍽бы то⍽ни⍽было`             | particles, short-words           |
-| ru       | `и т. д.`, `и т.д.`                   | `и⍽т.⍽д.`                       | abbreviations                    |
-| ru       | `Документ № 5`, `№5`                  | `Документ №⍽5`, `№⍽5`           | signs                            |
-| ru       | `Школа №5 г. Москвы`                  | `Школа №⍽5 г.⍽Москвы`           | signs, abbreviations (label)     |
-| ru       | `§5 ч. 2`                             | `§⍽5 ч.⍽2`                      | signs, abbreviations (label)     |
-| ru       | `5 МБ`, `30 с.`, `12 дн.`             | `5⍽МБ`, `30⍽с.`, `12⍽дн.`       | units                            |
-| ru       | `100 %` / `100%`                      | `100⍽%` / `100%`                | units, `AsWritten`               |
-| ru       | `60 км/ч`                             | `60⍽км/ч`                       | units (dictionary before path)   |
-| ru       | `А. С. Пушкин`                        | `А.⍽С.⍽Пушкин`                  | initials                         |
-| ru       | `Выберите вариант А. После этого`     | unchanged                       | initials: label, sentence end    |
-| en       | `I chose plan B. Then I left.`        | unchanged                       | the same                         |
-| ru       | `Выберите вариант Д. После этого`     | unchanged                       | the same; `д.` matches only `д.` |
-| en       | `I chose plan P. Then I left.`        | unchanged                       | the same; `p.` matches only `p.` |
-| ru       | `21 ноября 2026 г.`                   | `21⍽ноября 2026⍽г.`             | dates                            |
-| ru       | `+7 495 123-45-67` (Prose)            | `+7⍽495⍽123-45-67`              | phone                            |
-| ru       | `+7 495 123-4567` (Prose)             | `+7⍽495⍽123–4567`               | phone, range.digits              |
-| en       | `Mr. Smith`, `J. R. R. Tolkien`       | `Mr.⍽Smith`, `J.⍽R.⍽R.⍽Tolkien` | abbreviations, initials          |
-| en       | `On November 21, in 5 MB`             | `On⍽November⍽21, in⍽5⍽MB`       | short-words, dates, units        |
-| ru       | `Он вызвал ls на сервере` (Interface) | `Он вызвал ls на⍽сервере`       | `ls` is in no list               |
+| Language | Input                                 | Output                            | Rule                                                |
+| -------- | ------------------------------------- | --------------------------------- | --------------------------------------------------- |
+| ru       | `в 2026 году`                         | `в⍽2026 году`                     | short-words                                         |
+| ru       | `Как бы то ни было`                   | `Как⍽бы то⍽ни⍽было`               | particles, short-words                              |
+| ru       | `и т. д.`, `и т.д.`                   | `и⍽т.⍽д.`                         | abbreviations                                       |
+| ru       | `Документ № 5`, `№5`                  | `Документ №⍽5`, `№⍽5`             | signs                                               |
+| ru       | `Школа №5 г. Москвы`                  | `Школа №⍽5 г.⍽Москвы`             | signs, abbreviations (label)                        |
+| ru       | `§5 ч. 2`                             | `§⍽5 ч.⍽2`                        | signs, abbreviations (label)                        |
+| ru       | `5 МБ`, `30 с.`, `12 дн.`             | `5⍽МБ`, `30⍽с.`, `12⍽дн.`         | units                                               |
+| ru       | `100 %` / `100%`                      | `100⍽%` / `100%`                  | units, `AsWritten`                                  |
+| ru       | `60 км/ч`                             | `60⍽км/ч`                         | units (dictionary before path)                      |
+| ru       | `А. С. Пушкин`                        | `А.⍽С.⍽Пушкин`                    | initials                                            |
+| ru       | `Об этом сказал А. Петров.`           | `Об этом сказал А.⍽Петров.`       | initials after any word                             |
+| ru       | `Выберите вариант А. После этого`     | `Выберите вариант А.⍽После этого` | initials: label at a sentence end (section 10.8)    |
+| en       | `I chose plan B. Then I left.`        | `I chose plan B.⍽Then I left.`    | the same                                            |
+| ru       | `Выберите вариант Д. После этого`     | `Выберите вариант Д.⍽После этого` | the same; not abbreviations: `д.` matches only `д.` |
+| en       | `I chose plan P. Then I left.`        | `I chose plan P.⍽Then I left.`    | the same; not abbreviations: `p.` matches only `p.` |
+| ru       | `21 ноября 2026 г.`                   | `21⍽ноября 2026⍽г.`               | dates                                               |
+| ru       | `Москва – столица`, `10 – 20`         | `Москва⍽– столица`, `10⍽– 20`     | dash (typed `–`, numbers too)                       |
+| ru       | `+7 495 123-45-67` (Prose)            | `+7⍽495⍽123-45-67`                | phone                                               |
+| ru       | `+7 495 123-4567` (Prose)             | `+7⍽495⍽123–4567`                 | phone, range.digits                                 |
+| en       | `Mr. Smith`, `J. R. R. Tolkien`       | `Mr.⍽Smith`, `J.⍽R.⍽R.⍽Tolkien`   | abbreviations, initials                             |
+| en       | `On November 21, in 5 MB`             | `On⍽November⍽21, in⍽5⍽MB`         | short-words, dates, units                           |
+| ru       | `Он вызвал ls на сервере` (Interface) | `Он вызвал ls на⍽сервере`         | `ls` is in no list                                  |
 
 ### 8.8 Numbers in text
 
@@ -337,7 +340,7 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
   one `Number` token, rules insert spaces only between tokens, and English groups with a comma,
   which is not a space at all; numbers in text are also often ports, years and codes (`port 65535`).
   Values are grouped by `format_number` with the same settings, so a template and its value agree
-  (section 2.7, open point 17).
+  (section 2.7; settled in section 15.5, item 17).
 
 ### 8.9 Symbols
 
@@ -406,7 +409,7 @@ they become the table of expected differences, each with a reason code (section 
 | `PercentAsWritten`  | `Скидка 100 %.`                               | `100%`                             | `100⍽%`                                 | the task: by setting; never removes a space by default                   |
 | `Technical`         | `a>>b`, `0x1F`, `1/2/2026`, `a <-> b`         | `a≫b`, `0×1F`, `½/2026`, `a <→ b`  | unchanged; `a ↔ b`                      | frozen fragments, whole operators, no fractions                          |
 | `AuthorPunctuation` | `А если..`, `Конец....`, `Да!!`, `Да!?`       | `А⍽если.`, `Конец…`, `Да!`, `Да?!` | unchanged (glue aside)                  | the author's punctuation                                                 |
-| `DashStyleEn`       | `Moscow - the capital` (en)                   | `Moscow⍽— the`                     | `Moscow—the`                            | CMOS closed dash; open point 6                                           |
+| `DashStyleEn`       | `Moscow - the capital` (en)                   | `Moscow⍽— the`                     | `Moscow—the`                            | CMOS closed dash; settled, 15.5 item 6                                   |
 | `RangeLiteral`      | `1941-1945` (en), `Страницы 10-20.`           | unchanged                          | `1941–1945`, `10–20`                    | the task: en dash in numeric ranges                                      |
 | `NoLastShortWord`   | `Run X now.`, `He went to the shop`           | `X⍽now.`, `He⍽went to⍽the⍽shop`    | `Run X now.`, `He went to⍽the⍽shop`     | no glue before the last word; no length rule in en                       |
 | `Slots`             | `{n} дн.`, `{a}-{b}`, `"{name}"`              | unchanged                          | `{n}⍽дн.`, `{a}–{b}`, `«{name}»`        | slots are typed elements (pieces input)                                  |
@@ -415,7 +418,7 @@ they become the table of expected differences, each with a reason code (section 
 | `EnNbsp`            | `Mr. Smith`, `J. R. R. Tolkien`, `5 MB`       | unchanged                          | `Mr.⍽Smith`, `J.⍽R.⍽R.⍽Tolkien`, `5⍽MB` | the task's no-break rules apply to en too                                |
 | `LegalMarkContext`  | `Вариант (c)`, `(R) знак`                     | `Вариант ©`, `® знак`              | unchanged                               | `(c)` without a year is a list item; `(r)` only after a brand name       |
 | `Primes`            | `5'10"`, `Угол 30° 15' 20"`                   | `5'10″`, `15' 20″`                 | `5′10″`, `15′ 20″`                      | primes for both quote characters                                         |
-| `WideGlue`          | `Документ № 5`                                | `№⎵5` (U+202F)                     | `№⍽5` (U+00A0)                          | one glue character by default; open point 10                             |
+| `WideGlue`          | `Документ № 5`                                | `№⎵5` (U+202F)                     | `№⍽5` (U+00A0)                          | one glue character by default; settled, 15.5 item 10                     |
 | `NoDigitChange`     | `5 м2`, `20C`, `$100`                         | `5⍽м²`, `20⏐°C`, (off)             | `5⍽м2`, `20C`, `$100`                   | letters and digits never change; `м2` is a listed unit, so it is glued   |
 | `AlreadyTypeset`    | `Что?…` (ru)                                  | `Что?..`                           | unchanged                               | typographic characters are never rewritten                               |
 | `NoTrim`            | trailing spaces, tabs, repeated blank lines   | removed or replaced                | unchanged                               | whitespace is the caller's                                               |

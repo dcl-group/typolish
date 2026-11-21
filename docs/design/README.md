@@ -53,8 +53,9 @@ Conventions used below:
 The crate is `typolish` (typography + polish), the name the maintainer gave. It is one library crate
 with no binary. Its modules are private and every public type is re-exported from the crate root
 (`typolish::Typographer`): the surface is small, and a flat namespace is easier to use than nested
-modules. Whether the name is free on crates.io was not checked, because the query would disclose the
-project name to an outside service before the maintainer allows it (open point 3).
+modules. Whether the name is free on crates.io is checked in stage 5 with one query to the crates.io
+API, which the maintainer allowed (section 15.5, item 3); no query is made before then, because it
+discloses the project name to an outside service.
 
 ### 1.2 What the crate does
 
@@ -124,7 +125,7 @@ These invariants carry the guarantees of later sections:
 | Author's punctuation: `!!`, `??`, `,,`, `..`, `!?` → `?!`                                      | Editorial change of intonation and meaning.                                                                                     |
 | Rewriting dates (ISO to local form), weekday and month case                                    | Breaks technical text (negative case `2026-11-21`).                                                                             |
 | Fractions `1/2` → `½`, `20C` → `20 °C`, `м2` → `м²`                                            | Change digits or letters; break dates (`1/2/2026`), identifiers (`Код C`) and model names (`m2`).                               |
-| Digit grouping of numbers in text (`1000000` → `1⍽000⍽000`)                                    | A digit run is one token and English groups with a comma (section 8.8); `format_number` groups values; open point 17.           |
+| Digit grouping of numbers in text (`1000000` → `1⍽000⍽000`)                                    | A digit run is one token and English groups with a comma (section 8.8); `format_number` groups values; section 15.5, item 17.   |
 | Currency placement (`$100` → `100 $`), `руб.` → `₽`, percent and currency formatting of values | House style and i18n formatting, not typesetting.                                                                               |
 | Reformatting telephone numbers                                                                 | National formats. Only no-break grouping (`nbsp.phone`, section 8.7) and nowrap output (11.5).                                  |
 | A no-break space before the last short word of a sentence                                      | Noisy in English, useless in interface strings.                                                                                 |

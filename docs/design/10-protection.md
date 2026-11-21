@@ -156,7 +156,7 @@ Interface has neither 3 nor any other literal path, so the range in `8000-8100`,
 and `Порты 8000-8100 с балансировкой` never changes there (the last gets only the glue of
 `nbsp.short-words`: `с⍽балансировкой`). In Prose `8000-8100` becomes `8000–8100` deliberately: the
 task asks for en dashes in numeric ranges, and technical text belongs in Interface or in backticks
-(open point 7).
+(section 15.5, item 7).
 
 ### 10.7 Additional stress strings
 
@@ -197,9 +197,9 @@ expectation):
 - With the closed style (en) the dash keeps the author's spaces next to anything but a plain word
   (`Hello, — he said`, `Chapter — 5`, `See https://example.com — the guide`); only two plain words
   are joined (`word—word`).
-- A single initial after a lowercase word that is not a short word gets no glue
-  (`сказал А. Петров`), because the pattern cannot tell it from a one-letter label at a sentence end
-  (`вариант А. После`).
+- A one-letter label at a sentence end before a capitalized word gets a no-break space
+  (`вариант А.⍽После`, `plan B.⍽Then`): the pattern cannot tell it from `сказал А. Петров`, and the
+  glue changes no character.
 - `rock 'n' roll` with spaces is a top-level single pair and stays straight under `NestedOnly`;
   `rock'n'roll` gets apostrophes.
 - In Prose, `dash.double-hyphen` turns `git checkout -- file` into a dash in English text, and
