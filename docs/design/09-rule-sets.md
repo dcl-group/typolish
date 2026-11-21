@@ -34,31 +34,32 @@ test compares the rustdoc, the constants and the table of section 8.1.
 
 ### 9.3 What Interface leaves out and why
 
-| Rule                 | What it would damage in technical text                                                                                           |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `symbols.copyright`  | `(c)` in code and list items; the task turns symbols off in Interface                                                            |
-| `symbols.arrows`     | `->` in code and commands                                                                                                        |
-| `symbols.math`       | `>=`, `!=`, `+-` in code                                                                                                         |
-| `ellipsis.inner`     | `...args`, `a...b` in code                                                                                                       |
-| `dash.dialogue`      | `- item` list items at a line start                                                                                              |
-| `dash.double-hyphen` | the lone `--` of commands (`git checkout -- file`), a mandatory negative case                                                    |
-| `range.digits`       | port ranges `8000-8100` (mandatory negative case), numbers like `12-15`                                                          |
-| `range.context`      | literal pairs of numbers before a unit (`ports 8000-8100 MB`); in Interface ranges come only from declared values (section 10.6) |
-| `range.time`         | time ranges in logs and schedules written by programs                                                                            |
-| `number.minus`       | `head -1`, `ls -1`                                                                                                               |
-| `number.times`       | `2x`, dimensions inside identifiers; the task makes the sign a setting                                                           |
-| `quotes.primes`      | `'1'`, `"2"` as arguments; an inch mark adds nothing to a UI string                                                              |
-| `nbsp.phone`         | sequences of numbers in technical text (`+1 300 200 100 50`); a heuristic                                                        |
-| `nbsp.short-length`  | two-letter commands and names                                                                                                    |
+| Rule                 | What it would damage in technical text                                                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `symbols.copyright`  | `(c)` in code and list items; the task turns symbols off in Interface                                                                                                        |
+| `symbols.arrows`     | `->` in code and commands                                                                                                                                                    |
+| `symbols.math`       | `>=`, `!=`, `+-` in code                                                                                                                                                     |
+| `ellipsis.inner`     | `...args`, `a...b` in code                                                                                                                                                   |
+| `dash.dialogue`      | `- item` list items at a line start                                                                                                                                          |
+| `dash.double-hyphen` | the lone `--` of commands (`git checkout -- file`), a mandatory negative case                                                                                                |
+| `range.digits`       | port ranges `8000-8100` (mandatory negative case), numbers like `12-15`                                                                                                      |
+| `range.context`      | literal pairs of numbers before a unit (`ports 8000-8100 MB`); in Interface ranges come only from declared values (section 10.6)                                             |
+| `range.time`         | time ranges in logs and schedules written by programs                                                                                                                        |
+| `number.minus`       | `head -1`, `ls -1`                                                                                                                                                           |
+| `number.times`       | `2x`, dimensions inside identifiers; the task makes the sign optional: it is a switch of the rule set (`RuleSet::INTERFACE.with(Rule::NumberTimes)`), not a separate setting |
+| `quotes.primes`      | `'1'`, `"2"` as arguments; an inch mark adds nothing to a UI string                                                                                                          |
+| `nbsp.phone`         | sequences of numbers in technical text (`+1 300 200 100 50`); a heuristic                                                                                                    |
+| `nbsp.short-length`  | two-letter commands and names                                                                                                                                                |
 
 Kept in Interface although one could argue: `nbsp.short-words`, `nbsp.particles`, `nbsp.initials`,
 `nbsp.dates` only glue spaces and never change a token, and for Russian UI text they visibly improve
 line breaking (`в⍽Москве`); `nbsp.abbreviations` and `nbsp.signs` insert a glue only inside a listed
 abbreviation and after `№`, `§`, `¶`; `quotes.pairs` is required by the task's own example
 (`"{name}"`); `ellipsis.dots` turns `Загрузка...` into `Загрузка…`; `dash.spaced-hyphen` needs a
-lone `-` with spaces and operands on both sides, refuses numbers, single letters, foreign words and
-technical fragments on both sides and flags on either side, and in the closed style removes spaces
-only between two plain words, so it never joins a technical token to a word.
+lone `-` with spaces and operands on both sides, refuses a number or a single letter on each side in
+any mix, foreign words and technical fragments on both sides and flags on either side, and in the
+closed style removes spaces only between two plain words, so it never joins a technical token to a
+word.
 
 ### 9.4 Custom sets
 

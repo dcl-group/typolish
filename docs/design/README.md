@@ -89,12 +89,12 @@ The task names four uses. Each shapes part of the API:
 These invariants carry the guarantees of later sections:
 
 1. **Rules consume plain forms and produce typographic forms.** A rule replaces straight quotes,
-   hyphens, runs of full stops, single ordinary spaces and a few ASCII sequences (`(c)`, `->`, `x`
+   hyphens, runs of full stops, single ordinary spaces and a few short sequences (`(c)`, `->`, `x`
    between numbers). Characters that are already typographic (`«`, `—`, `…`, U+00A0) are never
    rewritten; they only serve as context (section 4.5).
 2. **Letters and digits never change.** No rule adds, removes or replaces a letter or a digit
-   (section 10.4, mechanism M7). The only replacements of letter-like ASCII are `(c)`, `(r)`, `(tm)`
-   and `x` between numbers, each a separate token kind (section 3.5).
+   (section 10.4, mechanism M7). The only replacements of letters are `(c)`, `(r)`, `(tm)` (with the
+   Cyrillic `(с)`) and `x` or `х` between numbers, each a separate token kind (section 3.5).
 3. **Ordinary spaces are kept.** Rules turn a single U+0020 into a no-break space or leave it. They
    insert a space only where a rule says so explicitly (inside `т.е.`, after `№`, and by the percent
    setting), and remove spaces only around a closed-style dash between two plain words and by the

@@ -56,8 +56,9 @@ agree and that every rule appears once.
    as closing punctuation in either form.
 3. **Line-start dashes before dashes between words**, and both before ranges: `dash.dialogue` takes
    `- ` at the start of a line, `dash.spaced-hyphen` takes a lone `-` with spaces on both sides,
-   range rules take a `-` with numbers glued on both sides. The sets do not overlap; the order fixes
-   which rule a report names.
+   range rules take a `-` with numbers glued on both sides. The sets do not overlap: `dash.dialogue`
+   needs a line start and no operand on the left, the other two need an operand on each side; the
+   order fixes which rule a report names.
 4. **Ranges before the minus.** `5-10` (a digit on the left) belongs to range rules, `-5` after a
    space, a line start or an opening bracket to `number.minus`. These sets do not overlap either.
 5. **Quotes after dashes.** Quote roles use dashes as context in either form (`—"Да"`, `"no"—and`),
@@ -86,17 +87,18 @@ agree and that every rule appears once.
     a quantity or a year starts to match); `100%` → `100` and `%` with `PercentSpacing::Language`
     (ru) or `Spaced` (a percentage in both forms, section 8.2);
   - a removed space merges fragments only into a kind that the rules read as before. The
-    closed-style dash removes its two spaces only between two plain words (section 8.4), so `word`,
-    `—`, `word` become one `Joined` fragment (check 22), never a technical one: a rule that matched
-    the three fragments matches the merged fragment in its "already done" form with no edits (I4),
-    the glue it set stays, and no rule that did not match before matches now (the only rules that
-    look inside a `Joined` fragment are `ellipsis.inner` and `dash.spaced-hyphen` in its "already
-    done" form). `100 %` → `100%` with `PercentSpacing::Attached` or `Language` (en) merges a
-    percentage into a percentage.
+    closed-style dash removes its two spaces, each a single U+0020, only between two plain words
+    (section 8.4), so `word`, `—`, `word` become one `Joined` fragment (check 22), never a technical
+    one: a rule that matched the three fragments matches the merged fragment in its "already done"
+    form with no edits (I4), the glue it set stays, and no rule that did not match before matches
+    now (the only rules that look inside a `Joined` fragment are `ellipsis.inner` and
+    `dash.spaced-hyphen` in its "already done" form). `100 %` → `100%` with
+    `PercentSpacing::Attached` or `Language` (en) merges a percentage into a percentage.
 
   Each case has a fixed seed in the idempotence property (section 13.5): `Школа №5 г. Москвы`,
   `§5 ч. 2`, `т.е.`, `и т.д...`, `Moscow - the capital`, `See https://example.com/docs - the guide`,
-  `He said - "a cat"`, `100%` and `100 %` under every `PercentSpacing`.
+  `He said - "a cat"`, `100%` and `100 %` under every `PercentSpacing`, `100⍽%` under `Attached` and
+  `Language` (en), en Closed `word⍽- word`, `Sign in - it's free`.
 
 - **I3. Products are not triggers.** A rule changes only plain forms: straight `"` and `'`, `-`,
   `--`, `---`, a run of exactly three full stops, `(c)` `(C)` `(с)` `(С)` `(r)` `(R)` `(tm)` `(TM)`,

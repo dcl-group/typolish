@@ -64,8 +64,9 @@ look at the context around it. Explicit protection is still needed for commands 
 - **M1 Frozen fragment.** The classifier freezes the core; the engine refuses every edit that
   touches it (sections 3.6, 3.7).
 - **M2 Lone token.** Dash rules fire only on a fragment that is nothing but `-` or `--` with one
-  space and an operand on each side, never next to a flag or between two technical fragments, and
-  the closed style never joins a technical fragment to a word (section 8.4).
+  pattern space (section 8.2) and an operand on each side, never next to a flag or between two
+  technical fragments, and the closed style never joins a technical fragment to a word (section
+  8.4).
 - **M3 Whole operator.** A run of operator characters is one token and changes only if the whole run
   equals a table entry; `=>`, `>>`, `-->` are in no table.
 - **M4 Exact shape.** A shape rule needs the whole core to match: `D+-D+` with exactly two numbers,
@@ -75,7 +76,9 @@ look at the context around it. Explicit protection is still needed for commands 
   starts with `-`.
 - **M6 No such rule.** Version 1 has no rule that inserts spaces after punctuation, rewrites dates,
   replaces letters or reads HTML (section 1.5).
-- **M7 Letters and digits.** No rule changes a letter or a digit (property test, section 13.5).
+- **M7 Letters and digits.** No rule changes a letter or a digit inside a `Word` or `Number` token;
+  the only letters replaced are the `LegalMark` and `Times` tokens of `symbols.copyright` and
+  `number.times`, which the property test turns off (section 13.5).
 - **M8 Not in the set.** The rule exists but is not in Interface (section 9.3).
 - **M9 Opaque slots and protected spans** (sections 3.4, 6.9).
 - **M10 No HTML in the core.** `<` and `>` are ordinary characters; only `symbols.math` looks at

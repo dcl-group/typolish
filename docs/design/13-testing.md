@@ -40,20 +40,37 @@ with the right rule in `report`. Specific rows and further tables:
   `She loves 'the dogs’`; en `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info).
 - `tests/rules_dash.rs`: ru `Ждите - ...` with `dash.spaced-hyphen` alone → unchanged, no
   `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` → unchanged,
-  `Cow::Borrowed`; ru `Москва – столица` → `Москва⍽– столица` (en dash kept, glue from `nbsp.dash`).
+  `Cow::Borrowed`; ru `Москва – столица` → `Москва⍽– столица` (en dash kept, glue from `nbsp.dash`);
+  `-- file` at a line start: ru (Prose) → `—⍽file` (`dash.dialogue`), en → unchanged; en Closed
+  `word  -  word` → unchanged, no diagnostic; `5 - x`, `x - 5`, `{a} - x` → unchanged,
+  `AmbiguousHyphen`; ru `Глава 5 - введение` → `Глава 5⍽— введение`; en `He said - " a cat"` in
+  Prose and Interface (the quote counts as an opening quote only by its role in section 6.3); en
+  Closed `Sign in - it's free` → `Sign in—it's free` and `Sign up - it's free` →
+  `Sign up—it's free`.
+- `tests/rules_range.rs`: `1941-1945 гг.` → the `Change` record of the dash names `range.digits`;
+  `10-10` → unchanged, no diagnostic.
 - `tests/rules_ellipsis.rs`: `Ждите - ...` with `ellipsis.dots` alone → `Ждите - …`; `...` alone →
-  `…`; in both `report().protected()` is empty. `и т.д...` → `и т.д…`.
+  `…`; in both `report().protected()` is empty. `и т.д...` → `и т.д…`. Boundaries:
+  `Подождите...\nДальше` → `Подождите…\nДальше`, `... слово` → `… слово`, `Слово ...` → `Слово …`,
+  ru `Что?...\nДа` → `Что?..\nДа`; `Подождите..." дальше` in Prose and Interface (the quote counts
+  as a closing quote only by its role in section 6.3).
 - `tests/rules_number.rs` (`number.times`): `10 x 5` with `add_units(["x"])` → `10 × 5`; `a × b` →
   unchanged, `report` lists `Technical(Unclassified)` for `×`; `10 X 5` → `10 × 5`; `10 Х 5` →
   `10 × 5`; `010 x 5` → unchanged.
-- `tests/rules_symbols.rs` (`symbols.copyright`): `Brand(Tm)` → unchanged.
+- `tests/rules_symbols.rs` (`symbols.copyright`): `Brand(Tm)` → unchanged; `symbols.arrows` and
+  `symbols.math`: `x  ->  y`, `x\t>=\t5` → unchanged, no diagnostic.
 - `tests/rules_nbsp.rs` (stage 3): ru `А.С. Пушкин` → `А.С.⍽Пушкин` (`nbsp.initials`); `и т.д...` →
   `и⍽т.⍽д…`; `и т. д…` → `и⍽т.⍽д…`; en `etc...` → `etc…` (`etc` with its stop is `Dictionary`);
   `nbsp.signs`: `¶IV` → `¶⍽IV`, not borrowed; ru `и т. д.` with `narrow_glue` for abbreviations →
   `и\u{A0}т.\u{202F}д.`; ru `5 м2` → `5⍽м2`, `5–10 м2` → `5–10⍽м2` (Prose), `5 м2x` → unchanged; en
   `I said no. Then I left.` → unchanged; en `See No. 5` → `See No.⍽5`; ru `См. рис. 5` →
   `См.⍽рис.⍽5`; ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` → unchanged; en `on 5 May` →
-  `on 5⍽May`; ru `Привезли 5 т груза` → `Привезли 5⍽т груза`.
+  `on 5⍽May`; ru `Привезли 5 т груза` → `Привезли 5⍽т груза`; en `Attached` `100⍽%` → unchanged; ru
+  `1990–2000 г. Затем`, `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or `ч.`, while
+  `§§ 5-7 г. Москвы` → `г.⍽Москвы` (a label range); ru `21.11.2026 г.` → `21.11.2026⍽г.`; ru
+  `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and `report().protected()` lists
+  `Technical(Version)` for the date; ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`,
+  `и ¶ 5` → `и⍽¶⍽5`; en `J. R. R. R. Tolkien` → unchanged (Interface).
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
   decimals (`Number::decimal` keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`,
   `f32::MAX`), `i128::MIN`, `u128::MAX`, `f64::NAN`, infinities, `-0.0`, the grouping thresholds (4
@@ -73,8 +90,9 @@ with the right rule in `report`. Specific rows and further tables:
   `[Text("Ждём."), Markup("<b>"), Text("..")]` → unchanged; percent and signs next to slots: `{n}%`
   in ru with `PercentSpacing::Spaced` and with `Language` → `{n}⍽%`; `{n}‰` with
   `RuleSet::EMPTY.with(Rule::NbspUnits)` and `Spaced` → `{n}⍽‰`; `¶{n}` → `¶⍽{n}`; none of them
-  borrowed; `{a}-5 кг` → `{a}-5⍽кг`; `5-{d} г.` → unchanged; ru `Text("Скажи \"раз\n")`,
-  `Slot(Other)`, `Text("\nдва\"")` → quotes paired `«раз … два»`, one window.
+  borrowed; `{a}-5 кг` → `{a}-5⍽кг`; `5-{d} г.` → unchanged; ru `{d} г. Затем` (a `Date` slot) → no
+  glue after `г.`; ru `Text("Скажи \"раз\n")`, `Slot(Other)`, `Text("\nдва\"")` → quotes paired
+  `«раз … два»`, one window.
 - `tests/fluent_isolation.rs`: run-time strings with U+2068 and U+2069 around values give the same
   typesetting as without them, with the isolates unchanged (section 5.4).
 
@@ -135,7 +153,8 @@ insertions; and arbitrary Unicode strings for the no-panic test.
    `See https://example.com/docs - the guide`, `He said - "a cat"`, `5'10"`, `90's`, `'90s`, `'tis`,
    `""`, `"""`, `key=""`, `"He said 'hi'"`, `"a 'b c" 5'`, `"/etc/"`, `‚Wort‘` with a
    `LanguageBuilder` language whose pairs are `„“` and `‚‘`, `100%` and `100 %` under every
-   `PercentSpacing`).
+   `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed `word⍽- word`,
+   `Sign in - it's free`).
 2. **Fixed-point oracle**: `f` repeated until nothing changes (at most three times) equals `f`; a
    difference prints the reports of both passes.
 3. **Invariants**, one property each: I1 (edits never change a token kind; insertions and removals
