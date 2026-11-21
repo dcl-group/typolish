@@ -100,15 +100,16 @@ any deviation from this design is written into the design in the same change.
 **Stage 2: core.** Repository skeleton after zonewright (`AGENTS.md`, `CLAUDE.md`, README and
 CHANGELOG with an `Unreleased` section, license files, `dev/` workspace, `deny.toml`, `clippy.toml`,
 `.gitignore`, `.gitattributes`, Prettier files). `Rule` with all 27 ids and `ORDER`, `RuleSet` with
-`FromStr` and `Display`, `Language` and the built-in tables as far as these rules need them, with
-every dictionary that the classifier reads in check 0 (units, abbreviation parts, elisions, month
-forms, atom exceptions) complete for ru and en, `Typographer::new` and the builder, `Piece` and
-`Template`, ingest and protection, windows, lexer, classifier with labels, freezing, the phase
-engine, the recorders with `report` (changes, protected spans and diagnostics; its `Display` comes
-in stage 4), rendering for `Output::Unicode`, the thread-local and explicit scratch. Rules:
-`quotes.*`, `dash.*`, `range.*`, `ellipsis.*` for ru and en. The `nbsp.*` rules come in stage 3, so
-in this stage the set-level tables run with them removed from the sets (a test helper), and stage 3
-switches the same tables to the full sets. Ready when:
+`FromStr` and `Display`, `Language` and the built-in tables as far as these rules need them,
+`Language::from_static`, and `LanguageBuilder` (at least quote pairs and the tag; the idempotence
+seed `‚Wort‘` needs it), with every dictionary that the classifier reads in check 0 (units,
+abbreviation parts, elisions, month forms, atom exceptions) complete for ru and en,
+`Typographer::new` and the builder, `Piece` and `Template`, ingest and protection, windows, lexer,
+classifier with labels, freezing, the phase engine, the recorders with `report` (changes, protected
+spans and diagnostics; its `Display` comes in stage 4), rendering for `Output::Unicode`, the
+thread-local and explicit scratch. Rules: `quotes.*`, `dash.*`, `range.*`, `ellipsis.*` for ru and
+en. The `nbsp.*` rules come in stage 3, so in this stage the set-level tables run with them removed
+from the sets (a test helper), and stage 3 switches the same tables to the full sets. Ready when:
 
 - `typeset` and `typeset_template` work for ru, en and COMMON with these rules;
 - the rule tables of these rules pass, alone and in both sets without the `nbsp.*` rules;
@@ -117,22 +118,24 @@ switches the same tables to the full sets. Ready when:
   (section 13.3);
 - the properties idempotence, fixed-point oracle, I1, I2, I4, I5, slots and protected spans,
   technical fragments, letters and digits, graphemes, Cow (for `Output::Unicode`; stage 3 extends it
-  to every kind), pieces and strings, and no panic pass;
+  to every kind), pieces and strings (without its `report_template` part, which stage 4 adds), and
+  no panic pass;
 - the GraphemeBreakTest test and the conformance test pass; `cargo deny check` is clean.
 
 **Stage 3: no-break spaces, numbers, language data, rule sets, output.** `nbsp.*`, `number.*`,
 `symbols.*`; `LanguageData` complete with the ru-RU, en-US and COMMON tables of section 7,
-`Language::from_data` with validation; every builder setting; `PROSE` and `INTERFACE` complete;
-`format_number` and `format_range`; `Output::Html` (all styles, nowrap) and `Output::Escaped` (all
-syntaxes); `examples/numbers.rs` (`format_number` and `format_range` for ru-RU and en-US, section
-2.7) and `examples/per_request.rs` (the statics of section 2.15 and a `LazyLock` typographer built
-as in section 2.4). Ready when:
+`Language::from_data` with validation; `LanguageBuilder` with every field and normalization (section
+7.1); every builder setting; `PROSE` and `INTERFACE` complete; `format_number` and `format_range`;
+`Output::Html` (all styles, nowrap) and `Output::Escaped` (all syntaxes); `examples/numbers.rs`
+(`format_number` and `format_range` for ru-RU and en-US, section 2.7) and `examples/per_request.rs`
+(the statics of section 2.15 and a `LazyLock` typographer built as in section 2.4). Ready when:
 
 - all rule tables pass, the set-level tables of stage 2 now in the full sets, and every row of
   section 10.5 passes as that section states for the full Interface;
 - the interaction strings of section 10.7 pass in both sets;
 - the slot participation table of section 2.6 passes row by row;
 - the data test matches the CLDR 49 extract, and the built-in tables pass validation;
+- the API contract tests of `tests/api.rs` pass (section 13.2);
 - the output tables (with the check of section 11.2 against the WHATWG extract), the Cow property,
   the decoder properties and the safe-alphabet property pass for every output kind, nowrap styles
   included;
@@ -151,8 +154,10 @@ hard-coded messages, `report_template` with `Output::Escaped(EscapeStyle::RUST)`
 
 - P1 and P2 pass on the corpus and on generated strings as section 12.2 states, and every row of
   `roundtrip-known.tsv` still shows its loss;
-- the to_plain stability property passes;
-- recorder independence passes, and applying `changes()` reproduces the result;
+- the to_plain stability property passes, and so does the lint-matches-to_plain property (section
+  13.5, property 15);
+- recorder independence passes, and applying `changes()` reproduces the result, also piece by piece
+  for `report_template` (property 10 of section 13.5);
 - every diagnostic has a table test, and `report` names the expected `TechKind` for every frozen row
   of section 10.5;
 - `cargo run --example fluent_generator` runs without error.

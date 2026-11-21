@@ -26,54 +26,74 @@ every rule and every language, an array of `(&str, &str)` pairs. Each rule is te
 (`RuleSet::EMPTY.with(rule)`) and inside both built-in sets. Required rows per rule: firing; not
 firing at each boundary of its pattern ("does not touch" items of section 8); typeset input (no
 change, `Cow::Borrowed`); a slot next to it; the rule disabled (no change); and the `Change` record
-with the right rule in `report`. Specific rows and further tables:
+with the right rule in `report`. Specific rows and further tables follow. Each specific row holds in
+the configuration it names (a set, a rule "alone", or the rules it runs with). A row that names none
+runs, in `rules_quotes.rs`, with the three quote rules and, in the other `rules_*.rs` files, with
+the one rule of its file that the row exercises, alone (`RuleSet::EMPTY.with(rule)`). As in section
+6.12, the outputs show only the edits of the rules that run; a row that names Prose or Interface
+gives the output of the whole set.
 
 - classifier tables (unit tests of `engine/classify.rs`, stage 2): `Ph.D.` and `А.С.` are
-  `Abbreviation`, `report().protected()` is empty.
+  `Abbreviation`, `report().protected()` is empty; `№`, `§§` and `¶` alone are `Sign` fragments, not
+  frozen, and `Документ № 5` has an empty `report().protected()`; `¶IV` and `№5` are `Word`
+  (check 23) with the `LABEL` flag, and so is `IV` in `¶ IV`.
 - `tests/rules_quotes.rs`: ru `"?"` → `«?»`, `«»` unchanged, `report().protected()` empty; en
   `He is 5'10" tall.` (Prose) → `He is 5′10″ tall.`; en `the 90's` → `the 90’s`; en `1'000'000` →
   unchanged; ru `Он сказал "" и ушёл.` → `Он сказал «» и ушёл.`; ru `Пустая строка "".` →
   `Пустая строка «».`; ru `Он сказал """ и ушёл.` → unchanged, `AmbiguousQuote` ×3; ru
-  `Задайте key="" и нажмите "OK".` → `Задайте key="" и нажмите «OK».`; ru `a""b` → unchanged, no
-  diagnostic; en `"a 'b c" 5'` → `“a 'b c” 5′` (Prose) and `“a 'b c” 5'` (Interface); en
-  `“Say "hi" at 5”` → `“Say ‘hi’ at 5”`; ru `Цена 27»` → unchanged, `UnmatchedQuote` (info); ru
-  `Папка "/etc/" пуста` → `Папка «/etc/» пуста`; en `Run "x->" now` → `Run “x->” now`; ru
-  `Адрес "::1"` → `Адрес «::1»`; en `She loves 'the dogs'` → unchanged, and with `Never` →
-  `She loves 'the dogs’`; en `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info); ru
-  `Он сказал:"привет" и ушёл.` → unchanged, no diagnostic (frozen fragment, section 10.8).
+  `Задайте key="" и нажмите "OK".` → `Задайте key="" и нажмите «OK».`; ru
+  `Токен "SGVsbG8gd29ybGQ=" и "имя".` → `Токен «SGVsbG8gd29ybGQ=» и «имя».`; en
+  `‘Note: 'beta' builds of the developers' tools` → unchanged, `UnmatchedQuote` (info), no
+  possessive `’` after a neutral `‘` (section 6.6); ru `a""b` → unchanged, no diagnostic; en
+  `"a 'b c" 5'` → `“a 'b c” 5′` (Prose) and `“a 'b c” 5'` (Interface); en `“Say "hi" at 5”` →
+  `“Say ‘hi’ at 5”`; ru `Цена 27»` → unchanged, `UnmatchedQuote` (info); ru `Папка "/etc/" пуста` →
+  `Папка «/etc/» пуста`; en `Run "x->" now` → `Run “x->” now`; ru `Адрес "::1"` → `Адрес «::1»`; en
+  `She loves 'the dogs'` → unchanged, and with `Never` → `She loves 'the dogs’`; en
+  `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info); ru `Он сказал:"привет" и ушёл.` →
+  unchanged, no diagnostic (frozen fragment, section 10.8).
 - `tests/rules_dash.rs`: ru `Ждите - ...` with `dash.spaced-hyphen` alone → unchanged, no
-  `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` → unchanged,
-  `Cow::Borrowed`; ru `Москва – столица` → `Москва⍽– столица` (en dash kept, glue from `nbsp.dash`);
+  `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` with
+  `dash.spaced-hyphen` alone → unchanged, `Cow::Borrowed` (the sets give `Moscow — the⍽capital`); ru
+  `Москва – столица` with `nbsp.dash` alone → `Москва⍽– столица` (en dash kept, glue from
+  `nbsp.dash`); en and ru, Interface: `git checkout -- file` and `Запустите -- сейчас.` → unchanged,
+  `Cow::Borrowed` (`dash.spaced-hyphen` does not match `--`, section 8.4);
+  `RuleSet::PROSE.without(Rule::DashDoubleHyphen)` with `Запустите -- сейчас.` → unchanged;
   `-- file` at a line start: ru (Prose) → `—⍽file` (`dash.dialogue`), en → unchanged; en Closed
   `word  -  word` → unchanged, no diagnostic; `5 - x`, `x - 5`, `{a} - x` → unchanged,
-  `AmbiguousHyphen`; ru `Глава 5 - введение` → `Глава 5⍽— введение`; en `He said - " a cat"` in
-  Prose and Interface (the quote counts as an opening quote only by its role in section 6.3); en
-  Closed `Sign in - it's free` → `Sign in—it's free` and `Sign up - it's free` →
-  `Sign up—it's free`.
+  `AmbiguousHyphen`; ru `Глава 5 - введение` with `dash.spaced-hyphen` and `nbsp.dash` →
+  `Глава 5⍽— введение` (`dash.spaced-hyphen` alone gives `Глава 5 — введение`); en
+  `He said - " a cat"` in Prose and Interface → `He said - " a⍽cat"` (no dash: a quote without a
+  role is not an opening quote, section 6.3; `AmbiguousQuote` and `UnmatchedQuote`, no
+  `AmbiguousHyphen`); en Closed, `dash.spaced-hyphen` alone: `Sign in - it's free` →
+  `Sign in—it's free` and `Sign up - it's free` → `Sign up—it's free` (the sets also give `it’s`).
 - `tests/rules_range.rs`: `1941-1945 гг.` → the `Change` record of the dash names `range.digits`;
   `10-10` → unchanged, no diagnostic.
 - `tests/rules_ellipsis.rs`: `Ждите - ...` with `ellipsis.dots` alone → `Ждите - …`; `...` alone →
   `…`; in both `report().protected()` is empty. `и т.д...` → `и т.д…`. Boundaries:
   `Подождите...\nДальше` → `Подождите…\nДальше`, `... слово` → `… слово`, `Слово ...` → `Слово …`,
-  ru `Что?...\nДа` → `Что?..\nДа`; `Подождите..." дальше` in Prose and Interface (the quote counts
-  as a closing quote only by its role in section 6.3).
+  ru `Что?...\nДа` → `Что?..\nДа`; ru `Подождите..." дальше` in Prose and Interface →
+  `Подождите…" дальше` (the quote is closing by its role, section 6.3, so `ellipsis.dots` fires;
+  `UnmatchedQuote`).
 - `tests/rules_number.rs` (`number.times`): `10 x 5` with `add_units(["x"])` → `10 × 5`; `a × b` →
   unchanged, `report` lists `Technical(Unclassified)` for `×`; `10 X 5` → `10 × 5`; `10 Х 5` →
   `10 × 5`; `010 x 5` → unchanged.
 - `tests/rules_symbols.rs` (`symbols.copyright`): `Brand(Tm)` → unchanged; `symbols.arrows` and
   `symbols.math`: `x  ->  y`, `x\t>=\t5` → unchanged, no diagnostic.
-- `tests/rules_nbsp.rs` (stage 3): ru `А.С. Пушкин` → `А.С.⍽Пушкин` (`nbsp.initials`); `и т.д...` →
-  `и⍽т.⍽д…`; `и т. д…` → `и⍽т.⍽д…`; en `etc...` → `etc…` (`etc` with its stop is `Dictionary`);
+- `tests/rules_nbsp.rs` (stage 3): ru `А.С. Пушкин` → `А.С.⍽Пушкин` (`nbsp.initials`); `и т.д...`
+  with `ellipsis.dots` and `nbsp.abbreviations` → `и⍽т.⍽д…`; `и т. д…` → `и⍽т.⍽д…`; en `etc...` with
+  `ellipsis.dots` and `nbsp.abbreviations` → `etc…` (`etc` with its stop is `Dictionary`);
   `nbsp.signs`: `¶IV` → `¶⍽IV`, not borrowed; ru `и т. д.` with `narrow_glue` for abbreviations →
   `и\u{A0}т.\u{202F}д.`; ru `5 м2` → `5⍽м2`, `5–10 м2` → `5–10⍽м2` (Prose), `5 м2x` → unchanged; en
   `I said no. Then I left.` → unchanged; en `See No. 5` → `See No.⍽5`; ru `См. рис. 5` →
   `См.⍽рис.⍽5`; ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` → unchanged; en `on 5 May` →
-  `on 5⍽May`; ru `Привезли 5 т груза` → `Привезли 5⍽т груза`; en `Attached` `100⍽%` → unchanged; ru
-  `1990–2000 г. Затем`, `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or `ч.`, while
-  `§§ 5-7 г. Москвы` → `г.⍽Москвы` (a label range); ru `21.11.2026 г.` → `21.11.2026⍽г.`; ru
-  `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and `report().protected()` lists
-  `Technical(Version)` for the date; ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`,
-  `и ¶ 5` → `и⍽¶⍽5`; en `J. R. R. R. Tolkien` → unchanged (Interface).
+  `on 5⍽May` (`on⍽5⍽May` in both sets); ru `Привезли 5 т груза` → `Привезли 5⍽т груза`; en
+  `Attached` `100⍽%` → unchanged; ru `1990–2000 г. Затем`, `2010-11 г. Затем`, `5–10 ч. Потом` → no
+  glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` → `г.⍽Москвы` (a label range); ru
+  `21.11.2026 г.` → `21.11.2026⍽г.`; ru `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and
+  `report().protected()` lists `Technical(Version)` for the date; ru, Prose and Interface: `в §5` →
+  `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en `J. R. R. R. Tolkien` → unchanged (Interface); ru
+  `Выберите вариант Д. После этого` and en `I chose plan P. Then I left.` → unchanged (a single
+  letter with a full stop matches an abbreviation only as written, section 7.1).
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
   ranges with negative ends (`−5–−1`) and equal ends (`8000–8000`), decimals (`Number::decimal`
   keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`, `f32::MAX`), `i128::MIN`,
@@ -205,10 +225,11 @@ the no-panic test.
    × the three `SingleQuotes` modes, with fixed seeds for every split and merge of invariant I2
    (`Школа №5 г. Москвы`, `§5 ч. 2`, `т.е.`, `и т.д...`, `Moscow - the capital`,
    `See https://example.com/docs - the guide`, `He said - "a cat"`, `5'10"`, `90's`, `'90s`, `'tis`,
-   `""`, `"""`, `key=""`, `"He said 'hi'"`, `"a 'b c" 5'`, `"/etc/"`, `‚Wort‘` with a
-   `LanguageBuilder` language whose pairs are `„“` and `‚‘`, `100%` and `100 %` under every
-   `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed `word⍽- word`,
-   `Sign in - it's free`).
+   `""`, `"""`, `key=""`, `"He said 'hi'"`, `"a 'b c" 5'`, `"/etc/"`,
+   `Токен "SGVsbG8gd29ybGQ=" и "имя".`, `‘Note: 'beta' builds of the developers' tools`, `¶IV`,
+   `‚Wort‘` with a `LanguageBuilder` language whose pairs are `„“` and `‚‘`, `100%` and `100 %`
+   under every `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed
+   `word⍽- word`, `Sign in - it's free`).
 2. **Fixed-point oracle**: `f` repeated until nothing changes (at most three times) equals `f`; a
    difference prints the reports of both passes.
 3. **Invariants**, one property each: I1 (edits never change a token kind; insertions and removals
@@ -230,10 +251,13 @@ the no-panic test.
    sequence, a keycap, a regional-indicator pair and `\r\n` are one cluster each), not a token:
    `(c)` → `©` replaces three clusters.
 8. **Cow**: the output is `Borrowed` exactly when it equals the input byte for byte, for every
-   output kind (`Html` and `Escaped` included), and a test-only entry point `typeset_unfiltered`,
-   which runs the whole pipeline without the prefilter, gives the same result as `typeset` and
-   `typeset_template` on every generated input and template, for every rule set and every output
-   kind; so a missing trigger byte or encoded byte shows up as a difference.
+   output kind (`Html` and `Escaped` included), and a test-only entry point `typeset_unfiltered` (a
+   `#[cfg(test)]` function in `src/engine/mod.rs`; this part of the property runs as a unit test
+   there, with the generators of this section, not in `tests/properties.rs`, so it adds nothing to
+   the public API or to the features), which runs the whole pipeline without the prefilter, gives
+   the same result as `typeset` and `typeset_template` on every generated input and template, for
+   every rule set and every output kind; so a missing trigger byte or encoded byte shows up as a
+   difference.
 9. **Recorder independence**: `typeset`, `typeset_with` and `report` give the same result; `lint(x)`
    without its `TypographicChar` entries equals `report(x, Output::Unicode).diagnostics()`; applying
    `report(x).changes()` to `x` yields the result.
