@@ -12,11 +12,11 @@ so `за́мок` would become two words and the short-word lists would misfire.
 
 Rules work on whole clusters:
 
-- A replacement replaces a whole cluster. A cluster of several characters led by a non-letter is a
-  `Symbol`: a straight quote with a combining mark attached (`"` + U+0301) is not a quote candidate,
-  and a keycap (`1️⃣`, `#️⃣`) is not a number or a sign. The ASCII fast path of section 3.5 hands the
-  ASCII bytes on both sides of a non-ASCII character to the segmenter, so this holds right before
-  and right after ASCII text too.
+- A replacement replaces one or more whole clusters. A cluster of several characters led by a
+  non-letter is a `Symbol`: a straight quote with a combining mark attached (`"` + U+0301) is not a
+  quote candidate, and a keycap (`1️⃣`, `#️⃣`) is not a number or a sign. The ASCII fast path of
+  section 3.5 hands the ASCII bytes on both sides of a non-ASCII character to the segmenter, so this
+  holds right before and right after ASCII text too.
 - An insertion (`т.е.` → `т.⍽е.`, `№5` → `№⍽5`) is made only between clusters.
 - Glue is set only on a `Space` token, which is a whole cluster.
 - Emoji sequences (ZWJ, skin-tone modifiers, flags, keycaps, tag sequences) are single `Symbol`
@@ -25,7 +25,8 @@ Rules work on whole clusters:
 Every edit position is therefore a cluster boundary of the input. A test runs every line of the
 Unicode `GraphemeBreakTest.txt` for the Unicode version of the dependency (17.0.0) through both rule
 sets, alone and inside sentences, and checks with the report that no edit starts or ends inside a
-cluster and that every cluster of the input appears whole in the output (section 13.6).
+cluster and that every cluster of the input that no replacement or removal covers appears byte for
+byte in the output (section 13.6).
 
 Rejected: a hand-made table of `Extend` characters (it would miss `SpacingMark`, `Prepend`, regional
 indicators and Hangul syllable sequences, and it would need manual updates with every Unicode
@@ -35,7 +36,8 @@ a foreign crate enabling it would silently change everybody's output).
 ### 5.2 Letters, digits and scripts
 
 - **Letters** are characters with `char::is_alphabetic()`, together with the combining marks of
-  their cluster.
+  their cluster. ZWNJ and ZWJ inside a word are neither letters nor breaks, and do not count for its
+  script.
 - **Script** of a letter comes from fixed ranges in code: Cyrillic U+0400–U+052F, U+1C80–U+1C8F,
   U+2DE0–U+2DFF, U+A640–U+A69F; Latin ASCII letters, U+00C0–U+024F, U+1E00–U+1EFF, U+2C60–U+2C7F,
   U+A720–U+A7FF; Greek U+0370–U+03FF, U+1F00–U+1FFF; everything else `Other`. A word whose letters
@@ -58,21 +60,27 @@ a foreign crate enabling it would silently change everybody's output).
 - Line breaks: `\n`, `\r\n`, `\r`, U+0085, U+2028. U+2029 is a paragraph break. A paragraph boundary
   is two or more line breaks with only horizontal whitespace between them (section 3.3). Line breaks
   are never glued.
-- A space cluster with a combining mark attached (U+0020 + U+0301) is a frozen `Space`: it separates
-  fragments, is never glued or removed, and the mark stays. A no-break rule that would have glued it
-  simply does not, without a diagnostic.
+- A space cluster with a combining mark, ZWNJ or ZWJ attached (U+0020 + U+0301, U+0020 + U+200D) is
+  a frozen `Space`: it separates fragments, is never glued or removed, and the mark stays. A
+  no-break rule that would have glued it simply does not, without a diagnostic.
 
 ### 5.4 Format characters and Fluent isolation marks
 
-Format characters are U+00AD SOFT HYPHEN, U+200B ZERO WIDTH SPACE, U+200C to U+200F (ZWNJ, ZWJ
-outside an emoji cluster, LRM, RLM), U+202A to U+202E (embeddings and overrides), U+2060 to U+2064
-(word joiner and invisible operators), U+2066 to U+2069 (isolates: LRI, RLI, FSI, PDI) and U+FEFF.
-They form `Format` tokens that are transparent for context: rules skip them when they look for
+Format characters are U+00AD SOFT HYPHEN, U+200B ZERO WIDTH SPACE, U+200C ZWNJ, U+200D ZWJ, U+200E
+LRM, U+200F RLM, U+202A to U+202E (embeddings and overrides), U+2060 to U+2064 (word joiner and
+invisible operators), U+2066 to U+2069 (isolates: LRI, RLI, FSI, PDI) and U+FEFF. UAX #29 treats
+them in two ways. All of them except ZWNJ and ZWJ are `Control` characters and always form a cluster
+of their own; such a cluster is a `Format` token. ZWNJ (`Extend`) and ZWJ attach to the character
+before them (rule GB9): they stay inside its cluster and are part of the text of its token, so
+`сло\u{200D}во` is one `Word` and `می\u{200C}شود` is one `Word`. Only at the start of a text, after
+a line break or after another format character do they form a cluster of their own, and then a
+`Format` token. `Format` tokens are transparent for context: rules skip them when they look for
 neighbours, never insert or remove them, and never put them inside an edit. Inside a fragment the
-classifier and the list lookups skip them too (section 3.6), so a word with soft hyphens from a
-hyphenation preprocessor is still a word: `21 ноя\u{AD}бря` gets its glue, and `Мо\u{AD}скве` is a
-`Word`, not `Unclassified`. UAX #29 makes U+00AD a cluster of its own, so the characters stay
-exactly where they were.
+classifier and the list lookups skip `Format` tokens, and ZWNJ and ZWJ inside the text of a token,
+too (section 3.6), so a word with soft hyphens from a hyphenation preprocessor is still a word:
+`21 ноя\u{AD}бря` gets its glue, and `Мо\u{AD}скве` is a `Word`, not `Unclassified`. UAX #29 makes
+U+00AD a cluster of its own, so the characters stay exactly where they were. A ZWNJ or ZWJ inside a
+cluster moves with its cluster, and no edit falls between it and the character before it.
 
 This matters for strings that `fluent-bundle` formats at run time: by default it wraps every
 placeable in U+2068 FIRST STRONG ISOLATE and U+2069 POP DIRECTIONAL ISOLATE. With transparency,

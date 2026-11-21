@@ -140,8 +140,11 @@ insertions; and arbitrary Unicode strings for the no-panic test.
    for byte.
 6. **Letters and digits**: the sequence of letters and digits of the output equals that of the input
    (with `symbols.*` and `number.times` off).
-7. **Graphemes**: every multi-character cluster of the input that is not a run of plain signs
-   appears whole in the output.
+7. **Graphemes**: every edit of `report` starts and ends at a cluster boundary of the input, and
+   every cluster of the input that no replacement or removal covers appears byte for byte in the
+   output. A cluster is an extended grapheme cluster of UAX #29 (a combining sequence, a ZWJ
+   sequence, a keycap, a regional-indicator pair and `\r\n` are one cluster each), not a token:
+   `(c)` → `©` replaces three clusters.
 8. **Cow**: the output is `Borrowed` exactly when it equals the input byte for byte, for every
    output kind (`Html` and `Escaped` included), so the prefilter can never skip encoding.
 9. **Recorder independence**: `typeset`, `typeset_with`, `report` and `lint` agree on the result and
@@ -166,15 +169,19 @@ insertions; and arbitrary Unicode strings for the no-panic test.
 - `tests/graphemes.rs` runs every line of `GraphemeBreakTest.txt` of Unicode 17.0.0 (the version of
   `unicode-segmentation` 1.13.3) through both rule sets, alone and inside sentence frames, and
   checks through `report` that every edit starts and ends at a cluster boundary of the input and
-  that every cluster appears whole in the output. The file is kept verbatim with its Unicode license
-  header in `tests/fixtures/unicode/`, excluded from the published package (`exclude` in
-  `Cargo.toml`); the test is skipped when the file is absent. A conformance test pins
-  `unicode_segmentation::UNICODE_VERSION` to the version of the fixture, so a dependency update
-  forces a fixture update. The file is fetched from unicode.org in stage 2.
+  that every cluster of the input that no replacement or removal covers appears byte for byte in the
+  output. The file is kept verbatim with its Unicode license header in `tests/fixtures/unicode/`,
+  excluded from the published package (`exclude` in `Cargo.toml`); the test is skipped when the file
+  is absent. A conformance test pins `unicode_segmentation::UNICODE_VERSION` to the version of the
+  fixture, so a dependency update forces a fixture update. The file is fetched from unicode.org in
+  stage 2.
 - Tables for spaces with combining marks (section 5.3), NFD words (section 5.5), mixed scripts
   (section 5.7, with the units `μs` and `µs` raising no `MixedScript`) and format characters
   (section 5.4, with U+00AD inside words: `21 ноя\u{AD}бря` gets its glue, `в Мо\u{AD}скве` is a
-  `Word`).
+  `Word`; `сло\u{200D}во` is a `Word`; `21 ноя\u{200C}бря` gets its glue (`21⍽ноя\u{200C}бря`); ZWNJ
+  at the start of a text is a `Format` token; `"\u{200C}a` and `1\u{200D}2` are a `Symbol` followed
+  by a letter or digit and come out unchanged; U+0020 + U+200D is a frozen `Space`; through
+  `report`, no edit falls between a ZWNJ or ZWJ and the character before it).
 - Tables for clusters led by a non-letter: keycaps `1️⃣` and `#️⃣`, `"` + U+0301, each alone and right
   after ASCII text (`Шаги 1️⃣-3️⃣`, `a"\u{301}b`), so that the ASCII fast path of section 3.5 hands
   them to the segmenter; they come out unchanged and are not numbers, signs or quotes. Clusters led

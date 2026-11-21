@@ -140,8 +140,9 @@ the ASCII byte after it is segmented with it too, because a `Prepend` character 
 character to itself (U+0600 + `1`, rule GB9b of UAX #29). The gain is for Latin text; in Cyrillic
 text most ASCII bytes stand next to non-ASCII characters and go to the segmenter. A token's class
 comes from the first character of its first cluster, except that a cluster of several characters
-whose first character is not a letter is a `Symbol` (keycaps `1️⃣` and `#️⃣`, `"` + U+0301); `\r\n`
-stays a `Newline`, and a whitespace character with a combining mark is a frozen `Space` (below).
+whose first character is not a letter is a `Symbol` (keycaps `1️⃣` and `#️⃣`, `"` + U+0301, `"` +
+U+200C, `1` + U+200D); `\r\n` stays a `Newline`, and a whitespace character with a combining mark,
+ZWNJ or ZWJ attached is a frozen `Space` (below).
 
 Clusters join into tokens as follows: clusters led by a letter join into one `Word`, ASCII digits
 into one `Number`, `-` into one `Dash`, `.` into one `Dots`, horizontal whitespace into one `Space`.
@@ -163,7 +164,7 @@ pub(crate) enum Kind {
     Number,           // a run of ASCII digits
     Space,            // a run of horizontal whitespace: U+0020, U+00A0, U+202F, U+2009, tab, ...
     Newline,          // \n, \r\n, \r, U+0085, U+2028; U+2029 always ends a window and is never a token
-    Format,           // U+00AD, U+200B..U+200F, U+202A..U+202E, U+2060..U+2064, U+2066..U+2069, U+FEFF
+    Format,           // U+00AD, U+200B, U+200E, U+200F, U+202A..U+202E, U+2060..U+2064, U+2066..U+2069, U+FEFF; U+200C and U+200D only as a cluster of their own (section 5.4)
     Quote,            // " ' « » „ “ ” ‘ ’ ‚ ‹ › ′ ″
     Dash,             // a run of '-' (length 1..), U+2010 ‐, U+2011 ‑, U+2012 ‒, – — U+2015 ―, −
     Dots,             // a run of '.' (length 1..), …
@@ -208,9 +209,9 @@ idempotence argument on this.
 
 A cluster of several characters that starts with a non-letter (`"` + U+0301, `1️⃣`, `#️⃣`) is a
 `Symbol` and no rule changes it. A cluster that starts with a whitespace character and carries a
-combining mark is a `Space` token flagged `FROZEN`: it separates fragments but is never glued or
-removed, and the mark stays where it is (section 5.3). Emoji with ZWJ, modifiers, flags and keycaps
-are single `Symbol` tokens and are never cut or replaced.
+combining mark, ZWNJ or ZWJ is a `Space` token flagged `FROZEN`: it separates fragments but is never
+glued or removed, and the mark stays where it is (section 5.3). Emoji with ZWJ, modifiers, flags and
+keycaps are single `Symbol` tokens and are never cut or replaced.
 
 ### 3.6 Fragments and the classifier
 
@@ -307,8 +308,9 @@ check, check 0 included; the others change how the checks read a core:
   for `nbsp.units` and `nbsp.dates`.
 - The wrapper `"` of `27"` is cut off: the core `27` is a number, and the quote goes to the quote
   algorithm (section 6.5).
-- `Format` tokens (section 5.4) inside a fragment are skipped by every check and by list lookups:
-  `ноя\u{AD}бря` is the word `ноября` for check 23 and for the month list. They stay in the text.
+- `Format` tokens (section 5.4) inside a fragment, and ZWNJ and ZWJ inside the text of a token, are
+  skipped by every check and by list lookups: `ноя\u{AD}бря` is the word `ноября` for check 23 and
+  for the month list, and `сло\u{200D}во` is the word `слово`. They stay in the text.
 
 **Label numbers.** A sign of the language's `signs` (`№`, `§`, `¶`, also doubled) followed by a
 number names something; it counts nothing. After the checks, the classifier sets the `LABEL` flag
