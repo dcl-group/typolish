@@ -49,7 +49,7 @@ pub struct Abbreviation { parts: &'static [&'static str], bind: Bind } // Bind: 
 pub struct NumberData {
     decimal: char,
     group: char,
-    min_grouping_digits: u8,   // CLDR meaning; 0 = never group
+    min_grouping_digits: u8,   // 1..=4: CLDR meaning (group from 3 + n digits); 0 = never group (not a CLDR value)
     minus: char,
     percent_spaced: bool,      // CLDR percentFormat: "#,##0 %" or "#,##0%"
     range_dash: char,          // CLDR miscPatterns range "{0}–{1}"

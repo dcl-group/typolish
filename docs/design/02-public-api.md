@@ -44,7 +44,10 @@ Everything else (lexer, classifier, phases, encoders) is `pub(crate)`.
 /// A language: typographic data plus its tag.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Language { repr: Repr } // Static(&'static LanguageData) | Shared(Arc<owned data>);
-                                   // equality compares the data, hash the tag
+                                   // `Repr` implements PartialEq, Eq and Hash by hand: equality
+                                   // compares the data table whichever variant holds it, the hash
+                                   // uses the tag only (consistent, because the tag is part of
+                                   // the data)
 
 impl Language {
     pub const RU_RU: Language;
@@ -55,7 +58,8 @@ impl Language {
 
     /// Resolves a BCP 47 tag: ASCII case-insensitive, `_` read as `-`. An exact tag matches;
     /// a bare language subtag matches its registered default region (`ru` -> `ru-RU`,
-    /// `en` -> `en-US`). Anything else is `Error::UnknownLanguage`.
+    /// `en` -> `en-US`). `und` resolves to `COMMON`, so `from_tag(l.tag())` gives `l` back for
+    /// every built-in language and for `COMMON`. Anything else is `Error::UnknownLanguage`.
     pub fn from_tag(tag: &str) -> Result<Language, Error>;
     /// A language from caller data built at compile time, validated (section 7.6).
     pub fn from_data(data: &'static LanguageData) -> Result<Language, Error>;
@@ -209,17 +213,26 @@ Ids:
   data it needs is inert for that language and is absent from `Typographer::active_rules()`.
 - An id never changes meaning. A renamed rule keeps its old id as an alias in `from_id`. A removed
   rule stays as a `#[deprecated]` variant that does nothing until the next breaking release; its id
-  is then reserved forever and `FromStr` answers with an error that names the release that removed
-  it.
+  is then reserved forever, and `FromStr` of `Rule` and of `RuleSet` answers with
+  `Error::RemovedRule { id, release }` ("rule id `{id}` was removed in {release}"), a variant added
+  to the `#[non_exhaustive]` `Error` by the release that first removes a rule; version 1 has no
+  removed rules. A deprecated variant is not in `Rule::ALL`, in the order table of section 4.1 or in
+  any built-in set (`ALL`, `PROSE`, `INTERFACE`, base names of `FromStr`), and never in
+  `active_rules()`. `with` may still add it; `contains`, `iter` (after the other rules) and
+  `Display` show it, so the round trip of section 13.9 holds.
 - The string id serves configuration files of callers, reports and test tables. The enum variant
   gives compile-time checking in code.
 
 `RuleSet::from_str` grammar: comma-separated items, spaces around commas allowed. The first item may
 be a base set name (`prose`, `interface`, `empty`, `all`); without one the base is `empty`. Every
-other item is an id, optionally prefixed by `+` (add) or `-` (remove). The result is
-`(base ∪ added) \ removed`, independent of item order. An id that is both added and removed, an
-unknown id and a base name in a later position are `Error::InvalidRuleSet` or `Error::UnknownRule`;
-so is an empty string. `Display` prints plain ids, and the base name `empty` for the empty set, so
+other item is an id, optionally prefixed by `+` (add) or `-` (remove). Spaces around every item, the
+first and the last included, are ignored; a string of spaces is one empty item. No space may follow
+a sign (`+ a` is the unknown id ` a`). The same id given twice with the same sign is not an error.
+The result is `(base ∪ added) \ removed`, independent of item order. An unknown id is
+`Error::UnknownRule`. `Error::InvalidRuleSet` covers the rest, with these reasons: an id both added
+and removed ("rule both added and removed"), a base name in a later position, with or without a sign
+("base set name after the first item"), and an empty item or an empty string ("empty item").
+`Display` prints plain ids, and the base name `empty` for the empty set, so
 `s.to_string().parse() == Ok(s)` for every set, `EMPTY` included (a test, section 13.9). The base
 `all` and `RuleSet::ALL` take in rules added in later releases (section 15.1).
 
@@ -265,6 +278,7 @@ impl TypographerBuilder {
     pub fn dash_style(self, style: DashStyle) -> Self;           // Closed | Spaced | SpacedGlued
     // nbsp.units
     pub fn percent(self, spacing: PercentSpacing) -> Self;       // AsWritten | Language | Attached | Spaced
+    // nbsp.units, range.context
     pub fn add_units<I>(self, units: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     pub fn remove_units<I>(self, units: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     // nbsp.short-words, nbsp.short-length
@@ -275,10 +289,10 @@ impl TypographerBuilder {
     // nbsp.particles
     pub fn add_particles<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     pub fn remove_particles<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
-    // nbsp.*: where U+202F is used instead of U+00A0
+    // nbsp.abbreviations, nbsp.initials, nbsp.signs: where U+202F is used instead of U+00A0
     pub fn narrow_glue(self, places: NarrowGlue) -> Self;        // NarrowGlue::NONE by default
     // format_number, format_range (grouping); number.minus (minus)
-    pub fn min_grouping_digits(self, digits: u8) -> Self;
+    pub fn min_grouping_digits(self, digits: u8) -> Self;        // 0..=4: group from 3 + digits digits; 0 never groups
     pub fn group_separator(self, separator: char) -> Self;
     pub fn minus_sign(self, minus: char) -> Self;
     // protection (section 10.1)
@@ -326,7 +340,12 @@ Choices and reasons:
 - **The builder is order-independent.** The active set is `(base ∪ enabled) \ disabled`. A rule that
   is both enabled and disabled is `Error::RuleConflict`, not "the last call wins", so behavior does
   not depend on the order of lines in someone else's code. A word both added and removed in the same
-  list is `Error::InvalidSetting`. Errors accumulate and come out of `build()`.
+  list is `Error::InvalidSetting`. Setting methods only record values; `build()` checks them in a
+  fixed order that does not depend on the order of calls and returns the first error: (1) rule
+  conflicts, the rule first in `Rule::ALL` reported; (2) protection delimiters; (3) `QuotePairs`;
+  (4) word and unit lists, in the order units, short words, particles; (5) group separator, minus
+  sign, `min_grouping_digits`. Within a check, the offending value that is smallest in code point
+  order is reported.
 - **Flat setting methods instead of an options struct.** A new setting is a new method, which breaks
   nothing; the rustdoc of each method names the rules it affects. Settings do not depend on rule
   sets: a set only switches rules on and off, and default values come from the language data. Prose
@@ -352,6 +371,10 @@ impl Typographer {
     pub fn typeset_into(&self, text: &str, output: Output, buf: &mut String);
 }
 ```
+
+Argument order: working memory first (`scratch`, as context of the call), then the input and the
+output kind, then the destination (`buf`, as in `write!`). `typeset_template_with` follows the same
+order.
 
 ```rust
 use std::borrow::Cow;
@@ -393,7 +416,7 @@ pub enum Piece<'t, S> {
     /// neighbours; encoded for the output kind.
     Protected(&'t str),
     /// Invisible markup (for example a tag supplied by an HTML splitter). Transparent for rules;
-    /// written as is in HTML output, escaped in escaped output.
+    /// written as is in Unicode and HTML output, escaped in escaped output.
     Markup(&'t str),
 }
 
@@ -482,7 +505,8 @@ assert_eq!(t.texts(), ["", "\u{2013}", "\u{a0}дн."]);
 Output contract:
 
 1. Slots come out in input order, each exactly once, with the caller's payload;
-   `texts().len() == slots().len() + 1` always.
+   `texts().len() == slots().len() + 1` always (an empty input gives one empty, borrowed text and no
+   slots).
 2. Adjacent `Text`, `Protected` and `Markup` pieces merge into one output text. A text that maps to
    exactly one unchanged input piece is `Cow::Borrowed` with the input lifetime `'t`.
 3. Rules see the whole message as one stream: a slot does not break context (`{n} дн.` is glued
@@ -598,17 +622,24 @@ Formatting rules:
   not the `0,10000000149011612` of a widened `f64`; `Number::fixed` uses `{:.N}`. `NaN` and
   infinities are written with the CLDR symbols of the language (`не⍽число`, `NaN`, `∞`); there is no
   error. Negative zero is written as `0`.
-- Grouping: the integer part is split by three digits when it has at least `3 + min_grouping_digits`
-  digits (the CLDR meaning of the parameter). Defaults: ru 2 (from 5 digits), en 1 (from 4 digits);
-  open point 4. The fraction is not grouped.
+- Grouping: with `min_grouping_digits` from 1 to 4 (the CLDR meaning of the parameter), the integer
+  part is split by three digits when it has at least `3 + min_grouping_digits` digits; 0 is not a
+  CLDR value and turns grouping off for numbers of every length (`COMMON` uses it, section 7.4).
+  Defaults: ru 2 (from 5 digits), en 1 (from 4 digits); open point 4. The fraction is not grouped.
 - Minus: U+2212 for both languages by default, as the task requires; a deviation from CLDR 49, where
   the minus sign is U+002D (section 7.5). Setting `minus_sign`.
 - Range: the language's CLDR range pattern, `{0}–{1}` (U+2013, no spaces) for both languages, for
-  every pair of values. The group separator inside a number is glue, so `{n}⍽МБ` and `12⍽345` never
-  break apart.
+  every pair of values. Negative ends are written as they are (`−5–−1`), and equal ends are not
+  collapsed (`8000–8000`): the pattern applies to every pair, and the caller decides what is a
+  range. Rejected: the CLDR `approximately` pattern for equal ends (`≈8000`), which changes the
+  meaning of a range. A group separator that is a space is glue (only U+00A0 and U+202F are allowed,
+  section 2.11), so `{n}⍽МБ` and `12⍽345` never break apart; a separator that is not a space (`,` in
+  English) needs no glue.
 - No allocation: for `f32` and `f64` the `Display` makes two passes (a counting `fmt::Write` to
-  learn the length of the integer part, then the real write), because `f64::MAX` has more than 300
-  digits and no stack buffer fits it.
+  learn the length of the integer part, then the real write), because grouping is counted from the
+  right. The longest `f64` in `{}` is 327 bytes with its sign (`-5e-324` written out), so a stack
+  buffer would fit too; the counting pass avoids a fixed bound that would have to be re-checked if
+  the representation of core changed.
 
 A template and its value stay consistent because one `Typographer` (one `LanguageData`, one set of
 number settings) typesets the template at build time and formats the numbers at run time; the range
@@ -663,6 +694,11 @@ impl EscapeStyle {
     pub const fn non_ascii(self) -> EscapeStyle;
 }
 ```
+
+`Output::Escaped` always escapes the container completely: `\`, the quote characters of the syntax
+and control characters are escaped whatever the scope, because unpaired straight quotes stay in the
+text and protected spans may contain backslashes. The scope (`non_ascii()`) only chooses which other
+characters become escapes (section 11.6).
 
 ```rust
 use typolish::{EscapeStyle, HtmlStyle, Language, Output, RuleSet, Typographer};
@@ -741,6 +777,14 @@ impl Change {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProtectedSpan { /* piece, range, kind */ }
+impl ProtectedSpan {
+    /// Index of the input piece (0 for string input).
+    pub fn piece(&self) -> usize;
+    /// Byte range in that piece.
+    pub fn range(&self) -> core::ops::Range<usize>;
+    /// Why the span is protected.
+    pub fn kind(&self) -> ProtectedKind;
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ProtectedKind { Delimited, ProtectedPiece, Slot, Technical(TechKind) }
@@ -760,6 +804,10 @@ impl Diagnostic {
     pub fn piece(&self) -> usize;
     pub fn range(&self) -> core::ops::Range<usize>;
 }
+impl core::fmt::Display for Diagnostic { /* `warning quotes.pairs 0:10..11: message` (section 12.4) */ }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[non_exhaustive]
+pub enum Severity { Info, Warning }
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum DiagnosticKind {
@@ -811,6 +859,8 @@ in every signature).
 impl Typographer {
     /// Maps typeset Unicode text back to the canonical plain form, undoing exactly the enabled
     /// rules (section 12.1). Protected spans, slots and markup are left alone.
+    /// The input is Unicode text (`Output::Unicode`); HTML entities and escapes are not decoded and
+    /// are read as ordinary characters (section 12.1).
     pub fn to_plain<'a>(&self, text: &'a str) -> Cow<'a, str>;
     pub fn to_plain_template<'t, S>(&self, pieces: impl IntoIterator<Item = Piece<'t, S>>) -> Template<'t, S>;
 }
@@ -851,14 +901,14 @@ pub enum Error {
 }
 ```
 
-| Method                                          | Error                            | When                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Language::from_tag`                            | `UnknownLanguage`                | the tag is malformed or has no data                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `Language::from_data`, `LanguageBuilder::build` | `InvalidLanguageData`            | a check of section 7.6 fails                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `Rule::from_str`                                | `UnknownRule`                    | no such id                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `RuleSet::from_str`                             | `UnknownRule`, `InvalidRuleSet`  | unknown id; an id both added and removed; a base name after the first item; an empty item                                                                                                                                                                                                                                                                                                                                                                              |
-| `Number::decimal`                               | `InvalidNumber`                  | not an ASCII decimal                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `TypographerBuilder::build`                     | `RuleConflict`, `InvalidSetting` | a rule both enabled and disabled; an empty, whitespace or letter-and-digit delimiter, a delimiter equal to or a prefix of another; `"` or `'` or a space or a letter in `QuotePairs` (output would become input again, breaking idempotence); a list word that is empty, contains a space, or is both added and removed; a unit that starts with a digit; a group separator or minus that is a digit or a letter; `min_grouping_digits` above 4 (0 turns grouping off) |
+| Method                                          | Error                            | When                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ----------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Language::from_tag`                            | `UnknownLanguage`                | the tag is malformed or has no data                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `Language::from_data`, `LanguageBuilder::build` | `InvalidLanguageData`            | a check of section 7.6 fails                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `Rule::from_str`                                | `UnknownRule`                    | no such id                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `RuleSet::from_str`                             | `UnknownRule`, `InvalidRuleSet`  | `UnknownRule`: unknown id; `InvalidRuleSet`: an id both added and removed, a base name after the first item, an empty item or string                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `Number::decimal`                               | `InvalidNumber`                  | not an ASCII decimal                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `TypographerBuilder::build`                     | `RuleConflict`, `InvalidSetting` | (1) `RuleConflict`: a rule both enabled and disabled. `InvalidSetting`, checked in this order: (2) protection delimiters: an empty or whitespace delimiter or one containing a letter or digit, a delimiter equal to or a prefix of a delimiter of another pair, a delimiter that is a proper prefix of the other one of its pair (equal delimiters of one pair are allowed); (3) `QuotePairs`: `"` or `'` or a space or a letter (output would become input again, breaking idempotence), or four glyphs that are not pairwise distinct or not quote characters (section 7.6); (4) lists, in the order units, short words, particles: a word that is empty, contains a space, or is both added and removed; a unit that starts with a digit; (5) numbers: a group separator that is a digit, a letter, or whitespace other than U+00A0 and U+202F; a minus that is a digit, a letter, whitespace, `"` or `'` (it is written into text by `number.minus`; whitespace would erase the sign, a quote would break idempotence); `min_grouping_digits` above 4 (0 turns grouping off). The first failing check is reported (section 2.4). |
 
 Choices:
 
@@ -870,19 +920,27 @@ Choices:
   section 14.5). If an internal invariant is violated anyway (a bug), the engine returns the input
   unchanged for that window rather than panicking; a test with arbitrary strings, including lone
   combining marks, emoji sequences and control characters, guards this.
+- `RemovedRule` is not in version 1: it arrives with the first removed rule (section 2.3).
+- Fields are `&'static str` when the value comes from a closed set (a setting name, a fixed reason)
+  and `String` when the text is the caller's or built per call (a tag, an offending word).
 
 ### 2.12 Allocation, Cow and scratch memory
 
-| Call                            | Allocations                                                                                                |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `typeset`, output equals input  | 0 after the first call on a thread (`Cow::Borrowed`; with `Html`/`Escaped` only if nothing needs encoding) |
-| `typeset`, output differs       | 1: the output string, capacity `len + len / 8`; a second only if it grows past that                        |
-| `typeset_with`                  | as `typeset`, with the caller's buffer instead of the thread-local one                                     |
-| `typeset_into`                  | 0 when `buf` has room                                                                                      |
-| `typeset_template`              | 3 (the list of piece texts, the texts and slots vectors) plus one per changed text                         |
-| `format_number`, `format_range` | 0 (`Display`)                                                                                              |
-| `report*`, `lint*`              | vectors of edits, spans and diagnostics (the debugging path)                                               |
-| building                        | only in `build()`; none in `Typographer::new`                                                              |
+| Call                            | Allocations                                                                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `typeset`, output equals input  | 0 after a previous call on the thread that did not grow the scratch past 64 KiB (`Cow::Borrowed`; with `Html`/`Escaped` only if nothing needs encoding) |
+| `typeset`, output differs       | 1: the output string, capacity `len + len / 8`; a second only if it grows past that                                                                     |
+| `typeset_with`                  | as `typeset`, with the caller's buffer instead of the thread-local one                                                                                  |
+| `typeset_into`                  | 0 when `buf` has room                                                                                                                                   |
+| `typeset_template`              | 3 (the list of piece texts, the texts and slots vectors) plus one per changed text                                                                      |
+| `format_number`, `format_range` | 0 (`Display`)                                                                                                                                           |
+| `report*`, `lint*`              | vectors of edits, spans and diagnostics (the debugging path)                                                                                            |
+| building                        | only in `build()`; none in `Typographer::new`                                                                                                           |
+
+`report*`, `lint*` and `to_plain*` use the thread-local scratch only: they are the debugging and
+tooling path and make no allocation promise, so version 1 has no `_with` variants of them (adding
+one later is not breaking). `typeset_template` has no `_into` form, because its result owns its
+vectors.
 
 The working buffers (atoms and tokens of the current window, two token vectors for phases, the quote
 stack) live in a `Scratch`. Atoms and tokens hold no references into the input: a token stores its
@@ -891,8 +949,12 @@ piece number, a byte range in that piece and, when a rule replaced its text, a r
 inputs of any lifetime without `unsafe` (the crate forbids it). `Scratch::new()` is a `const fn`,
 and `Scratch` implements `Default`. `typeset` uses one held in a `thread_local!` (`RefCell<Scratch>`
 with `const` initialization) and reused, so after the first call on a thread the hot path does not
-allocate. If its capacity grew past 64 KiB on a large input, it shrinks back after the call.
-Re-entry is impossible (there are no callbacks); should `try_borrow_mut` fail anyway, the call works
+allocate. If the capacity of its buffers grew past 64 KiB in total on a large input, the
+thread-local scratch is replaced by `Scratch::new()` after the call, so the next call on the thread
+allocates again as a first call does. A caller-held `Scratch` of `typeset_with` is never shrunk. The
+pieces of a template are the only caller code that runs during a call: the iterator is consumed into
+the call-local vector of piece texts before the thread-local `Scratch` is borrowed, so an iterator
+that calls the typographer meets a free scratch. Should `try_borrow_mut` fail anyway, the call works
 with a local buffer, without panicking. `typeset_with` takes a caller-held `Scratch` (one per
 worker), for callers that do not want thread-local state, for example executors that move tasks
 between threads or a future `no_std` build. The texts of template pieces are the only per-call data
@@ -911,17 +973,23 @@ included); streaming without a buffer (quote pairing defers decisions to the end
 - Commitments that cannot be lifted without a breaking release: `Typographer::new`,
   `Language::from_static` and `Scratch::new` are `const`; `Typographer: Send + Sync + Clone`;
   `Scratch: Send + Sync + Default`; `Output`, `RuleSet`, `Rule`, `Slot`, `HtmlStyle`, `EscapeStyle`
-  are `Copy`; `Piece<'t, S>` is `Copy` when `S` is; `Language` and `LanguageData` are not `Copy`
-  (deliberately); `LanguageData` setters are `const fn`; `Language`, `LanguageData` and the value
-  types of section 2.1 implement `Debug`, `PartialEq`, `Eq` and `Hash`, and the value types also
-  `Copy`, so a field added to them later must have these traits too (language data holds strings,
-  characters, numbers and flags, which do); rule ids are permanent.
+  are `Copy`; `Severity` is `Copy` and ordered, `Info < Warning`, and a level added later takes its
+  place in that order; `Piece<'t, S>` is `Copy` when `S` is; `Language` and `LanguageData` are not
+  `Copy` (deliberately); `LanguageData` setters are `const fn`; `Language`, `LanguageData` and the
+  value types of section 2.1 (the rows from `QuotePairs` to `NumberData`) implement `Debug`,
+  `PartialEq`, `Eq` and `Hash`, and the value types also `Copy`, so a field added to them later must
+  have these traits too (language data holds strings, characters, numbers and flags, which do); rule
+  ids are permanent. `Number` holds floats and is `PartialEq` only.
 - Not part of the contract: the order of `Rule::ALL` (it is the execution order, and a new rule may
   go into the middle); the representation of `RuleSet`; the contents of language lists; the text of
-  `summary()` and of `Display` implementations.
+  `summary()` and of the `Display` of `Error`, `Diagnostic` and `Report`. The `Display` of `Rule`,
+  `RuleSet` and `Language` is part of the contract: it prints the id, the id list and the tag, and
+  `FromStr` reads it back.
 - The policy for changes of output is section 15.1.
-- `cargo-semver-checks` is not installed on the development machine. The public surface is fixed by
-  the doctests; comparison against the previous release is part of stage 5 preparation.
+- `cargo-semver-checks` is not installed on the development machine. For 0.1.0 there is no previous
+  release; the public surface is fixed by the doctests. From the second release on, the preparation
+  of each release compares the public surface with the previous release (`cargo semver-checks` where
+  installed, otherwise a review of `cargo doc` output).
 
 ### 2.14 Build-time use with Fluent
 
@@ -973,7 +1041,8 @@ fn emit(id: &str, pieces: Vec<Piece<'_, usize>>, t: &Typographer) -> String {
         match part {
             TemplatePart::Text(t) => code.push_str(&format!("s.push_str(\"{t}\"); ")),
             TemplatePart::Slot(i, _) => code.push_str(&format!("s.push_str(args[{i}]); ")),
-            _ => {}
+            // build-time code: failing loudly beats losing text
+            _ => panic!("typolish: a TemplatePart variant this generator does not know; update it"),
         }
     }
     code.push_str("s }");
@@ -982,10 +1051,10 @@ fn emit(id: &str, pieces: Vec<Piece<'_, usize>>, t: &Typographer) -> String {
 ```
 
 `EscapeStyle::RUST` makes each text the body of a Rust string literal, so the generator pastes it
-between quotes without escaping of its own. At run time the application formats `Number` arguments
-with `format_number` of the same typographer (the same `typographer(tag)` function in a shared
-crate), so template and value fit together. A generator of a JS bundle uses `EscapeStyle::JSON` or
-`EscapeStyle::JS` the same way.
+between quotes without escaping of its own (the container is escaped completely, section 11.6). At
+run time the application formats `Number` arguments with `format_number` of the same typographer
+(the same `typographer(tag)` function in a shared crate), so template and value fit together. A
+generator of a JS bundle uses `EscapeStyle::JSON` or `EscapeStyle::JS` the same way.
 
 ### 2.15 Per-request use
 

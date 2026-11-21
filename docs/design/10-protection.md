@@ -35,8 +35,9 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   ``[Text("Run `git checkout -- "), Slot(b, WORD), Text("` to reset.")]`` the command is protected
   with the slot inside, and the slot stays a slot. A template of `Text` pieces gives the same result
   as their concatenation.
-- **Validation** in `build()`: a delimiter is non-empty, is not whitespace, contains no letter or
-  digit, is not equal to another delimiter and is not a prefix of another one
+- **Validation** in `build()`: a delimiter is non-empty, is not whitespace and contains no letter or
+  digit; it is neither equal to nor a prefix of a delimiter of another pair; within one pair the two
+  delimiters may be equal, but neither may be a proper prefix of the other
   (`Error::InvalidSetting`).
 - **For its neighbours a protected span is one word**: a preposition before a span in backticks gets
   glue (`` в⍽`--config` ``), and quotes around it follow the language (``"`--force`"`` →

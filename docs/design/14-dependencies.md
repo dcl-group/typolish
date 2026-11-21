@@ -171,7 +171,7 @@ dev/
     tests/
       common/mod.rs  rules_*.rs  negative.rs  parts.rs  numbers.rs  output.rs  fluent_isolation.rs
       reference/{ru,en_us}.rs  properties.rs  graphemes.rs  roundtrip.rs  corpus.rs  alloc.rs
-      load.rs  conformance.rs  data.rs
+      load.rs  conformance.rs  data.rs  api.rs  lint.rs
       corpus/  fixtures/unicode/
     benches/load.rs
     examples/fluent_generator.rs  examples/per_request.rs  examples/numbers.rs

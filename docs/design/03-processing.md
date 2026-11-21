@@ -97,7 +97,9 @@ enum Atom {
 ```
 
 Atoms, like tokens, hold positions and no references, so the buffers that keep them can be reused
-across calls (section 2.12). String input is one `Text` piece with index 0.
+across calls (section 2.12). String input is one `Text` piece with index 0. For templates, the
+pieces are first collected into the call-local vector (section 2.12), and only then is the scratch
+borrowed.
 
 Protection delimiters (section 10.1) cut `Text` atoms into `Text` and
 `Protected { delimited: true }` in two steps; the delimiters belong to the protected atoms:

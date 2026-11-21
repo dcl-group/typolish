@@ -14,8 +14,8 @@ intermediate Unicode string.
 
 The encoder treats a character the same way whether a rule produced it or it was in the input, so
 the output is uniform. It applies to `Text` and `Protected` alike (protection means "not typeset",
-not "not encoded") and never touches slots. `Markup` pieces are written as is in HTML output and
-escaped like text in escaped output, where they are part of the string.
+not "not encoded") and never touches slots. `Markup` pieces are written as is in Unicode and HTML
+output and escaped like text in escaped output, where they are part of the string.
 
 ### 11.2 Typographic set
 

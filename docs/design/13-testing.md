@@ -73,10 +73,15 @@ with the right rule in `report`. Specific rows and further tables:
   `Technical(Version)` for the date; ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`,
   `и ¶ 5` → `и⍽¶⍽5`; en `J. R. R. R. Tolkien` → unchanged (Interface).
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
-  decimals (`Number::decimal` keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`,
-  `f32::MAX`), `i128::MIN`, `u128::MAX`, `f64::NAN`, infinities, `-0.0`, the grouping thresholds (4
-  and 5 digits), `Number::fixed` ties, every output kind, and nowrap with and without glue (`1234`
-  in ru has no element).
+  ranges with negative ends (`−5–−1`) and equal ends (`8000–8000`), decimals (`Number::decimal`
+  keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`, `f32::MAX`), `i128::MIN`,
+  `u128::MAX`, `f64::NAN`, infinities, `-0.0`, the grouping thresholds (4 and 5 digits),
+  `min_grouping_digits(0)` (no grouping for `1234567890`), `min_grouping_digits(4)` (`123456`
+  ungrouped, `1234567` grouped), `COMMON` (`1234567` ungrouped), `Number::fixed` ties, every output
+  kind, and nowrap with and without glue (`1234` in ru has no element); the builder rejects
+  `group_separator(' ')`, `group_separator('\u{2009}')`, `minus_sign(' ')` and `minus_sign('"')`
+  with `InvalidSetting`; `group_separator('\u{202F}')` builds, and nowrap output wraps `12⎵345` in
+  one element.
 - `tests/output.rs`: every output kind on a fixed set of inputs, including unpaired quotes,
   backslashes in protected spans, line breaks, U+2028, U+2029 and blank lines between paragraphs
   with quotes on both sides, in every output kind, `<script>`, `${`, characters above the BMP;
@@ -93,7 +98,22 @@ with the right rule in `report`. Specific rows and further tables:
   `RuleSet::EMPTY.with(Rule::NbspUnits)` and `Spaced` → `{n}⍽‰`; `¶{n}` → `¶⍽{n}`; none of them
   borrowed; `{a}-5 кг` → `{a}-5⍽кг`; `5-{d} г.` → unchanged; ru `{d} г. Затем` (a `Date` slot) → no
   glue after `г.`; ru `Text("Скажи \"раз\n")`, `Slot(Other)`, `Text("\nдва\"")` → quotes paired
-  `«раз … два»`, one window.
+  `«раз … два»`, one window; an empty list of pieces → `texts() == [""]` (borrowed), no slots,
+  `changed() == false`.
+- `tests/api.rs`: the API contracts of section 2 that are not output: builder validation and error
+  choice, `FromStr` of `Rule`, `RuleSet` and `Language`, tag round trips, accessors of `Report`,
+  `Change`, `ProtectedSpan` and `Diagnostic`. Rows: a builder with two violations (`RuleConflict`
+  and `InvalidSetting`) gives equal `Error`s for two orders of its calls; the accessors of
+  `ProtectedSpan` on the example of section 12.5 (`kind() == Technical(Colon)`, `piece() == 0`,
+  `range() == 25..34`); `RuleSet::from_str`, one row per case of section 2.3: an unknown id →
+  `UnknownRule`, an id both added and removed, a base name after the first item (with and without a
+  sign), an empty item and an empty string → `InvalidRuleSet` with the reason of section 2.3;
+  `" prose , +number.times "` → Ok, `"+nbsp.dash,+nbsp.dash"` → Ok, `"   "` → `InvalidRuleSet`,
+  `"+ nbsp.dash"` → `UnknownRule`; `protect_between`: `("|", "|")` → Ok, `("[", "[[")` →
+  `InvalidSetting`, `("{{", "}}")` together with `("{{", "]]")` → `InvalidSetting`, `("a1", "|")` →
+  `InvalidSetting`; `Language::RU_RU` equals a copy built by
+  `LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")` with no changes, and their hashes are
+  equal; a copy with a different list of short words is not equal.
 - `tests/fluent_isolation.rs`: run-time strings with U+2068 and U+2069 around values give the same
   typesetting as without them, with the isolates unchanged (section 5.4).
 
@@ -265,7 +285,9 @@ U+00A0 and must not be normalized.
   section 2.12: zero allocations for an unchanged string after warm-up (both through the prefilter
   and through the full pipeline), one for a changed string, zero for `format_number` written into a
   buffer with room, zero in `Typographer::new`; ru `Сохранить` in Interface → `Cow::Borrowed`, no
-  lexing.
+  lexing; an iterator of template pieces that calls `typeset` adds no allocations beyond the table
+  of section 2.12; after an input larger than 64 KiB the first short call allocates and the second
+  does not.
 
 Rejected: `criterion` (a heavy tree: `clap`, `serde`, `regex`, `rayon`) and `divan` (last release in
 2025-04); linear behavior needs no statistics package.
@@ -275,10 +297,13 @@ Rejected: `criterion` (a heavy tree: `clap`, `serde`, `regex`, `rayon`) and `div
 `tests/conformance.rs` checks repository facts: `LICENSE-*` at the root and in `dev/typolish/` are
 byte-identical; `dev/typolish/README.md` is a symlink to the root README;
 `Typographer: Send + Sync + 'static` and `Clone`; `Scratch: Send + Sync + Default`; `ORDER`,
-`Rule::ALL` and the table of section 4.1 contain every rule once, ids are unique and of the
-documented form, `Rule::from_str(r.id()) == Ok(r)`; `s.to_string().parse() == Ok(s)` for
-`RuleSet::EMPTY` (printed `empty`), `ALL`, `PROSE`, `INTERFACE` and generated sets; the composition
-of Prose and Interface matches section 9.2; `src/` contains no `std::env`, `std::fs`, `std::net`,
+`Rule::ALL` and the table of section 4.1 contain every rule that is not deprecated once, ids are
+unique and of the documented form, `Rule::from_str(r.id()) == Ok(r)`;
+`Language::from_tag(l.tag()) == Ok(l)` for `Language::builtin()` and `COMMON`, and
+`from_tag("UND") == Ok(COMMON)`; `s.to_string().parse() == Ok(s)` for `RuleSet::EMPTY` (printed
+`empty`), `ALL`, `PROSE`, `INTERFACE` and generated sets; the composition of Prose and Interface
+matches section 9.2; the rustdoc of every builder setting names exactly the rules that list it in
+the settings column of section 8.1; `src/` contains no `std::env`, `std::fs`, `std::net`,
 `std::time` or `unsafe`; `src/lang/*.rs` contain no `fn`, `impl`, `match` or `if`; replacement
 tables produce no letter and no digit; built-in languages × built-in sets build without error. A
 unit test next to the prefilter checks, for every built-in set and language, that the trigger set
