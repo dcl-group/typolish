@@ -32,7 +32,8 @@ with the right rule in `report`. Specific rows and further tables:
   `He is 5'10" tall.` (Prose) → `He is 5′10″ tall.`; en `the 90's` → `the 90’s`; en `1'000'000` →
   unchanged.
 - `tests/rules_dash.rs`: ru `Ждите - ...` with `dash.spaced-hyphen` alone → unchanged, no
-  `AmbiguousHyphen`, `report().protected()` empty.
+  `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` → unchanged,
+  `Cow::Borrowed`; ru `Москва – столица` → `Москва⍽– столица` (en dash kept, glue from `nbsp.dash`).
 - `tests/rules_ellipsis.rs`: `Ждите - ...` with `ellipsis.dots` alone → `Ждите - …`; `...` alone →
   `…`; in both `report().protected()` is empty. `и т.д...` → `и т.д…`.
 - `tests/rules_number.rs` (`number.times`): `10 x 5` with `add_units(["x"])` → `10 × 5`; `a × b` →
@@ -128,9 +129,11 @@ insertions; and arbitrary Unicode strings for the no-panic test.
    difference prints the reports of both passes.
 3. **Invariants**, one property each: I1 (edits never change a token kind; insertions and removals
    only of spaces), I2 (fragment kinds of `f(x)` match those of `x`, modulo the splits and merges of
-   section 4.3), I3 (no output character of a rule triggers a rule), I4 (the match set computed on
-   `f(x)` equals that on `x`, with empty edits), I5 (in a non-converging window no straight quote
-   changed).
+   section 4.3), I3 (no output character of a rule triggers a rule), I4 (every match computed on
+   `f(x)` has an empty edit, and every match on `x` outside the fragments merged or split by I2
+   recurs on `f(x)` with the same rule and `consume`, except that a dash produced by
+   `dash.double-hyphen` is matched by `dash.spaced-hyphen`, section 8.4), I5 (in a non-converging
+   window no straight quote changed).
 4. **Slots and protected spans**: number, order, kinds and payloads of slots are kept;
    `texts().len() == slots().len() + 1`; protected spans and markup are byte for byte in place.
 5. **Technical fragments**: fragments classified as technical in the input appear in the output byte

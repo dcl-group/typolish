@@ -298,7 +298,7 @@ check, check 0 included; the others change how the checks read a core:
   falls through the table to check 24 (`Unclassified`, frozen).
 - A fragment that is a single `Dash` token in any form (`-`, `--`, `---`, `–`, `—`) is an
   `OperatorRun` ("dash fragment"), so a lone `-` and the `—` that replaces it have one kind; dash
-  rules decide its fate by context, and a typed dash only serves as context.
+  rules decide its fate by context, and a typed dash is matched with an empty edit (section 8.4).
 - A `Number` slot inside a core counts as a number. A `Date` slot counts as a number only in check
   17 and only when both sides are `Date` slots (`{d1}-{d2}` is a `Range`); in every other position
   it counts as letters, so `{n}-{d}` and `5-{d}` are `Compound`. A `Number` slot and a literal
@@ -389,9 +389,10 @@ This is a sketch: real code has no panicking indexing. Properties of a phase:
    4.1. The first rule that matches takes the anchor and `consume` tokens; positions inside the
    taken range are not considered again in this phase.
 3. **Match by class, not by product.** A rule matches a pattern whether or not it is already in its
-   target form. If it is, the rule returns a `Match` with no edits and the same `consume`. For
-   example `т.⍽д.` matches `nbsp.abbreviations` like `т.д.` and `т. д.` do. So the partition into
-   taken ranges is the same on a second pass (section 4.4).
+   target form. If it is, the rule returns a `Match` with no edits and the same `consume`, and so it
+   does on a typed typographic sign that it must not change (a typed dash, a typed `…`). For example
+   `т.⍽д.` matches `nbsp.abbreviations` like `т.д.` and `т. д.` do. So the partition into taken
+   ranges is the same on a second pass (section 4.4).
 4. **Bounded context.** A rule looks no further than a fixed number of tokens around its anchor (the
    longest are abbreviations and units, eight tokens). The exception is the quote phase: it has a
    linear preliminary pass over the window (section 6), after which its rules only read decisions.

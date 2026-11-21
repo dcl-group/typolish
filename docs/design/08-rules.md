@@ -86,10 +86,10 @@ Diagnostics: `UnmatchedQuote`, `CrossingQuotes`, `AmbiguousQuote`.
 
 ### 8.4 Dashes
 
-**`dash.spaced-hyphen`.** A fragment that is a single `-`, with one space on each side (not a line
-break), an operand or closing punctuation (`, . ! ? … ) »` or a closing quote) on the left, and an
-operand, an opening quote or an opening bracket on the right → em dash. It does not fire, and
-reports `AmbiguousHyphen`, when:
+**`dash.spaced-hyphen`.** A dash fragment (a single `Dash` token, section 3.6), with one space on
+each side (not a line break), an operand or closing punctuation (`, . ! ? … ) »` or a closing quote)
+on the left, and an operand, an opening quote or an opening bracket on the right → em dash. It does
+not fire, and reports `AmbiguousHyphen`, when:
 
 - numbers stand on both sides (`10 - 20`, `5 - 3 = 2`, `{a} - {b}`): range or minus is unknown;
 - single-letter words stand on both sides (`a - b`, `x - y`): a formula or a list item;
@@ -113,10 +113,14 @@ opening quote or bracket on the right), `Closed` keeps the author's spaces, as `
 `He said - "a cat"` → `He said — “a cat”`, `Hello, - he said` → `Hello, — he said`. So a merge
 always gives a `Joined` fragment (invariant I2), a URL or a flag never swallows the next word
 (autolinkers that cut a link at the next space would take `—the` into it), and `to_plain` can
-restore the spaces. Typed `—` and `–` are never changed, and no space around them is removed.
+restore the spaces. Typed `—` and `–` are never changed, and no space around them is removed. On
+such a typed dash the rule matches with an empty edit and the same `consume` when its context holds;
+it raises `AmbiguousHyphen` only on a plain `-`.
 
 **`dash.double-hyphen`** (Prose). The same for a lone `--` or `---`, with the same refusals:
-`npm test -- --watch` stays. A lone `--` without operands on both sides (a line that is just `--`,
+`npm test -- --watch` stays. A typed `—` or `–` is matched by `dash.spaced-hyphen` (with an empty
+edit), never by this rule, so on the output of this rule its match moves to `dash.spaced-hyphen`
+with the same `consume`. A lone `--` without operands on both sides (a line that is just `--`,
 `-- file` at a line start) never changes.
 
 **`dash.dialogue`** (Prose, languages with `dialogue`). At the start of the text or of a line, after
@@ -180,7 +184,9 @@ The rule for port ranges such as `8000-8100` is section 10.6.
   space, the end, closing punctuation or a closing quote) or standing alone between spaces → `…`.
   After `?`, `!` or `?!` → the language's forms: ru `?..`, `!..`, `?!..`; en `?…`, `!…`, `?!…`. Two
   full stops (`А если..`, `../x`, `0..5`) and four or more (`....`, leaders in tables of contents)
-  never change. A typed `…` or `?…` never changes. Digits on both sides (`-5...5`) never change.
+  never change. A typed `…` or `?…` never changes. On its products and on typed forms (`…`, ru
+  `?..`, `!..`, `?!..`, en `?…`) the rule matches with an empty edit. Digits on both sides
+  (`-5...5`) never change.
 - **`ellipsis.inner`** (Prose): `...` at the start of a word after a space or a line start
   (`...и тогда`) and between two words without spaces (`да...нет`) → `…`. Not in Interface:
   `...args` and `a...b` occur in code.
