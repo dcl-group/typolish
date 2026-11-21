@@ -1,0 +1,195 @@
+# typolish design: Testing
+
+Part of the [typolish design](./README.md). Section numbers are those of the whole design.
+
+## 13. Testing
+
+### 13.1 Principles
+
+- Tests live in `dev/typolish/tests/` and run from `dev/` with no network; helpers are in
+  `tests/common/mod.rs`. Slow tests are `#[ignore]` and run by hand in stage 5 and before releases.
+- Fixtures are synthetic. No text from internal networks or third-party works enters the repository;
+  host names are neutral (`example.com`, `db.example.internal`).
+- Expectations are written with visible markers: the helper `vis("5⍽МБ")` replaces `⍽` with U+00A0
+  and `⎵` with U+202F, and another helper checks that inputs contain no markers. On failure the
+  helper prints invisible characters as markers.
+- The reference implementation is not run by the tests. Its recorded pairs are plain tables; its
+  name appears nowhere in the repository (a script outside the repository checks `git diff --cached`
+  before every commit, since a test in the repository would have to contain the name).
+
+### 13.2 Rule tables
+
+`tests/rules_<group>.rs` (`quotes`, `dash`, `range`, `ellipsis`, `nbsp`, `number`, `symbols`): for
+every rule and every language, an array of `(&str, &str)` pairs. Each rule is tested alone
+(`RuleSet::EMPTY.with(rule)`) and inside both built-in sets. Required rows per rule: firing; not
+firing at each boundary of its pattern ("does not touch" items of section 8); typeset input (no
+change, `Cow::Borrowed`); a slot next to it; the rule disabled (no change); and the `Change` record
+with the right rule in `report`. Further tables:
+
+- `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
+  decimals (`Number::decimal` keeps precision), `i128::MIN`, `u128::MAX`, `f64::NAN`, infinities,
+  `-0.0`, the grouping thresholds (4 and 5 digits), `Number::fixed` ties, every output kind.
+- `tests/output.rs`: every output kind on a fixed set of inputs, including unpaired quotes,
+  backslashes in protected spans, line breaks, U+2028, `<script>`, `${`, characters above the BMP.
+- `tests/parts.rs`: templates, including the walk-through of section 2.14, select variants, `Other`
+  slots, nowrap groups starting and ending at slots, and the slot participation table of section 2.6
+  row by row.
+- `tests/fluent_isolation.rs`: run-time strings with U+2068 and U+2069 around values give the same
+  typesetting as without them, with the isolates unchanged (section 5.4).
+
+### 13.3 Negative cases
+
+`tests/negative.rs`:
+
+- one function per row of section 10.5 (`neg_flag_force`, `neg_ls_la`, `neg_lone_double_hyphen`,
+  ..., `neg_identifier_underscore`), for ru and en, alone, in the two sentence frames of each
+  language, and as `Piece::Text` next to slots. In Interface the output equals the input and is
+  `Cow::Borrowed`; in Prose the expectation is the last column of section 10.5. The comment of each
+  test names its mechanisms, and the test also checks that `report` lists the expected `TechKind`
+  for frozen fragments;
+- the stress strings of section 10.7;
+- all 405 negative cases of the scouting corpus (groups `neg.flags`, `neg.net`, `neg.ver`,
+  `neg.ids`, `neg.ident`, `neg.list`, `neg.html`, `neg.mixed`, `neg.shortlat`, `neg.lookalike`; ru
+  207, en 198, frames included), converted once by a script outside the repository into a plain
+  table, with internal host names replaced by neutral ones. Some of these cases sit in sentences
+  with listed short words (`Это a и b в тексте`), so the check is through `report`: the case's token
+  stays byte for byte, and the only other edits allowed are glue marks set by `nbsp.*` rules outside
+  the token. In Interface that holds for every case. In Prose the token may also change in the
+  groups that section 10.5 allows (the lone `--` between words, literal ranges, arrows), and only as
+  recorded.
+
+### 13.4 Reference pairs
+
+The 820 cases of the scouting corpus, with the output of the reference implementation (default
+settings, recorded outside the repository), become `tests/reference/{ru,en_us}.rs` through a script
+outside the repository. Every case is in one of two groups, each a plain table row:
+
+- `AGREE`: our output equals the recorded one;
+- `DIVERGE`: our output is written out together with a reason code from section 8.12 (`NoGuess`,
+  `LookAlike`, `NoSpaceEdit`, `NoDateRewrite`, `AmbiguousHyphen`, `PercentAsWritten`, `Technical`,
+  `AuthorPunctuation`, `DashStyleEn`, `RangeLiteral`, `NoLastShortWord`, `Slots`, `NoSpelling`,
+  `Apostrophe`, `EnNbsp`, `LegalMarkContext`, `Primes`, `WideGlue`, `NoDigitChange`,
+  `AlreadyTypeset`, `NoTrim`, `KeepSpaces`, `EllipsisDigits`).
+
+The test compares our output with the expectation in both groups, using Prose (closest to the
+reference defaults); for the negative groups also Interface (where the expectation is the input). A
+failure prints the input, our output, the recorded output and the `report` table (section 12.5). The
+stage 5 report prints a summary per reason code. The phrase used in tables and comments is
+"reference implementation".
+
+### 13.5 Properties
+
+`proptest` generators: a grammar of risky pieces (straight and typed quotes, `-`, `--`, `—`, `–`,
+`.`, `...`, `…`, numbers, units, short words of both languages, technical fragments from section
+10.5, slots of every kind for templates, protection delimiters, spaces of every kind and line
+breaks, emoji with ZWJ, combining marks, format characters); strings from the corpus with
+insertions; and arbitrary Unicode strings for the no-panic test.
+
+1. **Idempotence**: `f(f(x)) == f(x)` for {ru, en, COMMON} × {Prose, Interface, all, random subsets}
+   × the three `SingleQuotes` modes.
+2. **Fixed-point oracle**: `f` repeated until nothing changes (at most three times) equals `f`; a
+   difference prints the reports of both passes.
+3. **Invariants**, one property each: I1 (edits never change a token kind; insertions and removals
+   only of spaces), I2 (fragment kinds of `f(x)` match those of `x`, modulo the splits and merges of
+   section 4.3), I3 (no output character of a rule triggers a rule), I4 (the match set computed on
+   `f(x)` equals that on `x`, with empty edits), I5 (in a non-converging window no straight quote
+   changed).
+4. **Slots and protected spans**: number, order, kinds and payloads of slots are kept;
+   `texts().len() == slots().len() + 1`; protected spans and markup are byte for byte in place.
+5. **Technical fragments**: fragments classified as technical in the input appear in the output byte
+   for byte.
+6. **Letters and digits**: the sequence of letters and digits of the output equals that of the input
+   (with `symbols.*` and `number.times` off).
+7. **Graphemes**: every multi-character cluster of the input that is not a run of plain signs
+   appears whole in the output.
+8. **Cow**: the output is `Borrowed` exactly when it equals the input (Unicode).
+9. **Recorder independence**: `typeset`, `typeset_with`, `report` and `lint` agree on the result and
+   on the diagnostics; applying `report(x).changes()` to `x` yields the result.
+10. **Pieces and strings**: a template of `Text` pieces only gives the same as `typeset` of their
+    concatenation.
+11. **Determinism of order**: a set built in different orders of `with`/`without` gives byte-equal
+    output.
+12. **Output kinds**: `decode(typeset(x, out)) == typeset(x, Unicode)` and
+    `typeset(decode(typeset(x, out)), out) == typeset(x, out)` for every output kind; decoders are
+    test helpers.
+13. **Round trip**: P1 on generated canonical strings, P2 on generated strings (section 12.2).
+14. **No panic** on arbitrary strings and arbitrary pieces, including lone combining marks, control
+    characters and noncharacters: 10 000 cases in a normal run, 1 000 000 in an `#[ignore]` test.
+
+### 13.6 Unicode conformance
+
+- `tests/graphemes.rs` runs every line of `GraphemeBreakTest.txt` of Unicode 17.0.0 (the version of
+  `unicode-segmentation` 1.13.3) through both rule sets, alone and inside sentence frames, and
+  checks through `report` that every edit starts and ends at a cluster boundary of the input and
+  that every cluster appears whole in the output. The file is kept verbatim with its Unicode license
+  header in `tests/fixtures/unicode/`, excluded from the published package (`exclude` in
+  `Cargo.toml`); the test is skipped when the file is absent. A conformance test pins
+  `unicode_segmentation::UNICODE_VERSION` to the version of the fixture, so a dependency update
+  forces a fixture update. The file is fetched from unicode.org in stage 2.
+- Tables for spaces with combining marks (section 5.3), NFD words (section 5.5), mixed scripts
+  (section 5.7) and format characters (section 5.4).
+
+### 13.7 Own corpus
+
+There is no external corpus (decided by the maintainer on 2026-11-21); the corpus is written for the
+project, in the canonical plain form, with no third-party texts:
+
+```text
+tests/corpus/
+  ru-RU/prose.txt   ~150 lines: narration, dialogue, dates, numbers, units, abbreviations
+  ru-RU/ui.tmpl     ~150 message templates with slots
+  ru-RU/tech.txt    ~100 lines: commands, logs, addresses, versions mixed with prose
+  en-US/prose.txt, en-US/ui.tmpl, en-US/tech.txt
+  expected/         typeset output of every file in each set and output kind
+  roundtrip-known.tsv
+```
+
+`.tmpl` is a test-only mini syntax: `id = text {n:number} {name:word} {d:date} {x}`, parsed by a
+helper of about 50 lines; no Fluent dependency. The corpus serves idempotence, P1 and P2, load
+measurements and snapshots. Snapshots in `expected/` are plain files compared byte for byte; a
+failing test prints a diff, and files are updated deliberately by hand (no `insta`).
+`.gitattributes` marks `tests/corpus/**` and `tests/fixtures/**` as `-text`, since they contain
+U+00A0 and must not be normalized.
+
+### 13.8 Load and allocation
+
+- `benches/load.rs` (`harness = false`, std only: `Instant`, `black_box`, the median of N runs), run
+  as `cargo bench --bench load` in release. It prints: the whole corpus per set and output kind
+  (MB/s); one interface string of about 60 bytes and one without trigger bytes (prefilter), median
+  and p99 over 100 000 runs, with and without `typeset_with`; time per byte for 1 KiB, 64 KiB, 1 MiB
+  and 16 MiB of joined corpus and for one 1 MiB paragraph; and the pathological inputs of section
+  3.12.
+- `#[ignore]` test `load_is_linear`: time per byte for 16 MiB is at most twice that for 64 KiB,
+  separately for each pathological input. No absolute thresholds: the machine is shared. Indicative
+  targets, measured in stage 5 and not promised: at least 20 MB/s on the corpus in Unicode output, a
+  median below 10 µs for one interface string.
+- `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` checks the table of
+  section 2.12: zero allocations for an unchanged string after warm-up (both through the prefilter
+  and through the full pipeline), one for a changed string, zero for `format_number` written into a
+  buffer with room, zero in `Typographer::new`.
+
+Rejected: `criterion` (a heavy tree: `clap`, `serde`, `regex`, `rayon`) and `divan` (last release in
+2025-04); linear behavior needs no statistics package.
+
+### 13.9 Conformance and data
+
+`tests/conformance.rs` checks repository facts: `LICENSE-*` at the root and in `dev/typolish/` are
+byte-identical; `dev/typolish/README.md` is a symlink to the root README;
+`Typographer: Send + Sync + 'static` and `Clone`; `ORDER`, `Rule::ALL` and the table of section 4.1
+contain every rule once, ids are unique and of the documented form,
+`Rule::from_str(r.id()) == Ok(r)`; the composition of Prose and Interface matches section 9.2;
+`src/` contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; `src/lang/*.rs`
+contain no `fn`, `impl`, `match` or `if`; replacement tables produce no letter and no digit;
+built-in languages × built-in sets build without error. Checks that read `docs/design/` skip when
+the file is absent (the published package has no design).
+
+`tests/data.rs` runs the validation of section 7.6 on every built-in table and compares the CLDR
+values (quote pairs, decimal, group, minimum grouping digits where not overridden, percent pattern,
+range pattern, `nan`, `infinity`, month names, units marked "CLDR 49") with an extract of cldr-json
+49.0.0 kept in the test, so a CLDR update is a visible change.
+
+### 13.10 Documentation
+
+Every public item has rustdoc with an example (`missing_docs = "deny"`); examples are doctests and
+run with `cargo test`. README and CHANGELOG are in English. The README states the known limits of
+section 10.8 and how to protect commands.

@@ -1,0 +1,155 @@
+# typolish design: Rule order, idempotence and determinism
+
+Part of the [typolish design](./README.md). Section numbers are those of the whole design.
+
+## 4. Rule order, idempotence and determinism
+
+### 4.1 Order table
+
+The execution order is the constant table `ORDER` in `src/rule.rs`; `Rule::ALL` lists the rules in
+this order. `RuleSet` is a bit set and the engine walks `ORDER`, so the order in which rules were
+enabled has no effect. Within a phase the position in the table is also the priority when two rules
+match at the same token (section 3.8).
+
+| Step | Phase    | Rule                 | Prose | Interface | Languages (by data)        |
+| ---: | -------- | -------------------- | :---: | :-------: | -------------------------- |
+|    1 | symbols  | `symbols.copyright`  |   +   |     -     | all                        |
+|    2 | symbols  | `symbols.arrows`     |   +   |     -     | all                        |
+|    3 | symbols  | `symbols.math`       |   +   |     -     | all                        |
+|    4 | ellipsis | `ellipsis.dots`      |   +   |     +     | all (forms from data)      |
+|    5 | ellipsis | `ellipsis.inner`     |   +   |     -     | all                        |
+|    6 | dash     | `dash.dialogue`      |   +   |     -     | ru                         |
+|    7 | dash     | `dash.double-hyphen` |   +   |     -     | ru, en                     |
+|    8 | dash     | `dash.spaced-hyphen` |   +   |     +     | ru, en                     |
+|    9 | range    | `range.placeholders` |   +   |     +     | all                        |
+|   10 | range    | `range.digits`       |   +   |     -     | all                        |
+|   11 | range    | `range.context`      |   +   |     -     | ru, en                     |
+|   12 | range    | `range.time`         |   +   |     -     | all                        |
+|   13 | number   | `number.minus`       |   +   |     -     | all                        |
+|   14 | number   | `number.times`       |   +   |     -     | all                        |
+|   15 | number   | `number.grouping`    |   -   |     -     | all                        |
+|   16 | quotes   | `quotes.apostrophe`  |   +   |     +     | all                        |
+|   17 | quotes   | `quotes.pairs`       |   +   |     +     | ru, en (needs quote pairs) |
+|   18 | quotes   | `quotes.primes`      |   +   |     -     | all                        |
+|   19 | nbsp     | `nbsp.abbreviations` |   +   |     +     | ru, en                     |
+|   20 | nbsp     | `nbsp.initials`      |   +   |     +     | ru, en                     |
+|   21 | nbsp     | `nbsp.dates`         |   +   |     +     | ru, en                     |
+|   22 | nbsp     | `nbsp.units`         |   +   |     +     | all                        |
+|   23 | nbsp     | `nbsp.signs`         |   +   |     +     | all                        |
+|   24 | nbsp     | `nbsp.phone`         |   +   |     -     | all                        |
+|   25 | nbsp     | `nbsp.short-words`   |   +   |     +     | ru, en                     |
+|   26 | nbsp     | `nbsp.short-length`  |   +   |     -     | ru                         |
+|   27 | nbsp     | `nbsp.particles`     |   +   |     +     | ru                         |
+|   28 | nbsp     | `nbsp.dash`          |   +   |     +     | ru                         |
+
+"Languages" shows where the built-in data makes a rule active; an enabled rule without data for the
+language is inert (not an error). The quote phase runs its three rules as fixed sub-steps over the
+whole window (section 6): certain apostrophes and primes, roles and pairing, quotes after numbers,
+the all-or-nothing decision and levels, trailing possessive apostrophes, primes. Each edit is
+attributed to the rule whose behavior it is. A test checks that `ORDER`, `Rule::ALL` and this table
+agree and that every rule appears once.
+
+### 4.2 Why this order
+
+1. **Symbols first.** `(c)` is one token and is decided before brackets and quotes are looked at;
+   `->` and `<->` are decided as whole operator fragments before any dash rule looks at a `-`.
+2. **Ellipsis before quotes.** `?...` becomes `?..` or `?…` first; the quote phase then sees `Dots`
+   as closing punctuation in either form.
+3. **Line-start dashes before dashes between words**, and both before ranges: `dash.dialogue` takes
+   `- ` at the start of a line, `dash.spaced-hyphen` takes a lone `-` with spaces on both sides,
+   range rules take a `-` with numbers glued on both sides. The sets do not overlap; the order fixes
+   which rule a report names.
+4. **Ranges before the minus.** `5-10` (a digit on the left) belongs to range rules, `-5` after a
+   space, a line start or an opening bracket to `number.minus`. These sets do not overlap either.
+5. **Quotes after dashes.** Quote roles use dashes as context in either form (`—"Да"`, `"no"—and`),
+   so the order does not change roles; it only fixes the report.
+6. **No-break spaces last.** They bind final tokens: dashes, quotes, abbreviations, units.
+   `nbsp.dash` depends on the dashes produced in the dash phase, which comes earlier. Within the
+   phase, rules that want the same space want the same result (a glue mark); the order only decides
+   which rule a report names, and `Glue::NoBreak` beats `Glue::Narrow` whatever the order.
+
+### 4.3 Invariants
+
+- **I1. Class invariance.** An edit changes the text or the glue mark of a token, never its kind.
+  Insertion and removal apply only to `Space` tokens (section 3.5).
+- **I2. Stable classification.** On the output of a pass, the classifier computes the kinds that the
+  rules of that pass relied on:
+  - checks accept plain and typographic forms alike: a range with `-` or `–`, dimensions with `x`,
+    `х` or `×`, a signed number with `-` or `−`, `+-` or `±`, an abbreviation as `т.д.`, `т. д.` or
+    `т.⍽д.`, a joined form with `...` or `…`;
+  - an inserted space splits only a non-technical fragment, into non-technical parts: `т.е.` → `т.`
+    and `е.`, `№5` → `№` and `5`;
+  - removing the two spaces around a closed-style dash merges `word`, `—`, `word` into one `Joined`
+    fragment (check 22); a rule that matched the three fragments either matches the merged fragment
+    with no edits or does not match it, and no rule that did not match before matches now (the only
+    rules that look inside a `Joined` fragment are `ellipsis.inner` and `dash.spaced-hyphen` in its
+    "already done" form).
+- **I3. Products are not triggers.** A rule changes only plain forms: straight quotes, `-`, runs of
+  dots, a single U+0020, `(c)`, `->`, `x` between numbers. Its result is a typographic form that no
+  rule changes. A no-break rule changes only a `Space` of one U+0020 and treats any glued space
+  (U+00A0, U+202F) as already done.
+- **I4. Matching by class.** Whether a rule matches, and its `consume`, depend only on token kinds,
+  the texts of words and numbers, and fragment kinds, not on whether signs are in plain or
+  typographic form. A pattern that is already in target form gives an empty edit with the same
+  `consume` (section 3.8, property 3).
+- **I5. Quotes are all or nothing per window** (section 6.6).
+
+### 4.4 Proof sketch
+
+Let f = P7 ∘ … ∘ P1, where Pk is phase k. The claim is f(f(x)) = f(x) for Unicode output.
+
+1. Each phase Pk on an input y is determined by its set of matches: anchor, rule, `consume`. By I4
+   the set depends only on token kinds, fragment kinds and the texts of words and numbers. By I1 and
+   I2 these are the same in the input of Pk on the first pass and in f(x) on the second: everything
+   that later phases change is the form of signs and the glue of spaces. Spaces inserted by phase k
+   are seen on the first pass by phases k+1 to 7, as on the second pass by all phases. Phases 1 to
+   k−1, which first see those spaces on the second pass, do not change them by I3: the space is
+   there, the pattern "space missing" does not match, only the pattern "already done" matches, and
+   it gives an empty edit. Spaces removed around a closed-style dash are covered by the third item
+   of I2.
+2. Hence on the second pass the matches are the same, and the edits of each match lead signs to the
+   target form that f(x) already has: the same phase put it there on the first pass, and later
+   phases did not change it (I3). Every edit is empty.
+3. Matches that the engine refused on the first pass because they touched a frozen token are refused
+   again: freezing comes from the classifier, which by I2 yields the same kinds.
+4. The quote phase is proved separately (section 6.11).
+
+By induction over phases, every phase is the identity on f(x), so f(f(x)) = f(x). The sketch rests
+on I1 to I5; each invariant has its own property test, and the final equality is tested on generated
+strings and on the corpus, with a fixed-point oracle (section 13.5).
+
+### 4.5 Already typeset input
+
+Typographic characters (`«»„“”‘’`, `—`, `–`, `…`, U+00A0, `−`, `×`, `©`, `→`) are never rewritten
+(I3). They take part in context: typed quotes count in nesting levels (section 6.7), and a typed `—`
+between words in Russian gets glue before it from `nbsp.dash` (`Москва — столица` →
+`Москва⍽— столица`). That is a normalization of the space, not damage, and it is idempotent. A
+"wrong" typographic character is not corrected: `10—20` keeps its em dash, `Что?…` in Russian keeps
+its ellipsis character. Test sets `*.already.*` check that typeset input comes back as
+`Cow::Borrowed` wherever no normalization of spaces applies.
+
+### 4.6 Output kinds and idempotence
+
+Idempotence is a property of the Unicode result:
+`typeset(typeset(x, Unicode), Unicode) == typeset(x, Unicode)`. For the other outputs the guarantees
+are:
+
+- `decode(typeset(x, out)) == typeset(x, Unicode)`, where `decode` is the inverse of the encoding
+  (HTML entities and nowrap spans, or string-body escapes);
+- `typeset(decode(typeset(x, out)), out) == typeset(x, out)`.
+
+Feeding encoded output back as input is not supported and not idempotent: input is plain text, so
+`&nbsp;` in the input is a literal ampersand and becomes `&amp;nbsp;` in HTML output, exactly as any
+other text containing `&` would. The rustdoc of `Output` states this.
+
+### 4.7 Determinism
+
+| Source of nondeterminism                  | Measure                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Order in which rules were enabled         | `RuleSet` is a bit set; execution walks the static `ORDER`.                                                                                                                                                                                                                                                                                                                                                                           |
+| Hash-map iteration                        | No hash maps in the engine; lists are sorted slices with binary search.                                                                                                                                                                                                                                                                                                                                                               |
+| Floating point                            | None in rule decisions; `f64` formatting uses core, which is deterministic on every platform.                                                                                                                                                                                                                                                                                                                                         |
+| Environment, OS locale, clock, randomness | Not read. A conformance test searches `src/` for `std::env`, `std::time`, `std::fs`, `std::net`.                                                                                                                                                                                                                                                                                                                                      |
+| Word size, byte order                     | Positions are `usize` and carry no meaning; bit operations work on `u128`.                                                                                                                                                                                                                                                                                                                                                            |
+| Unicode tables                            | Scripts: fixed ranges in code (section 5.2). Grapheme clusters: the tables of `unicode-segmentation` (Unicode 17.0.0 in 1.13.3). `char::is_alphabetic` and `is_whitespace`: std (Unicode 18.0.0 in Rust 1.100). The result is the same on every platform for the same versions of the crate, its dependencies and Rust; only characters assigned in newer Unicode versions can classify differently. The crate documentation says so. |
+| Cargo features                            | No feature changes the result; the grapheme dependency is therefore mandatory, not a feature.                                                                                                                                                                                                                                                                                                                                         |

@@ -1,0 +1,966 @@
+# typolish design: Public API
+
+Part of the [typolish design](./README.md). Section numbers are those of the whole design.
+
+## 2. Public API
+
+Signatures below are sketches without bodies and without rustdoc. Every public item gets rustdoc
+with an example in stage 2 to 4 (`missing_docs = "deny"`). None of the examples has been compiled as
+a whole; a sketch of the load-bearing parts (a `const fn` constructor used in a `static`, `const`
+language data built by `const fn` setters in another crate, a thread-local buffer with `const`
+initialization, the `Send + Sync` check) was compiled with `rustc 1.100.0` (section 14.8).
+
+### 2.1 Surface
+
+| Item                                                                                         | Kind                                                  | Purpose                                                         |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
+| `Typographer`                                                                                | struct, private fields, `Clone + Debug + Send + Sync` | immutable typographer; every application method                 |
+| `TypographerBuilder`                                                                         | struct, `#[must_use]`                                 | settings, `build()`                                             |
+| `Language`                                                                                   | struct, private fields, `Clone + Eq + Hash`           | a language: built-in constants or caller data                   |
+| `LanguageData`                                                                               | struct, private fields, `Clone`, `const fn` setters   | the data table of a language, built at compile time (section 7) |
+| `LanguageBuilder`                                                                            | struct, `#[must_use]`                                 | a language built at run time from owned lists (section 7.1)     |
+| `Rule`                                                                                       | `#[non_exhaustive]` enum, `Copy`                      | a rule with a stable string id                                  |
+| `RuleSet`                                                                                    | struct, `Copy`, `const` methods, `FromStr`            | a set of rules; `PROSE`, `INTERFACE`, `EMPTY`, `ALL`            |
+| `Piece<'t, S>`                                                                               | `#[non_exhaustive]` enum                              | one input piece of a template; `S` is the caller's slot payload |
+| `Slot`, `SlotKind`                                                                           | struct (private field), `#[non_exhaustive]` enum      | an opaque placeholder and its kind                              |
+| `Template<'t, S>`, `TemplatePart`                                                            | struct, `#[non_exhaustive]` enum                      | typeset template: n slots and n + 1 texts                       |
+| `Number<'n>`                                                                                 | struct, `Copy`                                        | a number to format: integers, floats, decimal strings           |
+| `NumberDisplay`, `RangeDisplay`                                                              | struct, `Display`                                     | lazy formatting without allocation                              |
+| `Output`                                                                                     | `#[non_exhaustive]` enum, `Copy`                      | output kind, given with every call                              |
+| `HtmlStyle`, `EscapeStyle`                                                                   | struct, `Copy`, `const` constructors                  | parameters of the HTML and escaped outputs                      |
+| `Report<'a, T>`, `Change`                                                                    | struct                                                | result plus edits, protected spans and diagnostics              |
+| `ProtectedSpan`, `ProtectedKind`, `TechKind`                                                 | struct, `#[non_exhaustive]` enums                     | what was recognized as protected and why                        |
+| `Diagnostic`, `DiagnosticKind`, `Severity`                                                   | struct, `#[non_exhaustive]` enums                     | messages: unpaired quote, ambiguous hyphen, mixed script, ...   |
+| `QuotePairs`, `SingleQuotes`, `DashStyle`, `PercentSpacing`, `NarrowGlue`                    | `Copy` value types                                    | values of settings                                              |
+| `Script`, `DashData`, `EllipsisForms`, `Abbreviation`, `Bind`, `MonthPosition`, `NumberData` | `Copy` value types, `const` constructors              | parts of `LanguageData` (section 7.1)                           |
+| `Scratch`                                                                                    | struct                                                | reusable working memory for callers that manage it themselves   |
+| `Error`                                                                                      | `#[non_exhaustive]` enum, `thiserror`                 | configuration and parsing errors                                |
+
+Everything else (lexer, classifier, phases, encoders) is `pub(crate)`.
+
+### 2.2 Language
+
+```rust
+/// A language: typographic data plus its tag.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Language { repr: Repr } // Static(&'static LanguageData) | Shared(Arc<owned data>);
+                                   // equality compares the data, hash the tag
+
+impl Language {
+    pub const RU_RU: Language;
+    pub const EN_US: Language;
+    /// No language data: only rules that need none are active (section 7.4).
+    pub const COMMON: Language;
+
+    /// Resolves a BCP 47 tag: ASCII case-insensitive, `_` read as `-`. An exact tag matches;
+    /// a bare language subtag matches its registered default region (`ru` -> `ru-RU`,
+    /// `en` -> `en-US`). Anything else is `Error::UnknownLanguage`.
+    pub fn from_tag(tag: &str) -> Result<Language, Error>;
+    /// A language from caller data built at compile time, validated (section 7.6).
+    pub fn from_data(data: &'static LanguageData) -> Result<Language, Error>;
+    /// Canonical tag, for example `"ru-RU"`; `"und"` for `COMMON`.
+    pub fn tag(&self) -> &str;
+    /// Built-in languages in tag order, `COMMON` excluded.
+    pub fn builtin() -> impl Iterator<Item = Language>;
+    /// Whether the language has the data a rule needs. A rule without data is inert.
+    pub fn supports(&self, rule: Rule) -> bool;
+}
+impl core::str::FromStr for Language { type Err = Error; }
+impl core::fmt::Display for Language { /* the tag */ }
+```
+
+The caller chooses between an error and the common rules for an unknown language with one line;
+there is no policy enum:
+
+```rust
+use typolish::{Error, Language};
+
+// An explicit error.
+assert!(matches!(Language::from_tag("de-DE"), Err(Error::UnknownLanguage { .. })));
+// Common rules only.
+let lang = Language::from_tag("de-DE").unwrap_or(Language::COMMON);
+assert_eq!(lang.tag(), "und");
+// A bare subtag resolves to the default region; a different region is not substituted.
+assert_eq!(Language::from_tag("RU")?.tag(), "ru-RU");
+assert!(Language::from_tag("en-GB").is_err());
+# Ok::<(), typolish::Error>(())
+```
+
+A caller can declare its own language as a `const` table in its own crate and use it without any
+rule code (section 7.7):
+
+```rust
+use typolish::{DashStyle, Language, LanguageData};
+
+const EN_GB: LanguageData = LanguageData::EN_US.with_tag("en-GB").with_dash_style(DashStyle::Spaced);
+static EN_GB_DATA: LanguageData = EN_GB;
+let lang = Language::from_data(&EN_GB_DATA)?;
+# Ok::<(), typolish::Error>(())
+```
+
+A language read from a caller's configuration at run time is built with `LanguageBuilder`, which
+owns its lists and normalizes them (section 7.1):
+
+```rust
+use typolish::{Language, LanguageBuilder};
+
+let lang: Language = LanguageBuilder::from_language(&Language::RU_RU, "ru-KZ")
+    .short_words(["а", "в", "и", "к", "о", "с", "у"])
+    .build()?;
+# Ok::<(), typolish::Error>(())
+```
+
+Choices:
+
+- `Result` plus the `COMMON` constant meets "an explicit error or common rules only, as the caller
+  chooses" without a policy type in the API.
+- A region is never substituted: `en-GB` is unknown until its data exists. Substituting `en-US`
+  would change the output silently on the day `en-GB` data ships. A bare `ru` or `en` is unambiguous
+  (the CLDR likely-subtags rule).
+- `Language` is `Clone` but not `Copy`: inside it is either a `&'static LanguageData` (built-in and
+  compile-time languages, usable in `const` and in `Typographer::new`) or an `Arc` of owned data
+  (`LanguageBuilder`). Equality compares the whole data table, so two languages with the same tag
+  and different data are not equal; the hash uses the tag only, which is consistent with that
+  equality.
+- `LanguageData` has private fields and `const fn` setters (section 7.1); it is `Clone`, not `Copy`,
+  so that its representation stays free. New fields can be added in minor releases: a setter is
+  added and existing tables keep the value of the table they started from. Whether language data is
+  public in version 1 is open point 14; this design assumes it is.
+
+Rejected: a string tag in the builder with the error deferred to `build()` (a typo surfaces late);
+`enum Language { RuRu, EnUs }` (a language would be code, and adding one would change a public
+enum).
+
+### 2.3 Rules and rule sets
+
+```rust
+/// A typographic rule. The string id is stable across versions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[non_exhaustive]
+pub enum Rule {
+    QuotesApostrophe, QuotesPairs, QuotesPrimes,
+    DashDialogue, DashDoubleHyphen, DashSpacedHyphen,
+    RangePlaceholders, RangeDigits, RangeContext, RangeTime,
+    EllipsisDots, EllipsisInner,
+    NbspAbbreviations, NbspInitials, NbspDates, NbspUnits, NbspSigns, NbspPhone,
+    NbspShortWords, NbspShortLength, NbspParticles, NbspDash,
+    NumberMinus, NumberTimes, NumberGrouping,
+    SymbolsCopyright, SymbolsArrows, SymbolsMath,
+}
+
+impl Rule {
+    /// Every rule, in execution order (section 4.1).
+    pub const ALL: &'static [Rule];
+    /// Stable id, for example `"nbsp.short-words"`.
+    pub const fn id(self) -> &'static str;
+    /// Looks a rule up by id; also accepts the retired ids of renamed rules.
+    pub fn from_id(id: &str) -> Option<Rule>;
+    /// One English line for logs and reports.
+    pub const fn summary(self) -> &'static str;
+}
+impl core::str::FromStr for Rule { type Err = Error; } // Error::UnknownRule
+impl core::fmt::Display for Rule { /* the id */ }
+
+/// A set of rules. Execution order never depends on how the set was built.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub struct RuleSet { bits: u128 } // private; the representation may grow
+
+impl RuleSet {
+    pub const EMPTY: RuleSet;
+    pub const ALL: RuleSet;
+    pub const PROSE: RuleSet;
+    pub const INTERFACE: RuleSet;
+    pub const fn with(self, rule: Rule) -> RuleSet;
+    pub const fn without(self, rule: Rule) -> RuleSet;
+    pub const fn contains(self, rule: Rule) -> bool;
+    pub const fn union(self, other: RuleSet) -> RuleSet;
+    pub const fn difference(self, other: RuleSet) -> RuleSet;
+    pub const fn len(self) -> usize;
+    pub const fn is_empty(self) -> bool;
+    /// Rules of the set in execution order.
+    pub fn iter(self) -> impl Iterator<Item = Rule>;
+}
+impl FromIterator<Rule> for RuleSet {}
+impl Extend<Rule> for RuleSet {}
+/// `"interface,+number.times,-nbsp.initials"`; see below.
+impl core::str::FromStr for RuleSet { type Err = Error; }
+/// Ids in execution order, comma-separated; `FromStr` reads it back.
+impl core::fmt::Display for RuleSet {}
+```
+
+The rule list with ids, behavior, languages, settings and set membership is section 8.1.
+
+Ids:
+
+- Form `group.name`: lowercase ASCII, words of the name joined by `-`. The language is not part of
+  the id: one rule serves every language, and language data shapes its behavior. A rule without the
+  data it needs is inert for that language and is absent from `Typographer::active_rules()`.
+- An id never changes meaning. A renamed rule keeps its old id as an alias in `from_id`. A removed
+  rule stays as a `#[deprecated]` variant that does nothing until the next breaking release; its id
+  is then reserved forever and `FromStr` answers with an error that names the release that removed
+  it.
+- The string id serves configuration files of callers, reports and test tables. The enum variant
+  gives compile-time checking in code.
+
+`RuleSet::from_str` grammar: comma-separated items, spaces around commas allowed. The first item may
+be a base set name (`prose`, `interface`, `empty`, `all`); without one the base is `empty`. Every
+other item is an id, optionally prefixed by `+` (add) or `-` (remove). The result is
+`(base ∪ added) \ removed`, independent of item order. An id that is both added and removed, an
+unknown id and a base name in a later position are `Error::InvalidRuleSet` or `Error::UnknownRule`.
+`Display` prints plain ids, so `s.to_string().parse() == Ok(s)`.
+
+Why an enum with a bit set: `RuleSet` is 16 bytes, `Copy` and usable in `const` items
+(`RuleSet::INTERFACE.with(Rule::NumberTimes)`); membership is one bit test. Bit positions are an
+internal detail: execution order comes from the order table (section 4.1), and a test checks that
+the table and `Rule::ALL` contain every rule exactly once.
+
+Rejected: string ids as the only key (typos found at run time only); `struct RuleId(&'static str)`
+(callers could make ids that do not exist); user rules through a trait (section 1.5).
+
+### 2.4 Typographer and builder
+
+```rust
+/// An immutable typographer: language, rules and settings fixed at construction.
+#[derive(Clone, Debug)]
+pub struct Typographer { /* private */ }
+
+impl Typographer {
+    /// Language defaults, backtick protection on. Usable in a `static`.
+    pub const fn new(language: Language, rules: RuleSet) -> Typographer;
+    /// Starts a builder; `rules` is the base set.
+    pub fn builder(language: Language, rules: RuleSet) -> TypographerBuilder;
+    pub fn language(&self) -> &Language;
+    /// The rules as configured.
+    pub fn rules(&self) -> RuleSet;
+    /// The configured rules that the language supports.
+    pub fn active_rules(&self) -> RuleSet;
+    // Application methods: sections 2.5 to 2.10.
+}
+
+#[derive(Clone, Debug)]
+#[must_use]
+pub struct TypographerBuilder { /* private */ }
+
+impl TypographerBuilder {
+    pub fn enable(self, rule: Rule) -> Self;
+    pub fn disable(self, rule: Rule) -> Self;
+    // quotes.pairs
+    pub fn quote_pairs(self, pairs: QuotePairs) -> Self;
+    pub fn single_quotes(self, mode: SingleQuotes) -> Self;      // NestedOnly | Everywhere | Never
+    // dash.spaced-hyphen, dash.double-hyphen, nbsp.dash
+    pub fn dash_style(self, style: DashStyle) -> Self;           // Closed | Spaced | SpacedGlued
+    // nbsp.units
+    pub fn percent(self, spacing: PercentSpacing) -> Self;       // AsWritten | Language | Attached | Spaced
+    pub fn add_units<I>(self, units: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
+    pub fn remove_units<I>(self, units: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
+    // nbsp.short-words, nbsp.short-length
+    pub fn add_short_words<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
+    pub fn remove_short_words<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
+    pub fn short_word_length(self, max_chars: u8) -> Self;       // 0 makes nbsp.short-length inert
+    pub fn short_words_any_script(self, yes: bool) -> Self;
+    // nbsp.particles
+    pub fn add_particles<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
+    pub fn remove_particles<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
+    // nbsp.*: where U+202F is used instead of U+00A0
+    pub fn narrow_glue(self, places: NarrowGlue) -> Self;        // NarrowGlue::NONE by default
+    // format_number, number.grouping, number.minus
+    pub fn min_grouping_digits(self, digits: u8) -> Self;
+    pub fn group_separator(self, separator: char) -> Self;
+    pub fn minus_sign(self, minus: char) -> Self;
+    // protection (section 10.1)
+    pub fn protect_backticks(self, on: bool) -> Self;
+    pub fn protect_between(self, open: impl Into<String>, close: impl Into<String>) -> Self;
+    /// Validates everything (section 2.11) and builds the typographer.
+    pub fn build(self) -> Result<Typographer, Error>;
+}
+```
+
+```rust
+use std::sync::LazyLock;
+use typolish::{DashStyle, Language, Rule, RuleSet, Typographer};
+
+// Defaults: a true static with no initialization cost.
+static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+
+// Custom settings: built once.
+static EN_DOCS: LazyLock<Typographer> = LazyLock::new(|| {
+    Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+        .enable(Rule::NumberTimes)
+        .disable(Rule::NbspShortWords)
+        .dash_style(DashStyle::Spaced)
+        .add_units(["req/s", "vCPU"])
+        .protect_between("{{", "}}")
+        .build()
+        .expect("settings are valid")
+});
+
+// Rules from a caller's configuration file.
+let rules: RuleSet = "interface,+symbols.arrows,-nbsp.initials".parse()?;
+let ui = Typographer::builder(Language::RU_RU, rules).build()?;
+# Ok::<(), typolish::Error>(())
+```
+
+Choices and reasons:
+
+- **The rule set is mandatory** in `new` and `builder`. There is no default set: Prose and Interface
+  treat technical text differently, and a silent default would be wrong for half of the callers.
+- **`const fn new`.** A typographer with default settings holds only `&'static` data, empty `Vec`s
+  (`Vec::new()` is `const`) and `None` overrides, so it fits a `static` without `LazyLock`. This is
+  a commitment (section 2.13): the representation of default settings stays computable at compile
+  time. It holds because every derived table (sorted lists) lives in the language data, and the
+  builder stores only additions and removals.
+- **The builder is order-independent.** The active set is `(base ∪ enabled) \ disabled`. A rule that
+  is both enabled and disabled is `Error::RuleConflict`, not "the last call wins", so behavior does
+  not depend on the order of lines in someone else's code. A word both added and removed in the same
+  list is `Error::InvalidSetting`. Errors accumulate and come out of `build()`.
+- **Flat setting methods instead of an options struct.** A new setting is a new method, which breaks
+  nothing; the rustdoc of each method names the rules it affects. Settings do not depend on rule
+  sets: a set only switches rules on and off, and default values come from the language data. Prose
+  and Interface therefore differ only in their rule lists (section 9).
+- **Immutability.** No interior mutability. The working buffer lives outside the object, in a
+  thread-local or in a caller's `Scratch` (section 2.12), so `&Typographer` can be shared freely. A
+  compile-time check asserts `Send + Sync`.
+
+Rejected: `Typographer::default()` (language and rules cannot be guessed); an `Arc` inside (the
+caller chooses `static`, `Arc` or `LazyLock`); a mutable `set_rule()` (breaks immutability).
+
+### 2.5 Input 1: a whole string
+
+```rust
+impl Typographer {
+    /// Typesets plain text. Returns the input borrowed when the output equals it byte for byte.
+    #[must_use]
+    pub fn typeset<'a>(&self, text: &'a str, output: Output) -> Cow<'a, str>;
+    /// The same with working memory supplied by the caller.
+    #[must_use]
+    pub fn typeset_with<'a>(&self, scratch: &mut Scratch, text: &'a str, output: Output) -> Cow<'a, str>;
+    /// Appends the typeset text to `buf`; no allocation when `buf` has room.
+    pub fn typeset_into(&self, text: &str, output: Output, buf: &mut String);
+}
+```
+
+```rust
+use std::borrow::Cow;
+use typolish::{HtmlStyle, Language, Output, RuleSet, Typographer};
+
+static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+
+let s = RU_UI.typeset("Файл \"report.pdf\" не найден - проверьте путь в `--config`.", Output::Unicode);
+assert_eq!(s, "Файл «report.pdf» не\u{a0}найден\u{a0}— проверьте путь в\u{a0}`--config`.");
+
+// Technical text is neither changed nor copied.
+assert!(matches!(RU_UI.typeset("host:8080", Output::Unicode), Cow::Borrowed("host:8080")));
+
+// Already typeset text comes back borrowed (idempotence).
+assert!(matches!(RU_UI.typeset(&s, Output::Unicode), Cow::Borrowed(_)));
+
+// The same text as HTML.
+assert_eq!(RU_UI.typeset("Цена - 5 руб.", Output::Html(HtmlStyle::NAMED)), "Цена&nbsp;&mdash; 5&nbsp;руб.");
+```
+
+Protection in this mode uses delimiters (section 10.1): backticks are on by default, and
+`protect_between` adds pairs. `Cow::Borrowed` is returned exactly when the output equals the input
+byte for byte; with `Output::Html` a string containing `&` or U+00A0 is `Owned` even when no rule
+fired, because encoding changes bytes too.
+
+### 2.6 Input 2: pieces of a template
+
+```rust
+/// One input piece of a message template. `S` is the caller's payload for a slot
+/// (a variable name, an AST node index); the crate never reads it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Piece<'t, S> {
+    /// Text to typeset.
+    Text(&'t str),
+    /// An opaque placeholder whose value is unknown; rules see only its kind.
+    Slot(S, Slot),
+    /// Visible text that is never typeset (a command, a path, code). Acts as one word for its
+    /// neighbours; encoded for the output kind.
+    Protected(&'t str),
+    /// Invisible markup (for example a tag supplied by an HTML splitter). Transparent for rules;
+    /// written as is in HTML output, escaped in escaped output.
+    Markup(&'t str),
+}
+
+/// A placeholder. The field is private so that hints can be added later.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Slot { kind: SlotKind }
+impl Slot {
+    pub const NUMBER: Slot;
+    pub const WORD: Slot;
+    pub const DATE: Slot;
+    pub const OTHER: Slot;
+    pub const fn new(kind: SlotKind) -> Slot;
+    pub const fn kind(self) -> SlotKind;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum SlotKind {
+    /// A number formatted by `format_number` of the same typographer (count, size, port).
+    Number,
+    /// A word or a name.
+    Word,
+    /// A date or a time, in words or digits.
+    Date,
+    /// Anything else: a path, a URL, code, a string of unknown length.
+    Other,
+}
+
+/// A typeset template: n slots and exactly n + 1 texts; `texts()[i]` stands before `slots()[i]`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Template<'t, S> { /* texts: Vec<Cow<'t, str>>, slots: Vec<(S, Slot)>, changed: bool */ }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum TemplatePart<'a, S> { Text(&'a str), Slot(&'a S, Slot) }
+
+impl<'t, S> Template<'t, S> {
+    pub fn texts(&self) -> &[Cow<'t, str>];
+    pub fn slots(&self) -> &[(S, Slot)];
+    pub fn changed(&self) -> bool;
+    /// Parts in order; empty texts are skipped.
+    pub fn iter(&self) -> impl Iterator<Item = TemplatePart<'_, S>>;
+    pub fn into_parts(self) -> (Vec<Cow<'t, str>>, Vec<(S, Slot)>);
+    /// Joins texts with slot values (tests, run-time use without code generation).
+    pub fn fill<'v>(&self, value: impl FnMut(&S) -> Cow<'v, str>) -> String;
+}
+
+impl Typographer {
+    #[must_use]
+    pub fn typeset_template<'t, S>(&self, pieces: impl IntoIterator<Item = Piece<'t, S>>, output: Output)
+        -> Template<'t, S>;
+    #[must_use]
+    pub fn typeset_template_with<'t, S>(&self, scratch: &mut Scratch,
+        pieces: impl IntoIterator<Item = Piece<'t, S>>, output: Output) -> Template<'t, S>;
+}
+```
+
+Example: the Fluent message `Файл "{ $name }" весит { NUMBER($size) } МБ - удалить?` at build time:
+
+```rust
+use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+
+static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+
+let t = RU_UI.typeset_template(
+    [
+        Piece::Text("Файл \""),
+        Piece::Slot("name", Slot::WORD),
+        Piece::Text("\" весит "),
+        Piece::Slot("size", Slot::NUMBER),
+        Piece::Text(" МБ - удалить?"),
+    ],
+    Output::Unicode,
+);
+assert_eq!(t.texts(), ["Файл «", "» весит ", "\u{a0}МБ\u{a0}— удалить?"]);
+assert_eq!(t.slots().iter().map(|(s, _)| *s).collect::<Vec<_>>(), ["name", "size"]);
+
+// A range between two number slots gets an en dash in both rule sets.
+let t = RU_UI.typeset_template(
+    [Piece::Slot("a", Slot::NUMBER), Piece::Text("-"), Piece::Slot("b", Slot::NUMBER), Piece::Text(" дн.")],
+    Output::Unicode,
+);
+assert_eq!(t.texts(), ["", "\u{2013}", "\u{a0}дн."]);
+```
+
+Output contract:
+
+1. Slots come out in input order, each exactly once, with the caller's payload;
+   `texts().len() == slots().len() + 1` always.
+2. Adjacent `Text`, `Protected` and `Markup` pieces merge into one output text. A text that maps to
+   exactly one unchanged input piece is `Cow::Borrowed` with the input lifetime `'t`.
+3. Rules see the whole message as one stream: a slot does not break context (`{n} дн.` is glued
+   although the number and the unit are in different pieces), and a quote opened in one text closes
+   in another (`"{name}"`). Edits land in the texts next to slots; a slot is never part of an edit.
+4. The n + 1 form always has room for markup around a slot: a nowrap group that starts with slot i
+   opens at the end of `texts()[i]`, one that ends with slot j closes at the start of
+   `texts()[j + 1]` (section 11.5).
+
+How a slot takes part in rules. A slot is one opaque, frozen token; for its neighbours it behaves as
+its kind says:
+
+| Context                                         | `Number`                      | `Word`   | `Date`              | `Other`  |
+| ----------------------------------------------- | ----------------------------- | -------- | ------------------- | -------- |
+| quotes around it (`"{x}"`)                      | word                          | word     | word                | word     |
+| apostrophe after it (`{x}'s`)                   | yes                           | yes      | no                  | no       |
+| quote after it as a prime (`{n}"`, Prose)       | yes, if the quote is unpaired | no       | no                  | no       |
+| `range.placeholders` (`{a}-{b}`)                | with another `Number`         | no       | with another `Date` | no       |
+| `nbsp.units` on its left (`{n} МБ`)             | yes                           | no       | no                  | no       |
+| `nbsp.dates` (`{n} мая`, `{d} г.`)              | day or year                   | no       | year                | no       |
+| `number.times` (`{w}x{h}`, Prose)               | yes                           | no       | no                  | no       |
+| glue before it (`в {x}`, `№ {x}`)               | yes                           | yes      | yes                 | no       |
+| glue after it (`{x} же`)                        | yes                           | yes      | yes                 | no       |
+| operand of `dash.spaced-hyphen` (`{x} - слово`) | yes; two numbers: no dash     | yes      | yes                 | yes      |
+| `SlotGlue` diagnostic                           | `{n}МБ`, `{a}{b}`             | `{a}{b}` | `{a}{b}`            | `{a}{b}` |
+
+No glue sticks to an `Other` slot: its value may be long, and a nowrap group around a long path
+breaks the layout.
+
+Choices:
+
+- **Pieces are an enum with a caller payload**, not a trait and not a string with `{name}` markers:
+  a generator already holds a parsed template, `&'t str` pieces are built from its AST without
+  copies, and the payload removes the need for parallel arrays. Parsing placeholder syntax is not a
+  typographer's job.
+- **Output in the canonical n + 1 form**, not one output part per input part: a generator needs
+  exactly `texts[0], slots[0], texts[1], ...`, and the form always has room for nowrap markup.
+  Rejected: a one-to-one output with extra parts inserted for markup (a rare branch every caller
+  must handle); a string with markers (markers can collide with text).
+- **`Protected` and `Markup` exist from the start**, although HTML is not in version 1. The HTML
+  module of stage 6 becomes a splitter: tags become `Markup`, the content of `code`, `pre` and `kbd`
+  becomes `Protected`, text stays `Text`. The core does not change for it.
+
+### 2.7 Input 3: numbers
+
+```rust
+/// A number to format: integers, `f32`/`f64`, or an ASCII decimal string.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Number<'n> { /* i128 | u128 | f64 | decimal digits borrowed from 'n */ }
+
+impl<'n> Number<'n> {
+    /// ASCII decimal: optional sign, digits, optional `.` and digits. Keeps the caller's
+    /// precision ("1.50" keeps two fraction digits).
+    pub fn decimal(text: &'n str) -> Result<Number<'n>, Error>;
+    /// A float rounded to `fraction_digits` (round half to even on the exact binary value, as
+    /// `format!("{:.N}")` in core).
+    pub fn fixed(value: f64, fraction_digits: u8) -> Number<'static>;
+}
+// From<i8 | i16 | i32 | i64 | i128 | isize | u8 | u16 | u32 | u64 | u128 | usize | f32 | f64>
+
+impl Typographer {
+    /// Formats a number by the language: decimal separator, grouping from the configured digit
+    /// count, minus sign. Lazy: implements `Display`, allocates nothing.
+    pub fn format_number<'n>(&self, number: impl Into<Number<'n>>, output: Output) -> NumberDisplay<'_, 'n>;
+    /// Two numbers with the language's range pattern (`8000–8100`): the explicit way to get a
+    /// dash between two values.
+    pub fn format_range<'n>(&self, from: impl Into<Number<'n>>, to: impl Into<Number<'n>>, output: Output)
+        -> RangeDisplay<'_, 'n>;
+}
+```
+
+```rust
+use typolish::{HtmlStyle, Language, Number, Output, RuleSet, Typographer};
+
+static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::PROSE);
+
+assert_eq!(RU.format_number(-1234567.5, Output::Unicode).to_string(), "\u{2212}1\u{a0}234\u{a0}567,5");
+assert_eq!(RU.format_number(1234, Output::Unicode).to_string(), "1234");    // ru: from 5 digits
+assert_eq!(RU.format_number(12345, Output::Unicode).to_string(), "12\u{a0}345");
+assert_eq!(EN.format_number(1234, Output::Unicode).to_string(), "1,234");   // en: from 4 digits
+assert_eq!(RU.format_number(Number::decimal("1.50")?, Output::Unicode).to_string(), "1,50");
+assert_eq!(RU.format_number(f64::NAN, Output::Unicode).to_string(), "не\u{a0}число");
+assert_eq!(RU.format_range(8000, 8100, Output::Unicode).to_string(), "8000–8100");
+assert_eq!(RU.format_number(-12345, Output::Html(HtmlStyle::NAMED)).to_string(), "&minus;12&nbsp;345");
+assert_eq!(
+    RU.format_number(-12345, Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"))).to_string(),
+    "<span class=\"nowrap\">&minus;12 345</span>",
+);
+
+// No allocation: straight into a response buffer.
+use core::fmt::Write;
+let mut buf = String::with_capacity(64);
+write!(buf, "{}", RU.format_number(42u32, Output::Unicode)).unwrap();
+# Ok::<(), typolish::Error>(())
+```
+
+Formatting rules:
+
+- Integers go through `unsigned_abs()`, so `i128::MIN` does not overflow. `f64` uses the shortest
+  representation of core (`{}`), which is deterministic on every platform and has no exponent;
+  `Number::fixed` uses `{:.N}`. `NaN` and infinities are written with the CLDR symbols of the
+  language (`не⍽число`, `NaN`, `∞`); there is no error. Negative zero is written as `0`.
+- Grouping: the integer part is split by three digits when it has at least `3 + min_grouping_digits`
+  digits (the CLDR meaning of the parameter). Defaults: ru 2 (from 5 digits), en 1 (from 4 digits);
+  open point 4. The fraction is not grouped.
+- Minus: U+2212 for both languages by default, as the task requires; a deviation from CLDR 49, where
+  the minus sign is U+002D (section 7.5). Setting `minus_sign`.
+- Range: the language's CLDR range pattern, `{0}–{1}` (U+2013, no spaces) for both languages, for
+  every pair of values. The group separator inside a number is glue, so `{n}⍽МБ` and `12⍽345` never
+  break apart.
+- No allocation: for `f64` the `Display` makes two passes (a counting `fmt::Write` to learn the
+  length of the integer part, then the real write), because `f64::MAX` has more than 300 digits and
+  no stack buffer fits it.
+
+A template and its value stay consistent because one `Typographer` (one `LanguageData`, one set of
+number settings) typesets the template at build time and formats the numbers at run time; the range
+dash of `{a}-{b}` and of `format_range` comes from the same data field, and both use the same output
+kind.
+
+Why `Display` and not `String`: the number is built anew anyway, so `Cow` gains nothing, while
+`Display` writes into an existing buffer and `to_string()` remains for callers that want a string.
+Rejected: `TryFrom<f64>` with an error on `NaN` (CLDR has a symbol for it); percent, currency and
+unit formatting of values (the job of i18n libraries).
+
+### 2.8 Output kinds
+
+```rust
+/// How the result is written. Rules never depend on it (section 11).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Output {
+    /// Characters as they are (UTF-8). Nothing is escaped.
+    Unicode,
+    /// HTML text: `& < > " '` escaped, typographic characters as entities, no-break groups as
+    /// entities or as nowrap elements.
+    Html(HtmlStyle),
+    /// The body of a string literal of a given syntax, ready to paste between its quotes.
+    Escaped(EscapeStyle),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct HtmlStyle { /* entities: Named | Decimal | Hex | Characters; nbsp: Entity | NowrapClass | NowrapStyle */ }
+impl HtmlStyle {
+    pub const NAMED: HtmlStyle;      // &nbsp; &mdash;, numeric where HTML has no name
+    pub const DECIMAL: HtmlStyle;    // &#160; &#8212;
+    pub const HEX: HtmlStyle;        // &#xA0; &#x2014;
+    pub const CHARACTERS: HtmlStyle; // typographic characters as characters; only markup escaped
+    /// Wraps each no-break group in `<span class="{class}">`; ordinary spaces inside.
+    pub const fn nowrap_class(self, class: &'static str) -> HtmlStyle;
+    /// The same with `<span style="white-space:nowrap">`.
+    pub const fn nowrap_style(self) -> HtmlStyle;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct EscapeStyle { /* syntax: Js | JsHex | JsCodePoint | Json | Rust | Css; scope: Typographic | NonAscii */ }
+impl EscapeStyle {
+    pub const JS: EscapeStyle;            // \u00A0
+    pub const JS_HEX: EscapeStyle;        // \xA0 up to U+00FF, \u2014 above
+    pub const JS_CODE_POINT: EscapeStyle; // \u{A0} (ES2015)
+    pub const JSON: EscapeStyle;          // \u00a0
+    pub const RUST: EscapeStyle;          // \u{a0}
+    pub const CSS: EscapeStyle;           // \a0 followed by a space
+    /// Escape every non-ASCII character, not only the typographic set.
+    pub const fn non_ascii(self) -> EscapeStyle;
+}
+```
+
+```rust
+use typolish::{EscapeStyle, HtmlStyle, Language, Output, RuleSet, Typographer};
+static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+let src = "Цена - 5 руб.";
+
+assert_eq!(RU.typeset(src, Output::Unicode), "Цена\u{a0}— 5\u{a0}руб.");
+assert_eq!(RU.typeset(src, Output::Html(HtmlStyle::NAMED)), "Цена&nbsp;&mdash; 5&nbsp;руб.");
+assert_eq!(RU.typeset(src, Output::Html(HtmlStyle::HEX)), "Цена&#xA0;&#x2014; 5&#xA0;руб.");
+assert_eq!(
+    RU.typeset(src, Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"))),
+    "<span class=\"nowrap\">Цена &mdash;</span> <span class=\"nowrap\">5 руб.</span>",
+);
+assert_eq!(RU.typeset(src, Output::Escaped(EscapeStyle::JS)), "Цена\\u00A0\\u2014 5\\u00A0руб.");
+assert_eq!(RU.typeset(src, Output::Escaped(EscapeStyle::JS_HEX)), "Цена\\xA0\\u2014 5\\xA0руб.");
+assert_eq!(RU.typeset(src, Output::Escaped(EscapeStyle::RUST)), "Цена\\u{a0}\\u{2014} 5\\u{a0}руб.");
+```
+
+Choices:
+
+- **The output kind is given with every call**, as the task requires. There is no default in the
+  builder, so one typographer serves an HTML page and a JSON response alike.
+- **Output is a separate encoding pass over the Unicode result.** Rules work in Unicode and never
+  see the output kind; explanation, reverse transformation and tests are the same for every output.
+- **Every output is safe where it is meant to go**: HTML text and attribute values, the inside of a
+  JS, JSON or Rust string literal. There is no "entities without escaping markup" mode: it would
+  produce invalid or dangerous HTML. Markup is passed as `Piece::Markup`.
+- `class` is `&'static str` so that `HtmlStyle` stays `Copy` and usable in `const`; it is escaped as
+  an attribute value when written.
+
+Rejected: the output kind as a type parameter (`typeset::<Html>`; HTML and escaping have parameters,
+and a `Copy` enum is easier to pass from configuration); `Output<'a>` with a run-time class string
+(a lifetime on a frequently passed type for a rare case); separate `typeset_html` and `typeset_js`
+methods (every new output would multiply methods by inputs).
+
+### 2.9 Report, protected spans, lint
+
+```rust
+impl Typographer {
+    /// The same result as `typeset`, plus every edit, every protected span and every diagnostic.
+    pub fn report<'a>(&self, text: &'a str, output: Output) -> Report<'a>;
+    pub fn report_template<'t, S>(&self, pieces: impl IntoIterator<Item = Piece<'t, S>>, output: Output)
+        -> Report<'t, Template<'t, S>>;
+    /// Source check: diagnostics only, no output is built (section 12.3).
+    pub fn lint(&self, text: &str) -> Vec<Diagnostic>;
+    pub fn lint_template<'t, S>(&self, pieces: impl IntoIterator<Item = Piece<'t, S>>) -> Vec<Diagnostic>;
+}
+
+#[derive(Clone, Debug)]
+pub struct Report<'a, T = Cow<'a, str>> { /* result, changes, protected, diagnostics, inputs */ }
+impl<'a, T> Report<'a, T> {
+    pub fn result(&self) -> &T;
+    pub fn into_result(self) -> T;
+    /// Edits ordered by position, then by rule order.
+    pub fn changes(&self) -> &[Change];
+    /// Spans that no rule may touch, with the reason (section 12.5).
+    pub fn protected(&self) -> &[ProtectedSpan];
+    pub fn diagnostics(&self) -> &[Diagnostic];
+    /// The input text an edit replaced.
+    pub fn original(&self, change: &Change) -> &'a str;
+}
+impl<T> core::fmt::Display for Report<'_, T> { /* one line per edit, then protected spans */ }
+
+/// One atomic edit in terms of the input and the Unicode result.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Change { /* rule, piece, range, replacement */ }
+impl Change {
+    pub fn rule(&self) -> Rule;
+    /// Index of the input piece (0 for string input).
+    pub fn piece(&self) -> usize;
+    /// Byte range in that piece; empty for an insertion.
+    pub fn range(&self) -> core::ops::Range<usize>;
+    /// The replacement in Unicode, before output encoding; empty for a deletion.
+    pub fn replacement(&self) -> &str;
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProtectedSpan { /* piece, range, kind */ }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ProtectedKind { Delimited, ProtectedPiece, Slot, Technical(TechKind) }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum TechKind {
+    Url, Email, Flag, Path, TimeRange, Colon, Operator, Identifier, Angle, Uuid, Hex, IsoDate,
+    Version, Dotted, List, CompoundHyphens, Unclassified,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Diagnostic { /* kind, severity, rule, piece, range */ }
+impl Diagnostic {
+    pub fn kind(&self) -> &DiagnosticKind;
+    pub fn severity(&self) -> Severity;          // Info | Warning
+    pub fn rule(&self) -> Option<Rule>;          // the rule that raised it, if any
+    pub fn piece(&self) -> usize;
+    pub fn range(&self) -> core::ops::Range<usize>;
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DiagnosticKind {
+    UnmatchedQuote, CrossingQuotes, AmbiguousQuote, UnclosedDelimiter, AmbiguousHyphen,
+    MixedScript, SlotGlue, NowrapFallback,
+    #[non_exhaustive] TypographicChar { found: char },
+}
+```
+
+```rust
+use typolish::{DiagnosticKind, Language, Output, RuleSet, Typographer};
+static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+
+let r = RU.report("Цена - 5 руб.", Output::Unicode);
+assert_eq!(r.result(), "Цена\u{a0}— 5\u{a0}руб.");
+assert_eq!(r.to_string(), "\
+nbsp.dash           0:8..9    \" \" -> U+00A0
+dash.spaced-hyphen  0:9..10   \"-\" -> \"—\"
+nbsp.units          0:12..13  \" \" -> U+00A0
+");
+
+let r = RU.report("Он сказал \"привет.", Output::Unicode);
+assert_eq!(r.result(), "Он сказал \"привет.");          // not guessed
+assert_eq!(r.diagnostics()[0].kind(), &DiagnosticKind::UnmatchedQuote);
+assert_eq!(r.diagnostics()[0].range(), 18..19);
+```
+
+Choices:
+
+- **Edits are atomic and relative to the input.** Each replaces one contiguous byte range of one
+  piece. A report of differences against the reference implementation is printed from them without a
+  second run.
+- **`report` and `typeset` are one engine**; `report` turns on a recorder that the plain path
+  compiles out (section 3.11). A property test checks `report(x).result() == typeset(x)` and that
+  applying `changes()` to the input yields the result.
+- **Diagnostics come only from `report` and `lint`.** `typeset` has nowhere to put them on the hot
+  path, and the result does not depend on them. A generator calls `report_template` and turns
+  warnings into build warnings.
+
+Rejected: `typeset() -> Typeset { text, warnings }` (every caller would unpack it); edits as
+before/after strings per rule (ambiguous when rules overlap); a callback observer (a type parameter
+in every signature).
+
+### 2.10 Reverse transformation
+
+```rust
+impl Typographer {
+    /// Maps typeset Unicode text back to the canonical plain form, undoing exactly the enabled
+    /// rules (section 12.1). Protected spans, slots and markup are left alone.
+    pub fn to_plain<'a>(&self, text: &'a str) -> Cow<'a, str>;
+    pub fn to_plain_template<'t, S>(&self, pieces: impl IntoIterator<Item = Piece<'t, S>>) -> Template<'t, S>;
+}
+```
+
+```rust
+# use typolish::{Language, RuleSet, Typographer};
+# static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+assert_eq!(
+    RU.to_plain("Файл «report.pdf» не\u{a0}найден\u{a0}— проверьте"),
+    "Файл \"report.pdf\" не найден - проверьте",
+);
+```
+
+It is a method, not a free function, because it needs the protection settings, the dash style and
+the quote pairs of the language, and the set of enabled rules.
+
+### 2.11 Errors
+
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
+pub enum Error {
+    #[error("unknown language tag `{tag}`")]
+    #[non_exhaustive] UnknownLanguage { tag: String },
+    #[error("invalid language data for `{tag}`: {reason}")]
+    #[non_exhaustive] InvalidLanguageData { tag: String, reason: &'static str },
+    #[error("unknown rule id `{id}`")]
+    #[non_exhaustive] UnknownRule { id: String },
+    #[error("invalid rule set `{input}`: {reason}")]
+    #[non_exhaustive] InvalidRuleSet { input: String, reason: &'static str },
+    #[error("rule `{id}` is both enabled and disabled")]
+    #[non_exhaustive] RuleConflict { id: &'static str },
+    #[error("invalid number `{input}`: {reason}")]
+    #[non_exhaustive] InvalidNumber { input: String, reason: &'static str },
+    #[error("invalid setting `{setting}`: {reason}")]
+    #[non_exhaustive] InvalidSetting { setting: &'static str, reason: String },
+}
+```
+
+| Method                                          | Error                            | When                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Language::from_tag`                            | `UnknownLanguage`                | the tag is malformed or has no data                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `Language::from_data`, `LanguageBuilder::build` | `InvalidLanguageData`            | a check of section 7.6 fails                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Rule::from_str`                                | `UnknownRule`                    | no such id                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `RuleSet::from_str`                             | `UnknownRule`, `InvalidRuleSet`  | unknown id; an id both added and removed; a base name after the first item; an empty item                                                                                                                                                                                                                                                                                                                                                                              |
+| `Number::decimal`                               | `InvalidNumber`                  | not an ASCII decimal                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `TypographerBuilder::build`                     | `RuleConflict`, `InvalidSetting` | a rule both enabled and disabled; an empty, whitespace or letter-and-digit delimiter, a delimiter equal to or a prefix of another; `"` or `'` or a space or a letter in `QuotePairs` (output would become input again, breaking idempotence); a list word that is empty, contains a space, or is both added and removed; a unit that starts with a digit; a group separator or minus that is a digit or a letter; `min_grouping_digits` above 4 (0 turns grouping off) |
+
+Choices:
+
+- **One error enum for the crate.** Errors arise only in configuration and parsing; one type suits
+  `?`. Variants are structs and `#[non_exhaustive]`, so fields can be added.
+- **Application never fails and never panics.** `typeset*`, `format_*`, `report*`, `to_plain*` and
+  `lint*` return no `Result`. What cannot be resolved stays as it is and, where useful, produces a
+  diagnostic. Library code has no `unwrap`, `expect`, `panic!` or panicking indexing (clippy lints,
+  section 14.5). If an internal invariant is violated anyway (a bug), the engine returns the input
+  unchanged for that window rather than panicking; a test with arbitrary strings, including lone
+  combining marks, emoji sequences and control characters, guards this.
+
+### 2.12 Allocation, Cow and scratch memory
+
+| Call                            | Allocations                                                                                                |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `typeset`, output equals input  | 0 after the first call on a thread (`Cow::Borrowed`; with `Html`/`Escaped` only if nothing needs encoding) |
+| `typeset`, output differs       | 1: the output string, capacity `len + len / 8`; a second only if it grows past that                        |
+| `typeset_with`                  | as `typeset`, with the caller's buffer instead of the thread-local one                                     |
+| `typeset_into`                  | 0 when `buf` has room                                                                                      |
+| `typeset_template`              | 2 (texts and slots vectors) plus one per changed text                                                      |
+| `format_number`, `format_range` | 0 (`Display`)                                                                                              |
+| `report*`, `lint*`              | vectors of edits, spans and diagnostics (the debugging path)                                               |
+| building                        | only in `build()`; none in `Typographer::new`                                                              |
+
+The working buffers (tokens of the current window, two token vectors for phases, the quote stack)
+live in a `Scratch`. `typeset` uses one held in a `thread_local!` (`RefCell<Scratch>` with `const`
+initialization) and reused, so after the first call on a thread the hot path does not allocate. If
+its capacity grew past 64 KiB on a large input, it shrinks back after the call. Re-entry is
+impossible (there are no callbacks); should `try_borrow_mut` fail anyway, the call works with a
+local buffer, without panicking. `typeset_with` takes a caller-held `Scratch` (one per worker), for
+callers that do not want thread-local state, for example executors that move tasks between threads
+or a future `no_std` build. A prefilter returns `Cow::Borrowed` without touching the buffers when
+the input contains no byte that any active rule reacts to (section 3.2). A test with a counting
+global allocator checks this table (section 13.8).
+
+Rejected: a new token vector on every call (one to three allocations per string, unchanged ones
+included); streaming without a buffer (quote pairing defers decisions to the end of a paragraph).
+
+### 2.13 SemVer commitments
+
+- Every public enum is `#[non_exhaustive]`; so are variants with fields. Structs with invariants
+  have private fields and `const` constructors.
+- Commitments that cannot be lifted without a breaking release: `Typographer::new` is `const`;
+  `Typographer: Send + Sync + Clone`; `Output`, `RuleSet`, `Rule`, `Slot`, `HtmlStyle`,
+  `EscapeStyle` are `Copy`; `Piece<'t, S>` is `Copy` when `S` is; `Language` and `LanguageData` are
+  not `Copy` (deliberately); `LanguageData` setters are `const fn`; rule ids are permanent.
+- Not part of the contract: the order of `Rule::ALL` (it is the execution order, and a new rule may
+  go into the middle); the representation of `RuleSet`; the contents of language lists; the text of
+  `summary()` and of `Display` implementations.
+- The policy for changes of output is section 15.1.
+- `cargo-semver-checks` is not installed on the development machine. The public surface is fixed by
+  the doctests; comparison against the previous release is part of stage 5 preparation.
+
+### 2.14 Build-time use with Fluent
+
+The crate has no Fluent dependency; the generator maps Fluent syntax to pieces itself:
+
+| Fluent                            | Piece                                                                                         |
+| --------------------------------- | --------------------------------------------------------------------------------------------- |
+| `TextElement`                     | `Piece::Text`                                                                                 |
+| `{ "…" }` (StringLiteral)         | `Piece::Text` with the unescaped value (`{ "\u00A0" }` gives a glue that is already in place) |
+| `{ 42 }` (NumberLiteral)          | `Piece::Text("42")`: a literal takes part in rules                                            |
+| `{ NUMBER($n) }`                  | `Piece::Slot(_, Slot::NUMBER)`                                                                |
+| `{ DATETIME($d) }`                | `Piece::Slot(_, Slot::DATE)`                                                                  |
+| `{ -brand }`, `{ other-message }` | `Piece::Slot(_, Slot::WORD)`                                                                  |
+| `{ $var }`                        | the kind from the generator's schema; `Slot::OTHER` when unknown                              |
+| `{ $n -> [one] … *[other] … }`    | one `Slot(_, Slot::WORD)` in the outer template; every variant is typeset as its own template |
+| attribute `.title`                | its own template                                                                              |
+
+Select variants are typeset separately. A quote opened outside a select and closed inside a variant
+produces `UnmatchedQuote` in both places, and the author rewrites the message. Rejected: typesetting
+every combination of variants with the outer text (exponential, and the result would have to be cut
+back apart); passing "boundary context" into a variant (API weight for a rare case).
+
+A generator (in `build.rs` or a separate tool) turns warnings into `cargo::warning` lines and writes
+texts as Rust literals:
+
+```rust
+use typolish::{EscapeStyle, Language, Output, Piece, RuleSet, Severity, TemplatePart, Typographer};
+
+pub fn typographer(tag: &str) -> Result<Typographer, typolish::Error> {
+    Typographer::builder(Language::from_tag(tag)?, RuleSet::INTERFACE)
+        .add_short_words(["через"])
+        .add_units(["ед."])
+        .build()
+}
+
+fn emit(id: &str, pieces: Vec<Piece<'_, usize>>, t: &Typographer) -> String {
+    let r = t.report_template(pieces, Output::Escaped(EscapeStyle::RUST));
+    for d in r.diagnostics() {
+        if d.severity() >= Severity::Warning {
+            println!("cargo::warning={id}: {d}");
+        }
+    }
+    let mut code = String::from("|args: &[&str]| { let mut s = String::new(); ");
+    for part in r.result().iter() {
+        match part {
+            TemplatePart::Text(t) => code.push_str(&format!("s.push_str(\"{t}\"); ")),
+            TemplatePart::Slot(i, _) => code.push_str(&format!("s.push_str(args[{i}]); ")),
+            _ => {}
+        }
+    }
+    code.push_str("s }");
+    code
+}
+```
+
+`EscapeStyle::RUST` makes each text the body of a Rust string literal, so the generator pastes it
+between quotes without escaping of its own. At run time the application formats `Number` arguments
+with `format_number` of the same typographer (the same `typographer(tag)` function in a shared
+crate), so template and value fit together. A generator of a JS bundle uses `EscapeStyle::JSON` or
+`EscapeStyle::JS` the same way.
+
+### 2.15 Per-request use
+
+```rust
+use std::borrow::Cow;
+use typolish::{HtmlStyle, Language, Output, RuleSet, Typographer};
+
+static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::PROSE);
+
+fn typographer(tag: &str) -> &'static Typographer {
+    if tag.starts_with("ru") { &RU } else { &EN }
+}
+
+fn render_comment<'a>(tag: &str, body: &'a str) -> Cow<'a, str> {
+    typographer(tag).typeset(body, Output::Html(HtmlStyle::NAMED))
+}
+```
+
+The typographers are true statics; each call costs one linear pass and allocates only when the text
+changes or needs encoding.

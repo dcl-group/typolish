@@ -1,0 +1,69 @@
+# typolish design: Rule sets Prose and Interface
+
+Part of the [typolish design](./README.md). Section numbers are those of the whole design.
+
+## 9. Rule sets Prose and Interface
+
+### 9.1 Purpose
+
+- **Prose** (`RuleSet::PROSE`): running text written for reading: articles, letters, reports, books.
+  Every rule except `number.grouping`. Technical fragments are protected in Prose too (classifier,
+  section 3.6); what Prose adds over Interface are rules whose patterns also occur in commands and
+  code, accepted because prose rarely contains unprotected commands.
+- **Interface** (`RuleSet::INTERFACE`): UI strings, error messages and technical text where
+  commands, paths, addresses and versions stand next to words. Only rules that carry meaning and
+  cannot alter a technical token standing as its own fragment: quotes, apostrophes, the spaced dash
+  between words, the ellipsis at a word end, ranges between declared values, and no-break spaces
+  that only glue an existing space or insert one inside a known abbreviation or after `№`.
+
+The two sets differ only in their rule lists; settings and language data are the same for both
+(section 2.4).
+
+### 9.2 Composition
+
+`PROSE = ALL − {number.grouping}` (27 rules).
+
+`INTERFACE = PROSE − {symbols.copyright, symbols.arrows, symbols.math, ellipsis.inner, dash.dialogue, dash.double-hyphen, range.digits, range.context, range.time, number.minus, number.times, quotes.primes, nbsp.phone, nbsp.short-length}`
+(13 rules): `ellipsis.dots`, `dash.spaced-hyphen`, `range.placeholders`, `quotes.apostrophe`,
+`quotes.pairs`, `nbsp.abbreviations`, `nbsp.initials`, `nbsp.dates`, `nbsp.units`, `nbsp.signs`,
+`nbsp.short-words`, `nbsp.particles`, `nbsp.dash`.
+
+`number.grouping` is in neither set and is enabled only explicitly: grouping digits in text changes
+values that may be identifiers (port `65535` → `65⍽535`).
+
+The sets are `const RuleSet` values in `src/rule.rs`. The rustdoc of each lists its rules, and a
+test compares the rustdoc, the constants and the table of section 8.1.
+
+### 9.3 What Interface leaves out and why
+
+| Rule                 | What it would damage in technical text                                                                                           |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `symbols.copyright`  | `(c)` in code and list items; the task turns symbols off in Interface                                                            |
+| `symbols.arrows`     | `->` in code and commands                                                                                                        |
+| `symbols.math`       | `>=`, `!=`, `+-` in code                                                                                                         |
+| `ellipsis.inner`     | `...args`, `a...b` in code                                                                                                       |
+| `dash.dialogue`      | `- item` list items at a line start                                                                                              |
+| `dash.double-hyphen` | the lone `--` of commands (`git checkout -- file`), a mandatory negative case                                                    |
+| `range.digits`       | port ranges `8000-8100` (mandatory negative case), numbers like `12-15`                                                          |
+| `range.context`      | literal pairs of numbers before a unit (`ports 8000-8100 MB`); in Interface ranges come only from declared values (section 10.6) |
+| `range.time`         | time ranges in logs and schedules written by programs                                                                            |
+| `number.minus`       | `head -1`, `ls -1`                                                                                                               |
+| `number.times`       | `2x`, dimensions inside identifiers; the task makes the sign a setting                                                           |
+| `quotes.primes`      | `'1'`, `"2"` as arguments; an inch mark adds nothing to a UI string                                                              |
+| `nbsp.phone`         | sequences of numbers in technical text (`+1 300 200 100 50`); a heuristic                                                        |
+| `nbsp.short-length`  | two-letter commands and names                                                                                                    |
+
+Kept in Interface although one could argue: `nbsp.short-words`, `nbsp.particles`, `nbsp.initials`,
+`nbsp.dates` only glue spaces and never change a token, and for Russian UI text they visibly improve
+line breaking (`в⍽Москве`); `nbsp.abbreviations` and `nbsp.signs` insert a glue only inside a listed
+abbreviation and after `№`, `§`, `¶`; `quotes.pairs` is required by the task's own example
+(`"{name}"`); `ellipsis.dots` turns `Загрузка...` into `Загрузка…`; `dash.spaced-hyphen` needs a
+lone `-` with spaces and operands on both sides and refuses numbers, single letters and foreign
+words.
+
+### 9.4 Custom sets
+
+A set is built in code (`RuleSet::INTERFACE.with(Rule::NumberTimes)`, usable in `const`), from a
+string (`"interface,+number.times,-nbsp.initials".parse()`), or through `TypographerBuilder::enable`
+and `disable`. The execution order never changes (section 4.1). Rule ids are permanent; changes to
+the composition of Prose and Interface follow the output stability policy of section 15.1.
