@@ -123,6 +123,7 @@ syntaxes). Ready when:
 
 - all rule tables pass, the set-level tables of stage 2 now in the full sets, and every row of
   section 10.5 passes as that section states for the full Interface;
+- the interaction strings of section 10.7 pass in both sets;
 - the slot participation table of section 2.6 passes row by row;
 - the data test matches the CLDR 49 extract, and the built-in tables pass validation;
 - the output tables, the Cow property and the decoder properties pass for every output kind, nowrap

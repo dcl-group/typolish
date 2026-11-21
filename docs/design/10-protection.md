@@ -9,9 +9,11 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 - **String input, backticks** (on by default; `protect_backticks(false)` turns them off). A run of N
   backticks opens a protected span, and the next run of exactly N backticks closes it, as code spans
   in CommonMark: single, double (which may contain a single backtick) and longer runs. A run of
-  three or more backticks at the start of a line (after optional indentation) opens a **fenced
-  block**, closed by a run of the same length at the start of a later line; a fenced block may
-  contain blank lines.
+  three or more backticks at the start of a line, after optional indentation of spaces and tabs,
+  opens a **fenced block**, closed by a run of exactly the same length at the start of a later line,
+  also after optional indentation (CommonMark also closes with a longer run and limits indentation
+  to three spaces; typolish does neither). The whole text from the opening run to the closing run,
+  the info string (` ```rust `) included, is protected; a fenced block may contain blank lines.
 - **Own pairs**: `protect_between("{{", "}}")`, `protect_between("[[", "]]")`. Opening and closing
   delimiters may be equal.
 - **Scope.** Every span other than a fenced block, own pairs included, opens and closes within one
@@ -162,7 +164,27 @@ expectation given: `rm -rf --no-preserve-root /`, `git commit -m msg --amend`,
 `12:30:45`, `21.11.2026`, `nats-server-2.10`, `my_var-name`, `CamelCase-Mixed_id`, `pre-commit`,
 `map<k,v>`, `C#`, `AT&T`, `50%-ный`, `key="value"`, `f(c)`, `f(r)`, `S(r) = πr²`, `x86`, `2x`,
 `0x10`, `1/2/2026`, `a <-> b` (Prose: `a ↔ b`), `-->`, `<-->`, `>>=`, `x == y`,
-`diff -u - file.txt`, `tar -cf - -C dir`, `npm test -- --watch`, `Use - --force`.
+`diff -u - file.txt`, `tar -cf - -C dir`, `npm test -- --watch`, `Use - --force`, `@user`, `@here`.
+
+Interaction strings. These forms come from the patterns of section 8 and are checked by exact output
+in both sets, ru and en unless a language is given (glue from other rules is part of the
+expectation):
+
+| Input                                 | Interface                    | Prose                        |
+| ------------------------------------- | ---------------------------- | ---------------------------- |
+| `+7 495 123-4567`                     | unchanged                    | `+7⍽495⍽123–4567`            |
+| `123-4567`                            | unchanged                    | `123–4567`                   |
+| `+1 300 200 100 50`                   | unchanged                    | `+1⍽300⍽200⍽100⍽50`          |
+| `2010-11 гг.` (ru)                    | `2010-11⍽гг.`                | `2010–11⍽гг.`                |
+| `2026-11`                             | unchanged                    | unchanged                    |
+| `2026-11 гг.` (ru)                    | `2026-11⍽гг.`                | `2026-11⍽гг.`                |
+| `21.11.2026 г. Затем` (ru)            | `21.11.2026⍽г. Затем`        | `21.11.2026⍽г. Затем`        |
+| `5 - x`, `x - 5`                      | unchanged, `AmbiguousHyphen` | unchanged, `AmbiguousHyphen` |
+| `-- file` at a line start             | unchanged                    | ru `—⍽file`; en unchanged    |
+| `Подождите...\nДальше` (ru)           | `Подождите…\nДальше`         | `Подождите…\nДальше`         |
+| `... слово` (ru)                      | `… слово`                    | `… слово`                    |
+| `word  -  word`, `word\t-\tword` (en) | unchanged                    | unchanged                    |
+| `т.  е.`, `№\t5` (ru)                 | unchanged                    | unchanged                    |
 
 ### 10.8 Known limits
 
@@ -182,6 +204,11 @@ expectation given: `rm -rf --no-preserve-root /`, `git commit -m msg --amend`,
   `number.minus` turns `tail -5` into `tail −5`; `range.digits` turns a telephone fragment
   `123-4567` into a range. Prose assumes commands are protected; Interface has none of these rules.
 - `ellipsis.inner` turns `...args` into `…args` in Prose.
+- A mention such as `@user` is frozen whole as an `Email` (check 2): rules never edit inside it,
+  while spaces and dashes next to it are typeset as next to any technical fragment.
 - Swiss grouping `1'000'000` and digit separators `0b1'0000` are frozen (section 3.6) and keep `'`.
 - Frozen fragments are left alone even where a rule would be welcome: `50%-ный`, `C#`, `AT&T`
   (sections 3.6, 4.3). This errs on the safe side by design.
+- A quote glued to a punctuation-joined word (`сказал:"привет"`, `сказал,"привет"`) belongs to a
+  frozen fragment (`Colon`, `List`) and stays straight, without a diagnostic. With the space
+  (`сказал: "привет"`) the quotes are placed.

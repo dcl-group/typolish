@@ -298,6 +298,7 @@ enabled.
 | ru         | `Угол 30° 15' 20" и точка.` (Prose)  | `Угол 30° 15′ 20″ и точка.`          |                                                               |
 | ru         | `Он сказал «привет „мир“»`           | unchanged (`Cow::Borrowed`)          | already typeset                                               |
 | ru         | `Задайте key="value" в файле.`       | unchanged                            | quotes belong to a frozen fragment                            |
+| ru         | `Он сказал:"привет" и ушёл.`         | unchanged                            | frozen fragment (section 10.8)                                |
 | ru         | `Задайте key="" и нажмите "OK".`     | `Задайте key="" и нажмите «OK».`     | assignment: frozen                                            |
 | ru         | `a""b`                               | unchanged, no diagnostic             | frozen core (section 3.6)                                     |
 

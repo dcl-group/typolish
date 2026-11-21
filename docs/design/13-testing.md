@@ -37,7 +37,8 @@ with the right rule in `report`. Specific rows and further tables:
   `“Say "hi" at 5”` → `“Say ‘hi’ at 5”`; ru `Цена 27»` → unchanged, `UnmatchedQuote` (info); ru
   `Папка "/etc/" пуста` → `Папка «/etc/» пуста`; en `Run "x->" now` → `Run “x->” now`; ru
   `Адрес "::1"` → `Адрес «::1»`; en `She loves 'the dogs'` → unchanged, and with `Never` →
-  `She loves 'the dogs’`; en `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info).
+  `She loves 'the dogs’`; en `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info); ru
+  `Он сказал:"привет" и ушёл.` → unchanged, no diagnostic (frozen fragment, section 10.8).
 - `tests/rules_dash.rs`: ru `Ждите - ...` with `dash.spaced-hyphen` alone → unchanged, no
   `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` → unchanged,
   `Cow::Borrowed`; ru `Москва – столица` → `Москва⍽– столица` (en dash kept, glue from `nbsp.dash`);
@@ -108,7 +109,11 @@ with the right rule in `report`. Specific rows and further tables:
   English, with its expected glue; row 25, checked in English with short Cyrillic words); in Prose
   the expectation is the last column of section 10.5. The comment of each test names its mechanisms,
   and the test also checks that `report` lists the expected `TechKind` for frozen fragments;
-- the stress strings of section 10.7;
+- the stress strings of section 10.7; the interaction strings of section 10.7 are compared by exact
+  output in both sets, written by hand where the form is not in the scouting corpus; `@user` and
+  `@here` come out unchanged in Interface, and `report` lists `Technical(Email)` for them;
+- fenced blocks: a fenced block indented by three spaces with an info string is protected whole; a
+  longer closing run does not close;
 - Swiss grouping `1'000'000` (frozen, section 10.8): unchanged in both sets, for ru and en;
 - all 405 negative cases of the scouting corpus (groups `neg.flags`, `neg.net`, `neg.ver`,
   `neg.ids`, `neg.ident`, `neg.list`, `neg.html`, `neg.mixed`, `neg.shortlat`, `neg.lookalike`; ru

@@ -102,15 +102,14 @@ across calls (section 2.12). String input is one `Text` piece with index 0.
 Protection delimiters (section 10.1) cut `Text` atoms into `Text` and
 `Protected { delimited: true }` in two steps; the delimiters belong to the protected atoms:
 
-1. Over the whole input, before windows are found, fenced backtick blocks (a run of three or more
-   backticks at a line start up to a run of the same length at the start of a later line) are cut
-   out. They may contain blank lines.
-2. Within each window, the other delimiters (single and double backtick runs, longer runs not at a
-   line start, own pairs) are matched over the text of the window across pieces. Adjacent `Text`
-   pieces are read as one text, so a delimiter may even be split between them; slots, protected
-   pieces and markup between an opening and a closing delimiter end up inside the span. Inside it,
-   `Text` atoms become `Protected { delimited: true }`, while a slot stays a slot and markup stays
-   markup.
+1. Over the whole input, before windows are found, fenced backtick blocks (as section 10.1 defines
+   them; 10.1 is normative) are cut out. They may contain blank lines.
+2. Within each window, the other delimiters (single and double backtick runs, longer runs that do
+   not open a fenced block, own pairs) are matched over the text of the window across pieces.
+   Adjacent `Text` pieces are read as one text, so a delimiter may even be split between them;
+   slots, protected pieces and markup between an opening and a closing delimiter end up inside the
+   span. Inside it, `Text` atoms become `Protected { delimited: true }`, while a slot stays a slot
+   and markup stays markup.
 
 So the Fluent message ``Run `git checkout -- { $branch }` to reset.`` protects the whole command
 with the slot inside, and a template of `Text` pieces behaves exactly as their concatenation
