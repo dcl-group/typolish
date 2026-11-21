@@ -20,8 +20,8 @@ pub struct LanguageData {                       // fields private; const fn sett
     script: Script,                             // Cyrillic | Latin | Greek | Other: filter for word lists
     quotes: Option<QuotePairs>,                 // None: quotes.pairs inert
     apostrophe: char,                           // U+2019
-    elisions: &'static [&'static str],          // sorted, lowercase: "'em", "'n'", "'tis"
-    decade_apostrophe: bool,                    // '90s
+    elisions: &'static [&'static str],          // sorted, lowercase: "'cause", "'em", "'tis"
+    decade_apostrophe: bool,                    // '90s; '26 only when unpaired (section 6.6)
     trailing_possessive: bool,                  // dogs'
     dash: Option<DashData>,                     // None: dash.* and nbsp.dash inert
     ellipsis: EllipsisForms,                    // forms after ? and !
@@ -41,6 +41,7 @@ pub struct LanguageData {                       // fields private; const fn sett
     numbers: NumberData,
 }
 
+// The parts below: #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)], private fields (section 2.13).
 pub struct QuotePairs { primary: (char, char), nested: (char, char) }   // QuotePairs::new is const
 pub struct DashData { style: DashStyle, dialogue: bool }               // DashStyle: Closed | Spaced | SpacedGlued
 pub struct EllipsisForms { question: &'static str, exclamation: &'static str, both: &'static str }
@@ -145,7 +146,7 @@ Russian Wikipedia articles on the dash and on the no-break space); Art. Lebedev 
 | `abbreviations` NextCapitalized            | г. (a city: `г.⍽Москва`; never after a number, where it is a year)                                                                                                                        | project                                                    |
 | `atom_exceptions`                          | none (dotted Russian forms are abbreviations)                                                                                                                                             |                                                            |
 | `units` (CLDR 49 short)                    | Б кБ МБ ГБ ТБ Мбит нс мкс мс с мин ч дн. нед. мес. мг г кг т нм мкм мм см м км л мл га м² Вт кВт МВт кВт⋅ч В А мА Гц кГц МГц ГГц гПа °C °F K км/ч м/с дюйм. фт ярд. фнт унц. пкс тчк/дюйм | CLDR 49 units, short (checked; CLDR separates with U+0020) |
-| `units` (project)                          | КБ КиБ МиБ ГиБ ТиБ бит Кбит Гбит Кбит/с Мбит/с Гбит/с КБ/с МБ/с ГБ/с сек. мин. сут. дм ц ° ₽ руб. коп. $ € тыс. млн млрд трлн шт. экз. чел. об/мин px dpi                                 | project                                                    |
+| `units` (project)                          | КБ КиБ МиБ ГиБ ТиБ бит Кбит Гбит Кбит/с Мбит/с Гбит/с КБ/с МБ/с ГБ/с сек. мин. сут. дм ц ° °С ₽ руб. коп. $ € тыс. млн млрд трлн шт. экз. чел. об/мин px dpi                              | project                                                    |
 | `ambiguous_units`                          | с, т (`Ждать 30⍽с.`, but `30 с друзьями` stays)                                                                                                                                           | project                                                    |
 | `months`                                   | января февраля марта апреля мая июня июля августа сентября октября ноября декабря; янв. февр. мар. апр. мая июн. июл. авг. сент. окт. нояб. дек.                                          | CLDR 49 gregorian, format wide and abbreviated (checked)   |
 | `month_position`                           | AfterDay (`21⍽ноября`)                                                                                                                                                                    |                                                            |
@@ -162,6 +163,9 @@ Russian Wikipedia articles on the dash and on the no-break space); Art. Lebedev 
 | `numbers.range_dash`, `range_spaced`       | `–` U+2013, no spaces                                                                                                                                                                     | CLDR 49 miscPatterns `{0}–{1}`; Kovodstvo §97              |
 | `numbers.nan`, `infinity`                  | `не⍽число` (with U+00A0), `∞`                                                                                                                                                             | CLDR 49                                                    |
 
+`°С` in the project units has a Cyrillic `С` (U+0421), as typed on a Russian keyboard; the CLDR unit
+`°C` has a Latin `C`. Both are glued.
+
 `г.` and `в.` are duration units in CLDR; here they are year and century words, so `nbsp.dates`
 handles them (section 8.7) and they are not in `units`.
 
@@ -175,7 +179,7 @@ CLDR 49 has no separate `en-US` file; `en-US` inherits `en`, and the values belo
 | `tag`, `script`                            | `en-US`, Latin; bare `en` resolves here                                                                                                                                                |                                                                        |
 | `quotes`                                   | primary `“` U+201C `”` U+201D; nested `‘` U+2018 `’` U+2019                                                                                                                            | CLDR 49 `en` `delimiters`                                              |
 | `apostrophe`                               | `’` U+2019                                                                                                                                                                             | Unicode Standard ch. 6                                                 |
-| `elisions`                                 | 'bout 'cause 'em 'n' 'nother 'round 'til 'tis 'twas                                                                                                                                    | project                                                                |
+| `elisions`                                 | 'bout 'cause 'em 'nother 'round 'til 'tis 'twas (not `'n'`, which also quotes a letter: section 6.2)                                                                                   | project                                                                |
 | `decade_apostrophe`, `trailing_possessive` | true, true                                                                                                                                                                             | project                                                                |
 | `dash`                                     | `Closed` (`word—word`), `dialogue: false`                                                                                                                                              | secondary (CMOS through Wikipedia); open point 6                       |
 | `ellipsis`                                 | `?…`, `!…`, `?!…`                                                                                                                                                                      | CLDR 49 ellipsis character U+2026                                      |
@@ -267,6 +271,9 @@ static EN_GB_DATA: LanguageData = EN_GB;
 let t = Typographer::builder(Language::from_data(&EN_GB_DATA)?, RuleSet::PROSE).build()?;
 # Ok::<(), typolish::Error>(())
 ```
+
+For a true `static` typographer, `Language::from_static(&EN_GB_DATA)` skips validation, and a test
+of the downstream crate checks `Language::from_data(&EN_GB_DATA).is_ok()` once (section 2.2).
 
 The same language can be built at run time with
 `LanguageBuilder::from_language(&Language::EN_US, "en-GB").dash_style(DashStyle::Spaced).build()`.

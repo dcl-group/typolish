@@ -7,9 +7,9 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 ### 9.1 Purpose
 
 - **Prose** (`RuleSet::PROSE`): running text written for reading: articles, letters, reports, books.
-  Every rule except `number.grouping`. Technical fragments are protected in Prose too (classifier,
-  section 3.6); what Prose adds over Interface are rules whose patterns also occur in commands and
-  code, accepted because prose rarely contains unprotected commands.
+  Every rule of version 1. Technical fragments are protected in Prose too (classifier, section 3.6);
+  what Prose adds over Interface are rules whose patterns also occur in commands and code, accepted
+  because prose rarely contains unprotected commands.
 - **Interface** (`RuleSet::INTERFACE`): UI strings, error messages and technical text where
   commands, paths, addresses and versions stand next to words. Only rules that carry meaning and
   cannot alter a technical token standing as its own fragment: quotes, apostrophes, the spaced dash
@@ -21,15 +21,13 @@ The two sets differ only in their rule lists; settings and language data are the
 
 ### 9.2 Composition
 
-`PROSE = ALL − {number.grouping}` (27 rules).
+`PROSE` holds all 27 rules of version 1. It equals `ALL` in 0.1.0 only: a rule added in a later
+minor release joins `ALL` but not the built-in sets (section 15.1).
 
 `INTERFACE = PROSE − {symbols.copyright, symbols.arrows, symbols.math, ellipsis.inner, dash.dialogue, dash.double-hyphen, range.digits, range.context, range.time, number.minus, number.times, quotes.primes, nbsp.phone, nbsp.short-length}`
 (13 rules): `ellipsis.dots`, `dash.spaced-hyphen`, `range.placeholders`, `quotes.apostrophe`,
 `quotes.pairs`, `nbsp.abbreviations`, `nbsp.initials`, `nbsp.dates`, `nbsp.units`, `nbsp.signs`,
 `nbsp.short-words`, `nbsp.particles`, `nbsp.dash`.
-
-`number.grouping` is in neither set and is enabled only explicitly: grouping digits in text changes
-values that may be identifiers (port `65535` → `65⍽535`).
 
 The sets are `const RuleSet` values in `src/rule.rs`. The rustdoc of each lists its rules, and a
 test compares the rustdoc, the constants and the table of section 8.1.
@@ -58,8 +56,9 @@ Kept in Interface although one could argue: `nbsp.short-words`, `nbsp.particles`
 line breaking (`в⍽Москве`); `nbsp.abbreviations` and `nbsp.signs` insert a glue only inside a listed
 abbreviation and after `№`, `§`, `¶`; `quotes.pairs` is required by the task's own example
 (`"{name}"`); `ellipsis.dots` turns `Загрузка...` into `Загрузка…`; `dash.spaced-hyphen` needs a
-lone `-` with spaces and operands on both sides and refuses numbers, single letters and foreign
-words.
+lone `-` with spaces and operands on both sides, refuses numbers, single letters, foreign words and
+technical fragments on both sides and flags on either side, and in the closed style removes spaces
+only between two plain words, so it never joins a technical token to a word.
 
 ### 9.4 Custom sets
 

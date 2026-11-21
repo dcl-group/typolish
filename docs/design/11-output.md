@@ -60,25 +60,33 @@ produces them, and they are written as characters.
 ### 11.5 nowrap groups
 
 `HtmlStyle::nowrap_class(c)` and `HtmlStyle::nowrap_style()` render no-break groups as elements
-instead of entities. A **group** is a maximal run of non-space fragments joined by glue marks or by
-U+2011. A group with at least one such joint is written as `<span class="c">…</span>` or as
-`<span style="white-space:nowrap">…</span>`; inside it, glue becomes an ordinary space, U+2011 an
-ordinary `-`, and other characters of the set are written as entities of the chosen style. The class
-string is escaped as an attribute value. Groups do not nest.
+instead of entities. A **group** is a maximal run of non-space fragments joined by glue marks; its
+**joints** are those glue marks and every U+2011 inside its fragments. Protected spans never belong
+to a group. A group with at least one joint is written as `<span class="c">…</span>` or as
+`<span style="white-space:nowrap">…</span>`. Inside it, U+00A0 glue becomes an ordinary space;
+U+202F glue, U+2011 and the other characters of the set are written as references of the chosen
+style (`&#x202F;`, `&#x2011;`, `&mdash;`; the characters themselves with `CHARACTERS`). So the
+narrow space keeps its width, a hyphen the caller typed as U+2011 comes back as U+2011, and an
+ordinary space inside the element can only be U+00A0 glue, which keeps decoding exact (section
+11.8). The class string is escaped as an attribute value. Groups do not nest.
 
 - Example: `и⍽т.⍽д.` → `<span class="nowrap">и т. д.</span>`; a telephone number glued by
-  `nbsp.phone` or typed with U+00A0 and U+2011 by the caller →
-  `<span class="nowrap">+7 495 123-45-67</span>`.
-- Numbers: `format_number` in nowrap mode wraps the number:
-  `<span class="nowrap">&minus;12 345</span>`.
+  `nbsp.phone` → `<span class="nowrap">+7 495 123-45-67</span>`; the same number typed by the caller
+  with U+00A0 and U+2011 → `<span class="nowrap">+7 495 123&#x2011;45&#x2011;67</span>`.
+- Numbers: `format_number` and `format_range` in nowrap mode write one element around the whole
+  result when it contains glue (a group separator U+00A0 or U+202F), and no element otherwise: ru
+  `-12345` → `<span class="nowrap">&minus;12 345</span>`, ru `1234` → `1234`, en `1234` → `1,234`.
 - Templates: the n + 1 form always has room for the tags. A group that starts with slot i opens at
   the end of `texts()[i]`; a group that ends with slot j closes at the start of `texts()[j + 1]`; a
   slot inside a group stays inside the element (`в {city}` → texts
   `["<span class=\"nowrap\">в ", "</span>"]`).
-- Fallback: a group that crosses a `Markup` piece is split there, because a span cannot be opened
+- Splits: a group that crosses a `Markup` piece is split there, because a span cannot be opened
   across foreign markup; the glue at the split is written as an entity, and `report` adds
-  `NowrapFallback` (info). Glue inside a protected span is written as an entity too: a protected
-  span forms no groups.
+  `NowrapFallback` (info). A group also ends at a protected span, without a diagnostic: the span's
+  content may be long and has spaces of its own, which an element would make unbreakable and a
+  decoder could not tell from glue (the reason no glue sticks to an `Other` slot, section 2.6). The
+  glue between a group and a protected span is written as an entity (`в&nbsp;` before
+  `` `--config` ``), and so is glue inside a protected span.
 
 ### 11.6 Escaped string bodies
 
@@ -115,6 +123,9 @@ backslashes; escaping after the crate would ruin its own escapes.
 - With the default scope only the typographic set and the characters above are escaped; Cyrillic and
   other text stays UTF-8. `non_ascii()` escapes every non-ASCII character for pipelines that require
   ASCII.
+- The prefilter (section 3.2) takes the bytes that a style encodes from this same table, so text
+  that needs escaping is never returned borrowed: `a</script>b` in `JS`, `AT&T` in `JSON` and `Да`
+  with `JS.non_ascii()` always come out escaped.
 
 Rejected: an escape mode that leaves `\` and quotes of the input alone (the result could break or
 change the meaning of the literal, and a second escaping by the caller would ruin `\u00A0`).
@@ -123,13 +134,15 @@ change the meaning of the literal, and a second escaping by the caller would rui
 
 `format_number` and `format_range` use the same encoders: the group separator U+00A0 becomes
 `&nbsp;` in HTML, `\u00A0` in JS, `\u{a0}` in Rust; the minus becomes `&minus;`, `\u2212`,
-`\u{2212}`; nowrap mode wraps the whole number.
+`\u{2212}`; nowrap mode wraps the whole result in one element when it contains glue (section 11.5).
 
 ### 11.8 Idempotence and decoding
 
 Idempotence holds for `Output::Unicode`. For the other kinds the guarantee is
 `decode(typeset(x, out)) == typeset(x, Unicode)` and
 `typeset(decode(typeset(x, out)), out) == typeset(x, out)`, with `decode` the inverse of the encoder
-(section 4.6). Both are property tests with decoders written as test helpers (section 13.5). Encoded
-output fed back as input is plain text with literal ampersands and backslashes, and is encoded
-again; this is documented, not a defect.
+(section 4.6). Both are property tests with decoders written as test helpers (section 13.5), for
+every kind including the nowrap styles: the decoder turns an element back into its content, reads an
+ordinary space inside it as U+00A0 and every reference as its character. Encoded output fed back as
+input is plain text with literal ampersands and backslashes, and is encoded again; this is
+documented, not a defect.

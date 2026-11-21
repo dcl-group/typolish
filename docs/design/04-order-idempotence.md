@@ -27,20 +27,19 @@ match at the same token (section 3.8).
 |   12 | range    | `range.time`         |   +   |     -     | all                        |
 |   13 | number   | `number.minus`       |   +   |     -     | all                        |
 |   14 | number   | `number.times`       |   +   |     -     | all                        |
-|   15 | number   | `number.grouping`    |   -   |     -     | all                        |
-|   16 | quotes   | `quotes.apostrophe`  |   +   |     +     | all                        |
-|   17 | quotes   | `quotes.pairs`       |   +   |     +     | ru, en (needs quote pairs) |
-|   18 | quotes   | `quotes.primes`      |   +   |     -     | all                        |
-|   19 | nbsp     | `nbsp.abbreviations` |   +   |     +     | ru, en                     |
-|   20 | nbsp     | `nbsp.initials`      |   +   |     +     | ru, en                     |
-|   21 | nbsp     | `nbsp.dates`         |   +   |     +     | ru, en                     |
-|   22 | nbsp     | `nbsp.units`         |   +   |     +     | all                        |
-|   23 | nbsp     | `nbsp.signs`         |   +   |     +     | all                        |
-|   24 | nbsp     | `nbsp.phone`         |   +   |     -     | all                        |
-|   25 | nbsp     | `nbsp.short-words`   |   +   |     +     | ru, en                     |
-|   26 | nbsp     | `nbsp.short-length`  |   +   |     -     | ru                         |
-|   27 | nbsp     | `nbsp.particles`     |   +   |     +     | ru                         |
-|   28 | nbsp     | `nbsp.dash`          |   +   |     +     | ru                         |
+|   15 | quotes   | `quotes.apostrophe`  |   +   |     +     | all                        |
+|   16 | quotes   | `quotes.pairs`       |   +   |     +     | ru, en (needs quote pairs) |
+|   17 | quotes   | `quotes.primes`      |   +   |     -     | all                        |
+|   18 | nbsp     | `nbsp.abbreviations` |   +   |     +     | ru, en                     |
+|   19 | nbsp     | `nbsp.initials`      |   +   |     +     | ru, en                     |
+|   20 | nbsp     | `nbsp.dates`         |   +   |     +     | ru, en                     |
+|   21 | nbsp     | `nbsp.units`         |   +   |     +     | all                        |
+|   22 | nbsp     | `nbsp.signs`         |   +   |     +     | all                        |
+|   23 | nbsp     | `nbsp.phone`         |   +   |     -     | all                        |
+|   24 | nbsp     | `nbsp.short-words`   |   +   |     +     | ru, en                     |
+|   25 | nbsp     | `nbsp.short-length`  |   +   |     -     | ru                         |
+|   26 | nbsp     | `nbsp.particles`     |   +   |     +     | ru                         |
+|   27 | nbsp     | `nbsp.dash`          |   +   |     +     | ru                         |
 
 "Languages" shows where the built-in data makes a rule active; an enabled rule without data for the
 language is inert (not an error). The quote phase runs its three rules as fixed sub-steps over the
@@ -72,24 +71,37 @@ agree and that every rule appears once.
 
 - **I1. Class invariance.** An edit changes the text or the glue mark of a token, never its kind.
   Insertion and removal apply only to `Space` tokens (section 3.5).
-- **I2. Stable classification.** On the output of a pass, the classifier computes the kinds that the
-  rules of that pass relied on:
+- **I2. Stable classification.** On the output of a pass, the classifier computes the kinds and
+  flags (`FROZEN`, `LABEL`) that the rules of that pass relied on. A space is inserted or removed
+  only in the cases listed here, and none of them changes what a rule reads:
   - checks accept plain and typographic forms alike: a range with `-` or `–`, dimensions with `x`,
     `х` or `×`, a signed number with `-` or `−`, `+-` or `±`, an abbreviation as `т.д.`, `т. д.` or
-    `т.⍽д.`, a joined form with `...` or `…`;
-  - an inserted space splits only a non-technical fragment, into non-technical parts: `т.е.` → `т.`
-    and `е.`, `№5` → `№` and `5`;
-  - removing the two spaces around a closed-style dash merges `word`, `—`, `word` into one `Joined`
-    fragment (check 22); a rule that matched the three fragments either matches the merged fragment
-    with no edits or does not match it, and no rule that did not match before matches now (the only
-    rules that look inside a `Joined` fragment are `ellipsis.inner` and `dash.spaced-hyphen` in its
-    "already done" form).
+    `т.⍽д.`, a joined form with `...` or `…`, a dash fragment in any form, a year and month with `-`
+    or `–`;
+  - an inserted space splits only a non-technical fragment, into non-technical parts that the rules
+    read as before: `т.е.` → `т.` and `е.` (abbreviation parts, read only by `nbsp.abbreviations`,
+    which matches both forms); `№5` → `№` and `5` (a label number in both forms, section 3.6, so no
+    rule that reads a quantity or a year starts to match); `100%` → `100` and `%` with
+    `PercentSpacing::Language` (ru) or `Spaced` (a percentage in both forms, section 8.2);
+  - a removed space merges fragments only into a kind that the rules read as before. The
+    closed-style dash removes its two spaces only between two plain words (section 8.4), so `word`,
+    `—`, `word` become one `Joined` fragment (check 22), never a technical one: a rule that matched
+    the three fragments either matches the merged fragment with no edits or does not match it, the
+    glue it set stays, and no rule that did not match before matches now (the only rules that look
+    inside a `Joined` fragment are `ellipsis.inner` and `dash.spaced-hyphen` in its "already done"
+    form). `100 %` → `100%` with `PercentSpacing::Attached` or `Language` (en) merges a percentage
+    into a percentage.
+
+  Each case has a fixed seed in the idempotence property (section 13.5): `Школа №5 г. Москвы`,
+  `§5 ч. 2`, `т.е.`, `Moscow - the capital`, `See https://example.com/docs - the guide`,
+  `He said - "a cat"`, `100%` and `100 %` under every `PercentSpacing`.
+
 - **I3. Products are not triggers.** A rule changes only plain forms: straight quotes, `-`, runs of
   dots, a single U+0020, `(c)`, `->`, `x` between numbers. Its result is a typographic form that no
   rule changes. A no-break rule changes only a `Space` of one U+0020 and treats any glued space
   (U+00A0, U+202F) as already done.
 - **I4. Matching by class.** Whether a rule matches, and its `consume`, depend only on token kinds,
-  the texts of words and numbers, and fragment kinds, not on whether signs are in plain or
+  the texts of words and numbers, and fragment kinds and flags, not on whether signs are in plain or
   typographic form. A pattern that is already in target form gives an empty edit with the same
   `consume` (section 3.8, property 3).
 - **I5. Quotes are all or nothing per window** (section 6.6).
@@ -99,14 +111,14 @@ agree and that every rule appears once.
 Let f = P7 ∘ … ∘ P1, where Pk is phase k. The claim is f(f(x)) = f(x) for Unicode output.
 
 1. Each phase Pk on an input y is determined by its set of matches: anchor, rule, `consume`. By I4
-   the set depends only on token kinds, fragment kinds and the texts of words and numbers. By I1 and
-   I2 these are the same in the input of Pk on the first pass and in f(x) on the second: everything
-   that later phases change is the form of signs and the glue of spaces. Spaces inserted by phase k
-   are seen on the first pass by phases k+1 to 7, as on the second pass by all phases. Phases 1 to
-   k−1, which first see those spaces on the second pass, do not change them by I3: the space is
-   there, the pattern "space missing" does not match, only the pattern "already done" matches, and
-   it gives an empty edit. Spaces removed around a closed-style dash are covered by the third item
-   of I2.
+   the set depends only on token kinds, fragment kinds and flags, and the texts of words and
+   numbers. By I1 and I2 these are the same in the input of Pk on the first pass and in f(x) on the
+   second: everything that later phases change is the form of signs and the glue of spaces. Spaces
+   inserted by phase k are seen on the first pass by phases k+1 to 7, as on the second pass by all
+   phases. Phases 1 to k−1, which first see those spaces on the second pass, do not change them by
+   I3: the space is there, the pattern "space missing" does not match, only the pattern "already
+   done" matches, and it gives an empty edit. Spaces inserted by `nbsp.*` rules and removed by the
+   closed-style dash or the percent setting are covered by the second and third items of I2.
 2. Hence on the second pass the matches are the same, and the edits of each match lead signs to the
    target form that f(x) already has: the same phase put it there on the first pass, and later
    phases did not change it (I3). Every edit is empty.
@@ -137,6 +149,10 @@ are:
 - `decode(typeset(x, out)) == typeset(x, Unicode)`, where `decode` is the inverse of the encoding
   (HTML entities and nowrap spans, or string-body escapes);
 - `typeset(decode(typeset(x, out)), out) == typeset(x, out)`.
+
+Decoding is exact for every output kind, nowrap styles included: inside a nowrap element an ordinary
+space can only be U+00A0 glue, because U+202F and U+2011 are written as references there and
+protected spans never belong to a group (section 11.5).
 
 Feeding encoded output back as input is not supported and not idempotent: input is plain text, so
 `&nbsp;` in the input is a literal ampersand and becomes `&amp;nbsp;` in HTML output, exactly as any

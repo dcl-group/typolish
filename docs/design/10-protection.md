@@ -8,21 +8,31 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 
 - **String input, backticks** (on by default; `protect_backticks(false)` turns them off). A run of N
   backticks opens a protected span, and the next run of exactly N backticks closes it, as code spans
-  in CommonMark: single, double (which may contain a single backtick) and triple runs, including
-  blocks over several lines.
+  in CommonMark: single, double (which may contain a single backtick) and longer runs. A run of
+  three or more backticks at the start of a line (after optional indentation) opens a **fenced
+  block**, closed by a run of the same length at the start of a later line; a fenced block may
+  contain blank lines.
 - **Own pairs**: `protect_between("{{", "}}")`, `protect_between("[[", "]]")`. Opening and closing
   delimiters may be equal.
-- **Matching** is one pass: positions of all delimiters are collected first, pairs are formed left
-  to right, and spans do not nest (inside an open span only its closing delimiter is looked for).
-  Time is O(n) even for 10⁵ unclosed backticks (section 3.12).
+- **Scope.** Every span other than a fenced block, own pairs included, opens and closes within one
+  window (a paragraph, section 3.3), as a CommonMark code span never crosses a blank line; it may
+  cross single line breaks.
+- **Matching** is one pass for fenced blocks over the whole input, then one pass per window for the
+  other delimiters: positions are collected first, pairs are formed left to right, and spans do not
+  nest (inside an open span only its closing delimiter is looked for). Time is O(n) even for 10⁵
+  unclosed backticks (section 3.12).
 - **An unclosed delimiter** is an ordinary character, not protection to the end of the text: a stray
-  backtick in prose
-  (`don`t`) does not switch off processing of the rest. Diagnostic `UnclosedDelimiter`.
+  backtick in prose (``don`t``) does not switch off processing of the rest, and two stray backticks
+  in different paragraphs do not pair (``Don`t.\n\nОн сказал "да".\n\nIt`s ok.`` gets `«да»` and two
+  diagnostics). Diagnostic `UnclosedDelimiter`.
 - **Delimiters stay in the output.** There is no mode that strips them: after stripping, a second
   run would typeset the content, and idempotence would break. A caller who does not want the
   delimiters parses the text itself and passes `Piece::Protected`.
 - **Pieces**: `Piece::Protected` protects without delimiters. Delimiters inside `Piece::Text` work
-  as in a string.
+  as in a string and are matched across the pieces of a window (section 3.4): in
+  ``[Text("Run `git checkout -- "), Slot(b, WORD), Text("` to reset.")]`` the command is protected
+  with the slot inside, and the slot stays a slot. A template of `Text` pieces gives the same result
+  as their concatenation.
 - **Validation** in `build()`: a delimiter is non-empty, is not whitespace, contains no letter or
   digit, is not equal to another delimiter and is not a prefix of another one
   (`Error::InvalidSetting`).
@@ -54,7 +64,8 @@ look at the context around it. Explicit protection is still needed for commands 
 - **M1 Frozen fragment.** The classifier freezes the core; the engine refuses every edit that
   touches it (sections 3.6, 3.7).
 - **M2 Lone token.** Dash rules fire only on a fragment that is nothing but `-` or `--` with one
-  space and an operand on each side.
+  space and an operand on each side, never next to a flag or between two technical fragments, and
+  the closed style never joins a technical fragment to a word (section 8.4).
 - **M3 Whole operator.** A run of operator characters is one token and changes only if the whole run
   equals a table entry; `=>`, `>>`, `-->` are in no table.
 - **M4 Exact shape.** A shape rule needs the whole core to match: `D+-D+` with exactly two numbers,
@@ -75,9 +86,19 @@ look at the context around it. Explicit protection is still needed for commands 
 Every case of the task's list, with the mechanisms that keep it unchanged in Interface, for both
 languages. Every row is a test (section 13.3): alone, inside the sentence frames
 `Запустите X сейчас.` and `Значение: X, затем далее.` (ru) and `Run X now.` and
-`Value: X, then more.` (en), and as a `Piece::Text` next to slots. In Interface the expected output
-equals the input byte for byte and is `Cow::Borrowed` (the frames contain no listed short word). The
-last column gives the behavior in Prose. Host names in tests are neutral (`example.com`,
+`Value: X, then more.` (en), and as a `Piece::Text` next to slots. The frames contain no listed
+short word. Every row is checked through `report`: the tokens of the case stay byte for byte, and no
+edit other than glue outside them occurs. In Interface the expected output also equals the input
+byte for byte and is `Cow::Borrowed`, with two exceptions that come from the case itself, not from
+the frame:
+
+- row 24, variant `if a<b and c>d`, in English: `if` and `and` are listed short words, so the
+  expected output is `if⍽a<b and⍽c>d` (glue outside the frozen fragments);
+- row 25 is the task's case for Russian text; in English its mirror is checked instead, short
+  Cyrillic words (`и`, `в`, `к`) that get no glue, because the Latin `a` and `to` are English short
+  words and are glued there by design.
+
+The last column gives the behavior in Prose. Host names in tests are neutral (`example.com`,
 `db.example.internal`), never names from internal networks.
 
 | No. | Case from the task                                                                             | Classification                              | Mechanisms in Interface                                        | Prose                                                                                                                                                     |
@@ -106,7 +127,7 @@ last column gives the behavior in Prose. Host names in tests are neutral (`examp
 |  22 | lists without spaces (`a,b,c`, `x,y;z`, `1,2,3`, `red,green,blue`)                             | `List` (check 19)                           | M1, M6                                                         | unchanged                                                                                                                                                 |
 |  23 | Latin letters next to Cyrillic (`Мoсква`, `Cервер`, `xлеб`)                                    | word, script `Mixed`                        | M6, M7; `MixedScript` warning                                  | unchanged                                                                                                                                                 |
 |  24 | text like `<word>` (also `vec<int>`, `a <b> c`, `if a<b and c>d`)                              | `Angle`, `Operator` (check 8)               | M1, M10                                                        | unchanged                                                                                                                                                 |
-|  25 | short Latin words in Russian text (`ls`, `a`, `go`, `db`, `to`)                                | words, script Latin                         | M5 (`short_words_any_script(false)`), M8 (`nbsp.short-length`) | unchanged (M5)                                                                                                                                            |
+|  25 | short Latin words in Russian text (`ls`, `a`, `go`, `db`, `to`); en: Cyrillic `и`, `в`, `к`    | words, script Latin (Cyrillic in en)        | M5 (`short_words_any_script(false)`), M8 (`nbsp.short-length`) | unchanged (M5)                                                                                                                                            |
 |  26 | identifiers with a hyphen: `tls-server`, `agent-ca`                                            | `Compound` (check 21)                       | M1 (hyphens frozen), M2                                        | unchanged                                                                                                                                                 |
 |  27 | identifier with an underscore: `kv_lang`                                                       | `Identifier` (check 8)                      | M1                                                             | unchanged                                                                                                                                                 |
 
@@ -136,14 +157,24 @@ Beyond the task's list, the negative tests include, in Interface unchanged and i
 expectation given: `rm -rf --no-preserve-root /`, `git commit -m msg --amend`,
 `cargo build --release`, `a=>b`, `x -> y; z => w` (Prose: `x → y; z => w`), `192.168.1.1:443`,
 `12:30:45`, `21.11.2026`, `nats-server-2.10`, `my_var-name`, `CamelCase-Mixed_id`, `pre-commit`,
-`map<k,v>`, `C#`, `AT&T`, `50%-ный`, `key="value"`, `f(c)`, `x86`, `2x`, `0x10`, `1/2/2026`,
-`a <-> b` (Prose: `a ↔ b`), `-->`, `<-->`, `>>=`, `x == y`.
+`map<k,v>`, `C#`, `AT&T`, `50%-ный`, `key="value"`, `f(c)`, `f(r)`, `S(r) = πr²`, `x86`, `2x`,
+`0x10`, `1/2/2026`, `a <-> b` (Prose: `a ↔ b`), `-->`, `<-->`, `>>=`, `x == y`,
+`diff -u - file.txt`, `tar -cf - -C dir`, `npm test -- --watch`, `Use - --force`.
 
 ### 10.8 Known limits
 
 - A lone `-` between two plain words of the language is a dash in both sets. In English text
-  `cat - file` becomes `cat—file`; in Russian text it stays (foreign words on both sides). Commands
+  `cat - file` becomes `cat—file`; in Russian text it stays (foreign words on both sides). Next to a
+  flag a `-` is never a dash, even where one was meant (`флаг -v - он включает вывод`). Commands
   with spaces must be protected with backticks or passed as `Piece::Protected`; the README says so.
+- With the closed style (en) the dash keeps the author's spaces next to anything but a plain word
+  (`Hello, — he said`, `Chapter — 5`, `See https://example.com — the guide`); only two plain words
+  are joined (`word—word`).
+- A single initial after a lowercase word that is not a short word gets no glue
+  (`сказал А. Петров`), because the pattern cannot tell it from a one-letter label at a sentence end
+  (`вариант А. После`).
+- `rock 'n' roll` with spaces is a top-level single pair and stays straight under `NestedOnly`;
+  `rock'n'roll` gets apostrophes.
 - In Prose, `dash.double-hyphen` turns `git checkout -- file` into a dash in English text, and
   `number.minus` turns `tail -5` into `tail −5`; `range.digits` turns a telephone fragment
   `123-4567` into a range. Prose assumes commands are protected; Interface has none of these rules.

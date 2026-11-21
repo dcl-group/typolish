@@ -27,6 +27,7 @@ the date of the decision.
 | 14   | Public language data in version 1           | Open: decision | public `LanguageData` and `LanguageBuilder`          |
 | 15   | `nbsp.phone` in Interface                   | Open: decision | Prose only                                           |
 | 16   | Word lists and norms from secondary sources | Open: decision | lists as in section 7                                |
+| 17   | Digit grouping in text                      | Open: decision | no text rule; `format_number` groups values          |
 
 #### Open: needs the maintainer's decision or data
 
@@ -60,7 +61,9 @@ has weaker font support and no named HTML entity. Options: (a) U+00A0; (b) U+202
 through secondary sources); (b) `word⍽— word` with glue before the dash, as in Russian (the
 reference implementation does this); (c) spaced `word — word` without glue (AP style).
 **Recommendation: (a)**; `dash_style` gives (b) and (c). (a) is the only rule of Interface that
-removes spaces.
+removes spaces, and it does so only between two plain words: next to a number, a slot, a protected
+span, a technical fragment or punctuation it keeps the author's spaces (`Hello, — he said`,
+`See https://example.com — the guide`), so a URL never swallows the next word (section 8.4).
 
 **7.** **Literal numeric ranges in Prose** (`1941-1945`, `10-20`, `8000-8100`). Options: (a) in
 Prose `range.digits` (two ascending numbers without leading zeros) and `range.context` (a unit,
@@ -103,16 +106,21 @@ start of dialogue, and the core works on plain text, not Markdown.
 changes only in releases that raise the breaking number, and patch releases only fix output that
 contradicts the documentation, with a "before → after" entry in the CHANGELOG; (b) output
 improvements in any release. **Recommendation: (a)**: build-time generators and snapshot tests of
-callers must not break on `cargo update`.
+callers must not break on `cargo update`. A related choice: `RuleSet::ALL` and the base `all` either
+(i) mean every rule of the running version and stay outside the policy, with rustdoc saying so, or
+(ii) are frozen at the rules of 0.1, so that a new rule is only ever enabled by name.
+**Recommendation: (i)**: a frozen `ALL` that lacks rules would mislead, and callers who want stable
+output already have the two sets and explicit lists.
 
 **14.** **Public language data in version 1.** Options: (a) `LanguageData` is public with private
-fields and `const fn` setters, `Language::from_data` accepts compile-time tables (a downstream crate
-declares `en-GB` as a `const`, section 7.7), and `LanguageBuilder` builds languages at run time from
-owned lists; (b) only the compile-time `LanguageData` is public, without a run-time builder; (c)
-language data stays internal in version 1 and a language is added by changing the crate.
-**Recommendation: (a)**: it meets "languages are data" for users, not only for maintainers; private
-fields and the absence of `Copy` let the format grow in minor releases. Cost: the setters and
-builder methods are API, and renaming one is a breaking change.
+fields and `const fn` setters, `Language::from_data` (validated) and `Language::from_static` (for a
+`static` typographer) accept compile-time tables (a downstream crate declares `en-GB` as a `const`,
+section 7.7), and `LanguageBuilder` builds languages at run time from owned lists; (b) only the
+compile-time `LanguageData` is public, without a run-time builder; (c) language data stays internal
+in version 1 and a language is added by changing the crate. **Recommendation: (a)**: it meets
+"languages are data" for users, not only for maintainers; private fields and the absence of `Copy`
+let the format grow in minor releases. Cost: the setters and builder methods are API, and renaming
+one is a breaking change.
 
 **15.** **`nbsp.phone` in Interface.** The rule glues telephone numbers typed with ordinary spaces
 by a pattern (a country code or a bracketed area code, groups of digits, 10 to 15 digits). Options:
@@ -129,6 +137,18 @@ secondary sources; the Chicago Manual of Style was not read. Options for the Eng
 lists: (a) as in section 7.2; (b) the maintainer edits them before stage 3. **Recommendation:**
 English (a), Russian (a); the maintainer's edits are welcome before stage 3, after which list
 changes follow the output stability policy.
+
+**17.** **Digit grouping in text** (`1000000 рублей` → `1⍽000⍽000 рублей`). The task asks for
+numbers formatted by the language; `format_number` does that for values (section 2.7). A text rule
+does not fit the engine: a run of digits is one token, rules insert spaces only between tokens, and
+English groups with a comma, which is not a space; numbers in text are also often ports, years and
+codes (`port 65535`). The first draft had such a rule (`number.grouping`, in no set); it was dropped
+before any release, so its id was never published. Options: (a) no grouping rule in version 1;
+values are grouped by `format_number`; (b) a rule in no set that only glues a number the author
+already grouped by single spaces in threes (`1 000 000` → `1⍽000⍽000`), inert where the language's
+group separator is not a space; (c) full grouping in text, which needs digit runs lexed in groups
+and an insertion of commas for English. **Recommendation: (a)**; (b) can be added later as a new
+rule outside both sets (section 15.1).
 
 #### Settled
 

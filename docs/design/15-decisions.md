@@ -15,6 +15,10 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   fix is recorded in the CHANGELOG with a "before → after" example. A new rule may arrive in a minor
   or patch release, but outside both sets. This keeps the snapshots of build-time generators and the
   tests of callers stable across `cargo update` (open point 13).
+- `RuleSet::ALL` and the base `all` of `RuleSet::from_str` mean every rule of the running version,
+  so a rule added in a minor or patch release joins them and their output may change with
+  `cargo update`. Their rustdoc says so; callers who need stable output use `PROSE`, `INTERFACE` or
+  an explicit list of rules (open point 13).
 - Adding a language does not change output for existing tags. A tag that was unknown starts to
   resolve; the CHANGELOG says so.
 - Rule ids are permanent (section 2.3).
@@ -64,7 +68,7 @@ with an open point are marked.
 | C9  | Pieces with a caller payload; output in the n + 1 form; `Protected` and `Markup` from the start                                                          | index-based output parts; strings with markers                       | 2.6       |
 | C10 | Numbers as lazy `Display`, CLDR symbols for NaN and infinity                                                                                             | `String` results; errors on NaN                                      | 2.7       |
 | C11 | Output kind per call; HTML escapes `& < > " '`; escaped bodies with complete container escaping (`JS`, `JS_HEX`, `JS_CODE_POINT`, `JSON`, `RUST`, `CSS`) | entities without markup escaping; escapes that leave `\` and quotes  | 11        |
-| C12 | A thread-local working buffer plus an explicit `Scratch` for callers who manage memory                                                                   | a new vector per call                                                | 2.12      |
+| C12 | A thread-local working buffer plus an explicit `Scratch`; atoms and tokens hold positions, not references                                                | a new vector per call; tokens borrowing the input                    | 2.12, 3.5 |
 | C13 | `report` with edits, protected spans and diagnostics through a generic recorder                                                                          | callbacks; a result struct on every call                             | 2.9, 3.11 |
 | C14 | `to_plain` undoes exactly the enabled rules; P1 and P2                                                                                                   | normalizing every typographic character                              | 12.1      |
 | C15 | Diagnostics are not rules; `lint` adds the typographic-character check                                                                                   | checks as rules inside rule sets                                     | 12.3      |
@@ -74,10 +78,12 @@ with an open point are marked.
 | C19 | Interface composition of section 9.2                                                                                                                     | a stricter Interface without no-break rules                          | 9         |
 | C20 | En dash between numbers only from declared values in Interface; literal shapes and contexts in Prose (open point 7)                                      | context words only; never in text                                    | 10.6      |
 | C21 | One glue character, U+00A0, by default; U+202F by setting (open point 10)                                                                                | U+202F after `№` and `§` by default                                  | 2.4       |
-| C22 | `dash.spaced-hyphen` refuses two numbers, two single letters and two foreign words                                                                       | converting every lone hyphen                                         | 8.4       |
+| C22 | `dash.spaced-hyphen` refuses two numbers, single letters, foreign words or technical fragments, and flags; closed style joins only plain words           | converting every lone hyphen; joining any operands                   | 8.4       |
 | C23 | Snapshots as plain files; load measured with std only                                                                                                    | `insta`, `criterion`, `divan`                                        | 13        |
 | C24 | The corpus is written for the project; no third-party texts                                                                                              | public-domain prose                                                  | 13.7      |
 | C25 | One error enum; application never fails and never panics                                                                                                 | `Result` from `typeset`                                              | 2.11      |
+| C26 | A number after `№`, `§`, `¶` is a label in both its attached and spaced forms; labels and percentages are not quantities for unit and date rules         | treating every digit run as a quantity                               | 3.6, 8.2  |
+| C27 | No digit grouping in text; values are grouped by `format_number` (open point 17)                                                                         | a `number.grouping` rule                                             | 8.8       |
 
 ### 15.4 Stage plan
 
@@ -88,18 +94,25 @@ any deviation from this design is written into the design in the same change.
 
 **Stage 2: core.** Repository skeleton after zonewright (`AGENTS.md`, `CLAUDE.md`, README and
 CHANGELOG with an `Unreleased` section, license files, `dev/` workspace, `deny.toml`, `clippy.toml`,
-`.gitignore`, `.gitattributes`, Prettier files). `Rule` with all 28 ids and `ORDER`, `RuleSet` with
-`FromStr`, `Language` and the built-in tables as far as these rules need them, `Typographer::new`
-and the builder, `Piece` and `Template`, ingest and protection, windows, lexer, classifier,
-freezing, the phase engine, the recorder, rendering for `Output::Unicode`, the thread-local and
-explicit scratch. Rules: `quotes.*`, `dash.*`, `range.*`, `ellipsis.*` for ru and en. Ready when:
+`.gitignore`, `.gitattributes`, Prettier files). `Rule` with all 27 ids and `ORDER`, `RuleSet` with
+`FromStr` and `Display`, `Language` and the built-in tables as far as these rules need them, with
+every dictionary that the classifier reads in check 0 (units, abbreviation parts, elisions, month
+forms, atom exceptions) complete for ru and en, `Typographer::new` and the builder, `Piece` and
+`Template`, ingest and protection, windows, lexer, classifier with labels, freezing, the phase
+engine, the recorders with `report` (changes, protected spans and diagnostics; its `Display` comes
+in stage 4), rendering for `Output::Unicode`, the thread-local and explicit scratch. Rules:
+`quotes.*`, `dash.*`, `range.*`, `ellipsis.*` for ru and en. The `nbsp.*` rules come in stage 3, so
+in this stage the set-level tables run with them removed from the sets (a test helper), and stage 3
+switches the same tables to the full sets. Ready when:
 
 - `typeset` and `typeset_template` work for ru, en and COMMON with these rules;
-- the rule tables of these rules pass, alone and in both sets;
-- every row of section 10.5 comes back unchanged and borrowed in Interface, and all 405 negative
-  corpus cases keep their token byte for byte (section 13.3);
+- the rule tables of these rules pass, alone and in both sets without the `nbsp.*` rules;
+- every row of section 10.5 comes back unchanged and borrowed in Interface without the `nbsp.*`
+  rules, and all 405 negative corpus cases keep their token byte for byte, checked through `report`
+  (section 13.3);
 - the properties idempotence, fixed-point oracle, I1, I2, I4, I5, slots and protected spans,
-  technical fragments, letters and digits, graphemes, Cow and no panic pass;
+  technical fragments, letters and digits, graphemes, Cow (for `Output::Unicode`; stage 3 extends it
+  to every kind), pieces and strings, and no panic pass;
 - the GraphemeBreakTest test and the conformance test pass; `cargo deny check` is clean.
 
 **Stage 3: no-break spaces, numbers, language data, rule sets, output.** `nbsp.*`, `number.*`,
@@ -108,17 +121,20 @@ explicit scratch. Rules: `quotes.*`, `dash.*`, `range.*`, `ellipsis.*` for ru an
 `format_number` and `format_range`; `Output::Html` (all styles, nowrap) and `Output::Escaped` (all
 syntaxes). Ready when:
 
-- all rule tables pass, and the slot participation table of section 2.6 passes row by row;
+- all rule tables pass, the set-level tables of stage 2 now in the full sets, and every row of
+  section 10.5 passes as that section states for the full Interface;
+- the slot participation table of section 2.6 passes row by row;
 - the data test matches the CLDR 49 extract, and the built-in tables pass validation;
-- the output tables and the decoder properties pass for every output kind;
+- the output tables, the Cow property and the decoder properties pass for every output kind, nowrap
+  styles included;
 - the Fluent isolation tests pass;
 - the allocation test confirms section 2.12 (zero allocations for an unchanged string after warm-up,
   one for a changed string, zero for numbers written into a buffer with room);
-- invariant I3 and the determinism-of-order property pass with all 28 rules.
+- invariant I3 and the determinism-of-order property pass with all 27 rules.
 
 **Stage 4: reverse transformation, source check, explain mode.** `to_plain`, `to_plain_template`,
-`lint`, `lint_template`, every diagnostic of section 12.4, `report` and `report_template` with
-protected spans and `Display`; the own corpus (section 13.7) with snapshots and
+`lint`, `lint_template`, every diagnostic of section 12.4, `report_template` and the `Display` of
+`Report` (`report` itself exists since stage 2); the own corpus (section 13.7) with snapshots and
 `roundtrip-known.tsv`. Ready when:
 
 - P1 and P2 pass on the corpus with only the listed mismatches, and on generated strings;

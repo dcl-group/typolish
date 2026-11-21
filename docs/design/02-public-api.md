@@ -16,8 +16,8 @@ initialization, the `Send + Sync` check) was compiled with `rustc 1.100.0` (sect
 | -------------------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
 | `Typographer`                                                                                | struct, private fields, `Clone + Debug + Send + Sync` | immutable typographer; every application method                 |
 | `TypographerBuilder`                                                                         | struct, `#[must_use]`                                 | settings, `build()`                                             |
-| `Language`                                                                                   | struct, private fields, `Clone + Eq + Hash`           | a language: built-in constants or caller data                   |
-| `LanguageData`                                                                               | struct, private fields, `Clone`, `const fn` setters   | the data table of a language, built at compile time (section 7) |
+| `Language`                                                                                   | struct, private fields, `Clone + Debug + Eq + Hash`   | a language: built-in constants or caller data                   |
+| `LanguageData`                                                                               | struct, traits of `Language`, `const fn` setters      | the data table of a language, built at compile time (section 7) |
 | `LanguageBuilder`                                                                            | struct, `#[must_use]`                                 | a language built at run time from owned lists (section 7.1)     |
 | `Rule`                                                                                       | `#[non_exhaustive]` enum, `Copy`                      | a rule with a stable string id                                  |
 | `RuleSet`                                                                                    | struct, `Copy`, `const` methods, `FromStr`            | a set of rules; `PROSE`, `INTERFACE`, `EMPTY`, `ALL`            |
@@ -31,9 +31,9 @@ initialization, the `Send + Sync` check) was compiled with `rustc 1.100.0` (sect
 | `Report<'a, T>`, `Change`                                                                    | struct                                                | result plus edits, protected spans and diagnostics              |
 | `ProtectedSpan`, `ProtectedKind`, `TechKind`                                                 | struct, `#[non_exhaustive]` enums                     | what was recognized as protected and why                        |
 | `Diagnostic`, `DiagnosticKind`, `Severity`                                                   | struct, `#[non_exhaustive]` enums                     | messages: unpaired quote, ambiguous hyphen, mixed script, ...   |
-| `QuotePairs`, `SingleQuotes`, `DashStyle`, `PercentSpacing`, `NarrowGlue`                    | `Copy` value types                                    | values of settings                                              |
-| `Script`, `DashData`, `EllipsisForms`, `Abbreviation`, `Bind`, `MonthPosition`, `NumberData` | `Copy` value types, `const` constructors              | parts of `LanguageData` (section 7.1)                           |
-| `Scratch`                                                                                    | struct                                                | reusable working memory for callers that manage it themselves   |
+| `QuotePairs`, `SingleQuotes`, `DashStyle`, `PercentSpacing`, `NarrowGlue`                    | `Copy + Debug + Eq + Hash` value types                | values of settings                                              |
+| `Script`, `DashData`, `EllipsisForms`, `Abbreviation`, `Bind`, `MonthPosition`, `NumberData` | as above, with `const` constructors                   | parts of `LanguageData` (section 7.1)                           |
+| `Scratch`                                                                                    | struct, `Default`, `const fn new`, `Send + Sync`      | reusable working memory for callers that manage it themselves   |
 | `Error`                                                                                      | `#[non_exhaustive]` enum, `thiserror`                 | configuration and parsing errors                                |
 
 Everything else (lexer, classifier, phases, encoders) is `pub(crate)`.
@@ -58,6 +58,9 @@ impl Language {
     pub fn from_tag(tag: &str) -> Result<Language, Error>;
     /// A language from caller data built at compile time, validated (section 7.6).
     pub fn from_data(data: &'static LanguageData) -> Result<Language, Error>;
+    /// The same without validation, for a `const` or `static` typographer. Invalid data never
+    /// panics, but rules may misbehave; validate the table once in a test with `from_data`.
+    pub const fn from_static(data: &'static LanguageData) -> Language;
     /// Canonical tag, for example `"ru-RU"`; `"und"` for `COMMON`.
     pub fn tag(&self) -> &str;
     /// Built-in languages in tag order, `COMMON` excluded.
@@ -90,11 +93,15 @@ A caller can declare its own language as a `const` table in its own crate and us
 rule code (section 7.7):
 
 ```rust
-use typolish::{DashStyle, Language, LanguageData};
+use typolish::{DashStyle, Language, LanguageData, RuleSet, Typographer};
 
 const EN_GB: LanguageData = LanguageData::EN_US.with_tag("en-GB").with_dash_style(DashStyle::Spaced);
 static EN_GB_DATA: LanguageData = EN_GB;
+
+// Validated at run time.
 let lang = Language::from_data(&EN_GB_DATA)?;
+// A true static; a test of the caller checks `Language::from_data(&EN_GB_DATA).is_ok()` once.
+static EN_GB_PROSE: Typographer = Typographer::new(Language::from_static(&EN_GB_DATA), RuleSet::PROSE);
 # Ok::<(), typolish::Error>(())
 ```
 
@@ -117,11 +124,14 @@ Choices:
 - A region is never substituted: `en-GB` is unknown until its data exists. Substituting `en-US`
   would change the output silently on the day `en-GB` data ships. A bare `ru` or `en` is unambiguous
   (the CLDR likely-subtags rule).
-- `Language` is `Clone` but not `Copy`: inside it is either a `&'static LanguageData` (built-in and
-  compile-time languages, usable in `const` and in `Typographer::new`) or an `Arc` of owned data
-  (`LanguageBuilder`). Equality compares the whole data table, so two languages with the same tag
-  and different data are not equal; the hash uses the tag only, which is consistent with that
-  equality.
+- `Language` is `Clone` but not `Copy`: inside it is either a `&'static LanguageData` or an `Arc` of
+  owned data (`LanguageBuilder`). Built-in languages and caller tables wrapped by the `const fn`
+  `from_static` are usable in `const` items and in `Typographer::new`. `from_data` cannot be
+  `const`: validation needs `char::is_alphabetic` and case mapping, which are not `const fn` in Rust
+  1.100 (checked, section 14.8), and its error owns the tag. A validated caller language in a
+  `static` therefore needs `LazyLock`, or `from_static` plus a test that calls `from_data`. Equality
+  compares the whole data table, so two languages with the same tag and different data are not
+  equal; the hash uses the tag only, which is consistent with that equality.
 - `LanguageData` has private fields and `const fn` setters (section 7.1); it is `Clone`, not `Copy`,
   so that its representation stays free. New fields can be added in minor releases: a setter is
   added and existing tables keep the value of the table they started from. Whether language data is
@@ -144,7 +154,7 @@ pub enum Rule {
     EllipsisDots, EllipsisInner,
     NbspAbbreviations, NbspInitials, NbspDates, NbspUnits, NbspSigns, NbspPhone,
     NbspShortWords, NbspShortLength, NbspParticles, NbspDash,
-    NumberMinus, NumberTimes, NumberGrouping,
+    NumberMinus, NumberTimes,
     SymbolsCopyright, SymbolsArrows, SymbolsMath,
 }
 
@@ -167,6 +177,7 @@ pub struct RuleSet { bits: u128 } // private; the representation may grow
 
 impl RuleSet {
     pub const EMPTY: RuleSet;
+    /// Every rule of the running version: a rule added in a later release joins it (section 15.1).
     pub const ALL: RuleSet;
     pub const PROSE: RuleSet;
     pub const INTERFACE: RuleSet;
@@ -184,7 +195,7 @@ impl FromIterator<Rule> for RuleSet {}
 impl Extend<Rule> for RuleSet {}
 /// `"interface,+number.times,-nbsp.initials"`; see below.
 impl core::str::FromStr for RuleSet { type Err = Error; }
-/// Ids in execution order, comma-separated; `FromStr` reads it back.
+/// Ids in execution order, comma-separated; `empty` for the empty set. `FromStr` reads it back.
 impl core::fmt::Display for RuleSet {}
 ```
 
@@ -206,8 +217,10 @@ Ids:
 be a base set name (`prose`, `interface`, `empty`, `all`); without one the base is `empty`. Every
 other item is an id, optionally prefixed by `+` (add) or `-` (remove). The result is
 `(base ∪ added) \ removed`, independent of item order. An id that is both added and removed, an
-unknown id and a base name in a later position are `Error::InvalidRuleSet` or `Error::UnknownRule`.
-`Display` prints plain ids, so `s.to_string().parse() == Ok(s)`.
+unknown id and a base name in a later position are `Error::InvalidRuleSet` or `Error::UnknownRule`;
+so is an empty string. `Display` prints plain ids, and the base name `empty` for the empty set, so
+`s.to_string().parse() == Ok(s)` for every set, `EMPTY` included (a test, section 13.9). The base
+`all` and `RuleSet::ALL` take in rules added in later releases (section 15.1).
 
 Why an enum with a bit set: `RuleSet` is 16 bytes, `Copy` and usable in `const` items
 (`RuleSet::INTERFACE.with(Rule::NumberTimes)`); membership is one bit test. Bit positions are an
@@ -263,7 +276,7 @@ impl TypographerBuilder {
     pub fn remove_particles<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     // nbsp.*: where U+202F is used instead of U+00A0
     pub fn narrow_glue(self, places: NarrowGlue) -> Self;        // NarrowGlue::NONE by default
-    // format_number, number.grouping, number.minus
+    // format_number, format_range (grouping); number.minus (minus)
     pub fn min_grouping_digits(self, digits: u8) -> Self;
     pub fn group_separator(self, separator: char) -> Self;
     pub fn minus_sign(self, minus: char) -> Self;
@@ -496,7 +509,10 @@ its kind says:
 | `SlotGlue` diagnostic                           | `{n}МБ`, `{a}{b}`             | `{a}{b}` | `{a}{b}`            | `{a}{b}` |
 
 No glue sticks to an `Other` slot: its value may be long, and a nowrap group around a long path
-breaks the layout.
+breaks the layout. A `Number` slot after `№`, `§` or `¶` (`№ {n}`, `№{n}`) is a label number
+(section 8.2): `nbsp.signs` glues it to the sign, and the rules that read a quantity or a year
+(`nbsp.units`, `nbsp.dates`) leave it alone. Two `Number` slots or two `Date` slots joined by `-`
+form a `Range` core (check 17 of section 3.6), which is how `range.placeholders` reaches them.
 
 Choices:
 
@@ -517,7 +533,7 @@ Choices:
 ```rust
 /// A number to format: integers, `f32`/`f64`, or an ASCII decimal string.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Number<'n> { /* i128 | u128 | f64 | decimal digits borrowed from 'n */ }
+pub struct Number<'n> { /* i128 | u128 | f32 | f64 | decimal digits borrowed from 'n */ }
 
 impl<'n> Number<'n> {
     /// ASCII decimal: optional sign, digits, optional `.` and digits. Keeps the caller's
@@ -551,6 +567,7 @@ assert_eq!(RU.format_number(1234, Output::Unicode).to_string(), "1234");    // r
 assert_eq!(RU.format_number(12345, Output::Unicode).to_string(), "12\u{a0}345");
 assert_eq!(EN.format_number(1234, Output::Unicode).to_string(), "1,234");   // en: from 4 digits
 assert_eq!(RU.format_number(Number::decimal("1.50")?, Output::Unicode).to_string(), "1,50");
+assert_eq!(RU.format_number(0.1f32, Output::Unicode).to_string(), "0,1");   // f32 is not widened
 assert_eq!(RU.format_number(f64::NAN, Output::Unicode).to_string(), "не\u{a0}число");
 assert_eq!(RU.format_range(8000, 8100, Output::Unicode).to_string(), "8000–8100");
 assert_eq!(RU.format_number(-12345, Output::Html(HtmlStyle::NAMED)).to_string(), "&minus;12&nbsp;345");
@@ -558,6 +575,8 @@ assert_eq!(
     RU.format_number(-12345, Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"))).to_string(),
     "<span class=\"nowrap\">&minus;12 345</span>",
 );
+// No glue, no element (section 11.5).
+assert_eq!(RU.format_number(1234, Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"))).to_string(), "1234");
 
 // No allocation: straight into a response buffer.
 use core::fmt::Write;
@@ -569,9 +588,11 @@ write!(buf, "{}", RU.format_number(42u32, Output::Unicode)).unwrap();
 Formatting rules:
 
 - Integers go through `unsigned_abs()`, so `i128::MIN` does not overflow. `f64` uses the shortest
-  representation of core (`{}`), which is deterministic on every platform and has no exponent;
-  `Number::fixed` uses `{:.N}`. `NaN` and infinities are written with the CLDR symbols of the
-  language (`не⍽число`, `NaN`, `∞`); there is no error. Negative zero is written as `0`.
+  representation of core (`{}`), which is deterministic on every platform and has no exponent; `f32`
+  keeps a variant of its own and uses the shortest representation of `f32`, so `0.1f32` is `0,1`,
+  not the `0,10000000149011612` of a widened `f64`; `Number::fixed` uses `{:.N}`. `NaN` and
+  infinities are written with the CLDR symbols of the language (`не⍽число`, `NaN`, `∞`); there is no
+  error. Negative zero is written as `0`.
 - Grouping: the integer part is split by three digits when it has at least `3 + min_grouping_digits`
   digits (the CLDR meaning of the parameter). Defaults: ru 2 (from 5 digits), en 1 (from 4 digits);
   open point 4. The fraction is not grouped.
@@ -580,9 +601,9 @@ Formatting rules:
 - Range: the language's CLDR range pattern, `{0}–{1}` (U+2013, no spaces) for both languages, for
   every pair of values. The group separator inside a number is glue, so `{n}⍽МБ` and `12⍽345` never
   break apart.
-- No allocation: for `f64` the `Display` makes two passes (a counting `fmt::Write` to learn the
-  length of the integer part, then the real write), because `f64::MAX` has more than 300 digits and
-  no stack buffer fits it.
+- No allocation: for `f32` and `f64` the `Display` makes two passes (a counting `fmt::Write` to
+  learn the length of the integer part, then the real write), because `f64::MAX` has more than 300
+  digits and no stack buffer fits it.
 
 A template and its value stay consistent because one `Typographer` (one `LanguageData`, one set of
 number settings) typesets the template at build time and formats the numbers at run time; the range
@@ -617,7 +638,8 @@ impl HtmlStyle {
     pub const DECIMAL: HtmlStyle;    // &#160; &#8212;
     pub const HEX: HtmlStyle;        // &#xA0; &#x2014;
     pub const CHARACTERS: HtmlStyle; // typographic characters as characters; only markup escaped
-    /// Wraps each no-break group in `<span class="{class}">`; ordinary spaces inside.
+    /// Wraps each no-break group in `<span class="{class}">`; U+00A0 glue as ordinary spaces
+    /// inside (section 11.5).
     pub const fn nowrap_class(self, class: &'static str) -> HtmlStyle;
     /// The same with `<span style="white-space:nowrap">`.
     pub const fn nowrap_style(self) -> HtmlStyle;
@@ -850,21 +872,27 @@ Choices:
 | `typeset`, output differs       | 1: the output string, capacity `len + len / 8`; a second only if it grows past that                        |
 | `typeset_with`                  | as `typeset`, with the caller's buffer instead of the thread-local one                                     |
 | `typeset_into`                  | 0 when `buf` has room                                                                                      |
-| `typeset_template`              | 2 (texts and slots vectors) plus one per changed text                                                      |
+| `typeset_template`              | 3 (the list of piece texts, the texts and slots vectors) plus one per changed text                         |
 | `format_number`, `format_range` | 0 (`Display`)                                                                                              |
 | `report*`, `lint*`              | vectors of edits, spans and diagnostics (the debugging path)                                               |
 | building                        | only in `build()`; none in `Typographer::new`                                                              |
 
-The working buffers (tokens of the current window, two token vectors for phases, the quote stack)
-live in a `Scratch`. `typeset` uses one held in a `thread_local!` (`RefCell<Scratch>` with `const`
-initialization) and reused, so after the first call on a thread the hot path does not allocate. If
-its capacity grew past 64 KiB on a large input, it shrinks back after the call. Re-entry is
-impossible (there are no callbacks); should `try_borrow_mut` fail anyway, the call works with a
-local buffer, without panicking. `typeset_with` takes a caller-held `Scratch` (one per worker), for
-callers that do not want thread-local state, for example executors that move tasks between threads
-or a future `no_std` build. A prefilter returns `Cow::Borrowed` without touching the buffers when
-the input contains no byte that any active rule reacts to (section 3.2). A test with a counting
-global allocator checks this table (section 13.8).
+The working buffers (atoms and tokens of the current window, two token vectors for phases, the quote
+stack) live in a `Scratch`. Atoms and tokens hold no references into the input: a token stores its
+piece number, a byte range in that piece and, when a rule replaced its text, a replacement id
+(sections 3.4, 3.5). So `Scratch` holds only `'static` data, is `Send + Sync`, and is reused for
+inputs of any lifetime without `unsafe` (the crate forbids it). `Scratch::new()` is a `const fn`,
+and `Scratch` implements `Default`. `typeset` uses one held in a `thread_local!` (`RefCell<Scratch>`
+with `const` initialization) and reused, so after the first call on a thread the hot path does not
+allocate. If its capacity grew past 64 KiB on a large input, it shrinks back after the call.
+Re-entry is impossible (there are no callbacks); should `try_borrow_mut` fail anyway, the call works
+with a local buffer, without panicking. `typeset_with` takes a caller-held `Scratch` (one per
+worker), for callers that do not want thread-local state, for example executors that move tasks
+between threads or a future `no_std` build. The texts of template pieces are the only per-call data
+with a lifetime; they go into a call-local vector, the third allocation of `typeset_template`. A
+prefilter returns `Cow::Borrowed` without touching the buffers when the input contains no byte that
+any active rule reacts to and no byte that the output kind encodes (section 3.2). A test with a
+counting global allocator checks this table (section 13.8).
 
 Rejected: a new token vector on every call (one to three allocations per string, unchanged ones
 included); streaming without a buffer (quote pairing defers decisions to the end of a paragraph).
@@ -873,10 +901,14 @@ included); streaming without a buffer (quote pairing defers decisions to the end
 
 - Every public enum is `#[non_exhaustive]`; so are variants with fields. Structs with invariants
   have private fields and `const` constructors.
-- Commitments that cannot be lifted without a breaking release: `Typographer::new` is `const`;
-  `Typographer: Send + Sync + Clone`; `Output`, `RuleSet`, `Rule`, `Slot`, `HtmlStyle`,
-  `EscapeStyle` are `Copy`; `Piece<'t, S>` is `Copy` when `S` is; `Language` and `LanguageData` are
-  not `Copy` (deliberately); `LanguageData` setters are `const fn`; rule ids are permanent.
+- Commitments that cannot be lifted without a breaking release: `Typographer::new`,
+  `Language::from_static` and `Scratch::new` are `const`; `Typographer: Send + Sync + Clone`;
+  `Scratch: Send + Sync + Default`; `Output`, `RuleSet`, `Rule`, `Slot`, `HtmlStyle`, `EscapeStyle`
+  are `Copy`; `Piece<'t, S>` is `Copy` when `S` is; `Language` and `LanguageData` are not `Copy`
+  (deliberately); `LanguageData` setters are `const fn`; `Language`, `LanguageData` and the value
+  types of section 2.1 implement `Debug`, `PartialEq`, `Eq` and `Hash`, and the value types also
+  `Copy`, so a field added to them later must have these traits too (language data holds strings,
+  characters, numbers and flags, which do); rule ids are permanent.
 - Not part of the contract: the order of `Rule::ALL` (it is the execution order, and a new rule may
   go into the middle); the representation of `RuleSet`; the contents of language lists; the text of
   `summary()` and of `Display` implementations.
@@ -899,6 +931,10 @@ The crate has no Fluent dependency; the generator maps Fluent syntax to pieces i
 | `{ $var }`                        | the kind from the generator's schema; `Slot::OTHER` when unknown                              |
 | `{ $n -> [one] … *[other] … }`    | one `Slot(_, Slot::WORD)` in the outer template; every variant is typeset as its own template |
 | attribute `.title`                | its own template                                                                              |
+
+Protection delimiters in text elements are matched across placeables:
+``Run `git checkout -- { $branch }` to reset.`` keeps the whole command, with its slot, protected
+(section 10.1).
 
 Select variants are typeset separately. A quote opened outside a select and closed inside a variant
 produces `UnmatchedQuote` in both places, and the author rewrites the message. Rejected: typesetting

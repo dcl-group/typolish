@@ -55,7 +55,12 @@ have no named reference.
 setters and derived `PartialEq` and `Hash` over `&'static` slices; a table built from another
 `const` table (as a downstream crate would do) and placed in a `static`; `Language` equality over
 the data; a `thread_local!` `RefCell` with `const` initialization and a `try_borrow_mut` fallback; a
-generic `Piece<'t, S>`; a `const` assertion of `Send + Sync`.
+generic `Piece<'t, S>`; a `const` assertion of `Send + Sync`. The thread-local held no token type
+with a lifetime.
+
+**`const fn` in Rust 1.100** (a probe compiled during the review of the design):
+`char::is_lowercase` is a `const fn`; `char::is_alphabetic` and `char::to_lowercase` are not (error
+E0015), so the validation of language data cannot run in a `const fn` (section 2.2).
 
 **zonewright** (the maintainer's crate, read only): `docs/design/` is in English, one document in
 numbered files with a `README.md` index and `NN-decisions.md` and `NN-open-points.md`; neither
@@ -75,4 +80,6 @@ settings. Section 8.12 summarizes its recorded behavior. Nine of the 820 outputs
   English norms marked "secondary" rest on Wikipedia articles (open point 16).
 - The design was not compiled as a whole; the allocation and linearity claims are verified by tests
   in stages 3 and 5 (section 15.4).
+- The atom and token representation without references (sections 3.4, 3.5), which lets `Scratch`
+  live in a thread-local without `unsafe`, was not compiled; stage 2 starts with it.
 - `GraphemeBreakTest.txt` for Unicode 17.0.0 is fetched in stage 2.

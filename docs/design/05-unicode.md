@@ -12,8 +12,11 @@ so `за́мок` would become two words and the short-word lists would misfire.
 
 Rules work on whole clusters:
 
-- A replacement replaces a whole cluster. A straight quote with a combining mark attached (`"` +
-  U+0301) is a `Symbol`, not a quote candidate, and stays as it is.
+- A replacement replaces a whole cluster. A cluster of several characters led by a non-letter is a
+  `Symbol`: a straight quote with a combining mark attached (`"` + U+0301) is not a quote candidate,
+  and a keycap (`1️⃣`, `#️⃣`) is not a number or a sign. The ASCII fast path of section 3.5 hands the
+  last ASCII byte before a non-ASCII byte to the segmenter, so this holds right after ASCII text
+  too.
 - An insertion (`т.е.` → `т.⍽е.`, `№5` → `№⍽5`) is made only between clusters.
 - Glue is set only on a `Space` token, which is a whole cluster.
 - Emoji sequences (ZWJ, skin-tone modifiers, flags, keycaps, tag sequences) are single `Symbol`
@@ -37,7 +40,10 @@ a foreign crate enabling it would silently change everybody's output).
   U+2DE0–U+2DFF, U+A640–U+A69F; Latin ASCII letters, U+00C0–U+024F, U+1E00–U+1EFF, U+2C60–U+2C7F,
   U+A720–U+A7FF; Greek U+0370–U+03FF, U+1F00–U+1FFF; everything else `Other`. A word whose letters
   come from more than one script is `Mixed` (`Мoсква` with a Latin `o`). The ranges are a constant
-  table, so the script of a letter does not depend on the Rust version.
+  table, so the script of a letter does not depend on the Rust version. The `MixedScript` diagnostic
+  is not raised for a core that matched a dictionary entry (check 0 of section 3.6), so the
+  language's own units pass silently: `μs` (Greek U+03BC, Latin `s`) and `µs` (U+00B5, which falls
+  outside the Latin ranges).
 - **Digits** for number rules are ASCII `0` to `9` only. Digits of other systems are word
   characters. Digits break a word: `x86` is a Latin word and a number in one fragment (check 20 of
   section 3.6 freezes it).
@@ -58,11 +64,15 @@ a foreign crate enabling it would silently change everybody's output).
 
 ### 5.4 Format characters and Fluent isolation marks
 
-Format characters are U+200B ZERO WIDTH SPACE, U+200C to U+200F (ZWNJ, ZWJ outside an emoji cluster,
-LRM, RLM), U+202A to U+202E (embeddings and overrides), U+2060 to U+2064 (word joiner and invisible
-operators), U+2066 to U+2069 (isolates: LRI, RLI, FSI, PDI) and U+FEFF. They form `Format` tokens
-that are transparent for context: rules skip them when they look for neighbours, never insert or
-remove them, and never put them inside an edit.
+Format characters are U+00AD SOFT HYPHEN, U+200B ZERO WIDTH SPACE, U+200C to U+200F (ZWNJ, ZWJ
+outside an emoji cluster, LRM, RLM), U+202A to U+202E (embeddings and overrides), U+2060 to U+2064
+(word joiner and invisible operators), U+2066 to U+2069 (isolates: LRI, RLI, FSI, PDI) and U+FEFF.
+They form `Format` tokens that are transparent for context: rules skip them when they look for
+neighbours, never insert or remove them, and never put them inside an edit. Inside a fragment the
+classifier and the list lookups skip them too (section 3.6), so a word with soft hyphens from a
+hyphenation preprocessor is still a word: `21 ноя\u{AD}бря` gets its glue, and `Мо\u{AD}скве` is a
+`Word`, not `Unclassified`. UAX #29 makes U+00AD a cluster of its own, so the characters stay
+exactly where they were.
 
 This matters for strings that `fluent-bundle` formats at run time: by default it wraps every
 placeable in U+2068 FIRST STRONG ISOLATE and U+2069 POP DIRECTIONAL ISOLATE. With transparency,
@@ -102,7 +112,7 @@ the text: detection is nondeterministic at boundaries and wrong on loan words an
 | Russian preposition before a Latin word                      | glue is set: the trigger is the Russian word (`в⍽db`, `для⍽id`)                                                       |
 | apostrophe `don't` in Russian text                           | `don’t`: an apostrophe between letters is U+2019 in every language (Unicode chapter 6)                                |
 | a word of two scripts (`Мoсква`, `Cервер`)                   | never changed; `MixedScript` diagnostic (warning)                                                                     |
-| `-` between two words of another script (`cat - file` in ru) | not a dash; `AmbiguousHyphen` (section 8.4)                                                                           |
+| `-` between two words of another script (`cat - file` in ru) | not a dash, nor next to a flag or between technical fragments; `AmbiguousHyphen` (section 8.4)                        |
 | a quotation in another language                              | the caller typesets it with another typographer and passes it as `Piece::Protected`                                   |
 
 Letters are never changed: no transliteration, no "fixing" of look-alike letters (section 10.5).

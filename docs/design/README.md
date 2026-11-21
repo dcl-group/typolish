@@ -96,9 +96,10 @@ These invariants carry the guarantees of later sections:
    (section 10.4, mechanism M7). The only replacements of letter-like ASCII are `(c)`, `(r)`, `(tm)`
    and `x` between numbers, each a separate token kind (section 3.5).
 3. **Ordinary spaces are kept.** Rules turn a single U+0020 into a no-break space or leave it. They
-   insert a space only where a rule says so explicitly (inside `т.е.`, after `№`, the percent
-   setting and `number.grouping`), and remove spaces only around a closed-style dash and by the
-   percent setting (section 8.2).
+   insert a space only where a rule says so explicitly (inside `т.е.`, after `№`, and by the percent
+   setting), and remove spaces only around a closed-style dash between two plain words and by the
+   percent setting (section 8.2). No insertion or removal changes what the rules read (section 4.3,
+   invariant I2).
 4. **Technical text is safe by construction.** A fragment that looks technical (a flag, a path, an
    address, a version, an identifier, anything the classifier does not recognize as a word or a
    number) is frozen, and the engine refuses every edit that touches it (sections 3.6, 3.7).
@@ -123,11 +124,12 @@ These invariants carry the guarantees of later sections:
 | Author's punctuation: `!!`, `??`, `,,`, `..`, `!?` → `?!`                                      | Editorial change of intonation and meaning.                                                                                     |
 | Rewriting dates (ISO to local form), weekday and month case                                    | Breaks technical text (negative case `2026-11-21`).                                                                             |
 | Fractions `1/2` → `½`, `20C` → `20 °C`, `м2` → `м²`                                            | Change digits or letters; break dates (`1/2/2026`), identifiers (`Код C`) and model names (`m2`).                               |
+| Digit grouping of numbers in text (`1000000` → `1⍽000⍽000`)                                    | A digit run is one token and English groups with a comma (section 8.8); `format_number` groups values; open point 17.           |
 | Currency placement (`$100` → `100 $`), `руб.` → `₽`, percent and currency formatting of values | House style and i18n formatting, not typesetting.                                                                               |
 | Reformatting telephone numbers                                                                 | National formats. Only no-break grouping (`nbsp.phone`, section 8.7) and nowrap output (11.5).                                  |
 | A no-break space before the last short word of a sentence                                      | Noisy in English, useless in interface strings.                                                                                 |
 | A leading ellipsis glued to a word in Interface (`...args`)                                    | Indistinguishable from a spread operator; `ellipsis.inner` exists in Prose only.                                                |
-| Hanging punctuation, optical alignment, soft hyphens                                           | Layout work that needs markup.                                                                                                  |
+| Hanging punctuation, optical alignment, inserting soft hyphens                                 | Layout work that needs markup. A U+00AD already in the input is transparent (section 5.4).                                      |
 | Language detection, switching language inside one call                                         | Nondeterministic at boundaries. One call is one language; mixed text is defined in section 5.7.                                 |
 | Unicode normalization (NFC)                                                                    | Needs large tables; an NFD word simply does not match a list (section 5.5).                                                     |
 | Quotes spanning paragraphs (an opening quote at the start of every paragraph)                  | The scope of quote pairing is a paragraph; such quotes stay straight with a diagnostic (section 6.10).                          |

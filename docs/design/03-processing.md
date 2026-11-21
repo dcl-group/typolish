@@ -11,14 +11,17 @@ here are planned under `dev/typolish/src/` (section 14.6).
 
 ```text
 input (&str | pieces)
-  │  0. prefilter: no trigger byte for any active rule → Cow::Borrowed     (3.2)
+  │  0. prefilter: no byte that an active rule or the output kind
+  │     reacts to → Cow::Borrowed                                          (3.2)
   │  1. ingest: pieces → stream of atoms (Text, Slot, Protected, Markup);
-  │     protection delimiters cut Protected atoms out of Text             (3.4)
-  │  2. windows: split by paragraph                                        (3.3)  ┐
-  │  3. lexer: atoms → class-invariant tokens over grapheme clusters      (3.5)  │
-  │  4. classifier: fragments → kind, FROZEN flag                          (3.6)  │ per window
-  │  5. phases 1..7: one pass each over a snapshot, rules in table order   (3.8)  │
-  │  6. render: tokens → output in the requested kind                      (3.10) ┘
+  │     fenced backtick blocks cut out as Protected atoms                  (3.4)
+  │  2. windows: split by paragraph; a fenced block is never split         (3.3)  ┐
+  │  3. delimiters: other protection delimiters cut Protected atoms out    (3.4)  │
+  │     of Text, matched across pieces within the window                          │
+  │  4. lexer: atoms → class-invariant tokens over grapheme clusters      (3.5)  │ per window
+  │  5. classifier: fragments → kind, FROZEN and LABEL flags               (3.6)  │
+  │  6. phases 1..7: one pass each over a snapshot, rules in table order   (3.8)  │
+  │  7. render: tokens → output in the requested kind                      (3.10) ┘
   ▼
 Cow<str> | Template (+ diagnostics, + journal of edits and protected spans when recording)
 ```
@@ -32,17 +35,33 @@ Files: `engine/ingest.rs`, `engine/window.rs`, `engine/lex.rs`, `engine/classify
 When a typographer is built, every active rule contributes the bytes that can trigger it to a
 256-bit set: `"` `'` `-` `.` `(` `<` `>` `!` `+` `x` `X` the digits, `№` and `§` lead bytes, the
 lead bytes of `х` `Х` and of typographic characters that rules use as context, and the space when a
-no-break rule is active. A call first scans the input bytes against the set and against the bytes
-the output kind must encode (`& < > " '` for HTML, `\ " '` and controls for escaped output, and the
-typographic set). If no byte matches, it returns `Cow::Borrowed` without lexing. For short interface
-strings without signs this skips the whole pipeline; the scan is linear and allocates nothing.
+no-break rule is active. A call first scans the input bytes against that set and against the set of
+bytes that the output kind encodes. The second set is derived, once per output style, from the same
+constant table the encoder uses (section 11), so the two cannot drift apart:
+
+- `Unicode`: empty;
+- `Html`: `& < > " '`, and the lead bytes of the typographic set except with
+  `HtmlStyle::CHARACTERS`;
+- `Escaped`: `\`, `"`, controls (0x00 to 0x1F, 0x7F), the lead bytes of U+2028, U+2029 and of the
+  typographic set; in addition `'`, the backtick, `< > &` and `$` for `JS`, `JS_HEX` and
+  `JS_CODE_POINT`, `< > &` for `JSON`, and `'` and `<` for `CSS`; with `non_ascii()`, every byte
+  from 0x80.
+
+If no byte matches, the call returns `Cow::Borrowed` without lexing. Lead bytes over-approximate (a
+Cyrillic letter never matches, while every character from U+2000 to U+2FFF does): a false match
+costs a full run, never a wrong result. So
+`typeset("a</script>b", Output::Escaped(EscapeStyle::JS))` is never borrowed, even in Interface,
+where no rule reacts to `<`. For short interface strings without signs this skips the whole
+pipeline; the scan is linear and allocates nothing.
 
 ### 3.3 Windows
 
 A window is a paragraph: its boundary is two or more line breaks with only horizontal whitespace
 between them, or U+2029 PARAGRAPH SEPARATOR. No rule looks across a window boundary, and the scope
 of quote pairing is the window (section 6.10). For pieces, boundaries are found the same way in the
-text of the pieces; a slot is never a boundary, so a message without blank lines is one window.
+text of the pieces; a slot is never a boundary, so a message without blank lines is one window. A
+fenced backtick block (section 10.1), which ingest cuts out before windows are found, lies inside
+one window even when it contains blank lines.
 
 Why: a long text does not hold all its tokens in memory at once; an error in one paragraph (an
 unpaired quote) does not affect its neighbours; and the window is the natural unit for "all or
@@ -53,17 +72,33 @@ nothing" in quote pairing.
 Input becomes a stream of atoms:
 
 ```rust
-enum Atom<'s> {
-    Text { piece: u32, text: &'s str, base: u32 },     // base: byte offset in the input piece
+enum Atom {
+    Text { piece: u32, range: Range<u32> },              // byte range in the input piece
     Slot { piece: u32, slot: Slot },
-    Protected { piece: u32, text: &'s str, base: u32, delimited: bool },
-    Markup { piece: u32, text: &'s str, base: u32 },
+    Protected { piece: u32, range: Range<u32>, delimited: bool },
+    Markup { piece: u32, range: Range<u32> },
 }
 ```
 
-String input is one `Text` piece with index 0. Protection delimiters (section 10.1) cut `Text` atoms
-into `Text` and `Protected { delimited: true }`; the delimiters belong to the protected atom.
-Delimiters are searched within one text piece only.
+Atoms, like tokens, hold positions and no references, so the buffers that keep them can be reused
+across calls (section 2.12). String input is one `Text` piece with index 0.
+
+Protection delimiters (section 10.1) cut `Text` atoms into `Text` and
+`Protected { delimited: true }` in two steps; the delimiters belong to the protected atoms:
+
+1. Over the whole input, before windows are found, fenced backtick blocks (a run of three or more
+   backticks at a line start up to a run of the same length at the start of a later line) are cut
+   out. They may contain blank lines.
+2. Within each window, the other delimiters (single and double backtick runs, longer runs not at a
+   line start, own pairs) are matched over the text of the window across pieces. Adjacent `Text`
+   pieces are read as one text, so a delimiter may even be split between them; slots, protected
+   pieces and markup between an opening and a closing delimiter end up inside the span. Inside it,
+   `Text` atoms become `Protected { delimited: true }`, while a slot stays a slot and markup stays
+   markup.
+
+So the Fluent message ``Run `git checkout -- { $branch }` to reset.`` protects the whole command
+with the slot inside, and a template of `Text` pieces behaves exactly as their concatenation
+(property 10 of section 13.5).
 
 A slot or a protected atom becomes one opaque token: it is always `FROZEN`, takes part in rule
 context through its class (section 3.5), and is never inside the range of an edit. A markup atom
@@ -72,17 +107,22 @@ and edits never touch it.
 
 ### 3.5 Lexer: class-invariant tokens
 
-Text is cut into tokens along extended grapheme clusters (`unicode-segmentation`, section 5.1). For
-ASCII runs a cluster is one byte except `\r\n`, so the fast path skips the tables. A token's class
-comes from the first character of its cluster.
+Text is cut into tokens along extended grapheme clusters (`unicode-segmentation`, section 5.1). A
+fast path skips the tables for ASCII: an ASCII byte is a cluster of its own when the byte after it
+is ASCII too or the text ends there (`\r\n` is one cluster). The last ASCII byte before a non-ASCII
+byte goes to the segmenter together with what follows, because a combining mark, ZWJ or variation
+selector may extend it (`"` + U+0301, `1` + U+FE0F + U+20E3). A token's class comes from the first
+character of its cluster, except that a cluster of several characters whose first character is not a
+letter is a `Symbol` (keycaps `1️⃣` and `#️⃣`, `"` + U+0301); `\r\n` stays a `Newline`, and a
+whitespace character with a combining mark is a frozen `Space` (below).
 
 ```rust
-pub(crate) struct Tok<'s> {
+pub(crate) struct Tok {
     kind: Kind,
-    text: &'s str,  // current text: a slice of the input, a 'static literal, or language data
-    src: SrcSpan,   // piece and byte range in the input piece (positions for reports)
+    src: SrcSpan,   // piece and byte range in the input piece: the original text and its position
+    repl: Repl,     // Source (the text is the slice at src) | Char(char) | Ellipsis(EllipsisForm)
     glue: Glue,     // for Space tokens: None | NoBreak | Narrow (section 3.9)
-    flags: Flags,   // FROZEN, CHANGED, INSERTED
+    flags: Flags,   // FROZEN, LABEL, CHANGED, INSERTED
 }
 
 pub(crate) enum Kind {
@@ -90,7 +130,7 @@ pub(crate) enum Kind {
     Number,           // a run of ASCII digits
     Space,            // a run of horizontal whitespace: U+0020, U+00A0, U+202F, U+2009, tab, ...
     Newline,          // \n, \r\n, \r, U+0085, U+2028
-    Format,           // U+200B..U+200F, U+202A..U+202E, U+2060..U+2064, U+2066..U+2069, U+FEFF
+    Format,           // U+00AD, U+200B..U+200F, U+202A..U+202E, U+2060..U+2064, U+2066..U+2069, U+FEFF
     Quote,            // " ' « » „ “ ” ‘ ’ ‚ ′ ″
     Dash,             // a run of '-' (length 1..), U+2010 ‐, U+2011 ‑, U+2012 ‒, – — U+2015 ―, −
     Dots,             // a run of '.' (length 1..), …
@@ -100,31 +140,40 @@ pub(crate) enum Kind {
     Open(char),       // ( [ {
     Close(char),      // ) ] }
     Punct(char),      // , ; : ! ? № § ¶ % ‰ ° / \ @ # & * + = < > | ~ ^ $ _ `
-    Symbol,           // other clusters: emoji, CJK, a punctuation mark with a combining mark
+    Symbol,           // other clusters: emoji, CJK, any multi-character cluster led by a non-letter
     Slot(SlotKind),   // opaque placeholder
     Protected,        // protected text
     Markup,           // zero-width, transparent
 }
 ```
 
+A token holds no reference. Its current text is the source slice at `src`, unless a rule replaced
+it; `repl` then names the replacement. Every replacement of version 1 is one character (a quote
+glyph, a dash, `…`, `−`, `×`, `′`, `″`, `©`, `®`, `™`, an arrow, `≥`, `≤`, `≠`, `±`) or a form of
+the language's ellipsis data (the `..` or `…` after `?` and `!`), which the renderer reads from the
+typographer's language. An inserted `Space` token has an empty `src` at the insertion point. So
+`Tok` is `'static`: the vectors that hold tokens live in `Scratch` and in a thread-local without
+`unsafe`, and are reused for inputs of any lifetime (section 2.12). `Cx` resolves the text of a
+token for rules from the call's inputs and the language.
+
 **Class invariance.** A plain form and all its typographic forms belong to one kind: `"` and `«` are
 `Quote`; `-`, `--` and `—` are `Dash`; `...` and `…` are `Dots`; `->` and `→` are `Operator`; `(c)`
 and `©` are `LegalMark`; ` ` and `⍽` are `Space`. Kinds carry no field describing the form; the form
-is read from `text`. `Op` and `Mark` are semantic ids (arrow right, copyright), the same for both
-forms. Multi-character plain forms are lexed greedily from a fixed table into one token, so
+is read from the token's text. `Op` and `Mark` are semantic ids (arrow right, copyright), the same
+for both forms. Multi-character plain forms are lexed greedily from a fixed table into one token, so
 replacing `(c)` with `©` changes the text of one token rather than turning three tokens into one.
 Operators are lexed only whole from the table: `-->` is not in it, so the lexer sees `Dash` of
 length 2 and `Punct('>')`, and no dash rule fires (there is no space to the right of `--`).
 
-Every rule edit changes only the `text` or the `glue` of a token, never its kind. The only
+Every rule edit changes only the replacement or the `glue` of a token, never its kind. The only
 structural edits are inserting a `Space` token and removing a `Space` token. Section 4 builds the
 idempotence argument on this.
 
-A cluster of several characters that starts with a punctuation mark (`"` + U+0301) is a `Symbol` and
-no rule changes it. A cluster that starts with a whitespace character and carries a combining mark
-is a `Space` token flagged `FROZEN`: it separates fragments but is never glued or removed, and the
-mark stays where it is (section 5.3). Emoji with ZWJ, modifiers, flags and keycaps (`1️⃣`) are single
-`Symbol` tokens and are never cut or replaced.
+A cluster of several characters that starts with a non-letter (`"` + U+0301, `1️⃣`, `#️⃣`) is a
+`Symbol` and no rule changes it. A cluster that starts with a whitespace character and carries a
+combining mark is a `Space` token flagged `FROZEN`: it separates fragments but is never glued or
+removed, and the mark stays where it is (section 5.3). Emoji with ZWJ, modifiers, flags and keycaps
+are single `Symbol` tokens and are never cut or replaced.
 
 ### 3.6 Fragments and the classifier
 
@@ -155,17 +204,17 @@ applies the checks strictly in this order; the first check that matches decides:
 | 9   | UUID 8-4-4-4-12 of hex digits                                                                                                                                                                                                                                         | `Uuid`                                      | whole core                              |
 | 10  | `0x` or `0X` and hex digits                                                                                                                                                                                                                                           | `Hex`                                       | whole core                              |
 | 11  | at least 8 characters, all hex, with a digit and a letter a to f                                                                                                                                                                                                      | `Hex`                                       | whole core                              |
-| 12  | `YYYY-MM-DD` or `YYYY-MM` with month 01 to 12                                                                                                                                                                                                                         | `IsoDate`                                   | whole core                              |
+| 12  | `YYYY-MM-DD`; or `YYYY-MM` or `YYYY–MM` with month 01 to 12                                                                                                                                                                                                           | `IsoDate`; `YearMonth` for the short form   | whole core; no for `YearMonth`          |
 | 13  | `[vV]?` number (`.` number){2,} with an optional `-` or `+` tail; four numbers 0 to 255 joined by `.`; `D.M.YYYY`                                                                                                                                                     | `Version`                                   | whole core                              |
 | 14  | two or more groups of one or two letters joined by `.`, ending in `.` (`т.е.`, `А.С.`, `Ph.D.`)                                                                                                                                                                       | `Abbreviation`                              | no                                      |
 | 15  | a number: optional sign (`-`, `+`, `+-`, `−`, `±`), digits, optional decimal part with `.` or `,`, optional `%` or `‰`                                                                                                                                                | `Number`                                    | no                                      |
 | 16  | `D+` then `x`, `X`, `х`, `Х` or `×` then `D+`, the first factor without a leading zero                                                                                                                                                                                | `Dimensions` (the letter becomes `Times`)   | no                                      |
-| 17  | `N-N` or `N–N`, N an unsigned integer, a decimal with the language's separator, or a Roman numeral                                                                                                                                                                    | `Range`                                     | no (only range rules edit its dash)     |
+| 17  | `N-N` or `N–N`, N an unsigned integer, a decimal with the language's separator, a Roman numeral or a `Number` slot; or two `Date` slots joined by `-` or `–`                                                                                                          | `Range`                                     | no (only range rules edit its dash)     |
 | 18  | a single `.` between letters or digits (runs of two or more dots do not count)                                                                                                                                                                                        | `Dotted` (hosts, files)                     | whole core                              |
 | 19  | `,` or `;` not first and not last                                                                                                                                                                                                                                     | `List`                                      | whole core                              |
 | 20  | both ASCII letters and digits (`x86`, `h264`, `2FA`, `5MB`, `abc123`)                                                                                                                                                                                                 | `Identifier`                                | whole core                              |
 | 21  | letters or digits joined by single hyphens (`tls-server`, `кто-то`, `db-01`, `25-й`, `123-45-67`)                                                                                                                                                                     | `Compound`                                  | the hyphens                             |
-| 22  | words or numbers (signed numbers too) joined by `—`, `–` or `…` without spaces (`word—word`, `да…нет`), or by `...` (`да...нет`, `-5...5`)                                                                                                                            | `Joined`                                    | no                                      |
+| 22  | two or more parts joined by single `—`, `–` or `…` without spaces, or by `...` (`word—word`, `да…нет`, `да...нет`, `-5...5`), each part a word by check 23 or a number by check 15 (signed numbers too)                                                               | `Joined`                                    | no                                      |
 | 23  | letters with their marks and digits only, with apostrophes between letters (`don't`), optionally a sign with a number (`№5`), or a word with a legal mark (`Brand(tm)`)                                                                                               | `Word`                                      | no                                      |
 | 24  | anything else                                                                                                                                                                                                                                                         | `Unclassified`                              | whole core                              |
 
@@ -182,8 +231,11 @@ Order matters in these places:
 - 7 before 8: `->` and `>=` end with `>` and would otherwise be frozen as `Angle`, and symbol rules
   could never fire.
 - 10 before 16: `0x10` is hex, not dimensions.
-- 12 before 17: `2026-11` is a year and month, not a range; `1941-45` (45 is not a month) is a
-  range; `2010-11` is an ISO year and month and stays a date.
+- 12 before 17: `2026-11` is a year and month (`YearMonth`), not a `Range`, so `range.digits` never
+  takes it, and only `range.context`, with a year or century word next to it and a tail greater than
+  the last two digits of the year, turns its hyphen into a range dash (`2010-11 гг.` →
+  `2010–11⍽гг.`; `2026-11`, `в 2010-11` and `2026-11 гг.` keep the hyphen). `1941-45` (45 is not a
+  month) is a range. A full `YYYY-MM-DD` is frozen.
 - 13 before 18: `0.2.27` and `10.0.0.1` are versions and addresses, not host names.
 - 15 to 17 before 18: `1.5` is a number and `1.5-2.5` (en) a range, not dotted names.
 - 24 last: anything the grammar does not recognize as a word or a number is frozen. The classifier
@@ -193,12 +245,31 @@ Special cases:
 
 - A lone fragment `x`, `х` or `×` between two number fragments (`10 x 5`) has kind `Times`, in both
   forms, so the kind survives the replacement.
-- A fragment consisting only of `-`, `--` or `---` is an `OperatorRun` ("dash fragment"); dash rules
-  decide its fate by context.
-- A number slot inside a core counts as a number (so `{a}-{b}` reaches check 17 as a range of
-  slots); other slots count as letters.
+- A fragment that is a single `Dash` token in any form (`-`, `--`, `---`, `–`, `—`) is an
+  `OperatorRun` ("dash fragment"), so a lone `-` and the `—` that replaces it have one kind; dash
+  rules decide its fate by context, and a typed dash only serves as context.
+- A `Number` slot inside a core counts as a number. A `Date` slot counts as a number in check 17
+  only, so two `Number` slots or two `Date` slots joined by `-` (`{a}-{b}`) form a `Range` that
+  `range.placeholders` can edit. Every other slot, and a `Date` slot in every other check, counts as
+  letters: `{n}-{d}` with mixed kinds is a `Compound`.
 - The wrapper `"` of `27"` is cut off: the core `27` is a number, and the quote goes to the quote
   algorithm (section 6.5).
+- `Format` tokens (section 5.4) inside a fragment are skipped by every check and by list lookups:
+  `ноя\u{AD}бря` is the word `ноября` for check 23 and for the month list. They stay in the text.
+
+**Label numbers.** A sign of the language's `signs` (`№`, `§`, `¶`, also doubled) followed by a
+number names something; it counts nothing. After the checks, the classifier sets the `LABEL` flag
+on:
+
+- a `Number` or `Range` core, or a `Number` slot, whose fragment follows a fragment that is only a
+  sign or a doubled sign, with nothing but spaces of any kind between them on the same line (`№ 5`,
+  `№⍽5`, `§§ 5–7`, `№ {n}`);
+- the core of a sign attached to a number (`№5`, `§12`, `№{n}`; kind `Word` by check 23).
+
+Both forms are labels, so the space that `nbsp.signs` inserts into `№5` leaves the number a label
+(invariant I2 of section 4.3). The rules that read a quantity or a year do not take a label for a
+number (section 8.2): in `Школа №5 г. Москвы`, `г.` is a city, not a year. Marking labels looks at
+one neighbouring fragment, so it stays linear.
 
 Why per fragment, not per string: a technical fragment, once found, is frozen whole, and no rule,
 including a future one, can damage it. The reference implementation works with regular expressions
@@ -208,8 +279,8 @@ a rule such as "space after a colon" does not know that the colon belongs to an 
 ("Сервис слушает host:8080 - проверьте"), and the quotes, dashes and spaces around them are wanted.
 
 The classifier runs once per window, before the phases. Edits inside a pass never trigger
-reclassification; section 4.3 (invariant I2) states why the kinds on the output are the ones the
-next pass computes.
+reclassification; section 4.3 (invariant I2) states why the kinds and flags on the output are the
+ones the next pass computes.
 
 ### 3.7 Freezing and edit refusal
 
@@ -217,13 +288,13 @@ next pass computes.
 mutable access to tokens. It returns a proposal:
 
 ```rust
-pub(crate) struct Match<'s> {
+pub(crate) struct Match {
     consume: u8,      // tokens from the anchor that are closed to other rules of the phase
-    edits: Edits<'s>, // at most 4 edits inside [anchor, anchor + consume]
+    edits: Edits,     // at most 4 edits inside [anchor, anchor + consume]
 }
 
-pub(crate) enum Edit<'s> {
-    Replace { at: u8, text: &'s str },          // new text of a token; the kind stays
+pub(crate) enum Edit {
+    Replace { at: u8, repl: Repl },             // new text of a token; the kind stays
     Glue { at: u8, glue: Glue },                // set the glue mark of a Space token
     Insert { before: u8, glue: Glue },          // insert a Space token carrying glue
     Remove { at: u8 },                          // remove a Space token
@@ -240,9 +311,9 @@ byte for byte intact.
 ### 3.8 Phases
 
 ```rust
-type RuleFn = for<'s> fn(&Cx<'_, 's>, usize) -> Option<Match<'s>>;
+type RuleFn = fn(&Cx<'_>, usize) -> Option<Match>;
 
-fn run_phase<'s, R: Recorder>(cx: &Cx<'_, 's>, input: &[Tok<'s>], out: &mut Vec<Tok<'s>>, rec: &mut R) {
+fn run_phase<R: Recorder>(cx: &Cx<'_>, input: &[Tok], out: &mut Vec<Tok>, rec: &mut R) {
     out.clear();
     let mut i = 0;
     while i < input.len() {
@@ -272,9 +343,10 @@ This is a sketch: real code has no panicking indexing. Properties of a phase:
    longest are abbreviations and units, eight tokens). The exception is the quote phase: it has a
    linear preliminary pass over the window (section 6), after which its rules only read decisions.
 
-`Cx` gives rules read-only access: neighbours with `Format` and `Markup` tokens skipped, the
-fragment and its kind, language data, settings, line and window starts, piece numbers. Two token
-vectors per window swap between phases.
+`Cx` gives rules read-only access: the text of a token (resolved from the call's inputs and its
+replacement), neighbours with `Format` and `Markup` tokens skipped, the fragment with its kind and
+flags, language data, settings, line and window starts, piece numbers. Two token vectors per window
+swap between phases.
 
 ### 3.9 Glue marks
 
@@ -282,8 +354,8 @@ No-break rules do not write U+00A0 into the text. They set the glue mark of a `S
 (`Glue::NoBreak` or `Glue::Narrow`) or insert a `Space` token that carries one. A U+00A0 already in
 the input is lexed as a `Space` with `Glue::NoBreak`, U+202F as `Glue::Narrow`. Rendering turns the
 mark into U+00A0 or U+202F, `&nbsp;` or `&#8239;`, `\u00A0` or `\u{a0}`, or into a nowrap group
-(section 11.5). A U+2011 NON-BREAKING HYPHEN between two fragments binds them into the same nowrap
-group as a glue mark does.
+(section 11.5). A U+2011 NON-BREAKING HYPHEN inside a fragment is a joint of its nowrap group, as a
+glue mark is between fragments.
 
 Why: nowrap output needs the groups of glued tokens, which is natural when glue is a relation
 between tokens; the report shows which rule glued; and when two rules want the same space, the
@@ -323,9 +395,10 @@ depend on the recorder; a test compares the three modes on the corpus.
   with a stack, one push and one pop per quote; lookups in sorted static lists by binary search,
   O(log k) per fragment with k the longest list (hundreds); rendering O(n). Total O(n log k). There
   is no recursion and no backtracking.
-- Protection delimiters: if the closing delimiter of a pair is not found from position p, it is not
-  found further on either, so the search for that pair stops. A hundred thousand unclosed backticks
-  are processed in linear time.
+- Protection delimiters: fenced blocks are found in one pass over the input, other delimiters in one
+  pass per window. If the closing delimiter of a pair is not found from position p, it is not found
+  further on either, so the search for that pair stops. A hundred thousand unclosed backticks are
+  processed in linear time.
 - Memory: the token buffers of the longest window (about 40 bytes per token), the output string, and
   the journal only when recording. For text with paragraphs, memory does not grow with the input. A
   10 MB paragraph without line breaks is the pathological case: memory is linear in its length.

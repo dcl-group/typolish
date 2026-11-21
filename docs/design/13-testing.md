@@ -27,13 +27,19 @@ change, `Cow::Borrowed`); a slot next to it; the rule disabled (no change); and 
 with the right rule in `report`. Further tables:
 
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
-  decimals (`Number::decimal` keeps precision), `i128::MIN`, `u128::MAX`, `f64::NAN`, infinities,
-  `-0.0`, the grouping thresholds (4 and 5 digits), `Number::fixed` ties, every output kind.
+  decimals (`Number::decimal` keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`,
+  `f32::MAX`), `i128::MIN`, `u128::MAX`, `f64::NAN`, infinities, `-0.0`, the grouping thresholds (4
+  and 5 digits), `Number::fixed` ties, every output kind, and nowrap with and without glue (`1234`
+  in ru has no element).
 - `tests/output.rs`: every output kind on a fixed set of inputs, including unpaired quotes,
-  backslashes in protected spans, line breaks, U+2028, `<script>`, `${`, characters above the BMP.
+  backslashes in protected spans, line breaks, U+2028, `<script>`, `${`, characters above the BMP;
+  inputs that no rule touches but the style must encode (`a</script>b` in `JS` with Interface,
+  `AT&T` in `JSON`, `Да` with `non_ascii()`), which must never come back borrowed; nowrap groups
+  with U+202F, U+2011 and a protected span next to glue.
 - `tests/parts.rs`: templates, including the walk-through of section 2.14, select variants, `Other`
-  slots, nowrap groups starting and ending at slots, and the slot participation table of section 2.6
-  row by row.
+  slots, nowrap groups starting and ending at slots, the slot participation table of section 2.6 row
+  by row (with `{Date}-{Date}` → `{Date}–{Date}` and `{Number}-{Date}` unchanged), labels
+  (`№{n} г. Москвы`), and backtick protection across pieces (``Run `git checkout -- { $b }` ``).
 - `tests/fluent_isolation.rs`: run-time strings with U+2068 and U+2069 around values give the same
   typesetting as without them, with the isolates unchanged (section 5.4).
 
@@ -43,10 +49,12 @@ with the right rule in `report`. Further tables:
 
 - one function per row of section 10.5 (`neg_flag_force`, `neg_ls_la`, `neg_lone_double_hyphen`,
   ..., `neg_identifier_underscore`), for ru and en, alone, in the two sentence frames of each
-  language, and as `Piece::Text` next to slots. In Interface the output equals the input and is
-  `Cow::Borrowed`; in Prose the expectation is the last column of section 10.5. The comment of each
-  test names its mechanisms, and the test also checks that `report` lists the expected `TechKind`
-  for frozen fragments;
+  language, and as `Piece::Text` next to slots. Through `report`, the tokens of the case stay byte
+  for byte with no edit but glue outside them. In Interface the output also equals the input and is
+  `Cow::Borrowed`, except for the two cases that section 10.5 names (row 24's `if a<b and c>d` in
+  English, with its expected glue; row 25, checked in English with short Cyrillic words); in Prose
+  the expectation is the last column of section 10.5. The comment of each test names its mechanisms,
+  and the test also checks that `report` lists the expected `TechKind` for frozen fragments;
 - the stress strings of section 10.7;
 - all 405 negative cases of the scouting corpus (groups `neg.flags`, `neg.net`, `neg.ver`,
   `neg.ids`, `neg.ident`, `neg.list`, `neg.html`, `neg.mixed`, `neg.shortlat`, `neg.lookalike`; ru
@@ -86,7 +94,10 @@ breaks, emoji with ZWJ, combining marks, format characters); strings from the co
 insertions; and arbitrary Unicode strings for the no-panic test.
 
 1. **Idempotence**: `f(f(x)) == f(x)` for {ru, en, COMMON} × {Prose, Interface, all, random subsets}
-   × the three `SingleQuotes` modes.
+   × the three `SingleQuotes` modes, with fixed seeds for every split and merge of invariant I2
+   (`Школа №5 г. Москвы`, `§5 ч. 2`, `т.е.`, `Moscow - the capital`,
+   `See https://example.com/docs - the guide`, `He said - "a cat"`, `100%` and `100 %` under every
+   `PercentSpacing`).
 2. **Fixed-point oracle**: `f` repeated until nothing changes (at most three times) equals `f`; a
    difference prints the reports of both passes.
 3. **Invariants**, one property each: I1 (edits never change a token kind; insertions and removals
@@ -102,17 +113,20 @@ insertions; and arbitrary Unicode strings for the no-panic test.
    (with `symbols.*` and `number.times` off).
 7. **Graphemes**: every multi-character cluster of the input that is not a run of plain signs
    appears whole in the output.
-8. **Cow**: the output is `Borrowed` exactly when it equals the input (Unicode).
+8. **Cow**: the output is `Borrowed` exactly when it equals the input byte for byte, for every
+   output kind (`Html` and `Escaped` included), so the prefilter can never skip encoding.
 9. **Recorder independence**: `typeset`, `typeset_with`, `report` and `lint` agree on the result and
    on the diagnostics; applying `report(x).changes()` to `x` yields the result.
 10. **Pieces and strings**: a template of `Text` pieces only gives the same as `typeset` of their
-    concatenation.
+    concatenation, protection delimiters included (they are matched across pieces, section 3.4).
 11. **Determinism of order**: a set built in different orders of `with`/`without` gives byte-equal
     output.
 12. **Output kinds**: `decode(typeset(x, out)) == typeset(x, Unicode)` and
-    `typeset(decode(typeset(x, out)), out) == typeset(x, out)` for every output kind; decoders are
+    `typeset(decode(typeset(x, out)), out) == typeset(x, out)` for every output kind, nowrap styles
+    included (an ordinary space inside an element decodes to U+00A0, section 11.5); decoders are
     test helpers.
-13. **Round trip**: P1 on generated canonical strings, P2 on generated strings (section 12.2).
+13. **Round trip**: P1 on generated canonical strings (without the `NestedPossessive` pattern), P2
+    on generated strings (section 12.2).
 14. **No panic** on arbitrary strings and arbitrary pieces, including lone combining marks, control
     characters and noncharacters: 10 000 cases in a normal run, 1 000 000 in an `#[ignore]` test.
 
@@ -127,7 +141,12 @@ insertions; and arbitrary Unicode strings for the no-panic test.
   `unicode_segmentation::UNICODE_VERSION` to the version of the fixture, so a dependency update
   forces a fixture update. The file is fetched from unicode.org in stage 2.
 - Tables for spaces with combining marks (section 5.3), NFD words (section 5.5), mixed scripts
-  (section 5.7) and format characters (section 5.4).
+  (section 5.7, with the units `μs` and `µs` raising no `MixedScript`) and format characters
+  (section 5.4, with U+00AD inside words: `21 ноя\u{AD}бря` gets its glue, `в Мо\u{AD}скве` is a
+  `Word`).
+- Tables for clusters led by a non-letter: keycaps `1️⃣` and `#️⃣`, `"` + U+0301, each alone and right
+  after ASCII text (`Шаги 1️⃣-3️⃣`, `a"\u{301}b`), so that the ASCII fast path of section 3.5 hands
+  them to the segmenter; they come out unchanged and are not numbers, signs or quotes.
 
 ### 13.7 Own corpus
 
@@ -175,13 +194,14 @@ Rejected: `criterion` (a heavy tree: `clap`, `serde`, `regex`, `rayon`) and `div
 
 `tests/conformance.rs` checks repository facts: `LICENSE-*` at the root and in `dev/typolish/` are
 byte-identical; `dev/typolish/README.md` is a symlink to the root README;
-`Typographer: Send + Sync + 'static` and `Clone`; `ORDER`, `Rule::ALL` and the table of section 4.1
-contain every rule once, ids are unique and of the documented form,
-`Rule::from_str(r.id()) == Ok(r)`; the composition of Prose and Interface matches section 9.2;
-`src/` contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; `src/lang/*.rs`
-contain no `fn`, `impl`, `match` or `if`; replacement tables produce no letter and no digit;
-built-in languages × built-in sets build without error. Checks that read `docs/design/` skip when
-the file is absent (the published package has no design).
+`Typographer: Send + Sync + 'static` and `Clone`; `Scratch: Send + Sync + Default`; `ORDER`,
+`Rule::ALL` and the table of section 4.1 contain every rule once, ids are unique and of the
+documented form, `Rule::from_str(r.id()) == Ok(r)`; `s.to_string().parse() == Ok(s)` for
+`RuleSet::EMPTY` (printed `empty`), `ALL`, `PROSE`, `INTERFACE` and generated sets; the composition
+of Prose and Interface matches section 9.2; `src/` contains no `std::env`, `std::fs`, `std::net`,
+`std::time` or `unsafe`; `src/lang/*.rs` contain no `fn`, `impl`, `match` or `if`; replacement
+tables produce no letter and no digit; built-in languages × built-in sets build without error.
+Checks that read `docs/design/` skip when the file is absent (the published package has no design).
 
 `tests/data.rs` runs the validation of section 7.6 on every built-in table and compares the CLDR
 values (quote pairs, decimal, group, minimum grouping digits where not overridden, percent pattern,

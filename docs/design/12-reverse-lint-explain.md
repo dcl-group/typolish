@@ -16,25 +16,36 @@ set on its own. Characters that no enabled rule produces are left alone (a `©` 
 `symbols.copyright` is off). Slots, protected spans (delimiters work as in `typeset`), markup and
 frozen fragments are never touched.
 
-| Rule                                       | Typeset                                                                                                | Plain                                                       |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| `quotes.pairs`                             | glyphs of both quote pairs of the language, at every level                                             | `"`                                                         |
-| `quotes.apostrophe`                        | `’` that does not close an open `‘` (decided by the pairing analysis of section 6 run on typed glyphs) | `'`                                                         |
-| `quotes.primes`                            | `″`, `′`                                                                                               | `"`, `'`                                                    |
-| `dash.spaced-hyphen`, `dash.double-hyphen` | `⍽— ` or `—` between operands; `—` closed between words                                                | `-` (spaces restored for the closed style)                  |
-| `dash.dialogue`                            | `—⍽` at a line start                                                                                   | `- `                                                        |
-| `range.*`                                  | `–` between numbers, slots, times, Roman numerals                                                      | `-`                                                         |
-| `ellipsis.*`                               | `…`                                                                                                    | `...`; `?..` and `!..` stay (they are plain)                |
-| `nbsp.*`                                   | glue (U+00A0, U+202F) set by a rule's pattern                                                          | a space; inserted glue (`т.⍽е.`, `№⍽5`) becomes a space too |
-| `number.minus`                             | `−` before a number                                                                                    | `-`                                                         |
-| `number.times`                             | `×` between numbers                                                                                    | `x`                                                         |
-| `number.grouping`                          | glue between digit groups                                                                              | removed                                                     |
-| `symbols.*`                                | `©` `®` `™` `→` `←` `↔` `≥` `≤` `≠` `±`                                                                | `(c)` `(r)` `(tm)` `->` `<-` `<->` `>=` `<=` `!=` `+-`      |
+| Rule                                       | Typeset                                                                   | Plain                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `quotes.pairs`                             | glyphs of both quote pairs of the language, at every level                | `"`                                                         |
+| `quotes.apostrophe`                        | `’` that is an apostrophe by the rule below the table                     | `'`                                                         |
+| `quotes.primes`                            | `″`, `′`                                                                  | `"`, `'`                                                    |
+| `dash.spaced-hyphen`, `dash.double-hyphen` | `—` with spaces (glued or not) between operands; `—` closed between words | `-` with the same spaces; spaced `-` for the closed form    |
+| `dash.dialogue`                            | `—⍽` at a line start                                                      | `- `                                                        |
+| `range.*`                                  | `–` between numbers, slots, times, Roman numerals                         | `-`                                                         |
+| `ellipsis.*`                               | `…`                                                                       | `...`; `?..` and `!..` stay (they are plain)                |
+| `nbsp.*`                                   | glue (U+00A0, U+202F) set by a rule's pattern                             | a space; inserted glue (`т.⍽е.`, `№⍽5`) becomes a space too |
+| `number.minus`                             | `−` before a number                                                       | `-`                                                         |
+| `number.times`                             | `×` between numbers                                                       | `x`                                                         |
+| `symbols.*`                                | `©` `®` `™` `→` `←` `↔` `≥` `≤` `≠` `±`                                   | `(c)` `(r)` `(tm)` `->` `<-` `<->` `>=` `<=` `!=` `+-`      |
+
+**Which `’` is an apostrophe** (English, where `’` is both the apostrophe and the nested closing
+quote). A `’` in a fixed apostrophe context of section 6.2 (between letters, after a digit before a
+letter, an elision, at a word start before digits) is an apostrophe. Any other `’` with a closing
+role closes the innermost open `‘` of its depth, mirroring the forward algorithm, with one
+exception: a `’` after `s` and before a non-letter, where the forward algorithm puts a trailing
+possessive, leaves the `‘` open if a later `’` of the same depth, before the next `‘` of that depth
+and before the closer of the enclosing pair, has a closing role and does not follow `s`; that later
+`’` closes it. A `’` that closes nothing is an apostrophe. So `“He said ‘the dogs’ bowl is empty’”`
+→ `"He said "the dogs' bowl is empty""`, and `“‘Hi,’ said the dogs’ owner”` →
+`""Hi," said the dogs' owner"`. When every candidate follows `s` (`‘the dogs’ bowls’`), the first
+one closes, and the round trip lists the case as a known loss (`NestedPossessive`, section 12.2).
 
 The canonical plain form, for the enabled rules: no typographic character that they produce; a dash
-written `-` (not `--`); abbreviations with a space (`т. е.`); `№ 5` with a space; double quotes at
-every level; `'` only for apostrophes and primes; `...` for an ellipsis; `?..` after a question in
-Russian; numbers without group separators.
+written `-` (not `--`) with spaces on both sides; abbreviations with a space (`т. е.`); `№ 5` with a
+space; double quotes at every level; `'` only for apostrophes and primes; `...` for an ellipsis;
+`?..` after a question in Russian.
 
 It is a method of the typographer because it needs the enabled rules, the quote pairs and dash style
 of the language, and the protection settings. Input is Unicode; decoding HTML or escapes is the
@@ -49,21 +60,23 @@ Two properties, tested for both languages and both rule sets:
 
 There is no external corpus (decided by the maintainer on 2026-11-21). P1 and P2 run on the
 project's own corpus (section 13.7) and on a generator of canonical strings; stage reports say that
-the corpus is the project's own. Known losses, which fall outside the canonical form, are listed in
-`tests/corpus/roundtrip-known.tsv` with a reason code; a new mismatch or a vanished one fails the
-test and prints the list.
+the corpus is the project's own. Known losses are listed in `tests/corpus/roundtrip-known.tsv` with
+a reason code; a new mismatch or a vanished one fails the test and prints the list. All but one fall
+outside the canonical form; `NestedPossessive` is an ambiguity inside it, and the generator of
+canonical strings for P1 avoids its pattern (two `s'` at the same depth of one nested pair).
 
-| Input (outside the canonical form)          | `typeset`   | `to_plain`  | Code               |
-| ------------------------------------------- | ----------- | ----------- | ------------------ |
-| `--` between words                          | `—`         | `-`         | `DoubleHyphen`     |
-| `т.д.`                                      | `т.⍽д.`     | `т. д.`     | `CompactAbbr`      |
-| `№5`                                        | `№⍽5`       | `№ 5`       | `AttachedSign`     |
-| `?...` (ru)                                 | `?..`       | `?..`       | `TerminalEllipsis` |
-| `'x'` with `SingleQuotes::Everywhere`       | `“x”`       | `"x"`       | `SingleQuote`      |
-| `"a 'b' c"` (en)                            | `“a ‘b’ c”` | `"a "b" c"` | `NestedSingle`     |
-| `1920х1080` (Cyrillic `х`)                  | `1920×1080` | `1920x1080` | `CyrillicTimes`    |
-| `100%` with `PercentSpacing::Language` (ru) | `100⍽%`     | `100 %`     | `PercentInserted`  |
-| U+00A0 typed by the author                  | U+00A0      | a space     | `AuthorGlue`       |
+| Input (non-canonical unless noted)          | `typeset`                 | `to_plain`                | Code               |
+| ------------------------------------------- | ------------------------- | ------------------------- | ------------------ |
+| `--` between words                          | `—`                       | `-`                       | `DoubleHyphen`     |
+| `т.д.`                                      | `т.⍽д.`                   | `т. д.`                   | `CompactAbbr`      |
+| `№5`                                        | `№⍽5`                     | `№ 5`                     | `AttachedSign`     |
+| `?...` (ru)                                 | `?..`                     | `?..`                     | `TerminalEllipsis` |
+| `'x'` with `SingleQuotes::Everywhere`       | `“x”`                     | `"x"`                     | `SingleQuote`      |
+| `"a 'b' c"` (en)                            | `“a ‘b’ c”`               | `"a "b" c"`               | `NestedSingle`     |
+| `1920х1080` (Cyrillic `х`)                  | `1920×1080`               | `1920x1080`               | `CyrillicTimes`    |
+| `100%` with `PercentSpacing::Language` (ru) | `100⍽%`                   | `100 %`                   | `PercentInserted`  |
+| U+00A0 typed by the author                  | U+00A0                    | a space                   | `AuthorGlue`       |
+| `"a "the dogs' bowls" b"` (en; canonical)   | `“a ‘the dogs’ bowls’ b”` | `"a "the dogs" bowls' b"` | `NestedPossessive` |
 
 ### 12.3 Source check
 
@@ -86,8 +99,8 @@ never decides for the caller.
 | `CrossingQuotes`    | warning  | `quotes.pairs`                             | pairs would cross each other or a typed pair                                         |
 | `AmbiguousQuote`    | info     | `quotes.pairs`                             | a straight quote with spaces or letters on both sides: no role                       |
 | `UnclosedDelimiter` | warning  | protection (no rule)                       | an opening delimiter without its closing one; it was treated as text                 |
-| `AmbiguousHyphen`   | info     | `dash.spaced-hyphen`, `dash.double-hyphen` | `-` between two numbers, two single letters or two foreign words; not a dash         |
-| `MixedScript`       | warning  | classifier (no rule)                       | a word with letters of two scripts (`Мoсква`)                                        |
+| `AmbiguousHyphen`   | info     | `dash.spaced-hyphen`, `dash.double-hyphen` | `-` that section 8.4 refuses (numbers, single letters, foreign words, a flag)        |
+| `MixedScript`       | warning  | classifier (no rule)                       | a word with letters of two scripts (`Мoсква`), unless a dictionary entry (`μs`)      |
 | `SlotGlue`          | warning  | classifier (no rule)                       | a `Number` slot glued to letters (`{n}МБ`)                                           |
 | `SlotGlue`          | info     | classifier (no rule)                       | two slots glued together (`{a}{b}`)                                                  |
 | `NowrapFallback`    | info     | renderer (no rule)                         | a nowrap group split at a `Markup` piece; the glue at the split written as an entity |
