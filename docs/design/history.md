@@ -30,7 +30,8 @@ no normal dependencies; `#![deny(missing_docs, unsafe_code)]`; public `Graphemes
 `cargo-deny 0.20.2`, `cargo-hack` and clippy installed.
 
 **Dependency tree and cargo-deny**: a throwaway workspace with the manifests and `deny.toml` of
-section 14.5 resolved 23 packages (listed in section 14.1); `cargo deny check` printed
+section 14.5 resolved 23 packages besides `typolish` (all listed in section 14.1, including the
+build dependency `autocfg` and the UEFI-only `r-efi`); `cargo deny check` printed
 `advisories ok, bans ok, licenses ok, sources ok`; `cargo deny list` showed only MIT, Apache-2.0
 and, for `unicode-ident`, Unicode-3.0 in the normal tree.
 

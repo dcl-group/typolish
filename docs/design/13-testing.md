@@ -7,7 +7,8 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 ### 13.1 Principles
 
 - Tests live in `dev/typolish/tests/` and run from `dev/` with no network; helpers are in
-  `tests/common/mod.rs`. Slow tests are `#[ignore]` and run by hand in stage 5 and before releases.
+  `tests/common/mod.rs` (lint allows: section 14.5). Slow tests are `#[ignore]` and run by hand in
+  stage 5 and before releases.
 - Fixtures are synthetic. No text from internal networks or third-party works enters the repository;
   host names are neutral (`example.com`, `db.example.internal`).
 - Expectations are written with visible markers: the helper `vis("5⍽МБ")` replaces `⍽` with U+00A0
@@ -15,7 +16,8 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   helper prints invisible characters as markers.
 - The reference implementation is not run by the tests. Its recorded pairs are plain tables; its
   name appears nowhere in the repository (a script outside the repository checks `git diff --cached`
-  before every commit, since a test in the repository would have to contain the name).
+  and the commit message before every commit, since a test in the repository would have to contain
+  the name).
 
 ### 13.2 Rule tables
 
@@ -319,23 +321,25 @@ U+00A0 and must not be normalized.
 ### 13.8 Load and allocation
 
 - `benches/load.rs` (`harness = false`, std only: `Instant`, `black_box`, the median of N runs), run
-  as `cargo bench --bench load` in release. It prints: the whole corpus per set and output kind
-  (MB/s); one interface string of about 60 bytes and one without trigger bytes (prefilter), median
-  and p99 over 100 000 runs, with and without `typeset_with`; time per byte for 1 KiB, 64 KiB, 1 MiB
-  and 16 MiB of joined corpus and for one 1 MiB paragraph; and the pathological inputs of section
-  3.12, with the peak memory for one paragraph of 10^5 ZWJ emoji clusters (section 3.12 estimates
-  about 4 MB of tokens in each of the two buffers).
+  as `cargo bench --bench load` in release (the file carries the allow list of section 14.5). It
+  prints: the whole corpus per set and output kind (MB/s); one interface string of about 60 bytes
+  and one without trigger bytes (prefilter), median and p99 over 100 000 runs, with and without
+  `typeset_with`; time per byte for 1 KiB, 64 KiB, 1 MiB and 16 MiB of joined corpus and for one 1
+  MiB paragraph; and the pathological inputs of section 3.12, with the peak memory for one paragraph
+  of 10^5 ZWJ emoji clusters (section 3.12 estimates about 4 MB of tokens in each of the two
+  buffers).
 - `#[ignore]` test `load_is_linear`: time per byte for 16 MiB is at most twice that for 64 KiB,
   separately for each pathological input. No absolute thresholds: the machine is shared. Indicative
   targets, measured in stage 5 and not promised: at least 20 MB/s on the corpus in Unicode output, a
   median below 10 µs for one interface string.
-- `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` checks the table of
-  section 2.12: zero allocations for an unchanged string after warm-up (both through the prefilter
-  and through the full pipeline), one for a changed string, zero for `format_number` written into a
-  buffer with room, zero in `Typographer::new`; ru `Сохранить` in Interface → `Cow::Borrowed`, no
-  lexing; an iterator of template pieces that calls `typeset` adds no allocations beyond the table
-  of section 2.12; after an input larger than 64 KiB the first short call allocates and the second
-  does not.
+- `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` (the only file with
+  `#![allow(unsafe_code)]`, section 14.5; the allocator counts and delegates to
+  `std::alloc::System`) checks the table of section 2.12: zero allocations for an unchanged string
+  after warm-up (both through the prefilter and through the full pipeline), one for a changed
+  string, zero for `format_number` written into a buffer with room, zero in `Typographer::new`; ru
+  `Сохранить` in Interface → `Cow::Borrowed`, no lexing; an iterator of template pieces that calls
+  `typeset` adds no allocations beyond the table of section 2.12; after an input larger than 64 KiB
+  the first short call allocates and the second does not.
 
 Rejected: `criterion` (a heavy tree: `clap`, `serde`, `regex`, `rayon`) and `divan` (last release in
 2025-04); linear behavior needs no statistics package.

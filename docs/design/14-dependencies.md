@@ -7,7 +7,8 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 ### 14.1 Dependencies
 
 Versions are the latest published releases, checked against crates.io on 2026-11-21 (section 14.8),
-as the maintainer decided. `Cargo.toml` states them as exact minimums `x.y.z`.
+as the maintainer decided. `Cargo.toml` states them as caret requirements `"x.y.z"` with these
+versions as the minimum.
 
 | Crate                  | Version | Where | Purpose                                                                                                   | License           | `rust-version` | Published  |
 | ---------------------- | ------- | ----- | --------------------------------------------------------------------------------------------------------- | ----------------- | -------------- | ---------- |
@@ -23,8 +24,12 @@ The resolved tree was checked with a throwaway workspace outside the repository 
 - dev only: `proptest` 1.12.0 with `bitflags` 2.13.2, `cfg-if` 1.0.5, `chacha20` 0.10.2,
   `core_detect` 1.0.0, `cpufeatures` 0.3.1, `getrandom` 0.4.3, `libc` 0.2.191, `num-traits` 0.2.19,
   `rand` 0.10.4, `rand_core` 0.10.1, `rand_xorshift` 0.5.0, `regex-syntax` 0.8.12 (a parser, not a
-  matching engine), `unarray` 0.1.4. The `fork` and `timeout` features (with `rusty-fork` and
-  `tempfile`) and `bit-set` are off.
+  matching engine), `unarray` 0.1.4, `autocfg` 1.5.1 (a build dependency of `num-traits`) and
+  `r-efi` 6.0.0 (a dependency of `getrandom` for UEFI targets only;
+  `MIT OR Apache-2.0 OR LGPL-2.1-or-later`, allowed through `OR`). The `fork` and `timeout` features
+  (with `rusty-fork` and `tempfile`) and `bit-set` are off.
+
+With the 7 normal packages that makes 23 packages in `Cargo.lock` besides `typolish`.
 
 `cargo deny check` on that tree, with the `deny.toml` of section 14.5 (licenses MIT, Apache-2.0,
 Unicode-3.0; regex engines banned; all features), printed
@@ -41,7 +46,7 @@ Rust bindings in the dev tree only.
   change output.
 - `memchr`: the prefilter is a 256-bit set over bytes.
 - `criterion`, `divan` (last release 0.1.21 on 2025-04-10): section 13.8. `insta`: snapshots are
-  plain files, and its license is Apache-2.0 only (1.49.0, checked).
+  plain files compared byte for byte and updated by hand (section 13.7).
 - `serde`: language data is Rust (section 7.1); callers parse their own settings and use `FromStr`
   on `Rule` and `RuleSet`.
 - `fluent-*`: the crate knows nothing of Fluent; the generator maps it (section 2.14).
@@ -58,7 +63,8 @@ the gates.
 MSRV 1.100, decided by the maintainer: `rust-version = "1.100"`. It is also the installed toolchain
 (`rustc 1.100.0`, checked). Every dependency needs less (at most 1.88 for `proptest`, dev only).
 Language features relied on: edition 2024, `const fn` with `Vec::new`, `thread_local!` with `const`
-initialization, `LazyLock` in examples.
+initialization, `LazyLock` in examples. The MSRV is checked by a gate with the pinned toolchain
+(section 14.7).
 
 ### 14.5 Cargo, lints, cargo-deny
 
@@ -100,7 +106,18 @@ on 2026-11-21), workspace inheritance for edition, rust-version, license and rep
 `exclude = ["tests/fixtures/unicode/"]`, `[lints] workspace = true`, and the dependencies of section
 14.1. There is no `authors` field: zonewright has none, and the maintainer decided that license,
 authors and copyright are copied from it exactly. `lib.rs` also carries `#![forbid(unsafe_code)]`.
-`dev/clippy.toml` allows unwrap, expect, panic, indexing, dbg and print in tests, as in zonewright.
+The one exception is `tests/alloc.rs`: its counting allocator needs `unsafe impl GlobalAlloc`, so
+the file starts with `#![allow(unsafe_code)]` and a comment giving this reason. It is the only
+`unsafe` code in the package; `unsafe_code` stays `deny` for the workspace and `forbid` in `lib.rs`.
+`dev/clippy.toml` allows unwrap, expect, panic, indexing, dbg and print in tests, as in zonewright;
+these settings cover only `#[test]` functions and `#[cfg(test)]` modules, not test helpers, benches
+or examples. Therefore every root file of a non-library target starts with a `//!` line
+(`missing_docs` applies to each crate root) and an allow list: every `tests/*.rs` has
+`#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing, clippy::print_stdout, clippy::print_stderr, clippy::dbg_macro)]`,
+which also covers `tests/common/mod.rs` through `mod common;`; `benches/load.rs` and every
+`examples/*.rs` have
+`#![allow(clippy::print_stdout, clippy::print_stderr, clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)]`.
+`src/` keeps the full deny set and has no `allow` of these lints.
 
 License files: `LICENSE-MIT` and `LICENSE-APACHE` at the root and byte-identical copies in
 `dev/typolish/`, copied verbatim from zonewright; the MIT file keeps the line
@@ -186,8 +203,12 @@ target directory lives outside the repository.
 
 Before every commit, from `dev/`, for the `typolish` package only: `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings`, `cargo deny check`, `cargo test` (doctests included),
-`cargo hack --each-feature test`. Markdown and TOML are formatted as in zonewright (Prettier with
-`proseWrap: always` and width 100 for Markdown; TOML tidied by hand). Plus the script outside the
-repository that rejects the reference implementation's name in `git diff --cached`. Commits are
-small, in Conventional Commits style with English subjects, staged by explicit path; nothing is
-pushed or published without the maintainer's word.
+`cargo hack --each-feature test`, `cargo +1.100.0 check --all-targets` (the MSRV toolchain;
+identical to the other gates while the installed stable is 1.100, it keeps the MSRV checked when
+stable moves on). Formatting of Markdown and JSON is a manual step before the commit, not a gate, as
+in zonewright: `npx --yes prettier@3 --write --ignore-path .prettierignore -- <paths>`
+(`proseWrap: always`, width 100); TOML is tidied by hand. Plus the script outside the repository
+that rejects the reference implementation's name in `git diff --cached` (contents and paths) and, as
+a `commit-msg` hook, in the commit message. Commits are small, in Conventional Commits style with
+English subjects, staged by explicit path; nothing is pushed or published without the maintainer's
+word.
