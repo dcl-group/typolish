@@ -14,7 +14,9 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   commands, paths, addresses and versions stand next to words. Only rules that carry meaning and
   cannot alter a technical token standing as its own fragment: quotes, apostrophes, the spaced dash
   between words, the ellipsis at a word end, ranges between declared values, and no-break spaces
-  that only glue an existing space or insert one inside a known abbreviation or after `№`.
+  that only glue an existing space or insert one inside a known abbreviation or after `№`, `§`, `¶`;
+  with a non-default `PercentSpacing`, `nbsp.units` also inserts or removes the space before `%` and
+  `‰` (section 8.7).
 
 The two sets differ only in their rule lists; settings and language data are the same for both
 (section 2.4).

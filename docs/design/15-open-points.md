@@ -60,10 +60,12 @@ has weaker font support and no named HTML entity. Options: (a) U+00A0; (b) U+202
 **6.** **Em dash style for en-US.** Options: (a) closed `word—word` (Chicago Manual of Style,
 through secondary sources); (b) `word⍽— word` with glue before the dash, as in Russian (the
 reference implementation does this); (c) spaced `word — word` without glue (AP style).
-**Recommendation: (a)**; `dash_style` gives (b) and (c). (a) is the only rule of Interface that
-removes spaces, and it does so only between two plain words: next to a number, a slot, a protected
-span, a technical fragment or punctuation it keeps the author's spaces (`Hello, — he said`,
-`See https://example.com — the guide`), so a URL never swallows the next word (section 8.4).
+**Recommendation: (a)**; `dash_style` gives (b) and (c). With the default `PercentSpacing`, (a) is
+the only rule of Interface that removes spaces (a non-default `PercentSpacing` also removes the
+space before `%` and `‰`, section 8.2), and it does so only between two plain words: next to a
+number, a slot, a protected span, a technical fragment or punctuation it keeps the author's spaces
+(`Hello, — he said`, `See https://example.com — the guide`), so a URL never swallows the next word
+(section 8.4).
 
 **7.** **Literal numeric ranges in Prose** (`1941-1945`, `10-20`, `8000-8100`). Options: (a) in
 Prose `range.digits` (two ascending numbers without leading zeros) and `range.context` (a unit,

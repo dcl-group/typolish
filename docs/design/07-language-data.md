@@ -210,8 +210,10 @@ CLDR 49 has no separate `en-US` file; `en-US` inherits `en`, and the values belo
 | `signs`                                    | § ¶ №                                                                                                                                                                                  | project                                                                |
 | `numbers`                                  | decimal `.`, group `,`, min_grouping_digits 1 (from 4 digits), minus `−` U+2212, percent_spaced false (`5%`), range `–` U+2013 without spaces, nan `NaN`, infinity `∞`                 | CLDR 49; minus by the task (CLDR 49 gives U+002D)                      |
 
-CLDR 49 writes `{0}°C` and `{0}%` without a space in English. The crate never inserts or removes a
-space there: an existing space is glued (`20 °C` → `20⍽°C`), an attached sign stays attached.
+CLDR 49 writes `{0}°C` and `{0}%` without a space in English. With the default
+`PercentSpacing::AsWritten` the crate neither inserts nor removes a space there: an existing space
+is glued (`20 °C` → `20⍽°C`), an attached sign stays attached. The other `PercentSpacing` values
+change this for `%` and `‰` only (section 8.7); `°C` is never affected.
 
 ### 7.4 COMMON
 
