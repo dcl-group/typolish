@@ -14,11 +14,15 @@ on which of the three rules are enabled; a disabled rule only suppresses its own
 Candidates are tokens of kind `Quote` outside frozen cores: straight `"` and `'`, and the typed
 glyphs of the two quote pairs of the language. Typed glyphs that belong to neither pair of the
 language (`”` in Russian text, `«` in English text) are neutral: they never change and take no part
-in pairing or levels. `′` and `″` are resolved primes and are never candidates.
+in pairing or levels. `′` and `″` are resolved primes and are never candidates. In a language whose
+pairs do not contain `’`, U+2019 is always an apostrophe: it never changes, never pairs and gets no
+diagnostic.
 
 A straight quote in the wrapper of a frozen fragment is a candidate only if the core of that
 fragment contains no straight quote. So `"host:8080"` → `«host:8080»` (the address stays intact),
-while in `key="value"` both quotes belong to the technical notation and are left alone.
+while in `key="value"` both quotes belong to the technical notation and are left alone. The end
+wrapper of a frozen core that ends in `=` holds no candidate either: `key=""` stays as written, like
+`key="value"`.
 
 ### 6.2 Step 1: certain apostrophes and primes
 
@@ -46,12 +50,19 @@ pair and stays straight under `NestedOnly` (section 10.8).
 
 ### 6.3 Roles
 
-Adjacent quotes form a **series** (plain and typed mixed). The role of a straight quote is decided
-for the whole series from the classes of its neighbours, the left one L and the right one R, with
-`Format` and `Markup` tokens skipped. Classes: `Space` (also the start and end of the window and a
-line break); `OpenP` (`( [ {`, an operator token, `/`); `CloseP` (`) ] } . , ; : ! ?` and `Dots`);
-`DashC` (a `Dash` in any form); `Word` (a word, a number, a slot, a protected span, a frozen core, a
-legal mark, a `Symbol`, and every other sign: `№ § % # @ & * $`).
+Adjacent quotes form a **series** (plain and typed mixed). A series is a maximal run of adjacent
+`Quote` tokens of any form: straight, typed, neutral, apostrophes and primes (`Format` and `Markup`
+tokens between them are skipped). L and R are the nearest tokens before and after the whole series;
+they are never quotes, and every quote of the series has the same L and R. The role of a straight
+quote is decided for the whole series from the classes of its neighbours, the left one L and the
+right one R, with `Format` and `Markup` tokens skipped. Classes: `Space` (also the start and end of
+the window and a line break); `OpenP` (`( [ {`, an operator token, `/`); `CloseP`
+(`) ] } . , ; : ! ?` and `Dots`); `DashC` (a `Dash` in any form); `Word` (a word, a number, a slot,
+a protected span, a frozen core, a legal mark, a `Symbol`, and every other sign: `№ § % # @ & * $`).
+A neighbour inside a frozen core is of class `Word`, whatever its own token: in `"/etc/"` the quote
+after `/etc/` has L = `Word`, not `OpenP`. Wrapper tokens and tokens of cores that are not frozen
+have the class of their token. Whether a closing quote is weak (section 6.5) still depends on the
+character before it.
 
 - opening: L ∈ {Space, OpenP, DashC}, and either R ∉ {Space, CloseP}, or R ∈ CloseP and the first
   token after the run of `CloseP` tokens, within the same fragment, is of class `Word` (`".env"`,
@@ -61,7 +72,10 @@ legal mark, a `Symbol`, and every other sign: `№ § % # @ & * $`).
   between them (punctuation, dots, dashes, operators and the other signs listed under `Word`; no
   word, number, slot, protected span or `Symbol`), the first with L ∈ {Space, OpenP, DashC} and the
   second with R ∈ {Space, CloseP, DashC}: the first opens and the second closes, whatever the two
-  rules above say (`"?"`, `"..."`, `"-"`, `"—"`, `"->"`);
+  rules above say (`"?"`, `"..."`, `"-"`, `"—"`, `"->"`). The two quotes may be adjacent: nothing
+  between them also counts, so `""` is a sign-only pair. This rule overrides the role of the whole
+  series. A series of three or more straight quotes of one character has no sign-only pair inside
+  it;
 - otherwise no role: spaces on both sides (`Слово " в тексте`) or letters on both sides (`a"b`).
 
 The look-through and the sign-only pair never turn a closing quote into an opening one: a quote with
@@ -70,9 +84,10 @@ or around a lone sign would get no role, its partner would stay unpaired, and th
 keep straight quotes.
 
 A dash may stand left of an opening quote (`—"Да"`) and right of a closing one (`"no"—and`, closed
-style), hence its own class. In a series after a letter and before a space every quote is closing;
-after a space and before a letter every quote is opening; inside a series, closing goes right to
-left over the stack.
+style), hence its own class. So in a series after a letter and before a space every straight quote
+is closing, and after a space and before a letter every straight quote is opening. The quotes of a
+series are matched left to right like all others: at the end of `"He said 'hi'"` the `'` meets the
+top of the stack and closes first, then the `"`.
 
 A straight quote without a role is not a candidate, never changes, and gives `AmbiguousQuote`
 (info). It does not block the window: it can pair with nothing and creates no ambiguity for the
@@ -80,9 +95,10 @@ others.
 
 Typed glyphs have the role of their glyph in the language's pairs: in Russian `«` and `„` open, `»`
 and `“` close; in English `“` and `‘` open, `”` closes. U+2019 `’` closes a `‘` only if one is open
-and its neighbours allow a closing role (L ∉ {Space, OpenP, DashC}); otherwise it is an apostrophe
-and never blocks anything (it is both the apostrophe and the English closing single quote). So `’26`
-and `’tis` at a word start are always apostrophes.
+and its neighbours allow a closing role (the closing test above: L ∉ {Space, OpenP, DashC} and R ∈
+{Space, CloseP, DashC}); otherwise it is an apostrophe and never blocks anything (it is both the
+apostrophe and the English closing single quote). So `’26` and `’tis` at a word start are always
+apostrophes.
 
 ### 6.4 Families and stack matching
 
@@ -98,9 +114,10 @@ typed glyph its pair (primary or nested). One pass over the window with a stack 
   - absent: a straight `"` makes the window non-converging with `UnmatchedQuote` (warning); a
     straight `'` is unpaired; `’` is an apostrophe (section 6.3); any other typed glyph is neutral,
     with `UnmatchedQuote` (info);
-- at the end of the window, remaining `D` entries make it non-converging (`UnmatchedQuote`,
-  warning); remaining `S` entries are unpaired; remaining typed openers are neutral
-  (`UnmatchedQuote`, info).
+- at the end of the window (after pass 2 of section 6.5), remaining `D` entries make it
+  non-converging (`UnmatchedQuote`, warning); remaining `S` entries are unpaired; remaining typed
+  openers are neutral (`UnmatchedQuote`, info). Verdicts and diagnostics for entries left on the
+  stack are given only then.
 
 Every quote is pushed and popped at most once. The nearest entry of a family is found through a
 per-family pointer to its topmost entry, so the pass is linear even with many quotes; there is no
@@ -108,14 +125,20 @@ look-ahead.
 
 ### 6.5 Quotes after a number
 
-A closing quote that directly follows a digit or a `Number` slot (no space between) may be a closing
-quote or an inch or second mark. Such a quote is **weak**; every other closing quote is **strong**.
+A closing straight quote (`"` or `'`) that directly follows a digit or a `Number` slot (no space
+between) may be a closing quote or an inch or second mark. Such a quote is **weak**; every other
+closing quote is **strong**. A typed closing glyph is always strong: after a digit it pairs in pass
+1 like any typed quote (`“Enter 5”`), and without an opener it is neutral with `UnmatchedQuote`
+(info), section 6.4.
 
 1. **Pass 1** matches with the stack of section 6.4 and ignores weak quotes.
-2. **Pass 2** walks the window again with the pairs of pass 1 fixed. A weak quote of family F pairs
-   with the top of the stack if that entry is an opener of family F that pass 1 left unpaired, and
-   the pair nests properly with the pairs of pass 1 by construction. Otherwise the weak quote is a
-   prime.
+2. **Pass 2** runs only if pass 1 found no crossing. It walks the window again with the stack of
+   section 6.4 and the pairs of pass 1 fixed: an opener is pushed; the closing quote of a pass-1
+   pair pops its opener and every entry above it (straight `'` that pass 1 left unpaired; they stay
+   unpaired); a weak quote of family F pairs with the top entry and pops it if that entry is an
+   opener of family F that pass 1 left unpaired. Otherwise the weak quote is a prime. Since the
+   entries above a pass-1 pair are popped when the pair closes, every new pair lies inside or
+   outside each pass-1 pair: the pairs nest properly.
 3. A weak quote resolved as a prime is not a candidate any more. It becomes `″` (from `"`) or `′`
    (from `'`) when `quotes.primes` is enabled and stays straight when it is not; either way it does
    not make the window non-converging.
@@ -134,10 +157,13 @@ paired or a prime. Then:
 
 - every pair of straight quotes gets the glyphs of its level (section 6.7);
 - weak quotes resolved as primes get `″` or `′` (if `quotes.primes` is enabled);
-- an unpaired straight `'` directly after the letter `s` and before a non-letter becomes `’` if the
-  language has the trailing-possessive flag (`dogs'`, `the Joneses'`);
-- an unpaired straight `'` at a word start before exactly two digits and then a character that is
-  neither a letter nor a digit becomes `’` if the language has the decade flag (`the class of '26`).
+- a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
+  section 6.8, are in a pair and stay straight) directly after the letter `s` and before a
+  non-letter becomes `’` if the language has the trailing-possessive flag (`dogs'`, `the Joneses'`);
+- a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
+  section 6.8, are in a pair and stay straight) at a word start before exactly two digits and then a
+  character that is neither a letter nor a digit becomes `’` if the language has the decade flag
+  (`the class of '26`).
 
 If the window does **not** converge, no straight quote of the window changes; the edits of step 1
 (section 6.2) are kept. The caller gets a diagnostic at the position of the first cause.
@@ -183,8 +209,8 @@ Open point 9.
 
 A slot of any kind and a protected span are of class `Word` for roles. `"{name}"`, ``"`ls`"`` and
 `"{a}" и "{b}"` are quoted like words; the slot itself never changes (it is frozen), and the glyphs
-go into the neighbouring texts. A `Number` slot before a closing quote makes it weak: `"{n}"` pairs
-in pass 2 → `«{n}»`; `{n}"` alone becomes a prime `{n}″` (with `quotes.primes`).
+go into the neighbouring texts. A `Number` slot before a closing straight quote makes it weak:
+`"{n}"` pairs in pass 2 → `«{n}»`; `{n}"` alone becomes a prime `{n}″` (with `quotes.primes`).
 
 ### 6.10 Scope
 
@@ -198,20 +224,20 @@ This is a known limit of version 1 (section 1.5).
 
 ### 6.11 Idempotence of the phase
 
-Roles on a second pass are those of the first: a role comes from the neighbours of a series, typed
-glyphs are in the series like straight ones, and neighbours do not change (I1). Step 1 removes the
+Roles on a second pass are those of the first: a role comes from the neighbours of a series, every
+`Quote` token is in its series (section 6.3), and neighbours do not change (I1). Step 1 removes the
 same tokens (I4). The first pass either converged or did not.
 
 (a) **Converged.** Every straight `"` became a glyph of a pair or a prime; the new pairs nest
-properly, and the family of each new glyph is the primary or the nested pair according to its level.
-On the second pass the stack meets the new glyphs in the same positions and pairs them the same way,
-because the pairs are properly nested and each opener and closer of a new pair share a family. Typed
-glyphs that were neutral on the first pass can pair with a new glyph on the second, but they never
-change, and such a re-pairing cannot enclose a straight `'` pair that was cancelled: that pair lay
-outside every pair of straight `"` and every typed pair of the first pass, and a re-pairing with a
-glyph inside a first-pass pair would have been a crossing, which contradicts convergence. So
-cancelled `'` pairs stay cancelled and count for no level, unpaired `'` stay unpaired, primes are
-not candidates, and nothing changes.
+properly (section 6.5, item 2), and the family of each new glyph is the primary or the nested pair
+according to its level. On the second pass the stack meets the new glyphs in the same positions and
+pairs them the same way, because the pairs are properly nested and each opener and closer of a new
+pair share a family. Typed glyphs that were neutral on the first pass can pair with a new glyph on
+the second, but they never change, and such a re-pairing cannot enclose a straight `'` pair that was
+cancelled: that pair lay outside every pair of straight `"` and every typed pair of the first pass,
+and a re-pairing with a glyph inside a first-pass pair would have been a crossing, which contradicts
+convergence. So cancelled `'` pairs stay cancelled and count for no level, unpaired `'` stay
+unpaired, primes are not candidates, and nothing changes.
 
 (b) **Not converged.** No straight quote changed. The quotes with roles and their families are the
 same on the second pass, so the window again does not converge, and nothing changes.
@@ -226,39 +252,54 @@ Outputs show the edits of the three quote rules only; in the full sets the no-br
 as well (`и⍽«ручка»`, `to⍽confirm`). "(Prose)" and "(Interface)" mark whether `quotes.primes` is
 enabled.
 
-| Language   | Input                                | Output                               | Note                                |
-| ---------- | ------------------------------------ | ------------------------------------ | ----------------------------------- |
-| ru         | `Он сказал "привет" и ушёл.`         | `Он сказал «привет» и ушёл.`         |                                     |
-| ru         | `"Он сказал "привет""`               | `«Он сказал „привет“»`               | levels                              |
-| en         | `He said, "I read "War and Peace"".` | `He said, “I read ‘War and Peace’”.` |                                     |
-| en         | `"He said 'hi'"`                     | `“He said ‘hi’”`                     | nested `'`                          |
-| en         | `She said 'hi' to him.`              | unchanged                            | `NestedOnly`                        |
-| ru         | `Он сказал "привет.`                 | unchanged, `UnmatchedQuote`          | not guessed                         |
-| ru         | `"Один "два три"`                    | unchanged, `UnmatchedQuote`          | the paragraph keeps straight quotes |
-| ru         | `Слово " в тексте.`                  | unchanged, `AmbiguousQuote`          | no role                             |
-| ru         | `«a "b» c"`                          | unchanged, `CrossingQuotes`          |                                     |
-| ru, pieces | `Файл "` `{Word}` `" не найден`      | `Файл «` `{Word}` `» не найден`      | across pieces                       |
-| en         | `I don't know. It's the '90s.`       | `I don’t know. It’s the ’90s.`       | step 1                              |
-| en         | `Rock 'n' roll, the dogs' bowls`     | `Rock 'n' roll, the dogs’ bowls`     | top-level single pair; possessive   |
-| ru         | `Это rock'n'roll и don't.`           | `Это rock’n’roll и don’t.`           | any script                          |
-| en         | `Press '42' to confirm`              | unchanged                            | a pair, not a decade                |
-| en         | `Press 'y' or 'n' now`               | unchanged                            | `'n'` is not an elision             |
-| en         | `Set the time to '12:30'`            | unchanged                            | a pair, not a decade                |
-| en         | `"Enter '42' now"`                   | `“Enter ‘42’ now”`                   | the weak quote pairs                |
-| en         | `The class of '26`                   | `The class of ’26`                   | unpaired: decade                    |
-| en         | `She said 'he told "no"'`            | `She said 'he told “no”'`            | cancelled pair: no level            |
-| ru         | `Он ответил 'мы сказали "нет"'`      | `Он ответил 'мы сказали «нет»'`      | the same                            |
-| ru         | `Файл ".env" не найден`              | `Файл «.env» не найден`              | look-through past `.`               |
-| ru         | `Нажмите "?" для справки`            | `Нажмите «?» для справки`            | sign-only pair                      |
-| ru         | `Он писал: "...и всё".`              | `Он писал: «...и всё».`              | look-through past `...`             |
-| ru         | `Введите "-" или "—"`                | `Введите «-» или «—»`                | sign-only pairs                     |
-| ru         | `Экран 27" и "ручка"` (Prose)        | `Экран 27″ и «ручка»`                | weak quote is a prime               |
-| ru         | `Экран 27" и "ручка"` (Interface)    | `Экран 27" и «ручка»`                | `quotes.primes` is not in Interface |
-| ru         | `"Экран 27" дюймов"` (Prose)         | `«Экран 27″ дюймов»`                 |                                     |
-| en         | `He is 5'10" tall.` (Prose)          | `He is 5′10″ tall.`                  |                                     |
-| ru         | `Угол 30° 15' 20" и точка.` (Prose)  | `Угол 30° 15′ 20″ и точка.`          |                                     |
-| ru         | `Он сказал «привет „мир“»`           | unchanged (`Cow::Borrowed`)          | already typeset                     |
-| ru         | `Задайте key="value" в файле.`       | unchanged                            | quotes belong to a frozen fragment  |
+| Language   | Input                                | Output                               | Note                                                          |
+| ---------- | ------------------------------------ | ------------------------------------ | ------------------------------------------------------------- |
+| ru         | `Он сказал "привет" и ушёл.`         | `Он сказал «привет» и ушёл.`         |                                                               |
+| ru         | `"Он сказал "привет""`               | `«Он сказал „привет“»`               | levels                                                        |
+| en         | `He said, "I read "War and Peace"".` | `He said, “I read ‘War and Peace’”.` |                                                               |
+| en         | `"He said 'hi'"`                     | `“He said ‘hi’”`                     | nested `'`                                                    |
+| en         | `She said 'hi' to him.`              | unchanged                            | `NestedOnly`                                                  |
+| ru         | `Он сказал "привет.`                 | unchanged, `UnmatchedQuote`          | not guessed                                                   |
+| ru         | `"Один "два три"`                    | unchanged, `UnmatchedQuote`          | the paragraph keeps straight quotes                           |
+| ru         | `Слово " в тексте.`                  | unchanged, `AmbiguousQuote`          | no role                                                       |
+| ru         | `«a "b» c"`                          | unchanged, `CrossingQuotes`          |                                                               |
+| en         | `He said ‘x’(see note)`              | unchanged, `UnmatchedQuote` (info)   | `’` before `(` is an apostrophe                               |
+| ru, pieces | `Файл "` `{Word}` `" не найден`      | `Файл «` `{Word}` `» не найден`      | across pieces                                                 |
+| en         | `I don't know. It's the '90s.`       | `I don’t know. It’s the ’90s.`       | step 1                                                        |
+| en         | `Rock 'n' roll, the dogs' bowls`     | `Rock 'n' roll, the dogs’ bowls`     | top-level single pair; possessive                             |
+| en         | `She loves 'the dogs'`               | unchanged                            | cancelled pair, not a possessive                              |
+| en         | `She loves 'the dogs'` (`Never`)     | `She loves 'the dogs’`               | `Never`: every `'` is unpaired                                |
+| ru         | `Это rock'n'roll и don't.`           | `Это rock’n’roll и don’t.`           | any script                                                    |
+| en         | `Press '42' to confirm`              | unchanged                            | a pair, not a decade                                          |
+| en         | `Press 'y' or 'n' now`               | unchanged                            | `'n'` is not an elision                                       |
+| en         | `Set the time to '12:30'`            | unchanged                            | a pair, not a decade                                          |
+| en         | `"Enter '42' now"`                   | `“Enter ‘42’ now”`                   | the weak quote pairs                                          |
+| en         | `"a 'b c" 5'` (Prose)                | `“a 'b c” 5′`                        | an opener popped by a fixed pair is not taken by a weak quote |
+| en         | `"a 'b c" 5'` (Interface)            | `“a 'b c” 5'`                        |                                                               |
+| en         | `The class of '26`                   | `The class of ’26`                   | unpaired: decade                                              |
+| en         | `She said 'he told "no"'`            | `She said 'he told “no”'`            | cancelled pair: no level                                      |
+| ru         | `Он ответил 'мы сказали "нет"'`      | `Он ответил 'мы сказали «нет»'`      | the same                                                      |
+| ru         | `Файл ".env" не найден`              | `Файл «.env» не найден`              | look-through past `.`                                         |
+| ru         | `Папка "/etc/" пуста`                | `Папка «/etc/» пуста`                |                                                               |
+| en         | `Run "x->" now`                      | `Run “x->” now`                      |                                                               |
+| ru         | `Адрес "::1"`                        | `Адрес «::1»`                        |                                                               |
+| ru         | `Нажмите "?" для справки`            | `Нажмите «?» для справки`            | sign-only pair                                                |
+| ru         | `Он писал: "...и всё".`              | `Он писал: «...и всё».`              | look-through past `...`                                       |
+| ru         | `Введите "-" или "—"`                | `Введите «-» или «—»`                | sign-only pairs                                               |
+| ru         | `Он сказал "" и ушёл.`               | `Он сказал «» и ушёл.`               | empty sign-only pair                                          |
+| ru         | `Пустая строка "".`                  | `Пустая строка «».`                  | empty sign-only pair before `.`                               |
+| ru         | `Он сказал """ и ушёл.`              | unchanged, `AmbiguousQuote` ×3       | no pair in a series of three                                  |
+| ru         | `Экран 27" и "ручка"` (Prose)        | `Экран 27″ и «ручка»`                | weak quote is a prime                                         |
+| ru         | `Экран 27" и "ручка"` (Interface)    | `Экран 27" и «ручка»`                | `quotes.primes` is not in Interface                           |
+| ru         | `"Экран 27" дюймов"` (Prose)         | `«Экран 27″ дюймов»`                 |                                                               |
+| en         | `“Say "hi" at 5”`                    | `“Say ‘hi’ at 5”`                    | a typed closer after a digit is strong                        |
+| ru         | `Цена 27»`                           | unchanged, `UnmatchedQuote` (info)   |                                                               |
+| en         | `He is 5'10" tall.` (Prose)          | `He is 5′10″ tall.`                  |                                                               |
+| ru         | `Угол 30° 15' 20" и точка.` (Prose)  | `Угол 30° 15′ 20″ и точка.`          |                                                               |
+| ru         | `Он сказал «привет „мир“»`           | unchanged (`Cow::Borrowed`)          | already typeset                                               |
+| ru         | `Задайте key="value" в файле.`       | unchanged                            | quotes belong to a frozen fragment                            |
+| ru         | `Задайте key="" и нажмите "OK".`     | `Задайте key="" и нажмите «OK».`     | assignment: frozen                                            |
+| ru         | `a""b`                               | unchanged, no diagnostic             | frozen core (section 3.6)                                     |
 
 ### 6.13 Rejected
 

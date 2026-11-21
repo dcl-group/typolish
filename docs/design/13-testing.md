@@ -30,7 +30,14 @@ with the right rule in `report`. Specific rows and further tables:
   `Abbreviation`, `report().protected()` is empty.
 - `tests/rules_quotes.rs`: ru `"?"` → `«?»`, `«»` unchanged, `report().protected()` empty; en
   `He is 5'10" tall.` (Prose) → `He is 5′10″ tall.`; en `the 90's` → `the 90’s`; en `1'000'000` →
-  unchanged.
+  unchanged; ru `Он сказал "" и ушёл.` → `Он сказал «» и ушёл.`; ru `Пустая строка "".` →
+  `Пустая строка «».`; ru `Он сказал """ и ушёл.` → unchanged, `AmbiguousQuote` ×3; ru
+  `Задайте key="" и нажмите "OK".` → `Задайте key="" и нажмите «OK».`; ru `a""b` → unchanged, no
+  diagnostic; en `"a 'b c" 5'` → `“a 'b c” 5′` (Prose) and `“a 'b c” 5'` (Interface); en
+  `“Say "hi" at 5”` → `“Say ‘hi’ at 5”`; ru `Цена 27»` → unchanged, `UnmatchedQuote` (info); ru
+  `Папка "/etc/" пуста` → `Папка «/etc/» пуста`; en `Run "x->" now` → `Run “x->” now`; ru
+  `Адрес "::1"` → `Адрес «::1»`; en `She loves 'the dogs'` → unchanged, and with `Never` →
+  `She loves 'the dogs’`; en `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info).
 - `tests/rules_dash.rs`: ru `Ждите - ...` with `dash.spaced-hyphen` alone → unchanged, no
   `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` → unchanged,
   `Cow::Borrowed`; ru `Москва – столица` → `Москва⍽– столица` (en dash kept, glue from `nbsp.dash`).
@@ -123,8 +130,9 @@ insertions; and arbitrary Unicode strings for the no-panic test.
    × the three `SingleQuotes` modes, with fixed seeds for every split and merge of invariant I2
    (`Школа №5 г. Москвы`, `§5 ч. 2`, `т.е.`, `и т.д...`, `Moscow - the capital`,
    `See https://example.com/docs - the guide`, `He said - "a cat"`, `5'10"`, `90's`, `'90s`, `'tis`,
-   `‚Wort‘` with a `LanguageBuilder` language whose pairs are `„“` and `‚‘`, `100%` and `100 %`
-   under every `PercentSpacing`).
+   `""`, `"""`, `key=""`, `"He said 'hi'"`, `"a 'b c" 5'`, `"/etc/"`, `‚Wort‘` with a
+   `LanguageBuilder` language whose pairs are `„“` and `‚‘`, `100%` and `100 %` under every
+   `PercentSpacing`).
 2. **Fixed-point oracle**: `f` repeated until nothing changes (at most three times) equals `f`; a
    difference prints the reports of both passes.
 3. **Invariants**, one property each: I1 (edits never change a token kind; insertions and removals

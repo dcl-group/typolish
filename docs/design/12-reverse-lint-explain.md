@@ -92,19 +92,19 @@ never decides for the caller.
 
 ### 12.4 Diagnostics
 
-| Kind                | Severity | Raised by                                  | When                                                                                 |
-| ------------------- | -------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
-| `UnmatchedQuote`    | warning  | `quotes.pairs`                             | a straight `"` without a pair; its window keeps straight quotes (section 6.6)        |
-| `UnmatchedQuote`    | info     | `quotes.pairs`                             | a typed quote glyph of the language without a partner; it stays neutral              |
-| `CrossingQuotes`    | warning  | `quotes.pairs`                             | pairs would cross each other or a typed pair                                         |
-| `AmbiguousQuote`    | info     | `quotes.pairs`                             | a straight quote with spaces or letters on both sides: no role                       |
-| `UnclosedDelimiter` | warning  | protection (no rule)                       | an opening delimiter without its closing one; it was treated as text                 |
-| `AmbiguousHyphen`   | info     | `dash.spaced-hyphen`, `dash.double-hyphen` | `-` that section 8.4 refuses (numbers, single letters, foreign words, a flag)        |
-| `MixedScript`       | warning  | classifier (no rule)                       | a word with letters of two scripts (`Мoсква`), unless a dictionary entry (`μs`)      |
-| `SlotGlue`          | warning  | classifier (no rule)                       | a `Number` slot glued to letters (`{n}МБ`)                                           |
-| `SlotGlue`          | info     | classifier (no rule)                       | two slots glued together (`{a}{b}`)                                                  |
-| `NowrapFallback`    | info     | renderer (no rule)                         | a nowrap group split at a `Markup` piece; the glue at the split written as an entity |
-| `TypographicChar`   | info     | `lint` only                                | a character of the typographic set in a plain source                                 |
+| Kind                | Severity | Raised by                                  | When                                                                                                       |
+| ------------------- | -------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `UnmatchedQuote`    | warning  | `quotes.pairs`                             | a straight `"` without a pair; its window keeps straight quotes (section 6.6)                              |
+| `UnmatchedQuote`    | info     | `quotes.pairs`                             | a typed quote glyph of the language without a partner; it stays neutral                                    |
+| `CrossingQuotes`    | warning  | `quotes.pairs`                             | pairs would cross each other or a typed pair                                                               |
+| `AmbiguousQuote`    | info     | `quotes.pairs`                             | a straight quote with spaces or letters on both sides, or one of three or more quotes in a series: no role |
+| `UnclosedDelimiter` | warning  | protection (no rule)                       | an opening delimiter without its closing one; it was treated as text                                       |
+| `AmbiguousHyphen`   | info     | `dash.spaced-hyphen`, `dash.double-hyphen` | `-` that section 8.4 refuses (numbers, single letters, foreign words, a flag)                              |
+| `MixedScript`       | warning  | classifier (no rule)                       | a word with letters of two scripts (`Мoсква`), unless a dictionary entry (`μs`)                            |
+| `SlotGlue`          | warning  | classifier (no rule)                       | a `Number` slot glued to letters (`{n}МБ`)                                                                 |
+| `SlotGlue`          | info     | classifier (no rule)                       | two slots glued together (`{a}{b}`)                                                                        |
+| `NowrapFallback`    | info     | renderer (no rule)                         | a nowrap group split at a `Markup` piece; the glue at the split written as an entity                       |
+| `TypographicChar`   | info     | `lint` only                                | a character of the typographic set in a plain source                                                       |
 
 `Diagnostic` carries its kind, severity, the rule that raised it (`Option<Rule>`), the piece and the
 byte range. `Severity` is ordered (`Info < Warning`). `Diagnostic` implements `Display`:
