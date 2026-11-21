@@ -43,8 +43,10 @@ for ru, `#,##0%` for en), minimumGroupingDigits (1 for both), miscPatterns range
 stand-alone month names, wide and abbreviated (section 7.2, 7.3). From `cldr-units-full`: short and
 narrow unit patterns for `ru` (all with U+0020 between number and unit) and `en` (`{0}°C`, `{0}%`
 without a space; `μs`, `μm` with U+03BC). `en-US` has no file of its own; `availableLocales` lists
-`en`, `en-GB`, `ru` among these locales, so `en-US` uses `en` (the inheritance itself was not traced
-further).
+`en`, `en-GB`, `ru` among these locales, and `supplemental/parentLocales.json` of cldr-core 49.0.0
+(198 entries) has no entry for `en-US`, so its parent is `en` by truncation of the tag and `en-US`
+uses the values of `en` (checked). From `cldr-core` `supplemental/likelySubtags.json` (cldr-json
+49.0.0): `ru` → `ru-Cyrl-RU`, `en` → `en-Latn-US`, the likely-subtags rule behind section 2.2.
 
 **HTML entities**: every name in section 11.2 is in the WHATWG `entities.json`; U+202F and U+2011
 have no named reference.

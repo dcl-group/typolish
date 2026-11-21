@@ -366,15 +366,15 @@ when the file is absent (the published package has no design).
 duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,
 minimum grouping digits where not overridden, percent pattern, range pattern, `nan`, `infinity`,
 month names (the union of format wide and abbreviated forms, without duplicates), units marked "CLDR
-49") with an extract of cldr-json 49.0.0 kept in the test, so a CLDR update is a visible change. It
-compares `LanguageData::COMMON` with the table of section 7.4 and checks `LanguageData::new("xx")`
-field by field. It also checks that a table whose `QuotePairs` holds `「」` is rejected with
-`Error::InvalidLanguageData`; that `LanguageBuilder` with the pairs `(«, »)` and `(«, „)` gives
-`Error::InvalidLanguageData` and the typographer builder with the same pairs
-`Error::InvalidSetting`; that `LanguageBuilder` with `apostrophe('ʼ')` gives
-`Error::InvalidLanguageData`; that `Language::from_data` with the tag `EN-gb` gives
-`Error::InvalidLanguageData`; and that `LanguageBuilder::new("EN-gb").build()` gives a language with
-`tag() == "en-GB"`.
+49") with an extract of cldr-json 49.0.0 kept in the test (for en-US the extract holds the values of
+`en`, section 7.3), so a CLDR update is a visible change. It compares `LanguageData::COMMON` with
+the table of section 7.4 and checks `LanguageData::new("xx")` field by field. It also checks that a
+table whose `QuotePairs` holds `「」` is rejected with `Error::InvalidLanguageData`; that
+`LanguageBuilder` with the pairs `(«, »)` and `(«, „)` gives `Error::InvalidLanguageData` and the
+typographer builder with the same pairs `Error::InvalidSetting`; that `LanguageBuilder` with
+`apostrophe('ʼ')` gives `Error::InvalidLanguageData`; that `Language::from_data` with the tag
+`EN-gb` gives `Error::InvalidLanguageData`; and that `LanguageBuilder::new("EN-gb").build()` gives a
+language with `tag() == "en-GB"`.
 
 ### 13.10 Documentation
 

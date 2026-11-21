@@ -184,7 +184,8 @@ handles them (section 8.7) and they are not in `units`.
 ### 7.3 en-US
 
 CLDR 49 has no separate `en-US` file; `en-US` inherits `en`, and the values below are those of `en`
-(checked: no file, and `availableLocales` lists only `en`, `en-GB`, `ru` among these).
+(checked: no file, `availableLocales` lists only `en`, `en-GB`, `ru` among these, and
+`parentLocales` has no entry for `en-US`; section 14.8).
 
 | Field                                      | Value                                                                                                                                                                                  | Source                                                                 |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
