@@ -95,11 +95,12 @@ gives the output of the whole set.
   `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en `J. R. R. R. Tolkien` → unchanged (Interface);
   `nbsp.initials`: ru `Об этом сказал А. Петров.` → `Об этом сказал А.⍽Петров.`, ru
   `Выберите вариант А. После этого` → `Выберите вариант А.⍽После этого`, en
-  `I chose plan B. Then I left.` → `I chose plan B.⍽Then I left.` (a single initial is glued after
-  any word, section 10.8); ru `Выберите вариант Д. После этого` and en
-  `I chose plan P. Then I left.` with `nbsp.abbreviations` alone → unchanged (a single letter with a
-  full stop matches an abbreviation only as written, section 7.1), and with `nbsp.initials` →
-  `Выберите вариант Д.⍽После этого`, `I chose plan P.⍽Then I left.`.
+  `I chose plan B. Then I left.` → `I chose plan B.⍽Then I left.`, en `Neither did I. Then we left.`
+  → `Neither did I.⍽Then we left.` (a single initial is glued after any word, section 10.8); ru
+  `Выберите вариант Д. После этого` and en `I chose plan P. Then I left.` with `nbsp.abbreviations`
+  alone → unchanged (a single letter with a full stop matches an abbreviation only as written,
+  section 7.1), and with `nbsp.initials` → `Выберите вариант Д.⍽После этого`,
+  `I chose plan P.⍽Then I left.`.
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
   ranges with negative ends (`−5–−1`) and equal ends (ru `8⍽000–8⍽000`, en `8,000–8,000`), decimals
   (`Number::decimal` keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`,

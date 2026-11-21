@@ -64,8 +64,9 @@ Decided by the maintainer on 2026-11-22; not reopened here:
     allows, and none before (item 3, sections 1.1, 15.4); Russian numbers are grouped from four
     digits, `min_grouping_digits = 1` as in CLDR 49 (item 4, sections 2.7, 7.2).
 11. A single initial before a surname is glued wherever it stands, also after a lowercase word that
-    is not a short word (`сказал А.⍽Петров`). The cost, glue across a sentence end after a
-    one-letter label (`вариант А.⍽После`, `plan B.⍽Then`), is a known limit (sections 8.7, 10.8).
+    is not a short word (`сказал А.⍽Петров`). The cost, glue across a sentence end after a capital
+    letter with a full stop (`вариант А.⍽После`, `plan B.⍽Then`, `did I.⍽Then`), is a known limit
+    (sections 8.7, 10.8).
 12. The MSRV is raised only in a release that raises the breaking number (sections 14.4, 15.1).
 13. A new built-in language arrives only in a release that raises the breaking number (sections 2.2,
     7.7, 15.1).

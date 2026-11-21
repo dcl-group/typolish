@@ -111,13 +111,16 @@ agree and that every rule appears once.
 - **I4. Matching by class.** Whether a rule matches, and its `consume`, depend on token kinds, the
   texts of words and numbers, fragment kinds and flags, and the length of plain sign runs (`..`
   against `...`). Every typographic form counts as the plain form it stands for: `…` as `...`, ru
-  `?..` and en `?…` as `?...`, a lone `—` or `–` as a lone `-`, `→` as `->`. A rule gives an empty
-  edit with the same `consume` when the pattern is already in target form, and also when it carries
-  a typed typographic sign that the rule must not change (section 8.4: typed dashes and the spaces
-  around them; section 8.6: a typed `…`). The only exceptions are the structural changes of I2:
-  where a removed space merged fragments, the rule matches the merged fragment in its "already done"
-  form with an empty edit; where an inserted space split a fragment, the rules that read the parts
-  match them with empty edits. So on f(x) no rule matches with a non-empty edit.
+  `?..` and en `?…` as `?...`, a lone `—` or `–` as a lone `-`, `→` as `->`. `nbsp.dash` alone reads
+  a typed `—` or `–` differently: with spaces it is a dash between any operands, numbers included,
+  while a plain `-` counts only where `dash.spaced-hyphen` accepts it (section 8.7). No rule turns a
+  refused `-` into a spaced dash, so f(x) has the same matches. A rule gives an empty edit with the
+  same `consume` when the pattern is already in target form, and also when it carries a typed
+  typographic sign that the rule must not change (section 8.4: typed dashes and the spaces around
+  them; section 8.6: a typed `…`). The only exceptions are the structural changes of I2: where a
+  removed space merged fragments, the rule matches the merged fragment in its "already done" form
+  with an empty edit; where an inserted space split a fragment, the rules that read the parts match
+  them with empty edits. So on f(x) no rule matches with a non-empty edit.
 - **I5. Quotes are all or nothing per window** (section 6.6).
 
 ### 4.4 Proof sketch

@@ -197,9 +197,11 @@ expectation):
 - With the closed style (en) the dash keeps the author's spaces next to anything but a plain word
   (`Hello, — he said`, `Chapter — 5`, `See https://example.com — the guide`); only two plain words
   are joined (`word—word`).
-- A one-letter label at a sentence end before a capitalized word gets a no-break space
-  (`вариант А.⍽После`, `plan B.⍽Then`): the pattern cannot tell it from `сказал А. Петров`, and the
-  glue changes no character.
+- A capital letter with a full stop at a sentence end before a capitalized word gets a no-break
+  space: a one-letter label (`вариант А.⍽После`, `plan B.⍽Then`), the English pronoun
+  (`Neither did I.⍽Then`), a one-letter unit after a number (`220⍽В.⍽Затем`). The pattern cannot
+  tell them from `сказал А. Петров`, and the glue changes no visible character; it only forbids a
+  line break there.
 - `rock 'n' roll` with spaces is a top-level single pair and stays straight under `NestedOnly`;
   `rock'n'roll` gets apostrophes.
 - In Prose, `dash.double-hyphen` turns `git checkout -- file` into a dash in English text, and

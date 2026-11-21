@@ -58,17 +58,20 @@ U+202F, often preferred in typesetting but with weaker font support and no named
 **6.** **Em dash style for en-US.** Settled 2026-11-22: (a) closed `word—word` (Chicago Manual of
 Style, through secondary sources), joining only two plain words: next to a number, a slot, a
 protected span, a technical fragment or punctuation the author's spaces stay, so a URL never
-swallows the next word (section 8.4). Rejected: (b) `word⍽— word` with glue before the dash, as in
-Russian (the reference implementation does this); (c) spaced `word — word` without glue (AP style);
-`dash_style` gives both.
+swallows the next word (section 8.4). With the default `PercentSpacing`, (a) is the only rule of
+Interface that removes spaces (a non-default `PercentSpacing` also removes the space before `%` and
+`‰`, section 8.2). Rejected: (b) `word⍽— word` with glue before the dash, as in Russian (the
+reference implementation does this); (c) spaced `word — word` without glue (AP style); `dash_style`
+gives both.
 
 **7.** **Literal numeric ranges in Prose** (`1941-1945`, `10-20`, `12-15`). Settled 2026-11-22: (a)
 in Prose `range.digits` (two ascending numbers without leading zeros) and `range.context` (a unit,
-year, century or page word next to it), in Interface neither. Rejected: (b) only the context rule,
-as the reference implementation does for Russian; (c) never in text, only `range.placeholders` and
-`format_range`. Known cost in Prose: a port range `8000-8100` written as plain text and a telephone
-fragment `123-4567` get an en dash (section 10.5, row 10); Interface and backticks keep them
-(sections 9.2, 10.6).
+year, century or page word next to it), in Interface neither, because the task asks for en dashes in
+numeric ranges and ranges of years, and technical text is protected by Interface and by backticks.
+Rejected: (b) only the context rule, as the reference implementation does for Russian; (c) never in
+text, only `range.placeholders` and `format_range`. Known cost in Prose: a port range `8000-8100`
+written as plain text and a telephone fragment `123-4567` get an en dash (section 10.5, row 10);
+Interface and backticks keep them (sections 9.2, 10.6).
 
 **8.** **Scope of an unpaired quote.** Settled 2026-11-22: (a) all or nothing per paragraph: an
 unpaired or crossing straight quote leaves every straight quote of its paragraph (of its template,
@@ -100,18 +103,22 @@ explicitly. The task asks for the dash at the start of dialogue, and the core wo
 **13.** **Output stability policy** (section 15.1). Settled 2026-11-22: (a) the output of Prose and
 Interface changes only in releases that raise the breaking number, except that patch releases fix
 output that contradicts the documentation (the design, the README or the rustdoc), with a "before →
-after" entry in the CHANGELOG; a wrong design is corrected in a breaking release. For `RuleSet::ALL`
-and the base `all`: (i) they mean every rule of the running version and stay outside the policy,
-with rustdoc saying so. New built-in languages and raises of the MSRV also wait for a release that
-raises the breaking number (section 15.1). Rejected: (b) output improvements in any release; (ii)
-`ALL` frozen at the rules of 0.1.
+after" entry in the CHANGELOG; a wrong design is corrected in a breaking release, so build-time
+generators and snapshot tests of callers do not break on `cargo update`. For `RuleSet::ALL` and the
+base `all`: (i) they mean every rule of the running version and stay outside the policy, with
+rustdoc saying so, because a frozen `ALL` that lacks rules would mislead, and callers who want
+stable output already have the two sets and explicit lists. New built-in languages and raises of the
+MSRV also wait for a release that raises the breaking number (section 15.1). Rejected: (b) output
+improvements in any release; (ii) `ALL` frozen at the rules of 0.1.
 
 **14.** **Public language data in version 1.** Settled 2026-11-22: (a) `LanguageData` is public with
 private fields and `const fn` setters, `Language::from_data` (validated) and `Language::from_static`
 (for a `static` typographer) accept compile-time tables, and `LanguageBuilder` builds languages at
-run time from owned lists (sections 2.2, 7.1). Rejected: (b) only the compile-time `LanguageData`;
-(c) language data internal in version 1. Cost: the setters and builder methods are API, and renaming
-one is a breaking change.
+run time from owned lists (sections 2.2, 7.1). It meets "languages are data" for users, not only for
+maintainers (a downstream crate declares `en-GB` as a `const`, section 7.7); private fields and the
+absence of `Copy` let the format grow without a breaking release. Rejected: (b) only the
+compile-time `LanguageData`; (c) language data internal in version 1. Cost: the setters and builder
+methods are API, and renaming one is a breaking change.
 
 **15.** **`nbsp.phone` in Interface.** Settled 2026-11-22: (a) Prose only: the pattern is a
 heuristic, and Interface does not guess; Interface callers can enable the rule, and numbers typed
@@ -133,9 +140,9 @@ digits is one token, rules insert spaces only between tokens, English groups wit
 numbers in text are often ports, years and codes (`port 65535`). The first draft had such a rule
 (`number.grouping`, in no set); it was dropped before any release, so its id was never published.
 Rejected: (b) a rule in no set that only glues a number the author already grouped by single spaces
-in threes (`1 000 000` → `1⍽000⍽000`); (c) full grouping in text, which needs digit runs lexed in
-groups and commas inserted for English. (b) can still be added later as a new rule outside both sets
-(section 15.1).
+in threes (`1 000 000` → `1⍽000⍽000`), inert where the language's group separator is not a space;
+(c) full grouping in text, which needs digit runs lexed in groups and commas inserted for English.
+(b) can still be added later as a new rule outside both sets (section 15.1).
 
 #### Earlier decisions
 
