@@ -45,8 +45,8 @@ The characters the rules produce, and the same characters in the input:
 
 Every name and every absence of a name in the table was checked against the WHATWG list of named
 character references on 2026-11-21 (section 14.8); the table is a `const` in `src/output.rs`, and a
-test compares it with an extract of that list. `№`, `§`, `¶` and `°` are not in the set: no rule
-produces them, and they are written as characters.
+test compares it with an extract of that list kept in `tests/fixtures/` (section 13.2). `№`, `§`,
+`¶` and `°` are not in the set: no rule produces them, and they are written as characters.
 
 ### 11.3 Unicode
 

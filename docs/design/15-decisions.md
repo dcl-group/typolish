@@ -126,8 +126,9 @@ syntaxes). Ready when:
 - the interaction strings of section 10.7 pass in both sets;
 - the slot participation table of section 2.6 passes row by row;
 - the data test matches the CLDR 49 extract, and the built-in tables pass validation;
-- the output tables, the Cow property and the decoder properties pass for every output kind, nowrap
-  styles included;
+- the output tables (with the check of section 11.2 against the WHATWG extract), the Cow property,
+  the decoder properties and the safe-alphabet property pass for every output kind, nowrap styles
+  included;
 - the Fluent isolation tests pass;
 - the allocation test confirms section 2.12 (zero allocations for an unchanged string after warm-up,
   one for a changed string, zero for numbers written into a buffer with room);

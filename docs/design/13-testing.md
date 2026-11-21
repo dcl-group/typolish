@@ -89,7 +89,12 @@ with the right rule in `report`. Specific rows and further tables:
   `AT&T` in `JSON`, `Да` with `non_ascii()`), which must never come back borrowed; nowrap groups
   with U+202F, U+2011 and a protected span next to glue; for `CSS`, the inputs `a\u{0}b`, `a\u{c}b`,
   `a\r\nb`, `a\u{85}b` and `a\u{2028}b` give `a\fffd b`, `a\c b`, `a\d \a b`, `a\u{85}b` (a raw
-  U+0085) and `a\u{2028}b` (a raw U+2028).
+  U+0085) and `a\u{2028}b` (a raw U+2028); the fixed set stays as a regression table next to the
+  safe-alphabet property; the typographic-set table of section 11.2 is compared with
+  `tests/fixtures/whatwg-entities.txt`, an extract of `entities.json` of the HTML Living Standard
+  taken on 2026-11-21 (section 14.8), whose header names the source and the date: every name the
+  table writes exists there with that code point, U+202F and U+2011 have no name, and the test fails
+  when `HtmlStyle::NAMED` writes a numeric reference for a character that has a name there.
 - `tests/parts.rs`: templates, including the walk-through of section 2.14, select variants, `Other`
   slots, nowrap groups starting and ending at slots, the slot participation table of section 2.6 row
   by row (with `{Date}-{Date}` → `{Date}–{Date}` and `{Number}-{Date}` unchanged), labels
@@ -144,12 +149,12 @@ with the right rule in `report`. Specific rows and further tables:
 - all 405 negative cases of the scouting corpus (groups `neg.flags`, `neg.net`, `neg.ver`,
   `neg.ids`, `neg.ident`, `neg.list`, `neg.html`, `neg.mixed`, `neg.shortlat`, `neg.lookalike`; ru
   207, en 198, frames included), converted once by a script outside the repository into a plain
-  table, with internal host names replaced by neutral ones. Some of these cases sit in sentences
-  with listed short words (`Это a и b в тексте`), so the check is through `report`: the case's token
-  stays byte for byte, and the only other edits allowed are glue marks set by `nbsp.*` rules outside
-  the token. In Interface that holds for every case. In Prose the token may also change in the
-  groups that section 10.5 allows (the lone `--` between words, literal ranges, arrows), and only as
-  recorded.
+  table with the header of section 13.4, the same table that section 13.4 reads, with internal host
+  names replaced by neutral ones. Some of these cases sit in sentences with listed short words
+  (`Это a и b в тексте`), so the check is through `report`: the case's token stays byte for byte,
+  and the only other edits allowed are glue marks set by `nbsp.*` rules outside the token. In
+  Interface that holds for every case. In Prose the token may also change in the groups that section
+  10.5 allows (the lone `--` between words, literal ranges, arrows), and only as recorded.
 
 ### 13.4 Reference pairs
 
@@ -165,18 +170,34 @@ outside the repository. Every case is in one of two groups, each a plain table r
   `AlreadyTypeset`, `NoTrim`, `KeepSpaces`, `EllipsisDigits`).
 
 The test compares our output with the expectation in both groups, using Prose (closest to the
-reference defaults); for the negative groups also Interface (where the expectation is the input). A
-failure prints the input, our output, the recorded output and the `report` table (section 12.5). The
-stage 5 report prints a summary per reason code. The phrase used in tables and comments is
-"reference implementation".
+reference defaults). The 405 cases of the `neg.*` groups (section 13.3) are also run with Interface
+and checked as section 13.3 says: the case's token byte for byte through `report`, glue of `nbsp.*`
+rules outside it allowed; whole-string equality with the input is not required, because Interface
+keeps `nbsp.short-words` (`Он вызвал ls на⍽сервере.`). Both sections read one table. A failure
+prints the input, our output, the recorded output and the `report` table (section 12.5). The stage 5
+report prints a summary per reason code. The phrase used in tables and comments is "reference
+implementation".
+
+**Provenance and drift.** Each generated file (`tests/reference/*.rs` and the negative table of
+section 13.3) starts with a comment: reference implementation version 7.9.1, recorded 2026-11-21,
+default settings, SHA-256 of the input corpus, SHA-256 of the recorded outputs. The tables are the
+record of that version; the conversion scripts stay outside the repository (section 15.2, decision
+3). A newer version of the reference implementation changes nothing by itself: a re-recording is a
+deliberate commit that updates the header, and every row whose recorded output changed is reviewed
+by hand and either kept in `AGREE` or moved to `DIVERGE` with a reason code. The stage 5 comparison
+(section 12.5) uses the version named in the header.
 
 ### 13.5 Properties
 
 `proptest` generators: a grammar of risky pieces (straight and typed quotes, `-`, `--`, `—`, `–`,
 `.`, `...`, `…`, numbers, units, short words of both languages, technical fragments from section
-10.5, slots of every kind for templates, protection delimiters, spaces of every kind and line
-breaks, emoji with ZWJ, combining marks, format characters); strings from the corpus with
-insertions; and arbitrary Unicode strings for the no-panic test.
+10.5, slots of every kind for templates, also next to signs (`{n}%`, `№{n}`, `{a}-{b}`), protection
+delimiters, spaces of every kind and line breaks, emoji with ZWJ, combining marks, format
+characters, and the characters that output kinds encode: `& < > " ' \` and backtick, `$`, `{`, `${`,
+`</script>`, `</style>`, `-->`, `&nbsp;` and U+00A0 typed as text, C0 controls (U+0000, U+000C
+included), U+007F, U+0085, U+2028, U+2029, characters above the BMP, and a typographic character
+followed by a hex digit); strings from the corpus with insertions; and arbitrary Unicode strings for
+the no-panic test.
 
 1. **Idempotence**: `f(f(x)) == f(x)` for {ru, en, COMMON} × {Prose, Interface, all, random subsets}
    × the three `SingleQuotes` modes, with fixed seeds for every split and merge of invariant I2
@@ -207,7 +228,10 @@ insertions; and arbitrary Unicode strings for the no-panic test.
    sequence, a keycap, a regional-indicator pair and `\r\n` are one cluster each), not a token:
    `(c)` → `©` replaces three clusters.
 8. **Cow**: the output is `Borrowed` exactly when it equals the input byte for byte, for every
-   output kind (`Html` and `Escaped` included), so the prefilter can never skip encoding.
+   output kind (`Html` and `Escaped` included), and a test-only entry point `typeset_unfiltered`,
+   which runs the whole pipeline without the prefilter, gives the same result as `typeset` and
+   `typeset_template` on every generated input and template, for every rule set and every output
+   kind; so a missing trigger byte or encoded byte shows up as a difference.
 9. **Recorder independence**: `typeset`, `typeset_with` and `report` give the same result; `lint(x)`
    without its `TypographicChar` entries equals `report(x, Output::Unicode).diagnostics()`; applying
    `report(x).changes()` to `x` yields the result.
@@ -232,6 +256,15 @@ insertions; and arbitrary Unicode strings for the no-panic test.
     `to_plain(x) != x`, and each such entry covers one character that `to_plain` changes.
 16. **to_plain is stable**: `to_plain(to_plain(x)) == to_plain(x)` for {ru, en} × {Prose, Interface}
     on generated strings and the corpus, and `to_plain(x)` is `Borrowed` exactly when it equals `x`.
+17. **Safe alphabet**: for every output kind, the output of `typeset` and of `typeset_template`
+    (each text) contains none of these raw characters: `Html` — `<`, `>`, `"`, `'`, and `&` not
+    starting a reference (`Markup` pieces excepted); `JS`, `JS_HEX`, `JS_CODE_POINT` — `"`, `'`,
+    backtick, `<`, `>`, `&`, `$` followed by `{`, U+2028, U+2029, controls; `JSON` — `"`, `<`, `>`,
+    `&`, U+2028, U+2029, controls; `RUST` — `"`, controls; `CSS` — `"`, `'`, `<` and the controls of
+    section 11.6; in every escaped kind each `\` starts an escape that a strict parser of that
+    syntax accepts (a CSS hex escape always ends with its space); with `non_ascii()` no byte from
+    0x80; except with `HtmlStyle::CHARACTERS`, no raw character of the typographic set. The strict
+    parsers are test helpers next to the decoders.
 
 ### 13.6 Unicode conformance
 

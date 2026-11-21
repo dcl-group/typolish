@@ -53,10 +53,10 @@ uses (section 11), so the two cannot drift apart:
 
 If no byte matches, the call returns `Cow::Borrowed` without lexing. Lead bytes over-approximate (a
 Cyrillic letter never matches, while every character from U+2000 to U+2FFF does): a false match
-costs a full run, never a wrong result. So
-`typeset("a</script>b", Output::Escaped(EscapeStyle::JS))` is never borrowed, even in Interface,
-where no rule reacts to `<`. For short interface strings without signs this skips the whole
-pipeline; the scan is linear and allocates nothing.
+costs a full run, never a wrong result (property 8 of section 13.5 compares the prefilter with a run
+without it). So `typeset("a</script>b", Output::Escaped(EscapeStyle::JS))` is never borrowed, even
+in Interface, where no rule reacts to `<`. For short interface strings without signs this skips the
+whole pipeline; the scan is linear and allocates nothing.
 
 For `typeset_template` the prefilter scans the bytes of all `Text` pieces together; a slot
 contributes no byte, so every rule that can fire next to a slot needs its trigger byte in the text
