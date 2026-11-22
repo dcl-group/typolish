@@ -758,10 +758,20 @@ fn the_reference_tables_hold_405_negative_cases() {
     // Language of an id: `.ru.` and `.en-US.`.
     assert!(ru.iter().all(|r| r.id.contains(".ru.")));
     assert!(en.iter().all(|r| r.id.contains(".en-US.")));
-    // Host names are neutral.
+    // Host names are neutral: a name under `.com` or `.internal` is a reserved example name
+    // (`example.com`, `git.example.internal`) or a single host of `.internal` (`db.internal`).
     for r in ru.iter().chain(en.iter()) {
         for text in [r.input, r.recorded] {
-            assert!(!text.contains("alraz"), "{}", r.id);
+            let names = text
+                .split(|c: char| !(c.is_ascii_alphanumeric() || c == '.' || c == '-'))
+                .map(|w| w.trim_matches('.'))
+                .filter(|w| w.ends_with(".com") || w.ends_with(".internal"));
+            for name in names {
+                let labels: Vec<&str> = name.split('.').collect();
+                let example = labels.len() >= 2 && labels[labels.len() - 2] == "example";
+                let single = labels.len() == 2 && labels[1] == "internal";
+                assert!(example || single, "{}: {name}", r.id);
+            }
         }
     }
 }
