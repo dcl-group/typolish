@@ -21,11 +21,10 @@ use crate::{Error, Language, Output, Piece, Rule, RuleSet, Template};
 /// # let _ = t;
 /// # Ok::<(), typolish::Error>(())
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum SingleQuotes {
     /// Only inside double quotes (the default).
-    #[default]
     NestedOnly,
     /// At every level.
     Everywhere,
@@ -44,11 +43,10 @@ pub enum SingleQuotes {
 /// # let _ = t;
 /// # Ok::<(), typolish::Error>(())
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum PercentSpacing {
     /// An existing space is glued, an attached sign stays (the default).
-    #[default]
     AsWritten,
     /// The CLDR pattern of the language: `5⍽%` in Russian, `5%` in English.
     Language,
@@ -69,7 +67,7 @@ pub enum PercentSpacing {
 /// assert!(!places.contains(NarrowGlue::ABBREVIATIONS));
 /// assert!(NarrowGlue::ALL.contains(places));
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NarrowGlue {
     bits: u8,
 }

@@ -126,6 +126,13 @@ fn scratch_is_default_and_debug() {
     let a = Scratch::new();
     let b = Scratch::default();
     assert_eq!(format!("{a:?}"), format!("{b:?}"));
+    // Opaque: the buffers are not shown (design sections 2.1 and 2.13).
+    assert_eq!(format!("{a:?}"), "Scratch { .. }");
+}
+
+#[test]
+fn number_data_default_is_new() {
+    assert_eq!(NumberData::default(), NumberData::new());
 }
 
 #[test]

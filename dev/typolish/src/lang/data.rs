@@ -294,6 +294,7 @@ impl NumberData {
 }
 
 impl Default for NumberData {
+    /// The same as [`NumberData::new`].
     fn default() -> NumberData {
         NumberData::new()
     }
