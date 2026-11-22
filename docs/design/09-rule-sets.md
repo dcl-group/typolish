@@ -58,10 +58,10 @@ Kept in Interface although one could argue: `nbsp.short-words`, `nbsp.particles`
 line breaking (`в⍽Москве`); `nbsp.abbreviations` and `nbsp.signs` insert a glue only inside a listed
 abbreviation and after `№`, `§`, `¶`; `quotes.pairs` is required by the task's own example
 (`"{name}"`); `ellipsis.dots` turns `Загрузка...` into `Загрузка…`; `dash.spaced-hyphen` needs a
-lone `-` with spaces and operands on both sides, refuses a number or a single letter on each side in
-any mix, foreign words and technical fragments on both sides and flags on either side, and in the
-closed style removes spaces only between two plain words, so it never joins a technical token to a
-word.
+lone `-` with spaces and operands on both sides, refuses a number, a range or a single letter on
+each side in any mix, foreign words and technical fragments on both sides and flags on either side,
+and in the closed style removes spaces only between two plain words, so it never joins a technical
+token to a word.
 
 ### 9.4 Custom sets
 
