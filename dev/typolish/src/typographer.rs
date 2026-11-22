@@ -112,12 +112,15 @@ impl ListEdit {
         removed: Vec::new(),
     };
 
-    /// Whether the edited list has any entry.
+    /// Whether the edited list has any entry. `removed` is sorted: `build()` sorts it, and
+    /// `NONE` is empty.
     fn non_empty(&self, base: &[&str]) -> bool {
         !self.added.is_empty()
-            || base
-                .iter()
-                .any(|entry| !self.removed.iter().any(|removed| removed == entry))
+            || base.iter().any(|entry| {
+                self.removed
+                    .binary_search_by(|removed| removed.as_str().cmp(entry))
+                    .is_err()
+            })
     }
 }
 
@@ -820,6 +823,7 @@ fn sorted(mut list: Vec<String>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::LanguageData;
 
     #[test]
     fn builder_lists_are_normalized() {
@@ -877,5 +881,20 @@ mod tests {
             .build()
             .unwrap();
         assert!(!ru.active_rules().contains(Rule::NbspShortLength));
+    }
+
+    #[test]
+    fn removing_every_unit_turns_the_rule_off() {
+        let all = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+            .remove_units(LanguageData::RU_RU.units.iter().rev())
+            .build()
+            .unwrap();
+        assert!(!all.settings.units.non_empty(LanguageData::RU_RU.units));
+        assert!(!all.active_rules().contains(Rule::NbspUnits));
+        let some = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+            .remove_units(LanguageData::RU_RU.units.iter().skip(1))
+            .build()
+            .unwrap();
+        assert!(some.active_rules().contains(Rule::NbspUnits));
     }
 }

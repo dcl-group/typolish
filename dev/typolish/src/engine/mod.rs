@@ -10,7 +10,7 @@ pub(crate) mod scratch;
 
 use std::borrow::Cow;
 
-use crate::{Output, RuleSet, Slot, Typographer};
+use crate::{Output, Slot, Typographer};
 use scratch::Scratch;
 
 /// One input piece without the caller's payload: the call-local vector of piece texts (design
@@ -23,18 +23,15 @@ pub(crate) enum Input<'t> {
     Markup(&'t str),
 }
 
-/// The rules the engine implements so far; an active rule outside this set does nothing.
-const IMPLEMENTED: RuleSet = RuleSet::EMPTY;
-
 /// Runs the pipeline over `input` and reports whether any window changed.
-fn run(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) -> bool {
+fn run(_typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) -> bool {
     if !ingest::ingest(input, &mut scratch.atoms) {
         // Positions do not fit `u32`: the input is returned unchanged (design section 3.4).
         return false;
     }
-    // The phases of stage 2 run the implemented active rules over each window here. No rule is
-    // implemented yet (`IMPLEMENTED` is empty), so no window changes.
-    let _implemented = typographer.active_rules().intersection(IMPLEMENTED);
+    // The phases of stage 2 run the active rules over each window here, reading the active set
+    // and the trigger set that the typographer computes once when it is built (design section
+    // 3.2), not per call. No rule is implemented yet, so no window changes.
     false
 }
 
