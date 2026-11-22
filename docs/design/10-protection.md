@@ -66,9 +66,11 @@ look at the context around it. Explicit protection is still needed for commands 
 
 - **M1 Frozen fragment.** The classifier freezes the core; the engine refuses every edit that
   touches it (sections 3.6, 3.7).
-- **M2 Lone token.** Dash rules fire only on a fragment that is nothing but `-` or `--` with one
-  pattern space (section 8.2) and an operand on each side, never next to a flag or between two
-  technical fragments, and the closed style never joins a technical fragment to a word (section
+- **M2 Lone token.** Dash rules fire only on a fragment that is nothing but `-`, `--` or `---` (a
+  typed `–` or `—` is matched with an empty edit) with one pattern space (section 8.2) and an
+  operand on each side (closing punctuation on the left or an opening quote or bracket on the right
+  counts too; `dash.dialogue` needs only a line start on the left), never next to a flag or between
+  two technical fragments, and the closed style never joins a technical fragment to a word (section
   8.4).
 - **M3 Whole operator.** A run of operator characters is one token and changes only if the whole run
   equals a table entry; `=>`, `>>`, `-->` are in no table.
@@ -221,4 +223,6 @@ expectation):
   (`сказал: "привет"`) the quotes are placed. An empty value glued the same way (`сказал:""`,
   `key:""`) is not frozen, because the core is the word alone: its two quotes are closing quotes
   with no opener, so the paragraph keeps its straight quotes with `UnmatchedQuote` (warning).
-  `key: ""` gives `key: «»`.
+  `key: ""` gives `key: «»`. A frozen core that does not end in `=` keeps its wrapper quotes as
+  candidates, so `Путь /etc/"" и "да".` fails the paragraph the same way, with `UnmatchedQuote`
+  (warning, section 6.1), while `key=""` stays as written.
