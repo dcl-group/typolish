@@ -6,6 +6,7 @@
 
 use super::Triggers;
 use super::quotes::{Role, local_role};
+use crate::SlotKind;
 use crate::engine::lex::{EllipsisForm, Kind, Repl};
 use crate::engine::phase::{Cx, Edit, Edits, Match, ellipsis_tail};
 
@@ -90,7 +91,18 @@ pub(crate) fn inner(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
     let prev = cx.prev(i);
     let next = cx.next(i);
-    let word = |j: Option<usize>| j.is_some_and(|j| matches!(cx.kind(j), Some(Kind::Word(_))));
+    // `Word` and `Other` slots count as words (section 8.10), a protected span acts as one word
+    // (section 2.6).
+    let word = |j: Option<usize>| {
+        j.is_some_and(|j| {
+            matches!(
+                cx.kind(j),
+                Some(
+                    Kind::Word(_) | Kind::Slot(SlotKind::Word | SlotKind::Other) | Kind::Protected
+                )
+            )
+        })
+    };
     if !(word(next) && (boundary(cx, prev) || word(prev))) {
         return None;
     }

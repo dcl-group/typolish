@@ -613,6 +613,83 @@ fn other_slots_are_words_for_quotes_and_dashes() {
 }
 
 #[test]
+fn word_and_other_slots_and_protected_pieces_are_words_for_the_dialogue_dash() {
+    // Sections 8.4, 8.10 and 2.6: `Word` and `Other` slots count as words, a protected piece acts
+    // as one word; no glue sticks to an `Other` slot (section 8.2), so there the space stays.
+    let t = prose(Language::RU_RU);
+    let out = t.typeset_template(
+        [
+            Piece::Text("- "),
+            Piece::Slot("w", Slot::WORD),
+            Piece::Text(" пришёл"),
+        ],
+        Output::Unicode,
+    );
+    assert_eq!(texts(&out), ["—\u{a0}", " пришёл"]);
+    let out = t.typeset_template(
+        [
+            Piece::Text("- "),
+            Piece::Slot("o", Slot::OTHER),
+            Piece::Text(" пришёл"),
+        ],
+        Output::Unicode,
+    );
+    assert_eq!(texts(&out), ["— ", " пришёл"]);
+    let out = t.typeset_template::<()>(
+        [
+            Piece::Text("- "),
+            Piece::Protected("ls"),
+            Piece::Text(" пришёл"),
+        ],
+        Output::Unicode,
+    );
+    assert_eq!(texts(&out), ["—\u{a0}ls пришёл"]);
+    // A `Number` slot is no word here: the line stays.
+    let out = t.typeset_template(
+        [
+            Piece::Text("- "),
+            Piece::Slot("n", Slot::NUMBER),
+            Piece::Text(" штук"),
+        ],
+        Output::Unicode,
+    );
+    assert_eq!(texts(&out), ["- ", " штук"]);
+}
+
+#[test]
+fn word_and_other_slots_and_protected_pieces_are_words_for_the_inner_ellipsis() {
+    // Sections 8.6, 8.10 and 2.6 (Prose only: `ellipsis.inner` is not in Interface).
+    let t = prose(Language::EN_US);
+    for slot in [Slot::WORD, Slot::OTHER] {
+        let out = t.typeset_template(
+            [
+                Piece::Slot("a", slot),
+                Piece::Text("..."),
+                Piece::Slot("b", slot),
+            ],
+            Output::Unicode,
+        );
+        assert_eq!(texts(&out), ["", "…", ""], "{slot:?}");
+        let out = t.typeset_template(
+            [Piece::Text("a ..."), Piece::Slot("b", slot)],
+            Output::Unicode,
+        );
+        assert_eq!(texts(&out), ["a …", ""], "{slot:?}");
+    }
+    let out = t.typeset_template::<()>(
+        [Piece::Text("a ..."), Piece::Protected("ls")],
+        Output::Unicode,
+    );
+    assert_eq!(texts(&out), ["a …ls"]);
+    let t = interface(Language::EN_US);
+    let out = t.typeset_template(
+        [Piece::Text("a ..."), Piece::Slot("b", Slot::WORD)],
+        Output::Unicode,
+    );
+    assert_eq!(texts(&out), ["a ...", ""]);
+}
+
+#[test]
 fn fill_inserts_values_unchanged() {
     // Section 11.1: values are inserted as they are, also with `Output::Html`: the caller escapes
     // them.

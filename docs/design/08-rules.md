@@ -198,8 +198,11 @@ in English, and in Interface, it stays.
 optional indentation: `-` or `--`, one space, then a word or an opening quote → `—`, and the space
 after it is glued. A typed `—` or `–` there counts as a `-` (section 4.3, I4): the dash stays and
 only a single U+0020 after it is glued (`— Привет` → `—⍽Привет`), the normalization of a space that
-`nbsp.dash` also makes (section 4.5). Not in Interface: a line starting with `- ` in UI text is a
-list item. Settled in section 15.5, item 12.
+`nbsp.dash` also makes (section 4.5). A `Word` or `Other` slot counts as the word (section 8.10) and
+so does a protected span (section 2.6); a `Number` or `Date` slot does not. Before an `Other` slot
+the dash is set and the space stays, since no glue sticks to an `Other` slot (section 8.2):
+`- {o} пришёл` → `— {o} пришёл`, `- {w} пришёл` → `—⍽{w} пришёл`. Not in Interface: a line starting
+with `- ` in UI text is a list item. Settled in section 15.5, item 12.
 
 Outputs show the rules named in the last column (with `quotes.pairs` where quotes appear); in the
 full sets other no-break rules add glue too (`Moscow—the⍽capital`, `“a⍽cat”`). The glue after `the`
@@ -276,8 +279,9 @@ The rule for port ranges such as `8000-8100` is section 10.6.
   `!..`, `?!..`, en `?…`) the rule matches with an empty edit. Digits on both sides (`-5...5`) never
   change.
 - **`ellipsis.inner`** (Prose): `...` at the start of a word after a space or a line start
-  (`...и тогда`) and between two words without spaces (`да...нет`) → `…`. Not in Interface:
-  `...args` and `a...b` occur in code.
+  (`...и тогда`) and between two words without spaces (`да...нет`) → `…`. A `Word` or `Other` slot
+  counts as a word (section 8.10) and so does a protected span (section 2.6): `{a}...{b}` →
+  `{a}…{b}`. Not in Interface: `...args` and `a...b` occur in code.
 
 Examples: `Подождите...` → `Подождите…`; `Подождите...\tДальше` → `Подождите…\tДальше` and
 `Подождите...  Дальше` → `Подождите…  Дальше` (any `Space` token is a boundary, section 8.2);

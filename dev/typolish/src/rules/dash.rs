@@ -62,9 +62,12 @@ pub(crate) fn dialogue(cx: &Cx<'_>, i: usize) -> Option<Match> {
         return None;
     }
     let r = cx.next(s)?;
-    let word = match cx.kind(r)? {
-        Kind::Slot(kind) => kind == SlotKind::Word,
-        Kind::Protected => false,
+    // `Word` and `Other` slots count as words (section 8.10), a protected span acts as one word
+    // (section 2.6).
+    let opaque = cx.kind(r)?;
+    let word = match opaque {
+        Kind::Slot(kind) => matches!(kind, SlotKind::Word | SlotKind::Other),
+        Kind::Protected => true,
         _ => {
             cx.in_core(r)
                 && cx
@@ -83,7 +86,8 @@ pub(crate) fn dialogue(cx: &Cx<'_>, i: usize) -> Option<Match> {
             repl: Repl::Char(EM_DASH),
         });
     }
-    if cx.plain_space(s) {
+    // No glue sticks to an `Other` slot (sections 2.6 and 8.2): the dash is set, the space stays.
+    if cx.plain_space(s) && opaque != Kind::Slot(SlotKind::Other) {
         edits = edits.with(Edit::Glue {
             at,
             glue: Glue::NoBreak,
