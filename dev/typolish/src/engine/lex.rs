@@ -164,4 +164,14 @@ mod tests {
         assert!(flags.contains(Flags::FROZEN));
         assert!(!flags.contains(Flags::LABEL));
     }
+
+    #[test]
+    fn clusters_come_from_the_unicode_17_tables() {
+        use unicode_segmentation::UnicodeSegmentation;
+
+        // Design sections 5.1 and 14.1: extended grapheme clusters of Unicode 17.0.0.
+        assert_eq!(unicode_segmentation::UNICODE_VERSION, (17, 0, 0));
+        let clusters: Vec<&str> = "е\u{301}ж👍🏽".graphemes(true).collect();
+        assert_eq!(clusters, ["е\u{301}", "ж", "👍🏽"]);
+    }
 }
