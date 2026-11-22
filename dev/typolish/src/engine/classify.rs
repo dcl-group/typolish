@@ -1276,7 +1276,8 @@ fn labels(text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
             });
         let label = match frag.kind {
             FragKind::Number | FragKind::Range => after_sign,
-            FragKind::Word => frag.label || (roman && after_sign),
+            // A Roman numeral that is also a unit (`V`, `L`) is a `Dictionary` core.
+            FragKind::Word | FragKind::Dictionary => frag.label || (roman && after_sign),
             _ => false,
         };
         if label {
@@ -1613,6 +1614,26 @@ mod tests {
                 "{text}"
             );
         }
+    }
+
+    #[test]
+    fn a_roman_numeral_that_is_a_unit_is_a_label_after_a_sign() {
+        // Design section 3.6, "Label numbers": the core is a Roman numeral, whatever its kind.
+        use FragKind::*;
+        let en = Language::EN_US;
+        assert_eq!(
+            frags(en.clone(), "§ V")[1],
+            ("V".to_owned(), Dictionary, true)
+        );
+        assert_eq!(
+            frags(en.clone(), "¶ L")[1],
+            ("L".to_owned(), Dictionary, true)
+        );
+        assert_eq!(frags(en.clone(), "§V")[0], ("§V".to_owned(), Word, true));
+        assert_eq!(
+            frags(en.clone(), "5 V")[1],
+            ("V".to_owned(), Dictionary, false)
+        );
     }
 
     #[test]
