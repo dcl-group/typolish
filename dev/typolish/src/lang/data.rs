@@ -731,7 +731,7 @@ pub(crate) fn check_quote_pairs(quotes: QuotePairs) -> Result<(), char> {
 }
 
 /// A canonical tag of design section 7.6: `ll`, `ll-RR`, `ll-DDD` or `und`.
-fn is_canonical_tag(tag: &str) -> bool {
+pub(crate) fn is_canonical_tag(tag: &str) -> bool {
     let lower = |b: &u8| b.is_ascii_lowercase();
     match tag.as_bytes() {
         b"und" => true,

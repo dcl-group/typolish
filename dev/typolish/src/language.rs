@@ -3,8 +3,9 @@
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::str::FromStr;
+use std::sync::Arc;
 
-use crate::lang::data::{DashStyle, LanguageData, Script};
+use crate::lang::data::{DashStyle, LanguageData, QuotePairs, Script, is_canonical_tag};
 use crate::lang::{BUILTIN, common, en_us, ru_ru};
 use crate::{Error, Rule};
 
@@ -32,18 +33,28 @@ pub struct Language {
     repr: Repr,
 }
 
-/// Where the data of a language lives. Equality compares the data table, the hash uses the tag
-/// only; this is consistent, because the tag is part of the data.
-///
-/// The variant holding owned data (`LanguageBuilder`, design section 7.1) joins with that builder.
+/// Where the data of a language lives. Equality compares the tag and the data table, the hash
+/// uses the tag only; this is consistent, because equal languages have equal tags.
 #[derive(Clone, Debug)]
 enum Repr {
     Static(&'static LanguageData),
+    /// A language of `LanguageBuilder` (design section 7.1).
+    Owned(Arc<Owned>),
+}
+
+/// The data of a language built at run time: the owned tag, and the table, whose own `tag` field
+/// is `und` and is not read.
+#[derive(Debug)]
+struct Owned {
+    tag: String,
+    data: LanguageData,
 }
 
 impl PartialEq for Repr {
     fn eq(&self, other: &Repr) -> bool {
-        self.data() == other.data()
+        // The tag fields of the tables are compared through `tag()`.
+        let untagged = |data: &LanguageData| data.clone().with_tag("und");
+        self.tag() == other.tag() && untagged(self.data()) == untagged(other.data())
     }
 }
 
@@ -51,7 +62,7 @@ impl Eq for Repr {}
 
 impl Hash for Repr {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.data().tag.hash(state);
+        self.tag().hash(state);
     }
 }
 
@@ -59,6 +70,14 @@ impl Repr {
     fn data(&self) -> &LanguageData {
         match self {
             Repr::Static(data) => data,
+            Repr::Owned(owned) => &owned.data,
+        }
+    }
+
+    fn tag(&self) -> &str {
+        match self {
+            Repr::Static(data) => data.tag,
+            Repr::Owned(owned) => &owned.tag,
         }
     }
 }
@@ -182,7 +201,7 @@ impl Language {
     /// ```
     #[must_use]
     pub fn tag(&self) -> &str {
-        self.data().tag
+        self.repr.tag()
     }
 
     /// The built-in languages in tag order, [`Language::COMMON`] excluded.
@@ -258,6 +277,148 @@ fn supports(data: &LanguageData, rule: Rule) -> bool {
     }
 }
 
+/// A language built at run time (design section 7.1): it starts from an existing language or from
+/// the values of [`LanguageData::new`] under a new tag, changes fields, and
+/// [`build`](LanguageBuilder::build) normalizes the case of the tag, validates the table (design
+/// section 7.6) and returns a [`Language`] that holds its data in an `Arc`.
+///
+/// The crate is in development: so far the quote pairs and the dash style can be changed; the
+/// methods for the other fields and their lists come with the complete language data (design
+/// section 15.4, stage 3).
+///
+/// ```
+/// use typolish::{Language, LanguageBuilder, Output, QuotePairs, Rule, RuleSet, Typographer};
+///
+/// let de = LanguageBuilder::from_language(&Language::EN_US, "de-DE")
+///     .quotes(Some(QuotePairs::new(('„', '“'), ('‚', '‘'))))
+///     .build()?;
+/// assert_eq!(de.tag(), "de-DE");
+/// let t = Typographer::new(de, RuleSet::EMPTY.with(Rule::QuotesPairs));
+/// assert_eq!(t.typeset("\"a 'b' c\"", Output::Unicode), "„a ‚b‘ c“");
+/// # Ok::<(), typolish::Error>(())
+/// ```
+#[derive(Clone, Debug)]
+#[must_use]
+pub struct LanguageBuilder {
+    tag: String,
+    data: LanguageData,
+}
+
+impl LanguageBuilder {
+    /// Starts from an existing language's data under a new tag.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder};
+    ///
+    /// let kz = LanguageBuilder::from_language(&Language::RU_RU, "ru-KZ").build()?;
+    /// assert_eq!(kz.to_string(), "ru-KZ");
+    /// assert_ne!(kz, Language::RU_RU);
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
+    pub fn from_language(base: &Language, tag: &str) -> LanguageBuilder {
+        LanguageBuilder {
+            tag: tag.to_owned(),
+            data: base.data().clone(),
+        }
+    }
+
+    /// Starts from the values of [`LanguageData::new`] under a tag.
+    ///
+    /// ```
+    /// use typolish::LanguageBuilder;
+    ///
+    /// assert_eq!(LanguageBuilder::new("EN-gb").build()?.tag(), "en-GB");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
+    pub fn new(tag: &str) -> LanguageBuilder {
+        LanguageBuilder {
+            tag: tag.to_owned(),
+            data: LanguageData::new("und"),
+        }
+    }
+
+    /// Sets the quote pairs; `None` makes `quotes.pairs` inert.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder, Rule};
+    ///
+    /// let none = LanguageBuilder::from_language(&Language::RU_RU, "ru").quotes(None).build()?;
+    /// assert!(!none.supports(Rule::QuotesPairs));
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
+    pub fn quotes(mut self, quotes: Option<QuotePairs>) -> Self {
+        self.data = self.data.with_quotes(quotes);
+        self
+    }
+
+    /// Sets the dash style, as [`LanguageData::with_dash_style`] does.
+    ///
+    /// ```
+    /// use typolish::{DashStyle, Language, LanguageBuilder, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let gb = LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+    ///     .dash_style(DashStyle::Spaced)
+    ///     .build()?;
+    /// let t = Typographer::new(gb, RuleSet::EMPTY.with(Rule::DashSpacedHyphen));
+    /// assert_eq!(t.typeset("Moscow - the capital", Output::Unicode), "Moscow — the capital");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
+    pub fn dash_style(mut self, style: DashStyle) -> Self {
+        self.data = self.data.with_dash_style(style);
+        self
+    }
+
+    /// Normalizes the case of the tag (language subtag lowercase, region uppercase), validates the
+    /// table (design section 7.6) and returns the language.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidLanguageData`] when the tag is not of the form `ll`, `ll-RR`, `ll-DDD` or
+    /// `und`, or when a check of the table fails, naming the field.
+    ///
+    /// ```
+    /// use typolish::{Error, Language, LanguageBuilder, QuotePairs};
+    ///
+    /// let bad = LanguageBuilder::from_language(&Language::RU_RU, "ru")
+    ///     .quotes(Some(QuotePairs::new(('«', '»'), ('«', '„'))))
+    ///     .build();
+    /// assert!(matches!(bad, Err(Error::InvalidLanguageData { .. })));
+    /// assert!(LanguageBuilder::new("russian").build().is_err());
+    /// ```
+    pub fn build(self) -> Result<Language, Error> {
+        let tag = normalize_tag(&self.tag);
+        let invalid = |reason| Error::InvalidLanguageData {
+            tag: tag.clone(),
+            reason,
+        };
+        if !is_canonical_tag(&tag) {
+            return Err(invalid(
+                "tag: not a canonical tag of the form ll, ll-RR, ll-DDD or und",
+            ));
+        }
+        let data = self.data.with_tag("und");
+        data.validate().map_err(invalid)?;
+        Ok(Language {
+            repr: Repr::Owned(Arc::new(Owned { tag, data })),
+        })
+    }
+}
+
+/// The case of a tag as design section 7.6 prints it: the language subtag in lowercase, a region
+/// subtag in uppercase; `und` in lowercase.
+fn normalize_tag(tag: &str) -> String {
+    let mut out = String::with_capacity(tag.len());
+    for (i, part) in tag.split('-').enumerate() {
+        if i > 0 {
+            out.push('-');
+            out.extend(part.chars().map(|c| c.to_ascii_uppercase()));
+        } else {
+            out.extend(part.chars().map(|c| c.to_ascii_lowercase()));
+        }
+    }
+    out
+}
+
 /// The same as [`Language::from_tag`].
 impl FromStr for Language {
     type Err = Error;
@@ -271,5 +432,33 @@ impl FromStr for Language {
 impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.tag())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::hash::{BuildHasher, RandomState};
+
+    #[test]
+    fn a_built_copy_equals_its_base() {
+        // Design section 2.2: equality compares the whole table, the hash the tag only.
+        let copy = LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")
+            .build()
+            .unwrap();
+        assert_eq!(copy, Language::RU_RU);
+        let hasher = RandomState::new();
+        assert_eq!(hasher.hash_one(&copy), hasher.hash_one(&Language::RU_RU));
+        let other = LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")
+            .quotes(None)
+            .build()
+            .unwrap();
+        assert_ne!(other, Language::RU_RU);
+        let kz = LanguageBuilder::from_language(&Language::RU_RU, "ru-kz")
+            .build()
+            .unwrap();
+        assert_eq!(kz.tag(), "ru-KZ");
+        assert_ne!(kz, Language::RU_RU);
+        assert_eq!(LanguageBuilder::new("UND").build().unwrap().tag(), "und");
     }
 }

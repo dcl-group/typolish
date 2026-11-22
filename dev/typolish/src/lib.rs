@@ -47,7 +47,7 @@ pub use lang::data::{
     Abbreviation, Bind, DashData, DashStyle, EllipsisForms, LanguageData, MonthPosition,
     NumberData, QuotePairs, Script,
 };
-pub use language::Language;
+pub use language::{Language, LanguageBuilder};
 pub use output::{EscapeStyle, HtmlStyle, Output};
 pub use piece::{Piece, Slot, SlotKind, Template, TemplatePart};
 pub use report::{
@@ -62,5 +62,6 @@ const _: () = {
     send_sync::<Typographer>();
     send_sync::<Scratch>();
     send_sync::<Language>();
+    send_sync::<LanguageBuilder>();
     send_sync::<RuleSet>();
 };

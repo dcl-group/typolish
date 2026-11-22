@@ -2,8 +2,7 @@
 //! idempotence, the fixed-point oracle, slots and protected spans, letters and digits, `Cow`,
 //! pieces and strings, determinism of order and no panic; and, through `report`, the invariants I1,
 //! I2, I4 and I5 of design section 4.3 as far as the public API shows them. The properties that
-//! need `lint`, `to_plain`, the decoders of the output kinds or `LanguageBuilder` join when those
-//! parts exist.
+//! need `lint`, `to_plain` or the decoders of the output kinds join when those parts exist.
 
 #![allow(
     clippy::unwrap_used,
@@ -23,8 +22,8 @@ use common::show;
 use common::strategies::{self, GenPiece, any_text, borrow, pieces, risky_text, rule_set};
 use proptest::prelude::*;
 use typolish::{
-    DiagnosticKind, EscapeStyle, HtmlStyle, Language, Output, PercentSpacing, ProtectedKind,
-    Report, Rule, RuleSet, Severity, SingleQuotes, Typographer,
+    DiagnosticKind, EscapeStyle, HtmlStyle, Language, LanguageBuilder, Output, PercentSpacing,
+    ProtectedKind, QuotePairs, Report, Rule, RuleSet, Severity, SingleQuotes, Typographer,
 };
 
 const LANGUAGES: [Language; 3] = [Language::RU_RU, Language::EN_US, Language::COMMON];
@@ -127,6 +126,44 @@ fn idempotence_of_the_seeds() {
             }
         }
     }
+}
+
+#[test]
+fn idempotence_of_the_seed_with_a_built_language() {
+    // The seed `‚Wort‘` of section 13.5, with a `LanguageBuilder` language whose pairs are `„“` and
+    // `‚‘`: a typed nested pair, and around it straight quotes that take the language's glyphs.
+    let de = LanguageBuilder::from_language(&Language::EN_US, "de-DE")
+        .quotes(Some(QuotePairs::new(('„', '“'), ('‚', '‘'))))
+        .build()
+        .unwrap();
+    for seed in ["‚Wort‘", "\"Er sagte ‚Wort‘\"", "\"a 'b' c\""] {
+        for set in [
+            RuleSet::EMPTY,
+            RuleSet::ALL,
+            RuleSet::PROSE,
+            RuleSet::INTERFACE,
+        ] {
+            for mode in [
+                SingleQuotes::NestedOnly,
+                SingleQuotes::Everywhere,
+                SingleQuotes::Never,
+            ] {
+                let t = Typographer::builder(de.clone(), set)
+                    .single_quotes(mode)
+                    .build()
+                    .unwrap();
+                let once = t.typeset(seed, Output::Unicode).into_owned();
+                let twice = t.typeset(&once, Output::Unicode);
+                assert_eq!(once, twice, "{set} {mode:?} {seed:?}");
+            }
+        }
+    }
+    let t = Typographer::new(de, RuleSet::INTERFACE);
+    assert_eq!(t.typeset("‚Wort‘", Output::Unicode), "‚Wort‘");
+    assert_eq!(
+        t.typeset("\"Er sagte \"Wort\"\"", Output::Unicode),
+        "„Er sagte ‚Wort‘“"
+    );
 }
 
 proptest! {
