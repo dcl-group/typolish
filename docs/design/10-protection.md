@@ -215,4 +215,7 @@ expectation):
   (sections 3.6, 4.3). This errs on the safe side by design.
 - A quote glued to a punctuation-joined word (`сказал:"привет"`, `сказал,"привет"`) belongs to a
   frozen fragment (`Colon`, `List`) and stays straight, without a diagnostic. With the space
-  (`сказал: "привет"`) the quotes are placed.
+  (`сказал: "привет"`) the quotes are placed. An empty value glued the same way (`сказал:""`,
+  `key:""`) is not frozen, because the core is the word alone: its two quotes are closing quotes
+  with no opener, so the paragraph keeps its straight quotes with `UnmatchedQuote` (warning).
+  `key: ""` gives `key: «»`.

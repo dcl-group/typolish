@@ -43,18 +43,20 @@ gives the output of the whole set.
   `VV` in `¶ VV` has no `LABEL`).
 - `tests/rules_quotes.rs`: ru `"?"` → `«?»`, `«»` unchanged, `report().protected()` empty; en
   `He is 5'10" tall.` (Prose) → `He is 5′10″ tall.`; en `the 90's` → `the 90’s`; en `1'000'000` →
-  unchanged; ru `Он сказал "" и ушёл.` → `Он сказал «» и ушёл.`; ru `Пустая строка "".` →
-  `Пустая строка «».`; ru `Он сказал """ и ушёл.` → unchanged, `AmbiguousQuote` ×3; ru
-  `Задайте key="" и нажмите "OK".` → `Задайте key="" и нажмите «OK».`; ru
+  unchanged; en `He is 5’10 tall.` → unchanged; ru `Он сказал "" и ушёл.` → `Он сказал «» и ушёл.`;
+  ru `Пустая строка "".` → `Пустая строка «».`; ru `Имя: "\u{2068}\u{2069}"` →
+  `Имя: «\u{2068}\u{2069}»`, `report().protected()` empty; ru `Он сказал """ и ушёл.` → unchanged,
+  `AmbiguousQuote` ×3; ru `Задайте key="" и нажмите "OK".` → `Задайте key="" и нажмите «OK».`; ru
   `Токен "SGVsbG8gd29ybGQ=" и "имя".` → `Токен «SGVsbG8gd29ybGQ=» и «имя».`; en
   `‘Note: 'beta' builds of the developers' tools` → unchanged, `UnmatchedQuote` (info), no
-  possessive `’` after a neutral `‘` (section 6.6); ru `a""b` → unchanged, no diagnostic; en
-  `"a 'b c" 5'` → `“a 'b c” 5′` (Prose) and `“a 'b c” 5'` (Interface); en `“Say "hi" at 5”` →
-  `“Say ‘hi’ at 5”`; ru `Цена 27»` → unchanged, `UnmatchedQuote` (info); ru `Папка "/etc/" пуста` →
-  `Папка «/etc/» пуста`; en `Run "x->" now` → `Run “x->” now`; ru `Адрес "::1"` → `Адрес «::1»`; en
-  `She loves 'the dogs'` → unchanged, and with `Never` → `She loves 'the dogs’`; en
-  `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info); ru `Он сказал:"привет" и ушёл.` →
-  unchanged, no diagnostic (frozen fragment, section 10.8).
+  possessive `’` after a neutral `‘` (section 6.6); ru `a""b` → unchanged, no diagnostic; ru
+  `Поле Значение:"" и "да".` → unchanged, `UnmatchedQuote` (warning); en `"She said "no.""` →
+  `“She said ‘no.’”`; en `"a 'b c" 5'` → `“a 'b c” 5′` (Prose) and `“a 'b c” 5'` (Interface); en
+  `“Say "hi" at 5”` → `“Say ‘hi’ at 5”`; ru `Цена 27»` → unchanged, `UnmatchedQuote` (info); ru
+  `Папка "/etc/" пуста` → `Папка «/etc/» пуста`; en `Run "x->" now` → `Run “x->” now`; ru
+  `Адрес "::1"` → `Адрес «::1»`; en `She loves 'the dogs'` → unchanged, and with `Never` →
+  `She loves 'the dogs’`; en `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info); ru
+  `Он сказал:"привет" и ушёл.` → unchanged, no diagnostic (frozen fragment, section 10.8).
 - `tests/rules_dash.rs`: ru `Ждите - ...` with `dash.spaced-hyphen` alone → unchanged, no
   `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` with
   `dash.spaced-hyphen` alone → unchanged, `Cow::Borrowed` (the sets give `Moscow — the⍽capital`); en
@@ -174,7 +176,8 @@ gives the output of the whole set.
   `[Slot(a), Slot(b)]` → `SlotGlue` (info); ``don`t`` → `UnclosedDelimiter`; `` `code` `` →
   `report().protected()` holds one `Delimited` record.
 - `tests/fluent_isolation.rs`: run-time strings with U+2068 and U+2069 around values give the same
-  typesetting as without them, with the isolates unchanged (section 5.4).
+  typesetting as without them, with the isolates unchanged, an empty value included
+  (`"\u{2068}\u{2069}"` → `«\u{2068}\u{2069}»`, as `""` → `«»`) (section 5.4).
 
 ### 13.3 Negative cases
 

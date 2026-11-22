@@ -91,8 +91,8 @@ placeable in U+2068 FIRST STRONG ISOLATE and U+2069 POP DIRECTIONAL ISOLATE. Wit
 `Файл "⁨report⁩"` gets quotes around the isolated word, `в ⁨Москве⁩` gets glue after `в`, and
 `⁨5⁩ МБ` gets glue before the unit (the isolate around `5` is skipped, the number is seen). A test
 table typesets such strings and checks the same results as without the isolates, with the isolates
-unchanged (section 13.6). U+2060 WORD JOINER in the input is kept and is not treated as glue (a
-caller who wants glue writes U+00A0).
+unchanged (section 13.2, `tests/fluent_isolation.rs`). U+2060 WORD JOINER in the input is kept and
+is not treated as glue (a caller who wants glue writes U+00A0).
 
 ### 5.5 No normalization
 

@@ -22,23 +22,27 @@ A straight quote in the wrapper of a frozen fragment is a candidate only if the 
 fragment contains no straight quote. So `"host:8080"` → `«host:8080»` (the address stays intact),
 while in `key="value"` both quotes belong to the technical notation and are left alone. When a
 frozen core ends in `=` and the start wrapper of its fragment holds no straight quote, the end
-wrapper holds no candidate either: `key=""` stays as written, like `key="value"`. If the start
-wrapper holds a straight quote, the end wrapper is a candidate as usual: `"SGVsbG8="` →
-`«SGVsbG8=»`.
+wrapper holds no candidate either: `key=""` stays as written, like `key="value"`. This holds only
+for a frozen core. After a core that is not frozen, a wrapper such as `:""`, `,""` or `.""` is
+sentence punctuation followed by two closing quotes, as at the end of `"Он сказал "привет.""`; with
+no opener, `Значение:"" и "да"` does not converge (`UnmatchedQuote`, section 6.6). `Значение: ""`
+with a space gives `Значение: «»`. If the start wrapper holds a straight quote, the end wrapper is a
+candidate as usual: `"SGVsbG8="` → `«SGVsbG8=»`.
 
 ### 6.2 Step 1: certain apostrophes and primes
 
 Local context removes from pairing what is certainly not a quote. The decision is the same for the
-plain (`'`) and the typed (`’`) form, so a second pass removes the same tokens (invariant I4).
+plain (`'`) and the typed form (`’` for an apostrophe, `′` for a prime), so a second pass removes
+the same tokens (invariant I4): `’` stays an apostrophe, and `′` is never a candidate (section 6.1).
 
-| Context of `'` or `’`                                                                                   | Result     | Rule                |
-| ------------------------------------------------------------------------------------------------------- | ---------- | ------------------- |
-| a letter on both sides, any script (`don't`, `O'Brien`, `rock'n'roll`, `Д'Артаньян`)                    | `’` U+2019 | `quotes.apostrophe` |
-| a `Word` or `Number` slot on the left, a letter on the right (`{name}'s`)                               | `’`        | `quotes.apostrophe` |
-| a digit on the left, a letter on the right (`90's`)                                                     | `’`        | `quotes.apostrophe` |
-| word start and an elision of the language's list (`'tis`, `'em`, `'cause`)                              | `’`        | `quotes.apostrophe` |
-| word start, two digits, then `s`, if the language has the decade flag (`'90s`)                          | `’`        | `quotes.apostrophe` |
-| a number of one to three digits on the left and one or two digits ending the core on the right (`5'10`) | `′` U+2032 | `quotes.primes`     |
+| Context of `'` or `’`                                                                                                                                       | Result     | Rule                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------- |
+| a letter on both sides, any script (`don't`, `O'Brien`, `rock'n'roll`, `Д'Артаньян`)                                                                        | `’` U+2019 | `quotes.apostrophe` |
+| a `Word` or `Number` slot on the left, a letter on the right (`{name}'s`)                                                                                   | `’`        | `quotes.apostrophe` |
+| a digit on the left, a letter on the right (`90's`)                                                                                                         | `’`        | `quotes.apostrophe` |
+| word start and an elision of the language's list (`'tis`, `'em`, `'cause`)                                                                                  | `’`        | `quotes.apostrophe` |
+| word start, two digits, then `s`, if the language has the decade flag (`'90s`)                                                                              | `’`        | `quotes.apostrophe` |
+| a number of one to three digits on the left and one or two digits ending the core on the right (`5'10`; a straight `'` only: `5’10` is frozen, section 3.6) | `′` U+2032 | `quotes.primes`     |
 
 The apostrophe is U+2019 for every language, as the Unicode Standard (chapter 6) recommends for
 typeset text. A straight `"` has no step 1: after a digit it is decided in section 6.5.
@@ -75,9 +79,10 @@ character before it.
   word, number, slot, protected span or `Symbol`), the first with L ∈ {Space, OpenP, DashC} and the
   second with R ∈ {Space, CloseP, DashC}: the first opens and the second closes, whatever the two
   rules above say (`"?"`, `"..."`, `"-"`, `"—"`, `"->"`). The two quotes may be adjacent: nothing
-  between them also counts, so `""` is a sign-only pair. This rule overrides the role of the whole
-  series. A series of three or more straight quotes of one character has no sign-only pair inside
-  it;
+  between them also counts, so `""` is a sign-only pair; `Format` and `Markup` tokens between them
+  count as nothing (section 5.4), so `"\u{2068}\u{2069}"` is a sign-only pair too. This rule
+  overrides the role of the whole series. A series of three or more straight quotes of one character
+  has no sign-only pair inside it;
 - otherwise no role: spaces on both sides (`Слово " в тексте`) or letters on both sides (`a"b`).
 
 The look-through and the sign-only pair never turn a closing quote into an opening one: a quote with
@@ -301,11 +306,14 @@ enabled.
 | en         | `“Say "hi" at 5”`                               | `“Say ‘hi’ at 5”`                    | a typed closer after a digit is strong                        |
 | ru         | `Цена 27»`                                      | unchanged, `UnmatchedQuote` (info)   |                                                               |
 | en         | `He is 5'10" tall.` (Prose)                     | `He is 5′10″ tall.`                  |                                                               |
+| en         | `He is 5’10 tall.`                              | unchanged                            | `’` between digits: frozen                                    |
 | ru         | `Угол 30° 15' 20" и точка.` (Prose)             | `Угол 30° 15′ 20″ и точка.`          |                                                               |
 | ru         | `Он сказал «привет „мир“»`                      | unchanged (`Cow::Borrowed`)          | already typeset                                               |
 | ru         | `Задайте key="value" в файле.`                  | unchanged                            | quotes belong to a frozen fragment                            |
 | ru         | `Он сказал:"привет" и ушёл.`                    | unchanged                            | frozen fragment (section 10.8)                                |
 | ru         | `Задайте key="" и нажмите "OK".`                | `Задайте key="" и нажмите «OK».`     | assignment: frozen                                            |
+| ru         | `Поле Значение:"" и "да".`                      | unchanged, `UnmatchedQuote`          | two closing quotes after `:`, no opener                       |
+| en         | `"She said "no.""`                              | `“She said ‘no.’”`                   | two closers after `.`                                         |
 | ru         | `Токен "SGVsbG8gd29ybGQ=" и "имя".`             | `Токен «SGVsbG8gd29ybGQ=» и «имя».`  | a quoted frozen core ending in `=`                            |
 | en         | `‘Note: 'beta' builds of the developers' tools` | unchanged, `UnmatchedQuote` (info)   | no possessive after a neutral `‘`                             |
 | ru         | `a""b`                                          | unchanged, no diagnostic             | frozen core (section 3.6)                                     |

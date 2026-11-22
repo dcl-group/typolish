@@ -239,12 +239,12 @@ any form (`.`, `..`, `...`, `…`). Checks 0 and 14 read a core that has a stop 
 stop followed it. A `LegalMark` token is one token, so `(c)` keeps its parentheses, and its core is
 not frozen (special cases below).
 
-If the start wrapper and the end wrapper together take every token of a fragment (`...`, `…`, `"`,
-`«»`, `()`, `?!`, `,`, `"?"`), the fragment has no core and its kind is `Punctuation`. No check of
-the table runs on it, nothing in it is frozen, it is neither technical nor an operand (section 8.2),
-and its tokens stay editable like any wrapper. A fragment with any other token keeps that token in
-its core: `"-"` has the core `-` (a dash fragment, special cases below), and `«{x}»` has the core
-`{x}`.
+If the start wrapper and the end wrapper together take every token of a fragment other than `Format`
+and `Markup` tokens (`...`, `…`, `"`, `«»`, `()`, `?!`, `,`, `"?"`, `"\u{2068}\u{2069}"`), the
+fragment has no core and its kind is `Punctuation`. No check of the table runs on it, nothing in it
+is frozen, it is neither technical nor an operand (section 8.2), and its tokens stay editable like
+any wrapper. A fragment with any other token keeps that token in its core: `"-"` has the core `-` (a
+dash fragment, special cases below), and `«{x}»` has the core `{x}`.
 
 The classifier scans the core left to right at most three times (constant work per character) and
 applies the checks strictly in this order; the first check that matches decides:
