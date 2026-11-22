@@ -610,6 +610,27 @@ fn dialogue_is_not_in_interface_nor_in_english() {
 }
 
 #[test]
+fn a_typed_dialogue_dash_passes_the_prefilter() {
+    // Sections 3.2 and 8.4: a typed dash at a line start has its space glued; the prefilter lets
+    // it through, so `typeset` and `report` agree with `dash.dialogue` alone.
+    let t = only(Language::RU_RU, &[DIALOGUE]);
+    for (input, expected) in [
+        ("— Привет", "—⍽Привет"),
+        ("– Привет", "–⍽Привет"),
+        ("Текст\n— Привет", "Текст\n—⍽Привет"),
+    ] {
+        check_in("alone", &t, (input, expected));
+        let source = common::input(input);
+        let report = t.report(&source, Output::Unicode);
+        assert_eq!(
+            report.result(),
+            &t.typeset(&source, Output::Unicode),
+            "{input}"
+        );
+    }
+}
+
+#[test]
 fn a_slot_next_to_the_dialogue_dash() {
     let t = only(Language::RU_RU, &[DIALOGUE]);
     let out = t.typeset_template(

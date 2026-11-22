@@ -12,8 +12,9 @@ use crate::SlotKind;
 use crate::engine::lex::{Glue, Kind, Repl};
 use crate::engine::phase::{Cx, Edit, Edits, Match};
 
-/// `dash.dialogue`: a hyphen at a line start.
-pub(crate) const DIALOGUE: Triggers = Triggers::of(b"-");
+/// `dash.dialogue`: a hyphen at a line start; a typed dash there is matched too, and its space
+/// glued (section 4.3, I4).
+pub(crate) const DIALOGUE: Triggers = Triggers::of(b"-").union(Triggers::TYPOGRAPHIC);
 /// `dash.double-hyphen`: `--` and `---`.
 pub(crate) const DOUBLE_HYPHEN: Triggers = Triggers::of(b"-");
 /// `dash.spaced-hyphen`: a lone hyphen; typed dashes are matched with an empty edit.
