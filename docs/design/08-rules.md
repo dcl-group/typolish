@@ -44,14 +44,17 @@ Prose: 27 rules (every rule of version 1). Interface: 13 rules.
 
 ### 8.2 Common conditions
 
-Terms: a **word** is a `Word` token; a **number** is a `Number` fragment or a `Number` slot; an
-**operand** is a word, a number, a range (a `Range` or `YearMonth` core), a slot, a protected span
-or a fragment whose core is technical. A **Roman numeral** is defined in section 3.6 (Latin capitals
-in the standard form, value 1 to 3999). A `Punctuation` fragment (wrapper tokens only, such as a
-lone `...`, section 3.6) is not an operand. A **date core** is a `Version` core (check 13 of section
-3.6) of three numbers in the shape `D.M.YYYY` or `D.M.YY`, with the day 1 to 31 and the month 1 to
-12, leading zeros allowed (`21.11.2026`, `21.11.26`, `01.02.26`); the shape decides, so `1.2.27` is
-one and `0.2.27` is not. Two kinds of number name or measure something other than a quantity:
+Terms: a **word** is a fragment whose core has kind `Word`, whatever its number of tokens (`word`,
+`it's`, `don't`, `90's`, `5'10`, `Brand(tm)`; check 23 and the special cases of section 3.6), and a
+one-word `Dictionary` core counts as one (below); a **number** is a `Number` fragment or a `Number`
+slot; an **operand** is a word, a number, a range (a `Range` or `YearMonth` core), a slot, a
+protected span or a fragment whose core is technical. A **Roman numeral** is defined in section 3.6
+(Latin capitals in the standard form, value 1 to 3999). A `Punctuation` fragment (wrapper tokens
+only, such as a lone `...`, section 3.6) is not an operand. A **date core** is a `Version` core
+(check 13 of section 3.6) of three numbers in the shape `D.M.YYYY` or `D.M.YY`, with the day 1 to 31
+and the month 1 to 12, leading zeros allowed (`21.11.2026`, `21.11.26`, `01.02.26`); the shape
+decides, so `1.2.27` is one and `0.2.27` is not. Two kinds of number name or measure something other
+than a quantity:
 
 - A **label number** follows a sign (`№5`, `№ 5`, `§⍽12`, `№ {n}`, and a Roman numeral such as `¶IV`
   or `¶ IV`; flag `LABEL`, section 3.6).
@@ -134,10 +137,10 @@ when each of them is a single U+0020 and only between two plain words; with a gl
 side the rule fires and `Closed` keeps the author's spaces, as `Spaced` does (`word⍽- word` →
 `word⍽— word`); next to a tab or a run of spaces the rule does not fire (a pattern space, section
 8.2), and the hyphen stays. Two words are plain when the cores on both sides are words of letters
-(kind `Word` or `Joined`, or a one-word `Dictionary` core, section 8.2; letters with their marks and
-inner apostrophes only, no digit, sign or legal mark), and neither has a wrapper on the side facing
-the dash. Next to a number, a slot, a protected span, a technical fragment, or a wrapper on the
-inner side (a closing quote or bracket, `, . ! ? …` on the left, an opening quote or bracket on the
+(kind `Word`, or a one-word `Dictionary` core, section 8.2; letters with their marks and inner
+apostrophes only, no digit, sign or legal mark), and neither has a wrapper on the side facing the
+dash. Next to a number, a slot, a protected span, a technical fragment, or a wrapper on the inner
+side (a closing quote or bracket, `, . ! ? …` on the left, an opening quote or bracket on the
 right), `Closed` keeps the author's spaces, as `Spaced` does:
 `See https://example.com/docs - the guide` → `See https://example.com/docs — the guide`,
 `He said - "a cat"` → `He said — “a cat”`, `Hello, - he said` → `Hello, — he said`. So a merge
@@ -145,7 +148,13 @@ always gives a `Joined` fragment (invariant I2), a URL or a flag never swallows 
 (autolinkers that cut a link at the next space would take `—the` into it), and `to_plain` can
 restore the spaces. Typed `—` and `–` are never changed, and no space around them is removed. On
 such a typed dash the rule matches with an empty edit and the same `consume` when its context holds;
-it raises `AmbiguousHyphen` only on a plain `-`.
+it raises `AmbiguousHyphen` only on a plain `-`. A `Joined` or a `Dimensions` core is not an operand
+(section 8.2): a dash whose neighbour on one side is such a core, with no wrapper between them, is
+matched by no dash rule and gets no glue from `nbsp.dash`, and no diagnostic is raised
+(`Moscow—the - capital`, `5 - x—Moscow` and ru `1920x1080 — монитор` stay). Were a `Joined` core an
+operand, a `-` refused next to a single letter would fire on the next pass once a merge had made
+that letter part of a `Joined` core (`5 - x - Moscow` → `5 - x—Moscow` → `5 — x—Moscow`), against
+invariant I2.
 
 **`dash.double-hyphen`** (Prose). The same for a lone `--` or `---`, with the same refusals:
 `npm test -- --watch` stays. A typed `—` or `–` is matched by `dash.spaced-hyphen` (with an empty
@@ -367,13 +376,15 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
 - **`symbols.copyright`**: `(c)`, `(C)` and Cyrillic `(с)`, `(С)` → `©` only when a four-digit year
   follows it, attached or one space away, or stands one space before it, or a range of years stands
   one space away: `(c) 2026` → `© 2026`, `(c)2026` → `©2026`, `2026 (c)` → `2026 ©`, `2020-2026 (c)`
-  → `2020-2026 ©`. A mark attached after a number or a range (`Section 1001(c)`, `2026(c)`,
-  `2020-2026(c)`) is not a word (section 3.6) and stays: after a number it is usually a subsection
-  label. Otherwise `(c)` is a list item and stays (`вариант (c)`, `f(c)`). `(tm)`, `(TM)`, `(r)`,
-  `(R)` → `™`, `®` after a brand name: a capitalized word of at least two letters, attached
-  (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` → `Brand ®`), and not followed by an
-  operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a function argument and stays:
-  `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
+  → `2020-2026 ©`, `(c) 2020-2026` → `© 2020-2026`. A mark attached after a number or a range
+  (`Section 1001(c)`, `2026(c)`, `2020-2026(c)`), or with a range attached after it
+  (`(c)2020-2026`), is not a word (section 3.6) and stays: after a number it is usually a subsection
+  label. A mark attached to a word (`f(c)`, a `Word` by check 23 of section 3.6) is not a copyright
+  sign even when a year follows it: `f(c) 2026` stays. Otherwise `(c)` is a list item and stays
+  (`вариант (c)`). `(tm)`, `(TM)`, `(r)`, `(R)` → `™`, `®` after a brand name: a capitalized word of
+  at least two letters, attached (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` →
+  `Brand ®`), and not followed by an operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a
+  function argument and stays: `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
 - **`symbols.arrows`**: an operator fragment that is exactly `->`, `<-` or `<->`, with a space on
   each side → `→`, `←`, `↔`. `=>`, `-->`, `<-->`, `->>` are not in the table; `a->b` is frozen.
 - **`symbols.math`**: an operator fragment that is exactly `>=`, `<=` or `!=`, with a space on each
