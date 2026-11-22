@@ -7,7 +7,8 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 ### 15.1 Versioning and output stability
 
 - The first release is `0.1.0`. SemVer as Cargo applies it: before 1.0 the second number is the
-  breaking one.
+  breaking one. "A release that raises the breaking number" below means `0.1.x` → `0.2.0` before 1.0
+  and `1.x.y` → `2.0.0` after it.
 - API changes follow SemVer; the commitments of section 2.13 keep extensions additive.
 - **Output changes.** The output of `PROSE` and `INTERFACE` for built-in languages changes only in a
   release that raises the breaking number (new rules in a set, changed lists, changed language
@@ -51,7 +52,7 @@ Decided by the maintainer on 2026-11-21; not reopened here:
    `authors` field (zonewright has none), the license texts copied verbatim with the copyright line
    `Copyright (c) 2026 Dmitry Bikman`; only the year changes when needed (section 14.5).
 8. Stages 2 to 5 run one after another after this design is approved, without waiting for the
-   maintainer between stages; open points do not stop them (every point of section 15.5 was settled
+   maintainer between stages; the points of section 15.5 do not stop them (all of them were settled
    on 2026-11-22), and a decision received later is applied in the running stage, together with the
    change of the design, in the same commit. Stage 6 (HTML) is not done.
 9. Working notes and Cargo's target directory live outside the repository.
@@ -72,7 +73,7 @@ Decided by the maintainer on 2026-11-22; not reopened here:
     7.7, 15.1).
 14. `nbsp.dash` glues the space before every typed `–` with spaces between operands, numbers
     included: ru `10 – 20` → `10⍽– 20`, `Москва – столица` → `Москва⍽– столица` (sections 4.5, 8.7).
-    This is approved behavior, not an open point.
+    This is approved behavior.
 
 The task itself fixes further points used throughout: the minus sign U+2212 for numbers, the
 mandatory negative cases, HTML outside the core, `thiserror` for errors, `cargo deny check` clean,
@@ -121,23 +122,26 @@ failures and of the comparison with the reference tables, what was not done or n
 questions for the maintainer. In every stage the gates of section 14.7 pass before each commit, and
 any deviation from this design is written into the design in the same change.
 
-**Stage 2: core.** Repository skeleton after zonewright (`AGENTS.md`, `CLAUDE.md`, README and
-CHANGELOG with an `Unreleased` section, license files, `dev/` workspace, `deny.toml`, `clippy.toml`,
-`.gitignore`, `.gitattributes`, Prettier files). `Rule` with all 27 ids and `ORDER`, `RuleSet` with
-`FromStr` and `Display`, `Language` and the built-in tables as far as these rules need them,
-`Language::from_static`, and `LanguageBuilder` (at least quote pairs and the tag; the idempotence
-seed `‚Wort‘` needs it), with every dictionary that the classifier reads in check 0 (units,
-abbreviation parts, elisions, month forms, atom exceptions) complete for ru and en,
+**Stage 2: core.** The stage starts by compiling the atom and token representation without
+references (sections 3.4, 3.5, 2.12) in a scratch crate outside the repository, because no check has
+compiled it yet (section 14.8). Then: repository skeleton after zonewright (`AGENTS.md`,
+`CLAUDE.md`, README and CHANGELOG with an `Unreleased` section, license files, `dev/` workspace,
+`deny.toml`, `clippy.toml`, `.gitignore`, `.gitattributes`, Prettier files). `Rule` with all 27 ids
+and `ORDER`, `RuleSet` with `FromStr` and `Display`, `Language` and the built-in tables as far as
+these rules need them, `Language::from_static`, and `LanguageBuilder` (at least quote pairs and the
+tag; the idempotence seed `‚Wort‘` needs it), with every dictionary that the classifier reads in
+check 0 (units, abbreviation parts, elisions, month forms, atom exceptions) complete for ru and en,
 `Typographer::new` and the builder, `Piece` and `Template`, ingest and protection, windows, lexer,
 classifier with labels, freezing, the phase engine, the recorders with `report` (changes, protected
 spans and diagnostics; its `Display` comes in stage 4), rendering for `Output::Unicode`, the
 thread-local and explicit scratch; the generated tables `tests/reference/ru.rs` and
-`tests/reference/en_us.rs` with all 820 rows (case id, input and recorded output; groups and reason
-codes come in stage 5), the row type in `tests/common/mod.rs`, and `tests/negative.rs`, which reads
-their `neg.*` rows through `#[path]` (sections 13.3 and 14.6). Rules: `quotes.*`, `dash.*`,
-`range.*`, `ellipsis.*` for ru and en. The `nbsp.*` rules come in stage 3, so in this stage the
-set-level tables run with them removed from the sets (a test helper), and stage 3 switches the same
-tables to the full sets. Ready when:
+`tests/reference/en_us.rs` with all 820 rows (case id, input and recorded output; the corpus group
+of a case, such as `neg.list`, is the prefix of its case id, section 13.4; the `AGREE`/`DIVERGE`
+group and the reason code come in stage 5), the row type in `tests/common/mod.rs`, and
+`tests/negative.rs`, which reads their `neg.*` rows through `#[path]` (sections 13.3 and 14.6).
+Rules: `quotes.*`, `dash.*`, `range.*`, `ellipsis.*` for ru and en. The `nbsp.*` rules come in stage
+3, so in this stage the set-level tables run with them removed from the sets (a test helper), and
+stage 3 switches the same tables to the full sets. Ready when:
 
 - `typeset` and `typeset_template` work for ru, en and COMMON with these rules;
 - the rule tables of these rules pass, alone and in both sets without the `nbsp.*` rules;
@@ -148,28 +152,32 @@ tables to the full sets. Ready when:
   technical fragments, letters and digits, graphemes, Cow (for `Output::Unicode`; stage 3 extends it
   to every kind), pieces and strings (without its `report_template` part, which stage 4 adds), and
   no panic pass;
-- the GraphemeBreakTest test and the conformance test pass; `cargo deny check` is clean.
+- `tests/graphemes.rs` and `tests/conformance.rs` pass (the checks of `tests/conformance.rs` on
+  parts that later stages deliver, such as the typographic-set table of section 11.2 and the
+  settings of stage 3, join when those parts exist); `cargo deny check` is clean.
 
 **Stage 3: no-break spaces, numbers, language data, rule sets, output.** `nbsp.*`, `number.*`,
 `symbols.*`; `LanguageData` complete with the ru-RU, en-US and COMMON tables of section 7,
 `Language::from_data` with validation; `LanguageBuilder` with every field and normalization (section
-7.1); every builder setting; `PROSE` and `INTERFACE` complete; `format_number` and `format_range`;
-`Output::Html` (all styles, nowrap) and `Output::Escaped` (all syntaxes); `examples/numbers.rs`
-(`format_number` and `format_range` for ru-RU and en-US, section 2.7) and `examples/per_request.rs`
-(the statics of section 2.15 and a `LazyLock` typographer built as in section 2.4). Ready when:
+7.1); every `TypographerBuilder` setting (section 2.4); `PROSE` and `INTERFACE` complete;
+`format_number` and `format_range`; `Output::Html` (all styles, nowrap) and `Output::Escaped` (all
+syntaxes); `tests/fixtures/whatwg-entities.txt`, the extract of the WHATWG `entities.json` that this
+stage adds to the repository (sections 13.1, 13.2); `examples/numbers.rs` (`format_number` and
+`format_range` for ru-RU and en-US, section 2.7) and `examples/per_request.rs` (the statics of
+section 2.15 and a `LazyLock` typographer built as in section 2.4). Ready when:
 
 - all rule tables pass, the set-level tables of stage 2 now in the full sets, and every row of
   section 10.5 passes as that section states for the full Interface;
 - the interaction strings of section 10.7 pass in both sets;
-- the slot participation table of section 2.6 passes row by row;
-- the data test matches the CLDR 49 extract, and the built-in tables pass validation;
+- the slot participation table of section 2.6 passes row by row (`tests/parts.rs`);
+- `tests/data.rs` matches the CLDR 49 extract, and the built-in tables pass validation;
 - the API contract tests of `tests/api.rs` pass (section 13.2), except the rows that need
   `report_template` or `lint_template`, which pass in stage 4;
-- the output tables (with the check of section 11.2 against the WHATWG extract), the Cow property,
-  the decoder properties and the safe-alphabet property pass for every output kind, nowrap styles
-  included;
-- the Fluent isolation tests pass;
-- the allocation test confirms section 2.12 (zero allocations for an unchanged string after warm-up,
+- the output tables of `tests/output.rs` (with the check of section 11.2 against
+  `tests/fixtures/whatwg-entities.txt`), the Cow property, the decoder properties and the
+  safe-alphabet property pass for every output kind, nowrap styles included;
+- `tests/fluent_isolation.rs` passes;
+- `tests/alloc.rs` confirms section 2.12 (zero allocations for an unchanged string after warm-up,
   one for a changed string, zero for numbers written into a buffer with room);
 - invariant I3 and the determinism-of-order property pass with all 27 rules;
 - both examples build under the gates and run without error (`cargo run --example numbers`,
@@ -177,27 +185,29 @@ tables to the full sets. Ready when:
 
 **Stage 4: reverse transformation, source check, explain mode.** `to_plain`, `to_plain_template`,
 `lint`, `lint_template`, every diagnostic of section 12.4, `report_template` and the `Display` of
-`Report` (`report` itself exists since stage 2); the own corpus (section 13.7) with snapshots and
-`roundtrip-known.tsv`; `examples/fluent_generator.rs` (the generator of section 2.14 over a few
-hard-coded messages, `report_template` with `Output::Escaped(EscapeStyle::RUST)`). Ready when:
+`Report` (`report` itself exists since stage 2); the own corpus (section 13.7) with snapshots
+(`tests/corpus.rs`) and `roundtrip-known.tsv` (`tests/roundtrip.rs`); `examples/fluent_generator.rs`
+(the generator of section 2.14 over a few hard-coded messages, `report_template` with
+`Output::Escaped(EscapeStyle::RUST)`). Ready when:
 
 - P1 and P2 pass on the corpus and on generated strings as section 12.2 states, and every row of
   `roundtrip-known.tsv` still shows its loss;
 - the to_plain stability property passes, and so does the lint-matches-to_plain property (section
   13.5, property 15);
 - recorder independence passes, and applying `changes()` reproduces the result, also piece by piece
-  for `report_template` (property 10 of section 13.5);
-- every diagnostic has a table test, and `report` names the expected `TechKind` for every frozen row
-  of section 10.5;
+  for `report_template` (properties 9 and 10 of section 13.5);
+- every diagnostic has a table test in `tests/lint.rs`, and `report` names the expected `TechKind`
+  for every frozen row of section 10.5;
 - the remaining rows of `tests/api.rs` pass;
 - `cargo run --example fluent_generator` runs without error.
 
 **Stage 5: comparison, load, documentation, release preparation (no release).** The
 `AGREE`/`DIVERGE` groups with reason codes of all 820 rows of `tests/reference/{ru,en_us}.rs`, and
 the target `tests/reference.rs` that compares them (section 13.4); `benches/load.rs` and the
-linearity tests; rustdoc with an example on every public item; README (with the known limits of
-section 10.8) and CHANGELOG (a prepared `0.1.0` entry); `cargo package --list` reviewed; the name
-check on crates.io (section 15.5, item 3). Ready when:
+linearity test `load_is_linear` of `tests/load.rs` (section 13.8); rustdoc with an example on every
+public item; README (with the known limits of section 10.8) and CHANGELOG (a prepared `0.1.0`
+entry); `cargo package --list` reviewed; the name check on crates.io (section 15.5, item 3). Ready
+when:
 
 - every reference case is `AGREE` or `DIVERGE` with a reason code, and the report prints the summary
   per code;

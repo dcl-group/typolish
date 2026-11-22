@@ -1,13 +1,13 @@
-# typolish design: Open points
+# typolish design: Points put to the maintainer
 
 Part of the [typolish design](./README.md). Section numbers are those of the whole design.
 
-### 15.5 Open points for the maintainer
+### 15.5 Points put to the maintainer, all settled
 
 No point is open. The maintainer settled all seventeen points on 2026-11-22; each records the option
 chosen, and the rest of the design follows it. The other decisions of the maintainer, those of
-2026-11-21 and the review decisions of 2026-11-22, are listed in section 15.2. Numbers never change;
-settled points keep their number and record the date of the decision.
+2026-11-21 and of 2026-11-22, are listed in section 15.2. Numbers never change; settled points keep
+their number and record the date of the decision.
 
 | Item | Subject                                     | Status             | Decision                                                            |
 | ---- | ------------------------------------------- | ------------------ | ------------------------------------------------------------------- |
@@ -138,13 +138,13 @@ Chicago Manual of Style was not read). After 0.1.0 list changes follow the outpu
 **17.** **Digit grouping in text** (`1000000 рублей` → `1⍽000⍽000 рублей`). Settled 2026-11-22: (a)
 no grouping rule in version 1; values are grouped by `format_number` (sections 2.7, 8.8). A run of
 digits is one token, rules insert spaces only between tokens, English groups with a comma, and
-numbers in text are often ports, years and codes (`port 65535`). The first draft had such a rule
-(`number.grouping`, in no set); it was dropped before any release, so its id was never published.
-Rejected: (b) a rule in no set that only glues a number the author already grouped by single spaces
-in threes (`1 000 000` → `1⍽000⍽000`), inert where the language's group separator is not a space;
-(c) full grouping in text, which needs digit runs lexed in groups and commas inserted for English.
-(b) can still be added later as a new rule outside both sets (section 15.1).
+numbers in text are often ports, years and codes (`port 65535`). No release has had a rule
+`number.grouping`, so that id is not reserved. Rejected: (b) a rule in no set that only glues a
+number the author already grouped by single spaces in threes (`1 000 000` → `1⍽000⍽000`), inert
+where the language's group separator is not a space; (c) full grouping in text, which needs digit
+runs lexed in groups and commas inserted for English. (b) can still be added later as a new rule
+outside both sets (section 15.1).
 
 #### Earlier decisions
 
-The decisions of 2026-11-21 and the review decisions of 2026-11-22 are in section 15.2.
+The other decisions of 2026-11-21 and 2026-11-22 are in section 15.2.

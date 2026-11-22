@@ -38,18 +38,19 @@ build dependency `autocfg` and the UEFI-only `r-efi`); `cargo deny check` printe
 `advisories ok, bans ok, licenses ok, sources ok`; `cargo deny list` showed only MIT, Apache-2.0
 and, for `unicode-ident`, Unicode-3.0 in the normal tree.
 
-**CLDR 49** (cldr-json 49.0.0, published 2026-10-22): from `cldr-numbers-full` for `ru` and `en`:
-decimal, group (U+00A0 for ru), minusSign (U+002D for both), percentFormat (`#,##0 %` with U+00A0
-for ru, `#,##0%` for en), minimumGroupingDigits (1 for both), miscPatterns range (`{0}–{1}`), nan
-(`не число` with U+00A0, `NaN`), infinity (`∞`). From `cldr-misc-full`: delimiters for `ru`, `en`,
-`en-GB`; ellipsis U+2026. From `cldr-dates-full` `ca-gregorian` for `ru` and `en`: format and
-stand-alone month names, wide and abbreviated (section 7.2, 7.3). From `cldr-units-full`: short and
-narrow unit patterns for `ru` (all with U+0020 between number and unit) and `en` (`{0}°C`, `{0}%`
-without a space; `μs`, `μm` with U+03BC). `en-US` has no file of its own; `availableLocales` lists
-`en`, `en-GB`, `ru` among these locales, and `supplemental/parentLocales.json` of cldr-core 49.0.0
-(198 entries) has no entry for `en-US`, so its parent is `en` by truncation of the tag and `en-US`
-uses the values of `en` (checked). From `cldr-core` `supplemental/likelySubtags.json` (cldr-json
-49.0.0): `ru` → `ru-Cyrl-RU`, `en` → `en-Latn-US`, the likely-subtags rule behind section 2.2.
+**CLDR 49** (cldr-json 49.0.0, published 2026-10-22): from `cldr-numbers-full` for `ru`, `en` and
+`en-GB` (the values of `en-GB` equal those of `en`): decimal, group (U+00A0 for ru), minusSign
+(U+002D for both), percentFormat (`#,##0 %` with U+00A0 for ru, `#,##0%` for en),
+minimumGroupingDigits (1 for both), miscPatterns range (`{0}–{1}`), nan (`не число` with U+00A0,
+`NaN`), infinity (`∞`). From `cldr-misc-full`: delimiters for `ru`, `en`, `en-GB`; ellipsis U+2026.
+From `cldr-dates-full` `ca-gregorian` for `ru` and `en`: format and stand-alone month names, wide
+and abbreviated (section 7.2, 7.3). From `cldr-units-full`: short and narrow unit patterns for `ru`
+(all with U+0020 between number and unit) and `en` (`{0}°C`, `{0}%` without a space; `μs`, `μm` with
+U+03BC). `en-US` has no file of its own; `availableLocales` lists `en`, `en-GB`, `ru` among these
+locales, and `supplemental/parentLocales.json` of cldr-core 49.0.0 (198 entries) has no entry for
+`en-US`, so its parent is `en` by truncation of the tag and `en-US` uses the values of `en`
+(checked). From `cldr-core` `supplemental/likelySubtags.json` (cldr-json 49.0.0): `ru` →
+`ru-Cyrl-RU`, `en` → `en-Latn-US`, the likely-subtags rule behind section 2.2.
 
 **HTML entities**: every name in section 11.2 is in the WHATWG `entities.json`; U+202F and U+2011
 have no named reference. The license of the extract, CC BY 4.0, was read from §7.1.1 of the WHATWG
@@ -89,5 +90,6 @@ settings. Section 8.12 summarizes its recorded behavior. Nine of the 820 outputs
 - The design was not compiled as a whole; the allocation and linearity claims are verified by tests
   in stages 3 and 5 (section 15.4).
 - The atom and token representation without references (sections 3.4, 3.5), which lets `Scratch`
-  live in a thread-local without `unsafe`, was not compiled; stage 2 starts with it.
+  live in a thread-local without `unsafe`, was not compiled. The stage plan (section 15.4) puts this
+  check first in stage 2.
 - `GraphemeBreakTest.txt` for Unicode 17.0.0 is fetched in stage 2.

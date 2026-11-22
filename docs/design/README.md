@@ -1,8 +1,8 @@
 # typolish design
 
-Status: the design of version 0.1, written for stage 1 and submitted to the maintainer for approval.
-No code exists yet. Once code exists, where this document and the code disagree, one of them is
-fixed in the same change.
+Status: the design of version 0.1. It has been through three rounds of checking and is ready for
+implementation, starting with stage 2 (section 15.4). No code exists yet. Once code exists, where
+this document and the code disagree, one of them is fixed in the same change.
 
 Conventions used below:
 
@@ -15,9 +15,16 @@ Conventions used below:
   the crate; "generator" is a caller that turns Fluent messages into code at build time.
 - "Fragment" is a run of tokens between spaces; its "core" is what remains after the leading and
   trailing punctuation ("wrapper") is cut off (section 3.6). "Window" is a paragraph (section 3.3).
+- "The task" is the assignment the maintainer gave for this crate; it is not in the repository, and
+  the design restates every requirement of it that it relies on. "The lead" is the lead programmer
+  of the project, who wrote this design and carries out stages 2 to 5 (section 15.4).
 - "The reference implementation" is the JavaScript library the task names as the model and the
   benchmark. Its name does not appear anywhere in this repository; its behavior was recorded outside
   the repository and enters the tests only as plain tables of input and output (section 13.4).
+- The "scouting corpus" is the set of 820 plain-text cases (432 Russian, 388 English; 405 of them
+  negative) that was run through the reference implementation before this design was written. The
+  cases and the recorded outputs stay outside the repository and enter it as the generated tables
+  `tests/reference/{ru,en_us}.rs` (section 13.4).
 - Section numbers run through all files and do not change when a file is renamed. Code refers to a
   place as "design section 6.5".
 - Facts about dependencies, CLDR and HTML entities were checked on 2026-11-21, unless section 14.8
@@ -44,7 +51,7 @@ Conventions used below:
 | 14. Dependencies, MSRV, layout, gates (14.1 to 14.7)   | [`14-dependencies.md`](./14-dependencies.md)                 |
 | 14.8 Checks behind this design                         | [`history.md`](./history.md)                                 |
 | 15. Versioning, decisions, stage plan (15.1 to 15.4)   | [`15-decisions.md`](./15-decisions.md)                       |
-| 15.5 Open points for the maintainer                    | [`15-open-points.md`](./15-open-points.md)                   |
+| 15.5 Points put to the maintainer, all settled         | [`15-open-points.md`](./15-open-points.md)                   |
 
 ## 1. Scope and non-goals
 
@@ -73,7 +80,7 @@ The task names four uses. Each shapes part of the API:
    date, other) and whose value is not. Rules treat a slot as an opaque element of its kind:
    `{n} дн.` gets a no-break space after the number, `{a}-{b}` between two numbers gets an en dash,
    quotes around `"{name}"` follow the language. Slots are returned untouched and in place (section
-   2.6, walk-through in 2.14).
+   2.6, build-time use in 2.14).
 2. **Run time, a finished string** (a site, a report, a letter): a string and a language in, a
    typeset string out, on every request, without allocation when nothing changes (sections 2.5,
    2.12, 2.15).
