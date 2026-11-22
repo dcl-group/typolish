@@ -268,6 +268,31 @@ Active with COMMON: `symbols.*`, `ellipsis.*`, `range.placeholders`, `range.digi
 `nbsp.initials`, `nbsp.dates`, `nbsp.short-words`, `nbsp.short-length`, `nbsp.particles`,
 `nbsp.dash`. `Typographer::rules()` minus `active_rules()` lists the inert ones.
 
+The data each rule needs. `Language::supports` reads the table; `Typographer::active_rules` reads it
+with the builder's settings applied: `quote_pairs` supplies pairs, `dash_style` on a table without
+dash data creates it as `LanguageData::with_dash_style` does, additions and removals decide whether
+a list is empty, and `short_word_length` replaces the length.
+
+| Rule                                                                                                                                                              | Active when the data has                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `symbols.*`, `ellipsis.*`, `range.placeholders`, `range.digits`, `range.time`, `number.minus`, `number.times`, `quotes.apostrophe`, `quotes.primes`, `nbsp.phone` | nothing: always active                        |
+| `dash.double-hyphen`, `dash.spaced-hyphen`                                                                                                                        | dash data                                     |
+| `dash.dialogue`                                                                                                                                                   | dash data with `dialogue: true`               |
+| `nbsp.dash`                                                                                                                                                       | dash data with the style `SpacedGlued`        |
+| `range.context`                                                                                                                                                   | year words, century words or range lead words |
+| `quotes.pairs`                                                                                                                                                    | quote pairs                                   |
+| `nbsp.abbreviations`                                                                                                                                              | abbreviations                                 |
+| `nbsp.initials`                                                                                                                                                   | a script other than `Other`                   |
+| `nbsp.dates`                                                                                                                                                      | months, year words or century words           |
+| `nbsp.units`                                                                                                                                                      | units                                         |
+| `nbsp.signs`                                                                                                                                                      | signs                                         |
+| `nbsp.short-words`                                                                                                                                                | short words                                   |
+| `nbsp.short-length`                                                                                                                                               | a `short_word_length` above 0                 |
+| `nbsp.particles`                                                                                                                                                  | particles                                     |
+
+Units alone do not activate `range.context`, so it is inert with `COMMON`, whose units serve
+`nbsp.units`.
+
 ### 7.5 Deviations from CLDR 49
 
 | Item                                  | CLDR 49                       | typolish                                                    | Why                                                                            |

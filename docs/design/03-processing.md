@@ -108,7 +108,9 @@ enum Atom {
 ```
 
 Atoms, like tokens, hold positions and no references, so the buffers that keep them can be reused
-across calls (section 2.12). String input is one `Text` piece with index 0. For templates, the
+across calls (section 2.12). Positions are `u32`: an input with more than `u32::MAX` pieces or a
+piece longer than `u32::MAX` bytes is returned unchanged, the safe outcome of section 2.11 for input
+the engine cannot represent. String input is one `Text` piece with index 0. For templates, the
 pieces are first collected into the call-local vector (section 2.12), and only then is the scratch
 borrowed.
 

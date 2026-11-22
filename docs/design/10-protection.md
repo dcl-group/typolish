@@ -38,7 +38,7 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   ``[Piece::Text("Run `git checkout -- "), Piece::Slot("b", Slot::WORD), Piece::Text("` to reset.")]``
   the command is protected with the slot inside, and the slot stays a slot. A template of `Text`
   pieces gives the same result as their concatenation.
-- **Validation** in `build()`: a delimiter is non-empty, is not whitespace and contains no letter or
+- **Validation** in `build()`: a delimiter is non-empty and contains no whitespace and no letter or
   digit; it is neither equal to nor a prefix of a delimiter of another pair; within one pair the two
   delimiters may be equal, but neither may be a proper prefix of the other
   (`Error::InvalidSetting`).
