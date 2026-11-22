@@ -2,6 +2,7 @@
 //! and 2.6).
 
 use std::borrow::Cow;
+use std::fmt;
 use std::sync::OnceLock;
 
 use crate::engine::{self, Input, scratch::Scratch};
@@ -183,7 +184,7 @@ impl Settings {
 /// // Technical text is neither changed nor copied.
 /// assert!(matches!(RU_UI.typeset("host:8080", Output::Unicode), Cow::Borrowed("host:8080")));
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Typographer {
     language: Language,
     rules: RuleSet,
@@ -191,6 +192,18 @@ pub struct Typographer {
     /// The active rules and the trigger set, computed once: by `build()`, or by the first call
     /// for a typographer of the `const fn` `new` (design section 3.2).
     compiled: OnceLock<Compiled>,
+}
+
+/// Language, rules and settings; the cache of `compiled` is left out, so the output does not change
+/// after the first call (design section 2.4).
+impl fmt::Debug for Typographer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Typographer")
+            .field("language", &self.language)
+            .field("rules", &self.rules)
+            .field("settings", &self.settings)
+            .finish_non_exhaustive()
+    }
 }
 
 /// What a typographer computes once from its language, rules and settings.
@@ -941,6 +954,25 @@ fn sorted(mut list: Vec<String>) -> Vec<String> {
 mod tests {
     use super::*;
     use crate::LanguageData;
+
+    #[test]
+    fn debug_output_does_not_show_the_cache() {
+        // Design section 2.4: the write-once cache is not observable.
+        let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+        let before = format!("{t:?}");
+        let _ = t.typeset("a - b", Output::Unicode);
+        assert!(t.compiled.get().is_some());
+        assert_eq!(format!("{t:?}"), before);
+        assert!(
+            !before.contains("compiled") && !before.contains("OnceLock"),
+            "{before}"
+        );
+        assert!(before.starts_with("Typographer { language: "), "{before}");
+        let built = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+            .build()
+            .unwrap();
+        assert_eq!(format!("{built:?}"), before);
+    }
 
     #[test]
     fn builder_lists_are_normalized() {

@@ -12,29 +12,29 @@ initialization, the `Send + Sync` check) was compiled with `rustc 1.100.0` (sect
 
 ### 2.1 Surface
 
-| Item                                                                                         | Kind                                                                                      | Purpose                                                         |
-| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `Typographer`                                                                                | struct, private fields, `Clone + Debug + Send + Sync`                                     | immutable typographer; every application method                 |
-| `TypographerBuilder`                                                                         | struct, `#[must_use]`                                                                     | settings, `build()`                                             |
-| `Language`                                                                                   | struct, private fields, `Clone + Debug + Eq + Hash`                                       | a language: built-in constants or caller data                   |
-| `LanguageData`                                                                               | struct, traits of `Language`, `const fn` setters                                          | the data table of a language, built at compile time (section 7) |
-| `LanguageBuilder`                                                                            | struct, `#[must_use]`                                                                     | a language built at run time from owned lists (section 7.1)     |
-| `Rule`                                                                                       | `#[non_exhaustive]` enum, `Copy`                                                          | a rule with a stable string id                                  |
-| `RuleSet`                                                                                    | struct, `Copy`, `const` methods, `FromStr`                                                | a set of rules; `PROSE`, `INTERFACE`, `EMPTY`, `ALL`            |
-| `Piece<'t, S>`                                                                               | `#[non_exhaustive]` enum                                                                  | one input piece of a template; `S` is the caller's slot payload |
-| `Slot`, `SlotKind`                                                                           | struct (private field), `#[non_exhaustive]` enum                                          | an opaque placeholder and its kind                              |
-| `Template<'t, S>`, `TemplatePart`                                                            | struct, `#[non_exhaustive]` enum                                                          | typeset template: n slots and n + 1 texts                       |
-| `Number<'n>`                                                                                 | struct, `Copy`                                                                            | a number to format: integers, floats, decimal strings           |
-| `NumberDisplay`, `RangeDisplay`                                                              | struct, `Display`                                                                         | lazy formatting without allocation                              |
-| `Output`                                                                                     | `#[non_exhaustive]` enum, `Copy`                                                          | output kind, given with every call                              |
-| `HtmlStyle`, `EscapeStyle`                                                                   | struct, `Copy`, `const` constructors                                                      | parameters of the HTML and escaped outputs                      |
-| `Report<'a, T>`, `Change`                                                                    | struct                                                                                    | result plus edits, protected spans and diagnostics              |
-| `ProtectedSpan`, `ProtectedKind`, `TechKind`                                                 | struct, `#[non_exhaustive]` enums                                                         | what was recognized as protected and why                        |
-| `Diagnostic`, `DiagnosticKind`, `Severity`                                                   | struct, `#[non_exhaustive]` enums                                                         | messages: unpaired quote, ambiguous hyphen, mixed script, ...   |
-| `QuotePairs`, `SingleQuotes`, `DashStyle`, `PercentSpacing`, `NarrowGlue`                    | `Copy + Debug + Eq + Hash` value types                                                    | values of settings                                              |
-| `Script`, `DashData`, `EllipsisForms`, `Abbreviation`, `Bind`, `MonthPosition`, `NumberData` | as above, with `const` constructors; `NumberData: Default` (equal to `NumberData::new()`) | parts of `LanguageData` (section 7.1)                           |
-| `Scratch`                                                                                    | struct, `Default`, opaque `Debug`, `const fn new`, `Send + Sync`                          | reusable working memory for callers that manage it themselves   |
-| `Error`                                                                                      | `#[non_exhaustive]` enum, `thiserror`                                                     | configuration and parsing errors                                |
+| Item                                                                                         | Kind                                                                                      | Purpose                                                                             |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `Typographer`                                                                                | struct, private fields, `Clone + Debug + Send + Sync`                                     | immutable typographer (one write-once cache, section 2.4); every application method |
+| `TypographerBuilder`                                                                         | struct, `#[must_use]`                                                                     | settings, `build()`                                                                 |
+| `Language`                                                                                   | struct, private fields, `Clone + Debug + Eq + Hash`                                       | a language: built-in constants or caller data                                       |
+| `LanguageData`                                                                               | struct, traits of `Language`, `const fn` setters                                          | the data table of a language, built at compile time (section 7)                     |
+| `LanguageBuilder`                                                                            | struct, `#[must_use]`                                                                     | a language built at run time from owned lists (section 7.1)                         |
+| `Rule`                                                                                       | `#[non_exhaustive]` enum, `Copy`                                                          | a rule with a stable string id                                                      |
+| `RuleSet`                                                                                    | struct, `Copy`, `const` methods, `FromStr`                                                | a set of rules; `PROSE`, `INTERFACE`, `EMPTY`, `ALL`                                |
+| `Piece<'t, S>`                                                                               | `#[non_exhaustive]` enum                                                                  | one input piece of a template; `S` is the caller's slot payload                     |
+| `Slot`, `SlotKind`                                                                           | struct (private field), `#[non_exhaustive]` enum                                          | an opaque placeholder and its kind                                                  |
+| `Template<'t, S>`, `TemplatePart`                                                            | struct, `#[non_exhaustive]` enum                                                          | typeset template: n slots and n + 1 texts                                           |
+| `Number<'n>`                                                                                 | struct, `Copy`                                                                            | a number to format: integers, floats, decimal strings                               |
+| `NumberDisplay`, `RangeDisplay`                                                              | struct, `Display`                                                                         | lazy formatting without allocation                                                  |
+| `Output`                                                                                     | `#[non_exhaustive]` enum, `Copy`                                                          | output kind, given with every call                                                  |
+| `HtmlStyle`, `EscapeStyle`                                                                   | struct, `Copy`, `const` constructors                                                      | parameters of the HTML and escaped outputs                                          |
+| `Report<'a, T>`, `Change`                                                                    | struct                                                                                    | result plus edits, protected spans and diagnostics                                  |
+| `ProtectedSpan`, `ProtectedKind`, `TechKind`                                                 | struct, `#[non_exhaustive]` enums                                                         | what was recognized as protected and why                                            |
+| `Diagnostic`, `DiagnosticKind`, `Severity`                                                   | struct, `#[non_exhaustive]` enums                                                         | messages: unpaired quote, ambiguous hyphen, mixed script, ...                       |
+| `QuotePairs`, `SingleQuotes`, `DashStyle`, `PercentSpacing`, `NarrowGlue`                    | `Copy + Debug + Eq + Hash` value types                                                    | values of settings                                                                  |
+| `Script`, `DashData`, `EllipsisForms`, `Abbreviation`, `Bind`, `MonthPosition`, `NumberData` | as above, with `const` constructors; `NumberData: Default` (equal to `NumberData::new()`) | parts of `LanguageData` (section 7.1)                                               |
+| `Scratch`                                                                                    | struct, `Default`, opaque `Debug`, `const fn new`, `Send + Sync`                          | reusable working memory for callers that manage it themselves                       |
+| `Error`                                                                                      | `#[non_exhaustive]` enum, `thiserror`                                                     | configuration and parsing errors                                                    |
 
 Everything else (lexer, classifier, phases, encoders) is `pub(crate)`.
 
@@ -377,9 +377,13 @@ Choices and reasons:
   nothing; the rustdoc of each method names the rules it affects. Settings do not depend on rule
   sets: a set only switches rules on and off, and default values come from the language data. Prose
   and Interface therefore differ only in their rule lists (section 9).
-- **Immutability.** No interior mutability. The working buffer lives outside the object, in a
-  thread-local or in a caller's `Scratch` (section 2.12), so `&Typographer` can be shared freely. A
-  compile-time check asserts `Send + Sync`.
+- **Immutability.** No interior mutability, except one write-once, thread-safe cache: a `OnceLock`
+  of the active rules and the trigger set, filled by `build()` or by the first call of a typographer
+  made by the `const fn` `new` (section 3.2). The cache is not observable through the API: its value
+  depends only on language, rules and settings, and `Debug` leaves it out (`Debug` is written by
+  hand, so `#[derive(Debug)]` above stands for that impl). The working buffer lives outside the
+  object, in a thread-local or in a caller's `Scratch` (section 2.12), so `&Typographer` can be
+  shared freely. A compile-time check asserts `Send + Sync`.
 
 Rejected: `Typographer::default()` (language and rules cannot be guessed); an `Arc` inside (the
 caller chooses `static`, `Arc` or `LazyLock`); a mutable `set_rule()` (breaks immutability).
