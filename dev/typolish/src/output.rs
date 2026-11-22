@@ -137,13 +137,13 @@ pub struct EscapeStyle {
 }
 
 impl EscapeStyle {
-    /// JavaScript: ` `.
+    /// JavaScript: `\u00A0`.
     pub const JS: EscapeStyle = EscapeStyle::of(Syntax::Js);
-    /// JavaScript: `\xA0` up to U+00FF, `—` above.
+    /// JavaScript: `\xA0` up to U+00FF, `\u2014` above.
     pub const JS_HEX: EscapeStyle = EscapeStyle::of(Syntax::JsHex);
     /// JavaScript (ES2015): `\u{A0}`.
     pub const JS_CODE_POINT: EscapeStyle = EscapeStyle::of(Syntax::JsCodePoint);
-    /// JSON: ` `.
+    /// JSON: `\u00A0`.
     pub const JSON: EscapeStyle = EscapeStyle::of(Syntax::Json);
     /// Rust: `\u{a0}`.
     pub const RUST: EscapeStyle = EscapeStyle::of(Syntax::Rust);
