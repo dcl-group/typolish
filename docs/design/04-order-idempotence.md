@@ -178,9 +178,10 @@ are:
   (HTML entities and nowrap spans, or string-body escapes);
 - `typeset(decode(typeset(x, out)), out) == typeset(x, out)`.
 
-Decoding is exact for every output kind, nowrap styles included: inside a nowrap element an ordinary
-space can only be U+00A0 glue, because U+202F and U+2011 are written as references there and
-protected spans never belong to a group (section 11.5).
+Decoding is exact for every output kind, nowrap styles included (U+0000 in `CSS` is the one
+exception, section 11.8): inside a nowrap element an ordinary space can only be U+00A0 glue, because
+U+202F and U+2011 are written as references there and protected spans never belong to a group
+(section 11.5).
 
 Feeding encoded output back as input is not supported and not idempotent: input is plain text, so
 `&nbsp;` in the input is a literal ampersand and becomes `&amp;nbsp;` in HTML output, exactly as any

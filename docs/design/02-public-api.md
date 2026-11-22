@@ -1071,10 +1071,13 @@ fn emit(id: &str, pieces: Vec<Piece<'_, usize>>, t: &Typographer) -> String {
 `EscapeStyle::RUST` makes each text the body of a Rust string literal, so the generator pastes it
 between quotes without escaping of its own (the container is escaped completely, section 11.6). At
 run time the application formats `Number` arguments with `format_number` of the same typographer
-(the same `typographer(tag)` function in a shared crate), so template and value fit together. A
-generator of a JS bundle uses `EscapeStyle::JSON` or `EscapeStyle::JS` the same way. With
-`Output::Html`, the run-time code escapes `Word`, `Date` and `Other` values itself; the crate
-encodes only the texts (section 11.1).
+(the same `typographer(tag)` function in a shared crate) and `Output::Unicode`, so template and
+value fit together: the compiler has already turned the literal body into Unicode, and a value
+escaped again would show its escapes (`1\u{a0}000` instead of `1⍽000`). Values are inserted as they
+are (section 11.1). A generator of a JS bundle writes its texts with `EscapeStyle::JSON` or
+`EscapeStyle::JS` the same way, and its run-time values are plain Unicode too. With `Output::Html`,
+the run-time code escapes `Word`, `Date` and `Other` values itself and formats numbers with the same
+`Output::Html`; the crate encodes only the texts (section 11.1).
 
 ### 2.15 Per-request use
 

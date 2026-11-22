@@ -144,7 +144,10 @@ gives the output of the whole set.
   `tests/fixtures/whatwg-entities.txt`, an extract of `entities.json` of the HTML Living Standard
   taken on 2026-11-21 (section 14.8), whose header names the source and the date: every name the
   table writes exists there with that code point, U+202F and U+2011 have no name, and the test fails
-  when `HtmlStyle::NAMED` writes a numeric reference for a character that has a name there.
+  when `HtmlStyle::NAMED` writes a numeric reference for a character that has a name there; en with
+  `quote_pairs` set to primary `« »` and nested `‹ ›` turns `"a "b" c"` into
+  `&laquo;a &lsaquo;b&rsaquo; c&raquo;` with `HtmlStyle::NAMED` and into `«a ‹b› c»` with
+  `EscapeStyle::JS`.
 - `tests/parts.rs`: templates, including the walk-through of section 2.14, select variants, `Other`
   slots, nowrap groups starting and ending at slots, the slot participation table of section 2.6 row
   by row (with `{Date}-{Date}` → `{Date}–{Date}` and `{Number}-{Date}` unchanged), labels
@@ -157,7 +160,10 @@ gives the output of the whole set.
   glue after `г.`; ru `Text("Скажи \"раз\n")`, `Slot(Other)`, `Text("\nдва\"")` → quotes paired
   `«раз … два»`, one window; an empty list of pieces → `texts() == [""]` (borrowed), no slots,
   `changed() == false`; `fill` inserts values unchanged (a value `<b>` stays `<b>` in
-  `Output::Html`), as section 11.1 states.
+  `Output::Html`), as section 11.1 states; the flow of section 2.14 for `EscapeStyle::RUST` and
+  `EscapeStyle::JSON`: ru `{n} руб.` with a `Number` slot, each text decoded by the test decoder of
+  section 13.5 and joined with `format_number(1000, Output::Unicode)` gives `1⍽000⍽руб.` with a real
+  U+00A0, equal to `fill` of the `Output::Unicode` template, and contains no `\`.
 - `tests/api.rs`: the API contracts of section 2 that are not output: builder validation and error
   choice, `FromStr` of `Rule`, `RuleSet` and `Language`, tag round trips, accessors of `Report`,
   `Change`, `ProtectedSpan` and `Diagnostic`. Rows: a builder with two violations (`RuleConflict`
@@ -313,7 +319,8 @@ the no-panic test.
 12. **Output kinds**: `decode(typeset(x, out)) == typeset(x, Unicode)` and
     `typeset(decode(typeset(x, out)), out) == typeset(x, out)` for every output kind, nowrap styles
     included (an ordinary space inside an element decodes to U+00A0, section 11.5); decoders are
-    test helpers (for `CSS`, U+0000 is compared as U+FFFD, section 11.8).
+    test helpers (for `CSS`, every U+0000 of the generated `x` is replaced by U+FFFD before both
+    equations, section 11.8).
 13. **Round trip**: P1 on generated canonical strings (the canonical form of section 12.1 for the
     settings under test, percentages included, without the `NestedPossessive` pattern) and on the
     corpus as section 12.2 says; P2 on generated plain strings and on the corpus; the table test of

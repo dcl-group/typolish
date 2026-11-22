@@ -18,30 +18,39 @@ not "not encoded") and never touches slots. `Markup` pieces are written as is in
 output and escaped like text in escaped output, where they are part of the string.
 
 Slot values are not encoded and not checked: the crate never sees them. The caller encodes a value
-for the output kind of its template (HTML-escapes it for `Output::Html`, escapes it for the string
-syntax for `Output::Escaped`) before inserting it; a value from `format_number` or `format_range`
-called with the same output kind is already encoded. The safety statements of sections 11.4 and 11.6
-and the decoding guarantee of section 11.8 are about the texts the crate writes. A value with spaces
-inserted into a nowrap element (section 11.5) cannot break inside the element.
+for the string it is inserted into. With `fill` (section 2.6) that string is still encoded output,
+so the value is encoded for the output kind of the template (HTML-escaped for `Output::Html`,
+escaped for the string syntax for `Output::Escaped`), and a value from `format_number` or
+`format_range` called with that output kind is already encoded. In generated code (section 2.14) an
+`Output::Escaped` text becomes a plain Unicode string when the program is compiled or loaded, so
+run-time values are inserted as plain Unicode with no escaping, and `format_number` and
+`format_range` are called with `Output::Unicode`; for an `Output::Html` template the run-time string
+is HTML, so values are HTML-escaped and numbers are formatted with the same `Output::Html`. The
+safety statements of sections 11.4 and 11.6 and the decoding guarantee of section 11.8 are about the
+texts the crate writes. A value with spaces inserted into a nowrap element (section 11.5) cannot
+break inside the element.
 
 ### 11.2 Typographic set
 
-The characters the rules produce, and the same characters in the input:
+The characters the rules produce, and the same characters in the input. The quotes row holds every
+character that section 7.6 allows as a quote glyph (the `Quote` characters of section 3.5 other than
+`"`, `'`, `′` and `″`), so quote pairs set by the caller (`TypographerBuilder::quote_pairs`,
+`LanguageBuilder`) are covered too:
 
-| Character             | Code points                                                    | `HtmlStyle::NAMED`                                                              | `EscapeStyle::JS` |
-| --------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------- |
-| no-break space        | U+00A0                                                         | `&nbsp;`                                                                        | `\u00A0`          |
-| narrow no-break space | U+202F                                                         | `&#x202F;` (no name)                                                            | `\u202F`          |
-| thin space            | U+2009                                                         | `&thinsp;`                                                                      | `\u2009`          |
-| non-breaking hyphen   | U+2011                                                         | `&#x2011;` (no name)                                                            | `\u2011`          |
-| en and em dash        | U+2013, U+2014                                                 | `&ndash;` `&mdash;`                                                             | `\u2013` `\u2014` |
-| ellipsis              | U+2026                                                         | `&hellip;`                                                                      | `\u2026`          |
-| quotes                | U+00AB, U+00BB, U+201E, U+201C, U+201D, U+2018, U+2019, U+201A | `&laquo;` `&raquo;` `&bdquo;` `&ldquo;` `&rdquo;` `&lsquo;` `&rsquo;` `&sbquo;` | `\u00AB` ...      |
-| minus, times          | U+2212, U+00D7                                                 | `&minus;` `&times;`                                                             | `\u2212` `\u00D7` |
-| primes                | U+2032, U+2033                                                 | `&prime;` `&Prime;`                                                             | `\u2032` `\u2033` |
-| legal marks           | U+00A9, U+00AE, U+2122                                         | `&copy;` `&reg;` `&trade;`                                                      | `\u00A9` ...      |
-| arrows                | U+2192, U+2190, U+2194                                         | `&rarr;` `&larr;` `&harr;`                                                      | `\u2192` ...      |
-| math                  | U+2265, U+2264, U+2260, U+00B1                                 | `&ge;` `&le;` `&ne;` `&plusmn;`                                                 | `\u2265` ...      |
+| Character             | Code points                                                                    | `HtmlStyle::NAMED`                                                                                    | `EscapeStyle::JS` |
+| --------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ----------------- |
+| no-break space        | U+00A0                                                                         | `&nbsp;`                                                                                              | `\u00A0`          |
+| narrow no-break space | U+202F                                                                         | `&#x202F;` (no name)                                                                                  | `\u202F`          |
+| thin space            | U+2009                                                                         | `&thinsp;`                                                                                            | `\u2009`          |
+| non-breaking hyphen   | U+2011                                                                         | `&#x2011;` (no name)                                                                                  | `\u2011`          |
+| en and em dash        | U+2013, U+2014                                                                 | `&ndash;` `&mdash;`                                                                                   | `\u2013` `\u2014` |
+| ellipsis              | U+2026                                                                         | `&hellip;`                                                                                            | `\u2026`          |
+| quotes                | U+00AB, U+00BB, U+201E, U+201C, U+201D, U+2018, U+2019, U+201A, U+2039, U+203A | `&laquo;` `&raquo;` `&bdquo;` `&ldquo;` `&rdquo;` `&lsquo;` `&rsquo;` `&sbquo;` `&lsaquo;` `&rsaquo;` | `\u00AB` ...      |
+| minus, times          | U+2212, U+00D7                                                                 | `&minus;` `&times;`                                                                                   | `\u2212` `\u00D7` |
+| primes                | U+2032, U+2033                                                                 | `&prime;` `&Prime;`                                                                                   | `\u2032` `\u2033` |
+| legal marks           | U+00A9, U+00AE, U+2122                                                         | `&copy;` `&reg;` `&trade;`                                                                            | `\u00A9` ...      |
+| arrows                | U+2192, U+2190, U+2194                                                         | `&rarr;` `&larr;` `&harr;`                                                                            | `\u2192` ...      |
+| math                  | U+2265, U+2264, U+2260, U+00B1                                                 | `&ge;` `&le;` `&ne;` `&plusmn;`                                                                       | `\u2265` ...      |
 
 Every name and every absence of a name in the table was checked against the WHATWG list of named
 character references on 2026-11-21 (section 14.8); the table is a `const` in `src/output.rs`, and a
@@ -152,9 +161,12 @@ Idempotence holds for `Output::Unicode`. For the other kinds the guarantee is
 `decode(typeset(x, out)) == typeset(x, Unicode)` and
 `typeset(decode(typeset(x, out)), out) == typeset(x, out)`, with `decode` the inverse of the encoder
 (section 4.6). The one exception is `Output::Escaped(EscapeStyle::CSS)` on text with U+0000: CSS has
-no way to write it, the encoder writes U+FFFD (section 11.6), and the decoder property compares with
-U+0000 replaced by U+FFFD. Both are property tests with decoders written as test helpers (section
-13.5), for every kind including the nowrap styles: the decoder turns an element back into its
-content, reads an ordinary space inside it as U+00A0 and every reference as its character. Encoded
-output fed back as input is plain text with literal ampersands and backslashes, and is encoded
-again; this is documented, not a defect.
+no way to write it, so the encoder writes `\fffd ` (section 11.6), which a CSS reader and the CSS
+test decoder (a strict parser of CSS) read as U+FFFD. The encoder writes a raw U+FFFD as it is (as
+`\fffd ` with `non_ascii()`), so no decoder can tell the two apart. For `CSS` both equations
+therefore run on `x` with every U+0000 replaced by U+FFFD; the encoding of U+0000 itself is checked
+by the fixed row `a\u{0}b` → `a\fffd b` of section 13.2. Both are property tests with decoders
+written as test helpers (section 13.5), for every kind including the nowrap styles: the decoder
+turns an element back into its content, reads an ordinary space inside it as U+00A0 and every
+reference as its character. Encoded output fed back as input is plain text with literal ampersands
+and backslashes, and is encoded again; this is documented, not a defect.
