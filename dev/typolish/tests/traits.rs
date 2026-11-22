@@ -25,6 +25,7 @@ fn send_sync<T: Send + Sync>() {}
 fn copy<T: Copy>() {}
 fn clone<T: Clone>() {}
 fn value<T: Clone + Debug + PartialEq + Eq + Hash>() {}
+fn kind<T: Clone + Copy + Debug + PartialEq + Eq>() {}
 
 #[test]
 fn send_and_sync() {
@@ -72,6 +73,13 @@ fn copy_types() {
     copy::<Bind>();
     copy::<MonthPosition>();
     copy::<NumberData>();
+}
+
+#[test]
+fn report_kinds_are_copy_debug_and_eq() {
+    // Section 2.9 lists these derives and no `Hash` (section 2.13).
+    kind::<typolish::ProtectedKind>();
+    kind::<typolish::TechKind>();
 }
 
 #[test]

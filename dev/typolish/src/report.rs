@@ -298,7 +298,7 @@ impl ProtectedSpan {
 /// let kinds: Vec<_> = r.protected().iter().map(|s| s.kind()).collect();
 /// assert_eq!(kinds, [ProtectedKind::ProtectedPiece, ProtectedKind::Slot]);
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ProtectedKind {
     /// Between protection delimiters: backticks, a fenced block or an own pair, the delimiters
@@ -324,7 +324,7 @@ pub enum ProtectedKind {
 /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::CompoundHyphens));
 /// assert_eq!(r.protected()[0].range(), 3..4);
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TechKind {
     /// Check 1: `https://example.com`, `www.example.com`.
