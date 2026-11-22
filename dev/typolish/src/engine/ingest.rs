@@ -530,6 +530,8 @@ mod tests {
                 },
                 Atom::Protected { piece: 4, at: 3 },
                 Atom::Markup { piece: 5, at: 3 },
+                // An empty markup piece is an atom too (design sections 3.3, 3.4).
+                Atom::Markup { piece: 6, at: 3 },
                 Atom::Text { start: 3, end: 4 },
             ]
         );
