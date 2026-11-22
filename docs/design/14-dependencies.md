@@ -118,9 +118,10 @@ to each crate root) and an allow list: every `tests/*.rs` has
 which also covers `tests/common/mod.rs` and `tests/common/strategies.rs` through `mod common;` (in
 `src/` that file is a `#[cfg(test)]` module, which `dev/clippy.toml` already covers);
 `tests/common/mod.rs` also starts with `#![allow(dead_code)]`, because each target uses only part of
-it, and the `#[cfg(test)]` include of `strategies.rs` in `src/engine/mod.rs` carries
-`#[allow(dead_code)]` (`dead_code` is a rustc lint, not one of the clippy lints that `src/` has no
-`allow` of); `benches/load.rs` and every `examples/*.rs` have
+it, and the `#[cfg(test)]` include of `strategies.rs` in `src/engine/mod.rs` has no attribute of its
+own: the file's own `#![allow(dead_code, ...)]` covers it, and a second `#[allow(dead_code)]` would
+be a duplicated attribute for Clippy (`dead_code` is a rustc lint, not one of the clippy lints that
+`src/` has no `allow` of); `benches/load.rs` and every `examples/*.rs` have
 `#![allow(clippy::print_stdout, clippy::print_stderr, clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic)]`
 (`examples/fluent_generator.rs` fails loudly on an unknown `TemplatePart`, section 2.14). `src/`
 keeps the full deny set and has no `allow` of these lints.
