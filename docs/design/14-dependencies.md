@@ -196,6 +196,7 @@ dev/
       common/{mod,strategies}.rs  rules_*.rs  negative.rs  parts.rs  numbers.rs  output.rs  fluent_isolation.rs
       reference.rs  reference/{ru,en_us}.rs  properties.rs  graphemes.rs  roundtrip.rs  corpus.rs  alloc.rs
       load.rs  conformance.rs  data.rs  api.rs  lint.rs
+      builder.rs  language.rs  traits.rs  typeset_api.rs  rules.rs  helpers.rs
       corpus/  fixtures/unicode/  fixtures/whatwg-entities.txt
     benches/load.rs
     examples/fluent_generator.rs  examples/per_request.rs  examples/numbers.rs
@@ -211,6 +212,12 @@ module but uses only part of it, `tests/common/mod.rs` starts with `#![allow(dea
 helper module, as usual for integration tests), and `src/engine/mod.rs` includes the generators as
 `#[cfg(test)] #[allow(dead_code)] #[path = "../../tests/common/strategies.rs"] mod strategies;`
 (section 13.5, property 8).
+
+The six test files from `builder.rs` to `helpers.rs` were added in stage 2 to keep `tests/api.rs`
+and `tests/conformance.rs` readable; they hold rows that section 13.2 assigns to `tests/api.rs` and
+the self-tests of `tests/common/`, and section 13.2 says which rows live where. `tests/rules.rs`
+holds the `Rule` and `RuleSet` tables of sections 2.3, 4.1 and 9.2; it is not one of the rule tables
+`rules_*.rs`.
 
 `AGENTS.md` follows the skeleton of zonewright and adds two hard rules: the name of the reference
 implementation never appears in the repository, and commits end with

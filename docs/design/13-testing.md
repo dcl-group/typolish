@@ -221,6 +221,14 @@ gives the output of the whole set.
   `"ru".parse::<Language>()` → `Ok(Language::RU_RU)`, which is not equal to it; `Language::RU_RU`
   equals a copy built by `LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")` with no
   changes, and their hashes are equal; a copy with a different list of short words is not equal.
+  Rows of `tests/api.rs` and the related checks are split into further files (section 14.6): builder
+  validation and error choice in `tests/builder.rs`; `Language`, tag round trips and the activity of
+  rules per language in `tests/language.rs`; the compile-time and auto-trait commitments of sections
+  2.4 and 2.13 in `tests/traits.rs`; the application methods, `Cow` and the scratch (sections 2.5,
+  2.6, 2.12) in `tests/typeset_api.rs`; `FromStr` and the string round trips of `Rule` and `RuleSet`
+  against the tables of sections 2.3, 4.1 and 9.2 in `tests/rules.rs`; the self-tests of
+  `tests/common/` in `tests/helpers.rs`. `tests/api.rs` keeps the rows above that none of these
+  files holds.
 - `tests/lint.rs`: every diagnostic kind of section 12.4 with a firing and a non-firing row;
   `TypographicChar` is absent inside `https://example.com/a–b`, inside backticks and in `Markup`,
   absent for `©` with `symbols.copyright` off, present for `©` in `© 2026` with `symbols.copyright`
