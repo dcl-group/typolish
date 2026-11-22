@@ -60,7 +60,7 @@ agree and that every rule appears once.
    needs a line start and no operand on the left, the other two need an operand on each side; the
    order fixes which rule a report names.
 4. **Ranges before the minus.** `5-10` (a digit on the left) belongs to range rules, `-5` after a
-   space, a line start or an opening bracket to `number.minus`. These sets do not overlap either.
+   space, a line start or `(` to `number.minus`. These sets do not overlap either.
 5. **Quotes after dashes.** Quote roles use dashes as context in either form (`—"Да"`, `"no"—and`),
    so the order does not change roles; it only fixes the report.
 6. **No-break spaces last.** They bind final tokens: dashes, quotes, abbreviations, units.
@@ -125,15 +125,16 @@ agree and that every rule appears once.
   `?..` and en `?…` as `?...`, a lone `—` or `–` as a lone `-`, `→` as `->`. `nbsp.dash` alone reads
   a typed `—` or `–` differently: with spaces it is a dash between any operands, numbers included,
   while a plain `-` counts only where `dash.spaced-hyphen` accepts it (section 8.7). No rule turns a
-  refused `-` into a spaced dash, so f(x) has the same matches. A rule gives an empty edit with the
-  same `consume` when the pattern is already in target form, and also when it carries a typed
-  typographic sign that the rule must not change (section 8.4: typed dashes and the spaces around
-  them; section 8.6: a typed `…`). The only exceptions are the structural changes of I2: where a
-  removed space merged fragments, a match whose tokens lie in the merged fragment may not recur: the
-  dash match that covered a removed space, and a no-break match triggered by a word that is now
-  inside the `Joined` core (`nbsp.short-words` on `the` in `Moscow—the⍽capital`); their edits stay
-  (I2, I3); where an inserted space split a fragment, the rules that read the parts match them with
-  empty edits. So on f(x) no rule matches with a non-empty edit.
+  refused `-` into a spaced dash, so the output of the first pass, f(x) of section 4.4, has the same
+  matches. A rule gives an empty edit with the same `consume` when the pattern is already in target
+  form, and also when it carries a typed typographic sign that the rule must not change (section
+  8.4: typed dashes and the spaces around them; section 8.6: a typed `…`). The only exceptions are
+  the structural changes of I2: where a removed space merged fragments, a match whose tokens lie in
+  the merged fragment may not recur: the dash match that covered a removed space, and a no-break
+  match triggered by a word that is now inside the `Joined` core (`nbsp.short-words` on `the` in
+  `Moscow—the⍽capital`); their edits stay (I2, I3); where an inserted space split a fragment, the
+  rules that read the parts match them with empty edits. So on f(x) no rule matches with a non-empty
+  edit.
 - **I5. Quotes are all or nothing per window** (section 6.6).
 
 ### 4.4 Proof sketch
@@ -175,8 +176,9 @@ or `–` with spaces between operands in Russian, numbers included, gets glue be
 `nbsp.dash` (`Москва — столица` → `Москва⍽— столица`, `Москва – столица` → `Москва⍽– столица`,
 `10 – 20` → `10⍽– 20`, section 8.7). That is a normalization of the space, not damage, and it is
 idempotent. A "wrong" typographic character is not corrected: `10—20` keeps its em dash, `Что?…` in
-Russian keeps its ellipsis character. Test sets `*.already.*` check that typeset input comes back as
-`Cow::Borrowed` wherever no normalization of spaces applies.
+Russian keeps its ellipsis character. The rule tables of section 13.2 have a required "typeset
+input" row for every rule; those rows check that typeset input comes back as `Cow::Borrowed`
+wherever no normalization of spaces applies.
 
 ### 4.6 Output kinds and idempotence
 

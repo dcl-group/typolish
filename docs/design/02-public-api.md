@@ -155,14 +155,15 @@ enum).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[non_exhaustive]
 pub enum Rule {
-    QuotesApostrophe, QuotesPairs, QuotesPrimes,
+    // declared in the execution order of section 4.1
+    SymbolsCopyright, SymbolsArrows, SymbolsMath,
+    EllipsisDots, EllipsisInner,
     DashDialogue, DashDoubleHyphen, DashSpacedHyphen,
     RangePlaceholders, RangeDigits, RangeContext, RangeTime,
-    EllipsisDots, EllipsisInner,
+    NumberMinus, NumberTimes,
+    QuotesApostrophe, QuotesPairs, QuotesPrimes,
     NbspAbbreviations, NbspInitials, NbspDates, NbspUnits, NbspSigns, NbspPhone,
     NbspShortWords, NbspShortLength, NbspParticles, NbspDash,
-    NumberMinus, NumberTimes,
-    SymbolsCopyright, SymbolsArrows, SymbolsMath,
 }
 
 impl Rule {
@@ -277,7 +278,7 @@ impl TypographerBuilder {
     pub fn enable(self, rule: Rule) -> Self;
     pub fn disable(self, rule: Rule) -> Self;
     // quotes.pairs
-    pub fn quote_pairs(self, pairs: QuotePairs) -> Self;
+    pub fn quote_pairs(self, pairs: QuotePairs) -> Self;         // QuotePairs::new(('«', '»'), ('„', '“')), section 7.1
     pub fn single_quotes(self, mode: SingleQuotes) -> Self;      // NestedOnly | Everywhere | Never
     // dash.spaced-hyphen, dash.double-hyphen, nbsp.dash
     pub fn dash_style(self, style: DashStyle) -> Self;           // Closed | Spaced | SpacedGlued
@@ -308,7 +309,24 @@ impl TypographerBuilder {
     /// Validates everything (section 2.11) and builds the typographer.
     pub fn build(self) -> Result<Typographer, Error>;
 }
+
+/// Places where glue is written as U+202F instead of U+00A0 (section 15.5, item 10). A set:
+/// the order of `union` calls does not matter.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct NarrowGlue { /* private bit set */ }
+impl NarrowGlue {
+    pub const NONE: NarrowGlue;          // the default: U+00A0 everywhere
+    pub const ABBREVIATIONS: NarrowGlue; // nbsp.abbreviations: the spaces between the parts of an entry (section 8.7)
+    pub const INITIALS: NarrowGlue;      // nbsp.initials: every space it glues
+    pub const SIGNS: NarrowGlue;         // nbsp.signs: the space after `№`, `§`, `¶`
+    pub const ALL: NarrowGlue;
+    pub const fn union(self, other: NarrowGlue) -> NarrowGlue;
+    pub const fn contains(self, other: NarrowGlue) -> bool;
+}
 ```
+
+Glue typed by the author (a U+00A0 or U+202F in the input) is never rewritten, whatever
+`narrow_glue` says (section 4.5).
 
 ```rust
 use std::sync::LazyLock;
@@ -404,8 +422,11 @@ assert_eq!(RU_UI.typeset("Цена - 5 руб.", Output::Html(HtmlStyle::NAMED))
 
 Protection in this mode uses delimiters (section 10.1): backticks are on by default, and
 `protect_between` adds pairs. `Cow::Borrowed` is returned exactly when the output equals the input
-byte for byte; with `Output::Html` a string containing `&` or U+00A0 is `Owned` even when no rule
-fired, because encoding changes bytes too.
+byte for byte; with `Output::Html` or `Output::Escaped` a string containing any character that the
+output kind encodes is `Owned` even when no rule fired, because encoding changes bytes too: for HTML
+`& < > " '` and, except with `HtmlStyle::CHARACTERS`, the typographic set (U+00A0 among it); for
+`Escaped` the characters of section 11.6 (`\`, the quotes of the syntax, controls, the typographic
+set and the rest of its table). Section 3.2 lists these bytes.
 
 ### 2.6 Input 2: pieces of a template
 
@@ -527,8 +548,8 @@ Output contract:
    opens at the end of `texts()[i]`, one that ends with slot j closes at the start of
    `texts()[j + 1]` (section 11.5).
 
-How a slot takes part in rules. A slot is one opaque, frozen token; for its neighbours it behaves as
-its kind says:
+How a slot takes part in rules (the slot participation table). A slot is one opaque, frozen token;
+for its neighbours it behaves as its kind says:
 
 | Context                                                                               | `Number`                                                        | `Word`   | `Date`              | `Other`  |
 | ------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------- | ------------------- | -------- |
@@ -575,7 +596,8 @@ pub struct Number<'n> { /* i128 | u128 | f32 | f64 | decimal digits borrowed fro
 
 impl<'n> Number<'n> {
     /// ASCII decimal: optional sign, digits, optional `.` and digits. Keeps the caller's
-    /// precision ("1.50" keeps two fraction digits).
+    /// precision ("1.50" keeps two fraction digits). `.5`, `5.`, `1e3`, spaces and the empty
+    /// string are `Error::InvalidNumber`.
     pub fn decimal(text: &'n str) -> Result<Number<'n>, Error>;
     /// A float rounded to `fraction_digits` (round half to even on the exact binary value, as
     /// `format!("{:.N}")` in core).
@@ -630,7 +652,8 @@ Formatting rules:
   keeps a variant of its own and uses the shortest representation of `f32`, so `0.1f32` is `0,1`,
   not the `0,10000000149011612` of a widened `f64`; `Number::fixed` uses `{:.N}`. `NaN` and
   infinities are written with the CLDR symbols of the language (`не⍽число`, `NaN`, `∞`); there is no
-  error. Negative zero is written as `0`.
+  error. `NaN` is written without a sign; negative infinity is the minus sign followed by the
+  infinity symbol (`−∞`). Negative zero is written as `0`.
 - Grouping: with `min_grouping_digits` from 1 to 4 (the CLDR meaning of the parameter), the integer
   part is split by three digits when it has at least `3 + min_grouping_digits` digits; 0 is not a
   CLDR value and turns grouping off for numbers of every length (`COMMON` uses it, section 7.4).

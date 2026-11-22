@@ -26,8 +26,9 @@ input (&str | pieces)
 Cow<str> | Template (+ diagnostics, + journal of edits and protected spans when recording)
 ```
 
-Files: `engine/ingest.rs`, `engine/window.rs`, `engine/lex.rs`, `engine/classify.rs`,
-`engine/phase.rs`, `engine/render.rs`, `engine/record.rs`, `engine/scratch.rs`; rules in
+Files: `engine/mod.rs` (the pipeline entry points, section 13.5, property 8), `engine/ingest.rs`,
+`engine/window.rs`, `engine/lex.rs`, `engine/classify.rs`, `engine/phase.rs`, `engine/render.rs`,
+`engine/record.rs`, `engine/scratch.rs`; rules in `rules/mod.rs` (the table of rule functions) and
 `rules/{symbols,ellipsis,dash,range,number,quotes,nbsp}.rs`.
 
 ### 3.2 Prefilter
@@ -66,19 +67,21 @@ The prefilter belongs to `typeset`, `typeset_with`, `typeset_into`, `typeset_tem
 `typeset_template_with` only. `report`, `report_template`, `lint` and `lint_template` always run the
 whole pipeline: the diagnostics of the classifier and of protection (`MixedScript`, `SlotGlue`,
 `UnclosedDelimiter`) and the records of `protected()` do not come from a rule and need no trigger
-byte (`Мoсква`, `{a}{b}`, `{n}МБ`, ``don`t`` and `` `code` `` contain none). Their result still
-equals that of `typeset` (property 9 of section 13.5).
+byte (`Мoсква`, `{a}{b}`, `{n}МБ`, ``don`t`` and `` `code` `` contain none). The output of `report`
+and `report_template` still equals that of `typeset` and `typeset_template`, and the diagnostics of
+`lint` and `lint_template` (without `TypographicChar`) equal those of `report` and `report_template`
+(property 9 of section 13.5).
 
 ### 3.3 Windows
 
 A window is a paragraph: its boundary is two or more line breaks with only horizontal whitespace
-between them, or U+2029 PARAGRAPH SEPARATOR. No rule looks across a window boundary, and the scope
-of quote pairing is the window (section 6.10). For pieces, boundaries are found the same way in the
-text of the pieces; a slot is never a boundary: for the condition "only horizontal whitespace
-between them", every atom other than `Text` (a slot, a protected span or piece, a markup piece) is
-content, so `Text("a\n")`, `Slot`, `Text("\nb")` is one window, and a message without blank lines is
-one window. A fenced backtick block (section 10.1), which ingest cuts out before windows are found,
-lies inside one window even when it contains blank lines.
+(section 3.5) between them, or U+2029 PARAGRAPH SEPARATOR. No rule looks across a window boundary,
+and the scope of quote pairing is the window (section 6.10). For pieces, boundaries are found the
+same way in the text of the pieces; a slot is never a boundary: for the condition "only horizontal
+whitespace between them", every atom other than `Text` (a slot, a protected span or piece, a markup
+piece) is content, so `Text("a\n")`, `Slot`, `Text("\nb")` is one window, and a message without
+blank lines is one window. A fenced backtick block (section 10.1), which ingest cuts out before
+windows are found, lies inside one window even when it contains blank lines.
 
 The characters of a boundary (the line breaks, a U+2029 and the horizontal whitespace between them)
 belong to no window: they are not tokenized, no rule reads or changes them, and the renderer writes
@@ -132,8 +135,9 @@ and edits never touch it.
 
 Lexing reads a run of adjacent `Text` atoms with no other atom between them as one text, so a token
 (a run of dots, dashes or spaces, a word, a number) may span a piece boundary; property 10 of
-section 13.5 depends on it. A slot, a protected atom or a markup atom ends a token: `Ждём.`,
-`Markup("<b>")`, `..` are two `Dots` tokens and no ellipsis, because an edit may not include markup.
+section 13.5 depends on it. A slot, a protected atom or a markup atom ends a token: the pieces
+`Text("Ждём.")`, `Markup("<b>")`, `Text("..")` give two `Dots` tokens (`.` and `..`) and no
+ellipsis, because an edit may not include markup.
 
 ### 3.5 Lexer: class-invariant tokens
 
@@ -150,15 +154,20 @@ character to itself (U+0600 + `1`, rule GB9b of UAX #29). The gain is for Latin 
 text most ASCII bytes stand next to non-ASCII characters and go to the segmenter. A token's class
 comes from the first character of its first cluster, except that a cluster of several characters
 whose first character is not a letter is a `Symbol` (keycaps `1️⃣` and `#️⃣`, `"` + U+0301, `"` +
-U+200C, `1` + U+200D), except a cluster of ZWNJ and ZWJ only, which is a `Format` token (section
-5.4); `\r\n` stays a `Newline`, and a whitespace character with a combining mark, ZWNJ or ZWJ
-attached is a frozen `Space` (below).
+U+200C, `1` + U+200D), with three exceptions: a cluster of ZWNJ and ZWJ only is a `Format` token
+(section 5.4); `\r\n` is a `Newline`; and a cluster that starts with a whitespace character and
+carries a combining mark, ZWNJ or ZWJ is a frozen `Space` (below).
+
+"Horizontal whitespace" is every character with `char::is_whitespace` that is not a line break
+(`\n`, `\r`, U+0085, U+2028) and not U+2029: U+0020, U+00A0, U+202F, tab, U+000B, U+000C, U+2000 to
+U+200A, U+205F, U+3000 and the rest (section 5.3).
 
 Clusters join into tokens as follows: clusters led by a letter join into one `Word`, ASCII digits
-into one `Number`, `-` into one `Dash`, `.` into one `Dots`, horizontal whitespace into one `Space`.
-The multi-character plain forms of the fixed table (operators, legal marks, section "Class
-invariance") are one token each. Every other cluster, each line break included (`\r\n` is one), is a
-token of its own.
+into one `Number`, `-` into one `Dash`, `.` into one `Dots`, horizontal whitespace into one `Space`
+(its `glue` is `NoBreak` or `Narrow` only when the run is exactly one U+00A0 or one U+202F; every
+other run has `Glue::None` and is written as its source text, section 3.9). The multi-character
+plain forms of the fixed table (operators, legal marks, section "Class invariance") are one token
+each. Every other cluster, each line break included (`\r\n` is one), is a token of its own.
 
 ```rust
 pub(crate) struct Tok {
@@ -184,7 +193,7 @@ pub(crate) enum Kind {
     Open(char),       // ( [ {
     Close(char),      // ) ] }
     Punct(char),      // , ; : ! ? № § ¶ % ‰ ° / \ @ # & * + = < > | ~ ^ $ _ `
-    Symbol,           // other clusters: emoji, CJK, any multi-character cluster led by a non-letter
+    Symbol,           // other clusters: emoji, CJK punctuation, any multi-character cluster led by a non-letter
     Slot(SlotKind),   // opaque placeholder
     Protected,        // protected text
     Markup,           // zero-width, transparent
@@ -247,7 +256,11 @@ any wrapper. A fragment with any other token keeps that token in its core: `"-"`
 dash fragment, special cases below), and `«{x}»` has the core `{x}`.
 
 The classifier scans the core left to right at most three times (constant work per character) and
-applies the checks strictly in this order; the first check that matches decides:
+applies the checks strictly in this order; the first check that matches decides. The Kind column
+lists the values of the fragment kind, an engine-private enum `FragKind` with one variant per name
+in that column, plus `Times`, `Sign` and `Punctuation` (special cases below). It is a different type
+from the token `Kind` of section 3.5, although some names coincide (`Number`, `Word`, `Operator`,
+`Times`); "kind" of a fragment or a core below always means `FragKind`:
 
 | No. | Check on the core                                                                                                                                                                                                                                                                                                                                                             | Kind                                        | Frozen                                  |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | --------------------------------------- |
@@ -279,8 +292,8 @@ applies the checks strictly in this order; the first check that matches decides:
 
 The patterns in the table describe the checks; in code every check is a function over the tokens of
 the core, without regular expressions. "Not first and not last" is what "inside" means everywhere in
-the table: `50%` passes check 8 (the `%` is last) and is a number by check 15; `+-5` passes (the `+`
-is first) and is a signed number.
+the table: `50%` does not match check 8 (the `%` is last) and is a number by check 15; `+-5` does
+not match it either (the `+` is first) and is a signed number.
 
 Order matters in these places:
 
@@ -303,17 +316,18 @@ Order matters in these places:
   is a white list; when it is wrong, it is wrong on the safe side.
 
 Special cases. The first four are decided before the table and win over every check, check 0
-included (the first two on the whole fragment, the third and the fourth on the core); the others
-change how the checks read a core:
+included (the first on the whole fragment, the other three on the core); the others change how the
+checks read a core:
 
 - A lone fragment `x`, `X`, `х`, `Х` or `×` between two number fragments (`10 x 5`) has kind
   `Times`, in both forms, so the kind survives the replacement. The lexer gives `×` the token kind
   `Times` in every position; a lone `×` fragment that does not stand between two number fragments
   falls through the table to check 24 (`Unclassified`, frozen).
-- A fragment that is a single `Dash` token in any form (`-`, `--`, `---`, `–`, `—`) is an
-  `OperatorRun` ("dash fragment"), so a lone `-` and the `—` that replaces it have one kind; dash
-  rules decide its fate by context. A typed `—` or `–` is matched by `dash.spaced-hyphen` with an
-  empty edit, and a run `--` or `---` only by `dash.double-hyphen` (section 8.4).
+- A core that is a single `Dash` token in any form (`-`, `--`, `---`, `–`, `—`) is an `OperatorRun`
+  ("dash fragment"; its wrapper stays editable, so `"-"` is one too), so a lone `-` and the `—` that
+  replaces it have one kind; dash rules decide its fate by context. A typed `—` or `–` is matched by
+  `dash.spaced-hyphen` with an empty edit, and a run `--` or `---` only by `dash.double-hyphen`
+  (section 8.4).
 - A core that is only a sign of the language's `signs`, single or doubled (`№`, `§§`, `¶`), has kind
   `Sign`: it is not frozen and not technical, and no check of the table runs on it; `nbsp.signs`,
   `nbsp.short-words` and the `LABEL` rule below read it.
@@ -403,6 +417,8 @@ byte for byte intact.
 
 ```rust
 type RuleFn = fn(&Cx<'_>, usize) -> Option<Match>;
+// RULES: [RuleFn; 27] in `rules/mod.rs`, in the order of ORDER (section 4.1);
+// cx.active_in_phase() yields the indices into RULES of the active rules of the phase, in that order.
 
 fn run_phase<R: Recorder>(cx: &Cx<'_>, input: &[Tok], out: &mut Vec<Tok>, rec: &mut R) {
     out.clear();
@@ -448,17 +464,19 @@ swap between phases.
 
 No-break rules do not write U+00A0 into the text. They set the glue mark of a `Space` token
 (`Glue::NoBreak` or `Glue::Narrow`) or insert a `Space` token that carries one. A U+00A0 already in
-the input is lexed as a `Space` with `Glue::NoBreak`, U+202F as `Glue::Narrow`. Rendering turns the
-mark into U+00A0 or U+202F, `&nbsp;` or `&#x202F;` (`HtmlStyle::NAMED`), `\u00A0` or `\u202F`
-(`EscapeStyle::JS`), `\u{a0}` or `\u{202f}` (`EscapeStyle::RUST`), or into a nowrap group (section
-11.5). A U+2011 NON-BREAKING HYPHEN inside a fragment is a joint of its nowrap group, as a glue mark
-is between fragments.
+the input that forms a `Space` token on its own is lexed with `Glue::NoBreak`, a lone U+202F with
+`Glue::Narrow`; a longer run of horizontal whitespace has `Glue::None` even when it contains them
+(section 3.5). Rendering turns the mark into U+00A0 or U+202F, `&nbsp;` or `&#x202F;`
+(`HtmlStyle::NAMED`), `\u00A0` or `\u202F` (`EscapeStyle::JS`), `\u{a0}` or `\u{202f}`
+(`EscapeStyle::RUST`), or into a nowrap group (section 11.5). A U+2011 NON-BREAKING HYPHEN inside a
+fragment is a joint of its nowrap group, as a glue mark is between fragments.
 
 Why: nowrap output needs the groups of glued tokens, which is natural when glue is a relation
 between tokens; the report shows which rule glued; and when two rules could glue the same space, the
-first of them in the order table takes the pattern (section 3.8) and its glue stands. A space is
-glued only if it is a single U+0020 (one `Space` token of one character); tabs, runs of spaces and
-line breaks are never glued.
+first of them in the order table takes the pattern (section 3.8) and its glue stands.
+
+A space is glued only if it is a single U+0020 (one `Space` token of one character); tabs, runs of
+spaces and line breaks are never glued.
 
 ### 3.10 Rendering and Cow
 
@@ -508,7 +526,7 @@ diagnostics (section 12.3).
   is per token, not per byte: a paragraph of 10^5 emoji clusters holds about 4 MB of tokens in each
   of the two buffers.
 - Inputs exercised by the load tests (section 13.8): long runs of `"`, `'`, backticks, `-`, `.`,
-  `(`; alternating Cyrillic and Latin letters; a string of ZWJ emoji; one 1 MB line without spaces
+  `(`; alternating Cyrillic and Latin letters; a string of ZWJ emoji; one 1 MiB line without spaces
   (one fragment: the classifier is linear, freezing is one pass); quote nesting 10 000 deep.
 
 ### 3.13 Rejected engine designs

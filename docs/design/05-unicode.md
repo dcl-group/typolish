@@ -13,10 +13,11 @@ so `за́мок` would become two words and the short-word lists would misfire.
 Rules work on whole clusters:
 
 - A replacement replaces one or more whole clusters. A cluster of several characters led by a
-  non-letter is a `Symbol`: a straight quote with a combining mark attached (`"` + U+0301) is not a
-  quote candidate, and a keycap (`1️⃣`, `#️⃣`) is not a number or a sign. The ASCII fast path of
-  section 3.5 hands the ASCII bytes on both sides of a non-ASCII character to the segmenter, so this
-  holds right before and right after ASCII text too.
+  non-letter is a `Symbol` (except `\r\n`, a cluster of ZWNJ and ZWJ only, section 5.4, and a space
+  with a combining mark, ZWNJ or ZWJ attached, section 5.3): a straight quote with a combining mark
+  attached (`"` + U+0301) is not a quote candidate, and a keycap (`1️⃣`, `#️⃣`) is not a number or a
+  sign. The ASCII fast path of section 3.5 hands the ASCII bytes on both sides of a non-ASCII
+  character to the segmenter, so this holds right before and right after ASCII text too.
 - An insertion (`т.е.` → `т.⍽е.`, `№5` → `№⍽5`) is made only between clusters.
 - Glue is set only on a `Space` token, which is a whole cluster.
 - Emoji sequences (ZWJ, skin-tone modifiers, flags, keycaps, tag sequences) are single `Symbol`
@@ -55,11 +56,13 @@ a foreign crate enabling it would silently change everybody's output).
 - U+0020 SPACE is the only character that a rule turns into a no-break space, and only when it
   stands alone between two fragments.
 - U+00A0 and U+202F in the input are spaces that are already glued (section 3.9); rules use them as
-  context and never change them. U+2009 THIN SPACE and other horizontal whitespace (tab, U+2000 to
-  U+200A except as noted) are spaces that separate fragments and are never glued or removed.
-- Line breaks: `\n`, `\r\n`, `\r`, U+0085, U+2028. U+2029 is a paragraph break. A paragraph boundary
-  is two or more line breaks with only horizontal whitespace between them (section 3.3). Line breaks
-  are never glued.
+  context and never change them. U+2009 THIN SPACE and every other character with
+  `char::is_whitespace` that is not a line break or U+2029 (tab, U+000B, U+000C, U+2000 to U+200A,
+  U+205F, U+3000 and so on) is horizontal whitespace: a space that separates fragments and is never
+  glued or removed.
+- Line breaks: `\n`, `\r\n`, `\r`, U+0085, U+2028. U+2029 is a paragraph separator, neither a line
+  break nor a token: it always ends a window. A window boundary (section 3.3) is U+2029 or two or
+  more line breaks with only horizontal whitespace between them. Line breaks are never glued.
 - A space cluster with a combining mark, ZWNJ or ZWJ attached (U+0020 + U+0301, U+0020 + U+200D) is
   a frozen `Space`: it separates fragments, is never glued or removed, and the mark stays. A
   no-break rule that would have glued it simply does not, without a diagnostic.
@@ -114,17 +117,17 @@ update also updates the `GraphemeBreakTest.txt` fixture.
 One call is one language, the language of the surrounding text. The language is never detected from
 the text: detection is nondeterministic at boundaries and wrong on loan words and names.
 
-| Situation                                                    | Behavior                                                                                                              |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| quotes around foreign words (`"hello"` in ru)                | quotes of the language of the call: `«hello»`; quotes follow the surrounding text                                     |
-| dash style, ellipsis forms, number separators                | those of the language of the call, for the whole text (`What?...` in ru text → `What?..`)                             |
-| short words, particles, abbreviations, units, months         | compared with the lists of the language; a word of another script never matches                                       |
-| Latin `a`, `I`, `to`, `ls` in Russian text                   | no glue after them: not in the ru lists, and length rules count only Cyrillic words (`short_words_any_script(false)`) |
-| Cyrillic `и`, `в` in English text                            | no glue: not in the en lists                                                                                          |
-| Russian preposition before a Latin word                      | glue is set: the trigger is the Russian word (`в⍽db`, `для⍽id`)                                                       |
-| apostrophe `don't` in Russian text                           | `don’t`: an apostrophe between letters is U+2019 in every language (Unicode chapter 6)                                |
-| a word of two scripts (`Мoсква`, `Cервер`)                   | never changed; `MixedScript` diagnostic (warning)                                                                     |
-| `-` between two words of another script (`cat - file` in ru) | not a dash, nor next to a flag or between technical fragments; `AmbiguousHyphen` (section 8.4)                        |
-| a quotation in another language                              | the caller typesets it with another typographer and passes it as `Piece::Protected`                                   |
+| Situation                                                    | Behavior                                                                                                                               |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| quotes around foreign words (`"hello"` in ru)                | quotes of the language of the call: `«hello»`; quotes follow the surrounding text                                                      |
+| dash style, ellipsis forms, number separators                | those of the language of the call, for the whole text (`What?...` in ru text → `What?..`)                                              |
+| short words, particles, abbreviations, units, months         | compared with the lists of the language; a word of another script never matches                                                        |
+| Latin `a`, `I`, `to`, `ls` in Russian text                   | no glue after them: not in the ru lists, and length rules count only Cyrillic words (`short_words_any_script(false)`)                  |
+| Cyrillic `и`, `в` in English text                            | no glue: not in the en lists                                                                                                           |
+| Russian preposition before a Latin word                      | glue is set: the trigger is the Russian word (`в⍽db`, `для⍽id`)                                                                        |
+| apostrophe `don't` in Russian text                           | `don’t`: an apostrophe between letters is U+2019 in every language (Unicode chapter 6)                                                 |
+| a word of two scripts (`Мoсква`, `Cервер`)                   | never changed; `MixedScript` diagnostic (warning)                                                                                      |
+| `-` between two words of another script (`cat - file` in ru) | the `-` stays: words outside the language's script or technical fragments on both sides are a refusal; `AmbiguousHyphen` (section 8.4) |
+| a quotation in another language                              | the caller typesets it with another typographer and passes it as `Piece::Protected`                                                    |
 
 Letters are never changed: no transliteration, no "fixing" of look-alike letters (section 10.5).
