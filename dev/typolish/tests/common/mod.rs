@@ -10,7 +10,7 @@ pub mod strategies;
 
 use std::borrow::Cow;
 
-use typolish::{Output, Piece, Rule, RuleSet, Slot, SlotKind, Typographer};
+use typolish::{Language, Output, Piece, Rule, RuleSet, Slot, SlotKind, Typographer};
 
 /// The marker of U+00A0 in test tables.
 pub const NBSP_MARK: char = '⍽';
@@ -69,12 +69,138 @@ pub fn check(typographer: &Typographer, row: (&str, &str)) {
 
 /// A typographer with the rules of `set` except the `nbsp.*` rules (stage 2 runs set-level tables
 /// without them, section 15.4).
-pub fn without_nbsp(language: typolish::Language, set: RuleSet) -> Typographer {
+pub fn without_nbsp(language: Language, set: RuleSet) -> Typographer {
     let mut builder = Typographer::builder(language, set);
     for rule in Rule::ALL.iter().filter(|r| r.id().starts_with("nbsp.")) {
         builder = builder.disable(*rule);
     }
     builder.build().unwrap()
+}
+
+/// A row of the generated reference tables `tests/reference/{ru,en_us}.rs` (design section 13.4):
+/// the case id, the input and the output the reference implementation recorded.
+#[derive(Clone, Copy, Debug)]
+pub struct RefRow {
+    /// The case id: the corpus group, the language and the number (`neg.list.ctx.ru.519`).
+    pub id: &'static str,
+    /// The input, as typed.
+    pub input: &'static str,
+    /// The recorded output.
+    pub recorded: &'static str,
+}
+
+/// A row of a reference table.
+pub const fn row(id: &'static str, input: &'static str, recorded: &'static str) -> RefRow {
+    RefRow {
+        id,
+        input,
+        recorded,
+    }
+}
+
+/// A typographer that runs exactly `rules`, the rest being off.
+pub fn only(language: Language, rules: &[Rule]) -> Typographer {
+    Typographer::new(language, rules.iter().copied().collect())
+}
+
+/// Prose without the `nbsp.*` rules (stage 2, design section 15.4).
+pub fn prose(language: Language) -> Typographer {
+    without_nbsp(language, RuleSet::PROSE)
+}
+
+/// Interface without the `nbsp.*` rules (stage 2, design section 15.4).
+pub fn interface(language: Language) -> Typographer {
+    without_nbsp(language, RuleSet::INTERFACE)
+}
+
+/// A built-in set without the `nbsp.*` rules and without `rule`: the rule disabled in a set.
+pub fn without_rule(language: Language, set: RuleSet, rule: Rule) -> Typographer {
+    let mut builder = Typographer::builder(language, set).disable(rule);
+    for nbsp in Rule::ALL.iter().filter(|r| r.id().starts_with("nbsp.")) {
+        builder = builder.disable(*nbsp);
+    }
+    builder.build().unwrap()
+}
+
+/// The typographers a rule table runs with (design section 13.2): the rule alone, and each
+/// built-in set that holds the rule, without the `nbsp.*` rules while stage 3 is not delivered.
+/// The name says which one failed.
+pub fn configs(language: &Language, rule: Rule) -> Vec<(String, Typographer)> {
+    let mut out = vec![(
+        format!("{language} {} alone", rule.id()),
+        Typographer::new(language.clone(), RuleSet::EMPTY.with(rule)),
+    )];
+    for (name, set) in [("Prose", RuleSet::PROSE), ("Interface", RuleSet::INTERFACE)] {
+        if set.contains(rule) {
+            out.push((
+                format!("{language} {name} without nbsp"),
+                without_nbsp(language.clone(), set),
+            ));
+        }
+    }
+    out
+}
+
+/// Typesets a table row (written with markers) with `t` and compares, naming `what` on failure;
+/// the result is borrowed exactly when it equals the input.
+#[track_caller]
+pub fn check_in(what: &str, t: &Typographer, row: (&str, &str)) {
+    let source = input(row.0);
+    let expected = vis(row.1);
+    let got = t.typeset(&source, Output::Unicode);
+    assert!(
+        got == expected,
+        "{what}\ninput    {}\nexpected {}\ngot      {}",
+        show(&source),
+        show(&expected),
+        show(&got)
+    );
+    assert_eq!(
+        matches!(got, Cow::Borrowed(_)),
+        source == expected,
+        "{what}: Cow::Borrowed exactly when the output equals the input: {}",
+        show(&source)
+    );
+}
+
+/// Runs every row with every typographer.
+#[track_caller]
+pub fn check_rows(typographers: &[(String, Typographer)], rows: &[(&str, &str)]) {
+    for (what, t) in typographers {
+        for row in rows {
+            check_in(what, t, *row);
+        }
+    }
+}
+
+/// Asserts that a row (in markers) is typeset to itself and borrowed.
+#[track_caller]
+pub fn check_unchanged(what: &str, t: &Typographer, text: &str) {
+    check_in(what, t, (text, text));
+}
+
+/// The rules of the edits that `report` lists for a string written with markers, in order.
+pub fn change_rules(t: &Typographer, text: &str) -> Vec<Rule> {
+    let source = vis(text);
+    t.report(&source, Output::Unicode)
+        .changes()
+        .iter()
+        .map(|c| c.rule())
+        .collect()
+}
+
+/// Asserts that every edit of `report` for the string is by `rule` and that there is at least
+/// one (design section 13.2: "the `Change` record with the right rule").
+#[track_caller]
+pub fn assert_changed_by(what: &str, t: &Typographer, text: &str, rule: Rule) {
+    let rules = change_rules(t, text);
+    assert!(
+        !rules.is_empty() && rules.iter().all(|r| *r == rule),
+        "{what}: edits of {} should all be by {}, got {:?}",
+        show(text),
+        rule.id(),
+        rules.iter().map(|r| r.id()).collect::<Vec<_>>()
+    );
 }
 
 /// One piece of a parsed `.tmpl` message.
