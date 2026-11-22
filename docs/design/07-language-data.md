@@ -325,7 +325,7 @@ cannot reach a user.
   no two have the same parts. The word lists (`elisions`, `short_words`, `particles`,
   `atom_exceptions`, `year_words`, `century_words`, `range_lead_words`) are lowercase; `months`,
   `abbreviations`, `units` and `ambiguous_units` keep the case they are printed in (lookups: section
-  7.1). Units do not start with a digit; ambiguous units are also in `units`.
+  7.1). Units do not start with an ASCII digit (0-9); ambiguous units are also in `units`.
 - A unit equal to a short word or a particle (compared with case: `с` must be listed, `В` need not)
   must be listed in `ambiguous_units`.
 - `decimal != group`; `min_grouping_digits <= 4`; `minus`, `group` and signs are not letters or

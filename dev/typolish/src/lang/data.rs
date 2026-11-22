@@ -656,7 +656,7 @@ impl LanguageData {
             .iter()
             .any(|unit| unit.starts_with(|c: char| c.is_ascii_digit()))
         {
-            return Err("units: a unit must not start with a digit");
+            return Err("units: a unit must not start with an ASCII digit");
         }
         if !self
             .ambiguous_units

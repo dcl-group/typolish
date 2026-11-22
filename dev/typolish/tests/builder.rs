@@ -385,6 +385,10 @@ fn a_word_both_added_and_removed_is_an_error() {
 #[test]
 fn units_may_not_start_with_a_digit_but_may_contain_one() {
     assert_eq!(setting_of(base().add_units(["5G"])), "units");
+    assert_eq!(setting_of(base().remove_units(["0px"])), "units");
+    // The leading digit is an ASCII digit (design sections 2.11, 7.6): a unit that starts with
+    // another decimal digit cannot be read as a `Number` token and is accepted.
+    assert!(base().add_units(["٣px"]).build().is_ok());
     assert!(
         base()
             .add_units(["m2", "x5", "vCPU", "%", "$", "€"])

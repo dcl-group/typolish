@@ -785,7 +785,7 @@ fn normalize_list(edit: &mut ListEdit, setting: &'static str, fold: bool) -> Res
             } else if word.chars().any(char::is_whitespace) {
                 "contains whitespace"
             } else if setting == "units" && word.starts_with(|c: char| c.is_ascii_digit()) {
-                "starts with a digit"
+                "starts with an ASCII digit"
             } else if added.contains(normal) && removed.contains(normal) {
                 "is both added and removed"
             } else {
