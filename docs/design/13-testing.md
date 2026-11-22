@@ -225,19 +225,22 @@ gives the output of the whole set.
 - Swiss grouping `1'000'000` (frozen, section 10.8): unchanged in both sets, for ru and en;
 - all 405 negative cases of the scouting corpus (groups `neg.flags`, `neg.net`, `neg.ver`,
   `neg.ids`, `neg.ident`, `neg.list`, `neg.html`, `neg.mixed`, `neg.shortlat`, `neg.lookalike`; ru
-  207, en 198, frames included), converted once by a script outside the repository into a plain
-  table with the header of section 13.4, the same table that section 13.4 reads, with internal host
-  names replaced by neutral ones. Some of these cases sit in sentences with listed short words
-  (`Это a и b в тексте`), so the check is through `report`: the case's token stays byte for byte,
-  and the only other edits allowed are glue marks set by `nbsp.*` rules outside the token. In
-  Interface that holds for every case. In Prose the token may also change in the groups that section
-  10.5 allows (the lone `--` between words, literal ranges, arrows), and only as recorded.
+  207, en 198, frames included), which are the rows of the `neg.*` groups in
+  `tests/reference/{ru,en_us}.rs` (section 13.4), the same tables that section 13.4 reads;
+  `tests/negative.rs` includes them with `#[path]` (section 14.6) and selects these rows by case id;
+  the script outside the repository that wrote the tables replaced internal host names by neutral
+  ones. Some of these cases sit in sentences with listed short words (`Это a и b в тексте`), so the
+  check is through `report`: the case's token stays byte for byte, and the only other edits allowed
+  are glue marks set by `nbsp.*` rules outside the token. In Interface that holds for every case. In
+  Prose the token may also change in the groups that section 10.5 allows (the lone `--` between
+  words, literal ranges, arrows), and only as recorded.
 
 ### 13.4 Reference pairs
 
 The 820 cases of the scouting corpus, with the output of the reference implementation (default
 settings, recorded outside the repository), become `tests/reference/{ru,en_us}.rs` through a script
-outside the repository. Every case is in one of two groups, each a plain table row:
+outside the repository, data modules included by the test target `tests/reference.rs` (section
+14.6). Every case is in one of two groups, each a plain table row:
 
 - `AGREE`: our output equals the recorded one;
 - `DIVERGE`: our output is written out together with a reason code from section 8.12 (`NoGuess`,
@@ -250,19 +253,20 @@ The test compares our output with the expectation in both groups, using Prose (c
 reference defaults). The 405 cases of the `neg.*` groups (section 13.3) are also run with Interface
 and checked as section 13.3 says: the case's token byte for byte through `report`, glue of `nbsp.*`
 rules outside it allowed; whole-string equality with the input is not required, because Interface
-keeps `nbsp.short-words` (`Он вызвал ls на⍽сервере.`). Both sections read one table. A failure
-prints the input, our output, the recorded output and the `report` table (section 12.5). The stage 5
-report prints a summary per reason code. The phrase used in tables and comments is "reference
-implementation".
+keeps `nbsp.short-words` (`Он вызвал ls на⍽сервере.`). Both sections read the same tables,
+`tests/reference/{ru,en_us}.rs`. A failure prints the input, our output, the recorded output and the
+`report` table (section 12.5). The stage 5 report prints a summary per reason code. The phrase used
+in tables and comments is "reference implementation".
 
-**Provenance and drift.** Each generated file (`tests/reference/*.rs` and the negative table of
-section 13.3) starts with a comment: reference implementation version 7.9.1, recorded 2026-11-21,
-default settings, SHA-256 of the input corpus, SHA-256 of the recorded outputs. The tables are the
-record of that version; the conversion scripts stay outside the repository (section 15.2, decision
-3). A newer version of the reference implementation changes nothing by itself: a re-recording is a
-deliberate commit that updates the header, and every row whose recorded output changed is reviewed
-by hand and either kept in `AGREE` or moved to `DIVERGE` with a reason code. The stage 5 comparison
-(section 12.5) uses the version named in the header.
+**Provenance and drift.** Each generated file (`tests/reference/ru.rs` and
+`tests/reference/en_us.rs`, which also hold the negative cases of section 13.3) starts with a
+comment: reference implementation version 7.9.1, recorded 2026-11-21, default settings, SHA-256 of
+the input corpus, SHA-256 of the recorded outputs. The tables are the record of that version; the
+conversion scripts stay outside the repository (section 15.2, decision 3). A newer version of the
+reference implementation changes nothing by itself: a re-recording is a deliberate commit that
+updates the header, and every row whose recorded output changed is reviewed by hand and either kept
+in `AGREE` or moved to `DIVERGE` with a reason code. The stage 5 comparison (section 12.5) uses the
+version named in the header.
 
 ### 13.5 Properties
 

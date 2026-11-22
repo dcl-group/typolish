@@ -27,7 +27,8 @@ no normal dependencies; `#![deny(missing_docs, unsafe_code)]`; public `Graphemes
 `GraphemeIndices`, `GraphemeCursor`; one feature, `no_std`.
 
 **Toolchain**: `rustc 1.100.0 (0ef1bc386 2026-11-09)`; `char::UNICODE_VERSION == (18, 0, 0)`;
-`cargo-deny 0.20.2`, `cargo-hack` and clippy installed.
+`cargo-deny 0.20.2`, `cargo-hack` and clippy installed; the rustup toolchain `1.100.0` is installed
+besides `stable` (`cargo +1.100.0 -V` prints `cargo 1.100.0 (3acc79c0c 2026-11-05)`).
 
 **Dependency tree and cargo-deny**: a throwaway workspace with the manifests and `deny.toml` of
 section 14.5 resolved 23 packages besides `typolish` (all listed in section 14.1, including the

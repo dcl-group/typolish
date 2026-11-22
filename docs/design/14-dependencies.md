@@ -191,12 +191,18 @@ dev/
       rules/   mod.rs  symbols.rs  ellipsis.rs  dash.rs  range.rs  number.rs  quotes.rs  nbsp.rs
     tests/
       common/{mod,strategies}.rs  rules_*.rs  negative.rs  parts.rs  numbers.rs  output.rs  fluent_isolation.rs
-      reference/{ru,en_us}.rs  properties.rs  graphemes.rs  roundtrip.rs  corpus.rs  alloc.rs
+      reference.rs  reference/{ru,en_us}.rs  properties.rs  graphemes.rs  roundtrip.rs  corpus.rs  alloc.rs
       load.rs  conformance.rs  data.rs  api.rs  lint.rs
       corpus/  fixtures/unicode/  fixtures/whatwg-entities.txt
     benches/load.rs
     examples/fluent_generator.rs  examples/per_request.rs  examples/numbers.rs
 ```
+
+`tests/reference/ru.rs` and `tests/reference/en_us.rs` are data modules, not targets: Cargo builds
+only `tests/*.rs` (and `tests/*/main.rs`). `tests/reference.rs` (section 13.4) and
+`tests/negative.rs` (section 13.3) both include them with `#[path = "reference/ru.rs"] mod ru;` and
+`#[path = "reference/en_us.rs"] mod en_us;`; the row type is in `tests/common/mod.rs`, and each of
+the two targets reads every field of a row, so `dead_code` stays silent under the clippy gate.
 
 `AGENTS.md` follows the skeleton of zonewright and adds two hard rules: the name of the reference
 implementation never appears in the repository, and commits end with
@@ -207,7 +213,8 @@ target directory lives outside the repository.
 
 Before every commit, from `dev/`, for the `typolish` package only: `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings`, `cargo deny check`, `cargo test` (doctests included),
-`cargo hack --each-feature test`, `cargo +1.100.0 check --all-targets` (the MSRV toolchain;
+`cargo hack --each-feature test`, `cargo +1.100.0 check --all-targets` (the MSRV toolchain,
+installed once with `rustup toolchain install 1.100.0` and again whenever the MSRV is raised;
 identical to the other gates while the installed stable is 1.100, it keeps the MSRV checked when
 stable moves on). Formatting of Markdown and JSON is a manual step before the commit, not a gate, as
 in zonewright: `npx --yes prettier@3 --write --ignore-path .prettierignore -- <paths>`
