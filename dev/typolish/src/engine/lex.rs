@@ -324,6 +324,12 @@ enum Class {
     Single(Kind),
 }
 
+/// Whether a character that starts a cluster makes it a word cluster: a letter, or a digit of a
+/// system other than ASCII (any non-ASCII character with `char::is_numeric`, design section 5.2).
+fn is_word_char(c: char) -> bool {
+    c.is_alphabetic() || (c.is_numeric() && !c.is_ascii())
+}
+
 /// The class of one cluster (design section 3.5).
 fn class_of(cluster: &str) -> Class {
     let mut chars = cluster.chars();
@@ -337,13 +343,13 @@ fn class_of(cluster: &str) -> Class {
             Class::Single(Kind::Format)
         } else if is_horizontal_space(c) {
             Class::FrozenSpace
-        } else if c.is_alphabetic() {
+        } else if is_word_char(c) {
             Class::Letter
         } else {
             Class::Single(Kind::Symbol)
         };
     }
-    if c.is_alphabetic() {
+    if is_word_char(c) {
         return Class::Letter;
     }
     match c {
@@ -791,6 +797,23 @@ mod tests {
         assert_eq!(
             kinds("1\u{fe0f}\u{20e3}"),
             [(Kind::Symbol, "1\u{fe0f}\u{20e3}")]
+        );
+        // Digits of other systems are word characters without a script (design section 5.2).
+        assert_eq!(
+            kinds("abc\u{663}"),
+            [(Kind::Word(WordScript::Latin), "abc\u{663}")]
+        );
+        assert_eq!(
+            kinds("\u{663}\u{664}"),
+            [(Kind::Word(WordScript::Other), "\u{663}\u{664}")]
+        );
+        assert_eq!(
+            kinds("x\u{ff11} 5"),
+            [
+                (Kind::Word(WordScript::Latin), "x\u{ff11}"),
+                (Kind::Space, " "),
+                (Kind::Number, "5"),
+            ]
         );
         assert_eq!(kinds("\u{200c}a")[0], (Kind::Format, "\u{200c}"));
         assert_eq!(kinds("a\r\nb")[1], (Kind::Newline, "\r\n"));

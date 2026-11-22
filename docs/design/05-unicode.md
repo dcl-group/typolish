@@ -48,8 +48,10 @@ a foreign crate enabling it would silently change everybody's output).
   language's own units pass silently: `μs` (Greek U+03BC, Latin `s`) and `µs` (U+00B5, which falls
   outside the Latin ranges).
 - **Digits** for number rules are ASCII `0` to `9` only. Digits of other systems are word
-  characters. Digits break a word: `x86` is a Latin word and a number in one fragment (check 20 of
-  section 3.6 freezes it).
+  characters: a cluster led by a non-ASCII character with `char::is_numeric` (Arabic-Indic and
+  fullwidth digits, and also superscript digits, fractions and circled numbers) is a letter cluster
+  for the lexer, and it adds no script to its word. Digits break a word: `x86` is a Latin word and a
+  number in one fragment (check 20 of section 3.6 freezes it).
 
 ### 5.3 Spaces, line breaks, paragraphs
 

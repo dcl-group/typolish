@@ -228,6 +228,30 @@ fn a_cluster_led_by_a_non_letter_is_a_symbol_and_is_frozen() {
 }
 
 #[test]
+fn digits_of_other_systems_are_word_characters() {
+    // Section 5.2: a non-ASCII digit is a word character, so the fragment is a word that is not
+    // frozen, and it adds no script of its own (no `MixedScript`).
+    let rows: Vec<(&str, Vec<(ProtectedKind, &str)>)> = vec![
+        ("abc\u{663}", vec![]),
+        ("\u{663}\u{664}", vec![]),
+        ("\u{639}\u{663}", vec![]),
+        ("x\u{ff11}", vec![]),
+        ("\u{43a}\u{43e}\u{434}\u{966}", vec![]),
+    ];
+    expect(&rows);
+    for (_, t) in sweep() {
+        for input in ["abc\u{663}", "\u{43a}\u{43e}\u{434}\u{966}"] {
+            let report = t.report(input, typolish::Output::Unicode);
+            assert!(
+                report.diagnostics().is_empty(),
+                "{}",
+                input.escape_unicode()
+            );
+        }
+    }
+}
+
+#[test]
 fn clusters_led_by_a_non_letter_come_out_unchanged_next_to_ascii() {
     // The ASCII fast path hands the ASCII bytes on both sides of a non-ASCII character to the
     // segmenter (section 3.5).

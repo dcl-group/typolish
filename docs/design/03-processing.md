@@ -167,10 +167,11 @@ the ASCII byte after it is segmented with it too, because a `Prepend` character 
 character to itself (U+0600 + `1`, rule GB9b of UAX #29). The gain is for Latin text; in Cyrillic
 text most ASCII bytes stand next to non-ASCII characters and go to the segmenter. A token's class
 comes from the first character of its first cluster, except that a cluster of several characters
-whose first character is not a letter is a `Symbol` (keycaps `1️⃣` and `#️⃣`, `"` + U+0301, `"` +
-U+200C, `1` + U+200D), with three exceptions: a cluster of ZWNJ and ZWJ only is a `Format` token
-(section 5.4); `\r\n` is a `Newline`; and a cluster that starts with a whitespace character and
-carries a combining mark, ZWNJ or ZWJ is a frozen `Space` (below).
+whose first character is not a letter (a digit of another system counts as a letter, section 5.2) is
+a `Symbol` (keycaps `1️⃣` and `#️⃣`, `"` + U+0301, `"` + U+200C, `1` + U+200D), with three exceptions:
+a cluster of ZWNJ and ZWJ only is a `Format` token (section 5.4); `\r\n` is a `Newline`; and a
+cluster that starts with a whitespace character and carries a combining mark, ZWNJ or ZWJ is a
+frozen `Space` (below).
 
 "Horizontal whitespace" is every character with `char::is_whitespace` that is not a line break
 (`\n`, `\r`, U+0085, U+2028) and not U+2029: U+0020, U+00A0, U+202F, tab, U+000B, U+000C, U+2000 to
