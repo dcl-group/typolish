@@ -61,58 +61,47 @@ pub(crate) fn typeset<'a>(
 
 /// `Typographer::typeset_template_with`: returns the texts in the n + 1 form and whether any of
 /// them changed.
+///
+/// `slot_count` is the number of `Input::Slot` items, so that the vector of texts is allocated
+/// once; a text merged from several non-empty pieces is one string of their total length (design
+/// section 2.12).
 pub(crate) fn typeset_template<'t>(
     typographer: &Typographer,
     scratch: &mut Scratch,
     input: &[Input<'t>],
+    slot_count: usize,
     output: Output,
 ) -> (Vec<Cow<'t, str>>, bool) {
     let changed = run(typographer, scratch, input);
-    let mut texts = Vec::new();
-    let mut current = Text::Empty;
-    for item in input {
-        match *item {
-            Input::Slot(_) => texts.push(core::mem::take(&mut current).finish()),
-            Input::Text(text) | Input::Protected(text) | Input::Markup(text) => {
-                current.push(text);
-            }
-        }
+    let mut texts = Vec::with_capacity(slot_count.saturating_add(1));
+    for group in input.split(|item| matches!(item, Input::Slot(_))) {
+        texts.push(merge(group));
     }
-    texts.push(current.finish());
     let encoded = texts.iter().any(|text| encodes(output, text));
     (texts, changed || encoded)
 }
 
-/// An output text being merged from adjacent pieces: borrowed while it maps to exactly one
-/// non-empty input piece (design section 2.6, output contract item 2).
-#[derive(Default)]
-enum Text<'t> {
-    #[default]
-    Empty,
-    One(&'t str),
-    Many(String),
-}
-
-impl<'t> Text<'t> {
-    fn push(&mut self, text: &'t str) {
-        if text.is_empty() {
-            return;
+/// The text of the pieces between two slots: borrowed while it maps to at most one non-empty
+/// piece, otherwise one string allocated at its final length (design section 2.6, output
+/// contract item 2).
+fn merge<'t>(group: &[Input<'t>]) -> Cow<'t, str> {
+    let mut parts = group.iter().filter_map(|item| match *item {
+        Input::Text(text) | Input::Protected(text) | Input::Markup(text) if !text.is_empty() => {
+            Some(text)
         }
-        *self = match core::mem::take(self) {
-            Text::Empty => Text::One(text),
-            Text::One(first) => Text::Many([first, text].concat()),
-            Text::Many(mut all) => {
-                all.push_str(text);
-                Text::Many(all)
-            }
-        };
+        Input::Text(_) | Input::Protected(_) | Input::Markup(_) | Input::Slot(_) => None,
+    });
+    let Some(first) = parts.next() else {
+        return Cow::Borrowed("");
+    };
+    if parts.clone().next().is_none() {
+        return Cow::Borrowed(first);
     }
-
-    fn finish(self) -> Cow<'t, str> {
-        match self {
-            Text::Empty => Cow::Borrowed(""),
-            Text::One(text) => Cow::Borrowed(text),
-            Text::Many(all) => Cow::Owned(all),
-        }
-    }
+    let len = parts
+        .clone()
+        .fold(first.len(), |len, text| len.saturating_add(text.len()));
+    let mut all = String::with_capacity(len);
+    all.push_str(first);
+    parts.for_each(|text| all.push_str(text));
+    Cow::Owned(all)
 }

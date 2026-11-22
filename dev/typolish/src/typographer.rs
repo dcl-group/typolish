@@ -361,6 +361,11 @@ impl Typographer {
     /// assert_eq!(t.texts().len(), t.slots().len() + 1);
     /// assert_eq!(t.slots()[0].0, "n");
     /// ```
+    ///
+    /// Allocates at most three vectors (the piece texts, the texts and the slots) plus one string
+    /// per text that is changed or merged from more than one non-empty piece (design section
+    /// 2.12). The vectors are sized from the lower bound of the iterator's `size_hint`; an iterator
+    /// that reports less than its length makes them reallocate while they grow.
     #[must_use]
     pub fn typeset_template<'t, S>(
         &self,
@@ -370,8 +375,9 @@ impl Typographer {
         // The pieces are the only caller code that runs during a call: they are collected before
         // the thread-local scratch is borrowed (design section 2.12).
         let (input, slots) = split_pieces(pieces);
+        let slot_count = slots.len();
         let (texts, changed) = engine::scratch::with_thread_scratch(|scratch| {
-            engine::typeset_template(self, scratch, &input, output)
+            engine::typeset_template(self, scratch, &input, slot_count, output)
         });
         Template::from_parts(texts, slots, changed)
     }
@@ -394,17 +400,23 @@ impl Typographer {
         output: Output,
     ) -> Template<'t, S> {
         let (input, slots) = split_pieces(pieces);
-        let (texts, changed) = engine::typeset_template(self, scratch, &input, output);
+        let (texts, changed) = engine::typeset_template(self, scratch, &input, slots.len(), output);
         Template::from_parts(texts, slots, changed)
     }
 }
 
 /// Splits pieces into the call-local vector of piece texts and the slots with their payloads.
+///
+/// Both vectors are sized once from the lower bound of `size_hint` (exact for arrays, vectors and
+/// slices): there are never more slots than pieces, so neither reallocates for such an iterator
+/// (design section 2.12).
 fn split_pieces<'t, S>(
     pieces: impl IntoIterator<Item = Piece<'t, S>>,
 ) -> (Vec<Input<'t>>, Vec<(S, crate::Slot)>) {
-    let mut input = Vec::new();
-    let mut slots = Vec::new();
+    let pieces = pieces.into_iter();
+    let (len, _) = pieces.size_hint();
+    let mut input = Vec::with_capacity(len);
+    let mut slots = Vec::with_capacity(len);
     for piece in pieces {
         input.push(match piece {
             Piece::Text(text) => Input::Text(text),

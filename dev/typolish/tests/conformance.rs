@@ -546,13 +546,15 @@ const TEST_ALLOWS: [&str; 7] = [
     "clippy::dbg_macro",
 ];
 
-/// The lints of the first `#![allow(...)]` of a file, in order.
+/// The lints of every `#![allow(...)]` of a file, in order.
 fn inner_allows(src: &str) -> Vec<String> {
-    let Some((_, rest)) = src.split_once("#![allow(") else {
-        return Vec::new();
-    };
-    let list = rest.split_once(")]").map_or("", |(list, _)| list);
-    list.split(',')
+    src.split("#![allow(")
+        .skip(1)
+        .flat_map(|rest| {
+            rest.split_once(")]")
+                .map_or("", |(list, _)| list)
+                .split(',')
+        })
         .map(str::trim)
         .filter(|lint| !lint.is_empty())
         .map(String::from)
@@ -566,12 +568,13 @@ fn test_targets_allow_the_lints_of_section_14_5() {
         let path = entry.unwrap().path();
         if path.extension().is_some_and(|e| e == "rs") {
             targets += 1;
-            assert_eq!(
-                inner_allows(&read(&path)),
-                TEST_ALLOWS,
-                "{}",
-                path.display()
-            );
+            let mut allows = inner_allows(&read(&path));
+            // Only the counting allocator may use `unsafe` (design section 14.5).
+            if path.file_name().is_some_and(|name| name == "alloc.rs") {
+                assert_eq!(allows.first().map(String::as_str), Some("unsafe_code"));
+                allows.remove(0);
+            }
+            assert_eq!(allows, TEST_ALLOWS, "{}", path.display());
         }
     }
     assert!(targets > 5);

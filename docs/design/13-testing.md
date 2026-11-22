@@ -487,7 +487,10 @@ U+00A0 and must not be normalized.
   path of section 2.12) and for `typeset_into` into a buffer with room, zero in `Typographer::new`;
   ru `Сохранить` in Interface → `Cow::Borrowed`, no lexing; an iterator of template pieces that
   calls `typeset` adds no allocations beyond the table of section 2.12; after an input larger than
-  64 KiB the first short call allocates and the second does not.
+  64 KiB the first short call allocates and the second does not. The file exists from stage 2 with
+  the rows that hold before the rules: `Typographer::new`, an unchanged string after warm-up,
+  templates of 1 to 100 slots (three vectors, no reallocation), a text merged from several pieces
+  (one string) and the iterator that calls `typeset`; the other rows join in stage 3 (section 15.4).
 
 Rejected: `criterion` (a heavy tree: `clap`, `serde`, `regex`, `rayon`) and `divan` (last release in
 2025-04); linear behavior needs no statistics package.
@@ -505,15 +508,16 @@ unique and of the documented form, `Rule::from_str(r.id()) == Ok(r)`;
 variant exists); the composition of Prose and Interface, and the rule lists in their rustdoc, match
 section 9.2 and the Prose and Interface columns of sections 4.1 and 8.1; the rustdoc of every
 builder setting names exactly the rules that list it in the settings column of section 8.1; `src/`
-contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; the first `#![allow(...)]`
-of every `tests/*.rs` lists exactly the lints of section 14.5, and that of `tests/common/mod.rs`
-only `dead_code`; `src/lang/ru_ru.rs`, `src/lang/en_us.rs` and `src/lang/common.rs` contain no `fn`,
-`impl`, `match` or `if` (section 7.1); replacement tables produce no letter and no digit; every
-character the lexer reads as `Quote` (section 3.5) other than `"` and `'` is in the table of section
-11.2, `′` and `″` in the primes row and the others in the quotes row; built-in languages × built-in
-sets build without error. A unit test next to the prefilter checks, for every built-in set and
-language, that the trigger set equals the union of the trigger constants of the active rules. Checks
-that read `docs/design/` skip when the file is absent (the published package has no design).
+contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; the `#![allow(...)]`
+attributes of every `tests/*.rs` list exactly the lints of section 14.5 (`tests/alloc.rs` also
+`unsafe_code`, first), and that of `tests/common/mod.rs` only `dead_code`; `src/lang/ru_ru.rs`,
+`src/lang/en_us.rs` and `src/lang/common.rs` contain no `fn`, `impl`, `match` or `if` (section 7.1);
+replacement tables produce no letter and no digit; every character the lexer reads as `Quote`
+(section 3.5) other than `"` and `'` is in the table of section 11.2, `′` and `″` in the primes row
+and the others in the quotes row; built-in languages × built-in sets build without error. A unit
+test next to the prefilter checks, for every built-in set and language, that the trigger set equals
+the union of the trigger constants of the active rules. Checks that read `docs/design/` skip when
+the file is absent (the published package has no design).
 
 `tests/data.rs` runs the validation of section 7.6 on every built-in table (so the order and
 duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,
