@@ -273,9 +273,12 @@ gives the output of the whole set.
   the script outside the repository that wrote the tables replaced internal host names by neutral
   ones. Some of these cases sit in sentences with listed short words (`Это a и b в тексте`), so the
   check is through `report`: the case's token stays byte for byte, and the only other edits allowed
-  are glue marks set by `nbsp.*` rules outside the token. In Interface that holds for every case. In
-  Prose the token may also change in the groups that section 10.5 allows (the lone `--` between
-  words, literal ranges, arrows), and only as recorded.
+  are glue marks set by `nbsp.*` rules outside the token. A case of several fragments with a listed
+  short word between them gets that glue between its fragments, as row 24 of section 10.5 does
+  (`vec<int> and⍽map<k,v>` in English, case `neg.html.ctx.en-US.759`); its fragments stay byte for
+  byte. In Interface that holds for every case. In Prose the token may also change in the groups
+  that section 10.5 allows (the lone `--` between words, literal ranges, arrows), and only as
+  recorded.
 
 ### 13.4 Reference pairs
 

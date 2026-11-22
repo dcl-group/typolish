@@ -23,8 +23,8 @@ mod common;
 mod probe;
 
 use common::{
-    assert_changed_by, check_in, check_rows, check_unchanged, configs, interface, only, prose,
-    show, vis, without_rule,
+    assert_changed_by, assert_changed_by_with_glue, check_in, check_rows, check_unchanged, configs,
+    interface, only, prose, show, vis, without_rule,
 };
 use probe::{diag_ranges, diagnostics_of};
 use typolish::{
@@ -124,8 +124,8 @@ fn spaced_hyphen_in_russian() {
     let dimension: Vec<(&str, &str)> = dimension.into_iter().copied().collect();
     check_rows(alone, &dimension);
     for (what, t) in &all {
-        assert_changed_by(what, t, "Москва - столица", SPACED);
-        assert_changed_by(what, t, "Привет, - сказал он.", SPACED);
+        assert_changed_by_with_glue(what, t, "Москва - столица", SPACED);
+        assert_changed_by_with_glue(what, t, "Привет, - сказал он.", SPACED);
     }
 }
 
@@ -178,7 +178,7 @@ fn spaced_hyphen_in_english() {
     check_rows(&all[..1], EN_SPACED_NOT_PROSE);
     check_rows(&all[2..], EN_SPACED_NOT_PROSE);
     for (what, t) in configs(&Language::EN_US, SPACED) {
-        assert_changed_by(&what, &t, "Moscow - the capital", SPACED);
+        assert_changed_by_with_glue(&what, &t, "Moscow - the capital", SPACED);
     }
 }
 
@@ -470,11 +470,11 @@ fn double_hyphen() {
     check_rows(&configs(&Language::RU_RU, DOUBLE), RU_DOUBLE);
     check_rows(&configs(&Language::EN_US, DOUBLE), EN_DOUBLE);
     for (what, t) in configs(&Language::RU_RU, DOUBLE) {
-        assert_changed_by(&what, &t, "Москва -- столица", DOUBLE);
-        assert_changed_by(&what, &t, "Москва --- столица", DOUBLE);
+        assert_changed_by_with_glue(&what, &t, "Москва -- столица", DOUBLE);
+        assert_changed_by_with_glue(&what, &t, "Москва --- столица", DOUBLE);
     }
     for (what, t) in configs(&Language::EN_US, DOUBLE) {
-        assert_changed_by(&what, &t, "Moscow -- the capital", DOUBLE);
+        assert_changed_by_with_glue(&what, &t, "Moscow -- the capital", DOUBLE);
     }
 }
 

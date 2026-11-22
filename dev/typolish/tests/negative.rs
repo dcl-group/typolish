@@ -809,9 +809,13 @@ fn check_case(
                 "{what}: {}: an nbsp edit that is not glue: {change:?}",
                 r.id
             );
+            // A case of several fragments with a listed short word between them gets its glue
+            // outside the frozen fragments, as row 24 of section 10.5 (`if⍽a<b and⍽c>d`).
             if let Some(token) = &token {
+                let between =
+                    change.rule() == Rule::NbspShortWords && report.original(change) == " ";
                 assert!(
-                    range.end <= token.start || range.start >= token.end,
+                    range.end <= token.start || range.start >= token.end || between,
                     "{what}: {}: glue inside the token {token:?}: {change:?}",
                     r.id
                 );

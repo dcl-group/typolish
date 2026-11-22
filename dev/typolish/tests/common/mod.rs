@@ -235,6 +235,29 @@ pub fn assert_changed_by(what: &str, t: &Typographer, text: &str, rule: Rule) {
     );
 }
 
+/// Asserts that `report` lists an edit by `rule` for the string and that every other edit is a
+/// glue mark of an `nbsp.*` rule: in a full built-in set the no-break rules add their glue to the
+/// edits of the rule a row exercises (sections 8.4 and 8.7).
+#[track_caller]
+pub fn assert_changed_by_with_glue(what: &str, t: &Typographer, text: &str, rule: Rule) {
+    let source = vis(text);
+    let report = t.report(&source, Output::Unicode);
+    let changes = report.changes();
+    let ok = changes.iter().any(|c| c.rule() == rule)
+        && changes.iter().all(|c| {
+            c.rule() == rule
+                || (c.rule().id().starts_with("nbsp.")
+                    && matches!(c.replacement(), "\u{a0}" | "\u{202f}"))
+        });
+    assert!(
+        ok,
+        "{what}: edits of {} should be by {} and glue of nbsp rules, got {:?}",
+        show(text),
+        rule.id(),
+        changes.iter().map(|c| c.rule().id()).collect::<Vec<_>>()
+    );
+}
+
 /// One piece of a parsed `.tmpl` message.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TmplPiece {

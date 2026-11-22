@@ -1169,4 +1169,39 @@ pub const TABLE: &[(&str, &str, &str, &str, &str)] = &[
     ),
     ("ru-RU", "prose", "стр. 9-12", "стр. 9–12", "стр.⍽9–12"),
     ("und", "prose", "5-10 kg", "5–10 kg", "5–10⍽kg"),
+    // A short word behind a start wrapper of dots (section 3.6: runs of dots belong to the
+    // wrapper), and a closing quote of a sign-only pair before a dash (section 8.7, `nbsp.dash`).
+    ("ru-RU", "prose", "...и тогда", "…и тогда", "…и⍽тогда"),
+    ("ru-RU", "prose", "...и тогда", "...и тогда", "...и⍽тогда"),
+    (
+        "ru-RU",
+        "interface",
+        "...и тогда",
+        "...и тогда",
+        "...и⍽тогда",
+    ),
+    (
+        "ru-RU",
+        "interface",
+        "Слово\t...и тогда",
+        "Слово\t...и тогда",
+        "Слово\t...и⍽тогда",
+    ),
+    (
+        "ru-RU",
+        "prose",
+        "Слово\t...и тогда",
+        "Слово\t…и тогда",
+        "Слово\t…и⍽тогда",
+    ),
+    ("ru-RU", "prose", "…и тогда", "…и тогда", "…и⍽тогда"),
+    ("ru-RU", "prose", "\"\" - 5", "«» — 5", "«»⍽— 5"),
+    ("ru-RU", "interface", "\"\" - 5", "«» — 5", "«»⍽— 5"),
+    (
+        "en-US",
+        "prose",
+        "She loves 'the dogs'",
+        "She loves 'the dogs’",
+        "She loves 'the⍽dogs’",
+    ),
 ];

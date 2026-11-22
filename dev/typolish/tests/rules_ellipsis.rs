@@ -19,8 +19,8 @@ mod common;
 mod probe;
 
 use common::{
-    assert_changed_by, check_in, check_rows, check_unchanged, configs, interface, only, prose,
-    without_rule,
+    assert_changed_by, assert_changed_by_with_glue, check_in, check_rows, check_unchanged, configs,
+    interface, only, prose, without_rule,
 };
 use probe::diagnostics_of;
 use typolish::{
@@ -92,7 +92,7 @@ fn dots_in_russian() {
     check_rows(&all[2..], &inner);
     for (what, t) in &all {
         assert_changed_by(what, t, "Подождите...", DOTS);
-        assert_changed_by(what, t, "и т.д...", DOTS);
+        assert_changed_by_with_glue(what, t, "и т.д...", DOTS);
         assert_changed_by(what, t, "Что?...", DOTS);
     }
 }
@@ -167,7 +167,7 @@ fn inner() {
         check_rows(&all, INNER_ROWS);
         for (what, t) in &all {
             assert_changed_by(what, t, "да...нет", INNER);
-            assert_changed_by(what, t, "...и тогда", INNER);
+            assert_changed_by_with_glue(what, t, "...и тогда", INNER);
         }
     }
     // Alone, `ellipsis.inner` leaves what `ellipsis.dots` takes.

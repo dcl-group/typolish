@@ -145,7 +145,7 @@ fn cmp_decimal(a: (&str, &str), b: (&str, &str)) -> Ordering {
 
 /// The value of a Roman numeral in the standard form, 1 to 3999 (design section 3.6): the
 /// numeral read greedily and written back canonically must give the same text.
-fn roman_value(chars: impl Iterator<Item = char>) -> Option<u32> {
+pub(crate) fn roman_value(chars: impl Iterator<Item = char>) -> Option<u32> {
     const TABLE: [(u32, &str); 13] = [
         (1000, "M"),
         (900, "CM"),

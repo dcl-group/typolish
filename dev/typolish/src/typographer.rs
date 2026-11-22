@@ -126,6 +126,22 @@ impl ListEdit {
                     .is_err()
             })
     }
+
+    /// Whether the edited word list holds the characters of `key`, compared without case: an
+    /// addition, or an entry of `base` that is not removed. `added` and `removed` are folded and
+    /// sorted by `build()`.
+    fn holds(&self, base: List<'_>, key: impl Iterator<Item = char> + Clone) -> bool {
+        let folded = || key.clone().map(fold_char);
+        let found = |list: &[String]| {
+            list.binary_search_by(|entry| entry.chars().cmp(folded()))
+                .is_ok()
+        };
+        found(&self.added)
+            || (base
+                .binary_search_by(|entry| entry.chars().cmp(folded()))
+                .is_ok()
+                && !found(&self.removed))
+    }
 }
 
 /// The settings of a typographer (design section 2.4): only overrides, additions and removals,
@@ -327,6 +343,44 @@ impl Typographer {
         let units = &self.settings.units;
         let found = |list: &[String]| list.binary_search_by(|u| u.as_str().cmp(text)).is_ok();
         found(&units.added) || (self.language.data().units.contains(text) && !found(&units.removed))
+    }
+
+    /// Whether the characters of a core are a short word of the language with the builder's
+    /// additions and removals, compared without case (design section 7.1).
+    pub(crate) fn has_short_word(&self, key: impl Iterator<Item = char> + Clone) -> bool {
+        self.settings
+            .short_words
+            .holds(self.language.data().short_words, key)
+    }
+
+    /// Whether the characters of a core are a particle of the language with the builder's
+    /// additions and removals, compared without case.
+    pub(crate) fn has_particle(&self, key: impl Iterator<Item = char> + Clone) -> bool {
+        self.settings
+            .particles
+            .holds(self.language.data().particles, key)
+    }
+
+    /// The length up to which any word of the language's script is short (`nbsp.short-length`).
+    pub(crate) fn short_word_length(&self) -> u8 {
+        self.settings
+            .short_word_length
+            .unwrap_or(self.language.data().short_word_length)
+    }
+
+    /// The `short_words_any_script` setting.
+    pub(crate) fn short_words_any_script(&self) -> bool {
+        self.settings.short_words_any_script
+    }
+
+    /// Whether glue at `place` is written as U+202F (`narrow_glue`).
+    pub(crate) fn narrow(&self, place: NarrowGlue) -> bool {
+        self.settings.narrow_glue.contains(place)
+    }
+
+    /// The `percent` setting.
+    pub(crate) fn percent(&self) -> PercentSpacing {
+        self.settings.percent
     }
 
     /// The quote pairs in effect: the setting, or the language's.

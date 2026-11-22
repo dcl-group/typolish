@@ -1320,9 +1320,15 @@ fn short_words_inside_both_sets() {
 
 #[test]
 fn short_words_are_off_when_disabled() {
-    for base in [RuleSet::PROSE, RuleSet::INTERFACE] {
+    // In Prose `nbsp.short-length` still glues the one-letter `в` (section 8.7); a listed word of
+    // three letters shows that `nbsp.short-words` is off.
+    for (base, glued) in [
+        (RuleSet::PROSE, "в⍽2026 году"),
+        (RuleSet::INTERFACE, "в 2026 году"),
+    ] {
         let t = set(ru(), base.without(SHORT_WORDS));
-        check_in("ru", &t, ("в 2026 году", "в 2026 году"));
+        check_in("ru", &t, ("в 2026 году", glued));
+        check_in("ru", &t, ("для дома", "для дома"));
     }
 }
 

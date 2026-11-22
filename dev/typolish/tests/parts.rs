@@ -86,7 +86,8 @@ fn slots_come_out_in_order_with_their_payloads() {
             "{what}"
         );
         assert_eq!(out.texts().len(), 5, "{what}");
-        assert_eq!(texts(&out), ["", "", " и ", "", ""], "{what}");
+        // `и` is a short word, and glue sticks before a `Date` slot (section 2.6).
+        assert_eq!(texts(&out), ["", "", " и\u{a0}", "", ""], "{what}");
     }
 }
 
@@ -131,7 +132,13 @@ fn a_changed_text_is_marked_changed() {
             ],
             Output::Unicode,
         );
-        assert_eq!(texts(&out), ["Он сказал «да» ", ""], "{what}");
+        // Prose glues the two-letter `Он` (`nbsp.short-length`, section 8.7).
+        let first = if t.rules().contains(Rule::NbspShortLength) {
+            "Он\u{a0}сказал «да» "
+        } else {
+            "Он сказал «да» "
+        };
+        assert_eq!(texts(&out), [first, ""], "{what}");
         assert!(out.changed(), "{what}");
     }
 }

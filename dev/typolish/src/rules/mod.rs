@@ -1,7 +1,7 @@
 //! The rules (design section 8): `RULES`, the table of rule functions in the order of design
 //! section 4.1, the trigger bytes of every rule (design section 3.2), and the conditions that
-//! several rules share (design section 8.2). The rules `symbols.*`, `number.minus` and `nbsp.*`
-//! declare their trigger bytes and match nothing yet.
+//! several rules share (design section 8.2). The rules `symbols.*` and `number.minus` declare
+//! their trigger bytes and match nothing yet.
 
 pub(crate) mod dash;
 pub(crate) mod ellipsis;
@@ -21,7 +21,7 @@ use crate::lang::data::{List, Script, Table, fold_char};
 /// 3.8).
 pub(crate) type RuleFn = fn(&Cx<'_>, usize) -> Option<Match>;
 
-/// A rule that matches nothing yet (`symbols.*`, `number.minus`, `nbsp.*`).
+/// A rule that matches nothing yet (`symbols.*` and `number.minus`).
 fn later(_cx: &Cx<'_>, _i: usize) -> Option<Match> {
     None
 }
@@ -45,16 +45,16 @@ pub(crate) const RULES: [RuleFn; 27] = [
     quotes::apostrophe,
     quotes::pairs,
     quotes::primes,
-    later,
-    later,
-    later,
-    later,
-    later,
-    later,
-    later,
-    later,
-    later,
-    later,
+    nbsp::abbreviations,
+    nbsp::initials_rule,
+    nbsp::dates,
+    nbsp::units,
+    nbsp::signs,
+    nbsp::phone,
+    nbsp::short_words,
+    nbsp::short_length,
+    nbsp::particles,
+    nbsp::dash,
 ];
 
 /// A word (design section 8.2): a `Word` core, a one-word `Dictionary` core or a compound word.

@@ -7,19 +7,19 @@
 //! call. Its design is in `docs/design/` of the repository.
 //!
 //! The crate is in development: the engine recognizes protected and technical fragments and
-//! applies the rules of quotes, dashes, ranges and ellipses; [`Typographer::report`] lists every edit,
-//! protected span and diagnostic. The other rules (no-break spaces, numbers, symbols) change
-//! nothing yet.
+//! applies the rules of quotes, dashes, ranges, ellipses and no-break spaces;
+//! [`Typographer::report`] lists every edit, protected span and diagnostic. The rules of numbers
+//! and symbols change nothing yet.
 //!
 //! ```
 //! use typolish::{Language, Output, RuleSet, Typographer};
 //!
 //! static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
 //!
-//! assert_eq!(RU_UI.typeset("Файл не найден", Output::Unicode), "Файл не найден");
+//! assert_eq!(RU_UI.typeset("Файл не найден", Output::Unicode), "Файл не\u{a0}найден");
 //! assert_eq!(
 //!     RU_UI.typeset("Он сказал \"привет\" - и ушёл...", Output::Unicode),
-//!     "Он сказал «привет» — и ушёл…"
+//!     "Он сказал «привет»\u{a0}— и\u{a0}ушёл…"
 //! );
 //! ```
 

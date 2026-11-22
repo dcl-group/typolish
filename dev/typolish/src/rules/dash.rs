@@ -33,7 +33,7 @@ fn offset(i: usize, j: usize) -> Option<u8> {
 /// A fragment is a contiguous run of tokens, so it is enough that neither non-transparent neighbor
 /// belongs to it; the fragment itself is not scanned, which keeps the phase linear when a long run
 /// of transparent tokens precedes many dashes (design section 3.12).
-fn lone_dash(cx: &Cx<'_>, d: usize) -> bool {
+pub(crate) fn lone_dash(cx: &Cx<'_>, d: usize) -> bool {
     let Some(f) = cx.tok(d).map(|t| t.frag) else {
         return false;
     };
@@ -109,7 +109,7 @@ pub(crate) fn spaced_hyphen(cx: &Cx<'_>, i: usize) -> Option<Match> {
 }
 
 /// Closing punctuation on the left of a dash: `, . ! ? … )` or a closing quote.
-fn closing_punct(cx: &Cx<'_>, l: usize) -> bool {
+pub(crate) fn closing_punct(cx: &Cx<'_>, l: usize) -> bool {
     matches!(
         cx.kind(l),
         Some(Kind::Punct(',' | '!' | '?') | Kind::Dots | Kind::Close(')'))

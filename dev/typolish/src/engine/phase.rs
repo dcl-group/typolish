@@ -67,10 +67,6 @@ pub(crate) enum Edit {
     /// Set the glue mark of a `Space` token.
     Glue { at: u8, glue: Glue },
     /// Insert a `Space` token carrying glue before the token at this offset.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "the `nbsp.*` rules of stage 3 insert spaces")
-    )]
     Insert { before: u8, glue: Glue },
     /// Remove a `Space` token.
     Remove { at: u8 },

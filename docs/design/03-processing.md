@@ -500,7 +500,10 @@ This is a sketch: real code has no panicking indexing. Properties of a phase:
    tokens from the anchor on, so `dash.double-hyphen` and `dash.spaced-hyphen`, whose closed style
    removes the space before the dash, anchor at that space and take the space, the dash and the
    space after it; `dash.dialogue` and the range, ellipsis and quote rules anchor at the token they
-   replace.
+   replace. The no-break rules anchor at the first space they glue, so that the order table decides
+   between two of them that want the same space; the rules that may insert a space anchor before it:
+   `nbsp.abbreviations` at the first token of its entry (`и` of `и т.д.`), `nbsp.signs` at the sign,
+   and `nbsp.units` at an attached `%` or `‰`.
 3. **Match by class, not by product.** A rule matches a pattern whether or not it is already in its
    target form. If it is, the rule returns a `Match` with no edits and the same `consume`, and so it
    does on a typed typographic sign that it must not change (a typed dash, a typed `…`). For example

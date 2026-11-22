@@ -21,8 +21,8 @@ mod common;
 mod probe;
 
 use common::{
-    assert_changed_by, check_in, check_rows, check_unchanged, configs, interface, only, prose,
-    without_rule,
+    assert_changed_by, assert_changed_by_with_glue, check_in, check_rows, check_unchanged, configs,
+    interface, only, prose, without_rule,
 };
 use probe::{diagnostics_of, spans_of, tech};
 use typolish::{DiagnosticKind, Language, Output, Piece, Rule, RuleSet, Slot, TechKind};
@@ -236,9 +236,9 @@ fn context_names_its_rule_and_digits_wins_where_both_match() {
     assert_changed_by("both", &both, "XIX-XX вв.", CONTEXT);
     assert_changed_by("both", &both, "1941-45 гг.", CONTEXT);
     let p = prose(Language::RU_RU);
-    assert_changed_by("Prose", &p, "1941-1945 гг.", DIGITS);
-    assert_changed_by("Prose", &p, "в 2010-11 гг.", CONTEXT);
-    assert_changed_by("Prose", &p, "стр. 9-12", DIGITS);
+    assert_changed_by_with_glue("Prose", &p, "1941-1945 гг.", DIGITS);
+    assert_changed_by_with_glue("Prose", &p, "в 2010-11 гг.", CONTEXT);
+    assert_changed_by_with_glue("Prose", &p, "стр. 9-12", DIGITS);
     // The output does not depend on which rule matched.
     check_in("both", &both, ("1941-1945 гг.", "1941–1945 гг."));
 }
@@ -454,7 +454,10 @@ fn placeholders_next_to_literals_and_text() {
                 ],
                 Output::Unicode,
             );
-            assert_eq!(out.texts(), ["Дни ", "–", " дн."], "{what}");
+            // In a full set `nbsp.units` glues the Russian unit after the range (section 2.6).
+            let glued = language == Language::RU_RU && t.rules().contains(Rule::NbspUnits);
+            let unit = if glued { "\u{a0}дн." } else { " дн." };
+            assert_eq!(out.texts(), ["Дни ", "–", unit], "{what}");
             // Dates in words and digits: two `Date` slots.
             let out = t.typeset_template(
                 [
@@ -465,7 +468,10 @@ fn placeholders_next_to_literals_and_text() {
                 ],
                 Output::Unicode,
             );
-            assert_eq!(out.texts(), ["", "–", " г."], "{what}");
+            // `nbsp.dates` glues a year word after a range of `Date` slots (section 2.6).
+            let glued = language == Language::RU_RU && t.rules().contains(Rule::NbspDates);
+            let year = if glued { "\u{a0}г." } else { " г." };
+            assert_eq!(out.texts(), ["", "–", year], "{what}");
         }
     }
 }

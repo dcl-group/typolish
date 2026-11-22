@@ -105,10 +105,11 @@ Conditions that hold for every rule:
   change no space. The indentation before `dash.dialogue` may be any horizontal whitespace; between
   the dash and the word stands one pattern space.
 - A space is glued only if the next fragment starts with a letter, a digit, a slot (not `Other`), a
-  protected span, an opening quote or an opening bracket, except where a rule names the next token
-  (`nbsp.dash` before a dash, `nbsp.units` before a unit, `nbsp.short-words` before a sign of
-  `signs`). Never before a fragment that starts with `-` (`ls -la` stays intact whatever the lists
-  say), and never next to an `Other` slot, on either side (section 2.6).
+  protected span, an opening quote or the opening bracket `(` (`[` and `{` start technical notation,
+  section 3.6, so `в [х]` stays), except where a rule names the next token (`nbsp.dash` before a
+  dash, `nbsp.units` before a unit, `nbsp.short-words` before a sign of `signs`). Never before a
+  fragment that starts with `-` (`ls -la` stays intact whatever the lists say), and never next to an
+  `Other` slot, on either side (section 2.6).
 - A trigger word is a whole core, compared as section 7.1 (Lookups) says for its list. The wrapper
   does not hide it: `(в 2026)` → `(в⍽2026)`. A word followed by closing punctuation (`и,`) triggers
   nothing.
@@ -317,7 +318,8 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   `сказал А.⍽Петров`). A capital letter with a full stop that ends a sentence (a one-letter label,
   en `I`) before a capitalized word gets the same glue (`вариант А.⍽После`): the rule does not look
   for sentence ends (section 15.2, item 11), and the glue only forbids a line break there (section
-  10.8).
+  10.8). Where initials stand between two capitalized words, the forward form takes them and the
+  word before stays apart (`Иван А.⍽Петров`, `Пушкин А.⍽С.⍽Иванов`).
 - **`nbsp.dates`.** By `month_position`: `AfterDay` (ru) glues a day number 1 to 31 (or a `Number`
   slot) before a month form (`21⍽ноября`); `BeforeDay` glues a month form before a day number;
   `Both` (en) glues both orders (`November⍽21`, `21⍽November`). With year and century words (only in
@@ -357,7 +359,7 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   the language's script.
 - **`nbsp.short-length`** (Prose, ru). The same for any word of the language's script of at most
   `short_word_length` letters (`Он⍽пошёл`, `Мы⍽и⍽они`). Latin `ls`, `go`, `db` in Russian text do
-  not count.
+  not count. Only letters are counted, and a compound word is a word (section 8.2): `25-й⍽этаж`.
 - **`nbsp.particles`.** A word or a slot (not `Other`), one space, then a particle of the list (a
   whole core, section 8.2) → glue: `сказал⍽бы`, `Знаешь⍽ли`, `{name}⍽же`, `кто-то⍽же` (a compound
   word is a word, section 8.2).

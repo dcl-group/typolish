@@ -18,9 +18,13 @@ Nothing released yet. Version 0.1.0 is in development.
   `Language::COMMON`: quotes by nesting level, apostrophes and primes (`quotes.apostrophe`,
   `quotes.pairs`, `quotes.primes`, with `UnmatchedQuote`, `CrossingQuotes` and `AmbiguousQuote`),
   dashes (`dash.dialogue`, `dash.double-hyphen`, `dash.spaced-hyphen`, with `AmbiguousHyphen`),
-  ranges (`range.placeholders`, `range.digits`, `range.context`, `range.time`) and ellipses
-  (`ellipsis.dots`, `ellipsis.inner`) and the multiplication sign (`number.times`). The `symbols.*`
-  and `nbsp.*` rules and `number.minus` are accepted in rule sets but change nothing yet.
+  ranges (`range.placeholders`, `range.digits`, `range.context`, `range.time`), ellipses
+  (`ellipsis.dots`, `ellipsis.inner`), no-break spaces as glue marks (`nbsp.abbreviations`,
+  `nbsp.initials`, `nbsp.dates`, `nbsp.units` with `PercentSpacing`, `nbsp.signs`, `nbsp.phone`,
+  `nbsp.short-words`, `nbsp.short-length`, `nbsp.particles`, `nbsp.dash`, with the `narrow_glue`,
+  `add_units`, `add_short_words`, `add_particles`, `short_word_length` and `short_words_any_script`
+  settings), and the multiplication sign (`number.times`). The `symbols.*` rules and `number.minus`
+  are accepted in rule sets but change nothing yet.
 - `LanguageBuilder` builds a language at run time from an existing language or from
   `LanguageData::new` under a new tag, with one method per field of `LanguageData` (`abbreviations`
   takes the parts and the binding of each entry); `build` lowercases the word lists, sorts and

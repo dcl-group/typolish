@@ -144,7 +144,8 @@ fn typeset_into_a_buffer_with_room_does_not_allocate() {
     let prose = Typographer::new(Language::RU_RU, RuleSet::PROSE);
     for t in [&RU_UI, &prose] {
         let expected = t.typeset(CHANGED, Output::Unicode).into_owned();
-        assert!(expected.starts_with("Он сказал «привет» и") && expected.ends_with("ушёл…"));
+        // Prose also glues the two-letter `Он` (`nbsp.short-length`, section 8.7).
+        assert!(expected.contains("сказал «привет» и") && expected.ends_with("ушёл…"));
         let mut buf = String::with_capacity(1024);
         t.typeset_into(CHANGED, Output::Unicode, &mut buf);
         t.typeset_into(UNCHANGED, Output::Unicode, &mut buf);
