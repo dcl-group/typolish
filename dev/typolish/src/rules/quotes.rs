@@ -418,19 +418,8 @@ pub(crate) fn analyze<R: Recorder>(
     let mut k = 0;
     while k < qs.len() {
         let start = k;
-        let first_tok = qs.get(k).map_or(0, |q| q.tok as usize);
-        let mut last_tok = first_tok;
-        k += 1;
-        while let Some(q) = qs.get(k) {
-            if cx.next(last_tok) == Some(q.tok as usize) {
-                last_tok = q.tok as usize;
-                k += 1;
-            } else {
-                break;
-            }
-        }
-        let l = cx.prev(first_tok);
-        let r = cx.next(last_tok);
+        let (end, l, r) = series(cx, qs, start);
+        k = end;
         let role = straight_role(cx, l, r);
         let lc = class(cx, l);
         let rc = class(cx, r);
@@ -462,9 +451,16 @@ pub(crate) fn analyze<R: Recorder>(
                 _ => {}
             }
         }
-        // Sign-only pairs (section 6.3) start in this series.
-        if lc.opens() {
-            sign_only(cx, qs, start, k);
+    }
+    // Sign-only pairs (section 6.3), after every series has its role: the second quote of a pair
+    // may stand in a later series, whose role must not overwrite the pair.
+    let mut k = 0;
+    while k < qs.len() {
+        let start = k;
+        let (end, l, _) = series(cx, qs, start);
+        k = end;
+        if class(cx, l).opens() {
+            sign_only(cx, qs, start, end);
         }
     }
 
@@ -724,6 +720,23 @@ pub(crate) fn analyze<R: Recorder>(
             *m = Mark::Apostrophe;
         }
     }
+}
+
+/// The series of quotes that starts at `qs[start]`: the index after its last quote, and its L and
+/// R (section 6.3).
+fn series(cx: &Cx<'_>, qs: &[Q], start: usize) -> (usize, Option<usize>, Option<usize>) {
+    let first_tok = qs.get(start).map_or(0, |q| q.tok as usize);
+    let mut last_tok = first_tok;
+    let mut k = start + 1;
+    while let Some(q) = qs.get(k) {
+        if cx.next(last_tok) == Some(q.tok as usize) {
+            last_tok = q.tok as usize;
+            k += 1;
+        } else {
+            break;
+        }
+    }
+    (k, cx.prev(first_tok), cx.next(last_tok))
 }
 
 /// Writes the glyphs of the pair that opens at `qs[idx]` at `level`.
