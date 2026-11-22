@@ -53,25 +53,30 @@ gives the output of the whole set.
   `Токен "SGVsbG8gd29ybGQ=" и "имя".` → `Токен «SGVsbG8gd29ybGQ=» и «имя».`; en
   `‘Note: 'beta' builds of the developers' tools` → unchanged, `UnmatchedQuote` (info), no
   possessive `’` after a neutral `‘` (section 6.6); ru `a""b` → unchanged, no diagnostic; ru
-  `Поле Значение:"" и "да".` → unchanged, `UnmatchedQuote` (warning); en `"She said "no.""` →
-  `“She said ‘no.’”`; en `"a 'b c" 5'` → `“a 'b c” 5′` (Prose) and `“a 'b c” 5'` (Interface); en
-  `“Say "hi" at 5”` → `“Say ‘hi’ at 5”`; ru `Цена 27»` → unchanged, `UnmatchedQuote` (info); ru
-  `Папка "/etc/" пуста` → `Папка «/etc/» пуста`; en `Run "x->" now` → `Run “x->” now`; ru
-  `Адрес "::1"` → `Адрес «::1»`; en `She loves 'the dogs'` → unchanged, and with `Never` →
-  `She loves 'the dogs’`; en `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info); ru
-  `Он сказал:"привет" и ушёл.` → unchanged, no diagnostic (frozen fragment, section 10.8).
+  `Поле Значение:"" и "да".` → unchanged, `UnmatchedQuote` (warning); ru `Путь /etc/"" и "да".` →
+  unchanged, `UnmatchedQuote` (warning); en `"She said "no.""` → `“She said ‘no.’”`; en
+  `"a 'b c" 5'` → `“a 'b c” 5′` (Prose) and `“a 'b c” 5'` (Interface); en `“Say "hi" at 5”` →
+  `“Say ‘hi’ at 5”`; ru `Цена 27»` → unchanged, `UnmatchedQuote` (info); ru `Папка "/etc/" пуста` →
+  `Папка «/etc/» пуста`; en `Run "x->" now` → `Run “x->” now`; ru `Адрес "::1"` → `Адрес «::1»`; en
+  `She loves 'the dogs'` → unchanged, and with `Never` → `She loves 'the dogs’`; en
+  `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info); ru `Он сказал:"привет" и ушёл.` →
+  unchanged, no diagnostic (frozen fragment, section 10.8).
 - `tests/rules_dash.rs`: ru `Ждите - ...` with `dash.spaced-hyphen` alone → unchanged, no
   `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` with
   `dash.spaced-hyphen` alone → unchanged, `Cow::Borrowed` (the sets give `Moscow — the⍽capital`); en
   Closed `Moscow - the capital` in Prose and Interface → `Moscow—the⍽capital` (stage 2, without the
   `nbsp.*` rules: `Moscow—the capital`), and `Moscow—the capital` in both sets → unchanged,
-  `Cow::Borrowed`; ru `Москва – столица` with `nbsp.dash` alone → `Москва⍽– столица` (en dash kept,
-  glue from `nbsp.dash`); ru `10 – 20` with `nbsp.dash` alone and in both sets → `10⍽– 20` (a typed
-  dash between numbers gets the glue too, section 8.7); en and ru, Interface: `git checkout -- file`
-  and `Запустите -- сейчас.` → unchanged, `Cow::Borrowed` (`dash.spaced-hyphen` does not match `--`,
-  section 8.4); `RuleSet::PROSE.without(Rule::DashDoubleHyphen)` with `Запустите -- сейчас.` →
-  unchanged; `-- file` at a line start: ru (Prose) → `—⍽file` (`dash.dialogue`), en → unchanged; en
-  Closed `word  -  word` and `word\t-\tword` → unchanged, no diagnostic; en Closed `word⍽- word` →
+  `Cow::Borrowed`; en Closed `5 - x - Moscow` with `dash.spaced-hyphen` alone → `5 - x—Moscow`, one
+  `AmbiguousHyphen`, and `5 - x—Moscow` → unchanged, no `AmbiguousHyphen` (a `Joined` core is not an
+  operand, section 8.4); ru `1920x1080 — монитор` with `nbsp.dash` alone → unchanged,
+  `Cow::Borrowed` (a `Dimensions` core is not an operand); ru `Москва – столица` with `nbsp.dash`
+  alone → `Москва⍽– столица` (en dash kept, glue from `nbsp.dash`); ru `10 – 20` with `nbsp.dash`
+  alone and in both sets → `10⍽– 20` (a typed dash between numbers gets the glue too, section 8.7);
+  en and ru, Interface: `git checkout -- file` and `Запустите -- сейчас.` → unchanged,
+  `Cow::Borrowed` (`dash.spaced-hyphen` does not match `--`, section 8.4);
+  `RuleSet::PROSE.without(Rule::DashDoubleHyphen)` with `Запустите -- сейчас.` → unchanged;
+  `-- file` at a line start: ru (Prose) → `—⍽file` (`dash.dialogue`), en → unchanged; en Closed
+  `word  -  word` and `word\t-\tword` → unchanged, no diagnostic; en Closed `word⍽- word` →
   `word⍽— word`; `5 - x`, `x - 5`, `{a} - x` → unchanged, `AmbiguousHyphen`; ru `5–10 - 20` →
   unchanged, `AmbiguousHyphen`; ru `1990–2000 - годы` with `dash.spaced-hyphen` and `nbsp.dash` →
   `1990–2000⍽— годы`; ru `Глава 5 - введение` with `dash.spaced-hyphen` and `nbsp.dash` →
@@ -95,11 +100,12 @@ gives the output of the whole set.
   `10 × 5`; `010 x 5` → unchanged.
 - `tests/rules_symbols.rs` (`symbols.copyright`): `(c) 2026` → `© 2026`, `(C) 2026` and `(с) 2026`
   (Cyrillic `с`) → `© 2026`, `(c)2026` → `©2026`, `2026 (c)` → `2026 ©`, `2020-2026 (c)` →
-  `2020-2026 ©`, `Brand (r)` → `Brand ®`, `Brand(tm)` → `Brand™`; `вариант (c)`, `f(c)`, `(R) знак`,
-  `S(r) = πr²` → unchanged; `2020-2026(c)`, `2026(c)` and en `Section 1001(c) applies.` → unchanged,
-  and `report().protected()` lists `Technical(Unclassified)` for `2020-2026(c)`, `2026(c)` and
-  `1001(c)`; `Brand(Tm)` → unchanged; `symbols.arrows` and `symbols.math`: `x  ->  y`, `x\t>=\t5` →
-  unchanged, no diagnostic.
+  `2020-2026 ©`, `(c) 2020-2026` → `© 2020-2026`, `Brand (r)` → `Brand ®`, `Brand(tm)` → `Brand™`;
+  `вариант (c)`, `f(c)`, `f(c) 2026`, `(R) знак`, `S(r) = πr²` → unchanged; `2020-2026(c)`,
+  `(c)2020-2026`, `2026(c)` and en `Section 1001(c) applies.` → unchanged, and
+  `report().protected()` lists `Technical(Unclassified)` for `2020-2026(c)`, `(c)2020-2026`,
+  `2026(c)` and `1001(c)`; `Brand(Tm)` → unchanged; `symbols.arrows` and `symbols.math`: `x  ->  y`,
+  `x\t>=\t5` → unchanged, no diagnostic.
 - `tests/rules_nbsp.rs` (stage 3): ru `А.С. Пушкин` → `А.С.⍽Пушкин` (`nbsp.initials`); `и т.д...`
   with `ellipsis.dots` and `nbsp.abbreviations` → `и⍽т.⍽д…`; `и т. д…` → `и⍽т.⍽д…`; en `etc...` with
   `ellipsis.dots` and `nbsp.abbreviations` → `etc…` (`etc` with its stop is `Dictionary`);
@@ -108,7 +114,9 @@ gives the output of the whole set.
   (Prose), `5 м2x` → unchanged; en `I said no. Then I left.` → unchanged; en `See No. 5` →
   `See No.⍽5`; ru `См. рис. 5` → `См.⍽рис.⍽5`; ru Prose `стр. 9-12` → `стр.⍽9–12` and
   `в 2010-11 гг.` → `в⍽2010–11⍽гг.` (a range is an operand, section 8.2); ru `1990–2000 — годы` →
-  `1990–2000⍽— годы` in both sets; ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` → unchanged;
+  `1990–2000⍽— годы` in both sets; en `the 90's` and `of don't` with `nbsp.short-words` alone →
+  `the⍽90's` and `of⍽don't`, ru `и don't` → `и⍽don't` (a core of kind `Word` is a word whatever its
+  number of tokens, section 8.2); ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` → unchanged;
   en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both sets); ru `Привезли 5 т груза` →
   `Привезли 5⍽т груза`; en `Attached` `100⍽%` → unchanged; ru `1990–2000 г. Затем`,
   `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` →
@@ -191,9 +199,11 @@ gives the output of the whole set.
   `("[", "[[")` → `InvalidSetting`, `("{{", "}}")` together with `("{{", "]]")` → `InvalidSetting`,
   `("a1", "|")` → `InvalidSetting`; a language built by
   `LanguageBuilder::from_language(&Language::RU_RU, "ru-KZ")` prints `ru-KZ`, and
-  `"ru-KZ".parse::<Language>()` → `UnknownLanguage`; `Language::RU_RU` equals a copy built by
-  `LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")` with no changes, and their hashes are
-  equal; a copy with a different list of short words is not equal.
+  `"ru-KZ".parse::<Language>()` → `UnknownLanguage`; a language built by
+  `LanguageBuilder::from_language(&Language::RU_RU, "ru").short_words(["в"])` prints `ru`, and
+  `"ru".parse::<Language>()` → `Ok(Language::RU_RU)`, which is not equal to it; `Language::RU_RU`
+  equals a copy built by `LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")` with no
+  changes, and their hashes are equal; a copy with a different list of short words is not equal.
 - `tests/lint.rs`: every diagnostic kind of section 12.4 with a firing and a non-firing row;
   `TypographicChar` is absent inside `https://example.com/a–b`, inside backticks and in `Markup`,
   absent for `©` with `symbols.copyright` off, present for `©` in `© 2026` with `symbols.copyright`
@@ -208,7 +218,9 @@ gives the output of the whole set.
   `report().protected()` holds one `Delimited` record.
 - `tests/fluent_isolation.rs`: run-time strings with U+2068 and U+2069 around values give the same
   typesetting as without them, with the isolates unchanged, an empty value included
-  (`"\u{2068}\u{2069}"` → `«\u{2068}\u{2069}»`, as `""` → `«»`) (section 5.4).
+  (`"\u{2068}\u{2069}"` → `«\u{2068}\u{2069}»`, as `""` → `«»`), and an inch mark after an isolated
+  number (`Экран \u{2068}27\u{2069}" и "ручка"` → `Экран \u{2068}27\u{2069}″ и «ручка»`, Prose)
+  (section 5.4).
 
 ### 13.3 Negative cases
 
@@ -293,8 +305,8 @@ the no-panic test.
    `See https://example.com/docs - the guide`, `He said - "a cat"`, `5'10"`, `90's`, `'90s`, `'tis`,
    `""`, `"""`, `key=""`, `"He said 'hi'"`, `"a 'b c" 5'`, `"/etc/"`,
    `Токен "SGVsbG8gd29ybGQ=" и "имя".`, `‘Note: 'beta' builds of the developers' tools`, `¶IV`,
-   `‚Wort‘` with a `LanguageBuilder` language whose pairs are `„“` and `‚‘`, `100%` and `100 %`
-   under every `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed
+   `‚Wort‘` with a `LanguageBuilder` language whose pairs are `„“` and `‚‘`, `100%`, `100‰` and
+   `100 %` under every `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed
    `word⍽- word`, `Sign in - it's free`).
 2. **Fixed-point oracle**: `f` repeated until nothing changes (at most three times) equals `f`; a
    difference prints the reports of both passes.
@@ -458,11 +470,12 @@ unique and of the documented form, `Rule::from_str(r.id()) == Ok(r)`;
 variant exists); the composition of Prose and Interface matches section 9.2; the rustdoc of every
 builder setting names exactly the rules that list it in the settings column of section 8.1; `src/`
 contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; `src/lang/*.rs` contain no
-`fn`, `impl`, `match` or `if`; replacement tables produce no letter and no digit; built-in languages
-× built-in sets build without error. A unit test next to the prefilter checks, for every built-in
-set and language, that the trigger set equals the union of the trigger constants of the active
-rules. Checks that read `docs/design/` skip when the file is absent (the published package has no
-design).
+`fn`, `impl`, `match` or `if`; replacement tables produce no letter and no digit; every character
+the lexer reads as `Quote` (section 3.5) other than `"` and `'` is in the table of section 11.2, `′`
+and `″` in the primes row and the others in the quotes row; built-in languages × built-in sets build
+without error. A unit test next to the prefilter checks, for every built-in set and language, that
+the trigger set equals the union of the trigger constants of the active rules. Checks that read
+`docs/design/` skip when the file is absent (the published package has no design).
 
 `tests/data.rs` runs the validation of section 7.6 on every built-in table (so the order and
 duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,
