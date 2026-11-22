@@ -181,11 +181,14 @@ expectation):
 | `2026-11`                             | unchanged                    | unchanged                    |
 | `2026-11 гг.` (ru)                    | `2026-11⍽гг.`                | `2026-11⍽гг.`                |
 | `21.11.2026 г. Затем` (ru)            | `21.11.2026⍽г. Затем`        | `21.11.2026⍽г. Затем`        |
+| `21.11.26 г. Затем` (ru)              | `21.11.26⍽г. Затем`          | `21.11.26⍽г. Затем`          |
 | `5 - x`, `x - 5`                      | unchanged, `AmbiguousHyphen` | unchanged, `AmbiguousHyphen` |
 | `-- file` at a line start             | unchanged                    | ru `—⍽file`; en unchanged    |
 | `Подождите...\nДальше` (ru)           | `Подождите…\nДальше`         | `Подождите…\nДальше`         |
+| `Подождите...\tДальше` (ru)           | `Подождите…\tДальше`         | `Подождите…\tДальше`         |
 | `... слово` (ru)                      | `… слово`                    | `… слово`                    |
 | `word  -  word`, `word\t-\tword` (en) | unchanged                    | unchanged                    |
+| `word⍽- word` (en)                    | `word⍽— word`                | `word⍽— word`                |
 | `т.  е.`, `№\t5` (ru)                 | unchanged                    | unchanged                    |
 
 ### 10.8 Known limits

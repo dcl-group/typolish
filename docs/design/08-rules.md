@@ -10,35 +10,35 @@ Version 1 has 27 rules. "Languages" says where the built-in data makes a rule ac
 "all" includes `Language::COMMON`. Prose and Interface are the built-in sets (section 9). The order
 of the table is the execution order (section 4.1).
 
-| Id                   | What it does                                                                                                                                                                               | Languages                              | Settings                                                          | Prose | Interface |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------- | ----------------------------------------------------------------- | :---: | :-------: |
-| `symbols.copyright`  | `(c)` next to a year → `©`; `(r)`, `(tm)` after a capitalized word of two or more letters → `®`, `™`                                                                                       | all                                    |                                                                   |   +   |     -     |
-| `symbols.arrows`     | a lone `->`, `<-`, `<->` between spaces → `→`, `←`, `↔`                                                                                                                                    | all                                    |                                                                   |   +   |     -     |
-| `symbols.math`       | a lone `>=`, `<=`, `!=` → `≥`, `≤`, `≠`; `+-` alone or before a number → `±`                                                                                                               | all                                    |                                                                   |   +   |     -     |
-| `ellipsis.dots`      | exactly `...` at a word end or alone (spaces, line breaks and window edges are boundaries) → `…`; `?...`, `!...`, `?!...` → the language's forms                                           | all                                    |                                                                   |   +   |     +     |
-| `ellipsis.inner`     | `...` at a word start or between words (`...и тогда`, `да...нет`) → `…`                                                                                                                    | all                                    |                                                                   |   +   |     -     |
-| `dash.dialogue`      | `- ` or `-- ` at a line start before a word or an opening quote → `—` and glue after it                                                                                                    | ru                                     |                                                                   |   +   |     -     |
-| `dash.double-hyphen` | a lone `--` or `---` between operands → a dash in the language's style                                                                                                                     | ru, en                                 | `dash_style`                                                      |   +   |     -     |
-| `dash.spaced-hyphen` | a lone `-` between operands → a dash in the language's style; not when each side is a number or a single-letter word, nor between foreign words or technical fragments, nor next to a flag | ru, en                                 | `dash_style`                                                      |   +   |     +     |
-| `range.placeholders` | `{Number}-{Number}`, `{Date}-{Date}` → range dash                                                                                                                                          | all                                    |                                                                   |   +   |     +     |
-| `range.digits`       | a core `D+-D+`: exactly two numbers, no leading zeros, left smaller than right → range dash                                                                                                | all                                    |                                                                   |   +   |     -     |
-| `range.context`      | `N-N` (integers, decimals, Roman numerals, `YYYY-YY`) with a unit, year or century word after it, or a page word before it → range dash                                                    | ru, en                                 | `add_units`, `remove_units`                                       |   +   |     -     |
-| `range.time`         | `HH:MM-HH:MM` → `HH:MM–HH:MM`                                                                                                                                                              | all                                    |                                                                   |   +   |     -     |
-| `number.minus`       | a core `-D+` (with an optional decimal part) after a space, a line start or `(` → minus sign                                                                                               | all                                    | `minus_sign`                                                      |   +   |     -     |
-| `number.times`       | `1920x1080` → `1920×1080`; `10 x 5` → `10 × 5` (`x`, `X`, `х`, `Х`; first factor without a leading zero)                                                                                   | all                                    |                                                                   |   +   |     -     |
-| `quotes.apostrophe`  | `'` between letters, after a digit or a slot before a letter, elisions, `'90s`, trailing possessive (`dogs'`) → `’`                                                                        | all (elisions, decade, possessive: en) |                                                                   |   +   |     +     |
-| `quotes.pairs`       | straight quotes → pairs by level, quotes around slots; an unpaired quote stays and is reported                                                                                             | ru, en                                 | `quote_pairs`, `single_quotes`                                    |   +   |     +     |
-| `quotes.primes`      | a quote after a number that is not a closing quote → `″`, `′`; `5'10` → `5′10`                                                                                                             | all                                    |                                                                   |   +   |     -     |
-| `nbsp.abbreviations` | glue inside listed abbreviations (inserting a missing space: `т.е.` → `т.⍽е.`) and to the next word where the entry says                                                                   | ru, en                                 | `narrow_glue`                                                     |   +   |     +     |
-| `nbsp.initials`      | `А. С. Пушкин`, `Пушкин А. С.`, `J. R. R. Tolkien` → glue                                                                                                                                  | ru, en                                 | `narrow_glue`                                                     |   +   |     +     |
-| `nbsp.dates`         | day and month, month and day; a year and `г.`/`гг.`; a century and `в.`/`вв.` → glue                                                                                                       | ru, en                                 |                                                                   |   +   |     +     |
-| `nbsp.units`         | a number (literal, slot or range) and a unit → glue; percent by setting                                                                                                                    | all                                    | `add_units`, `remove_units`, `percent`                            |   +   |     +     |
-| `nbsp.signs`         | `№ 5` and `№5` → `№⍽5`; the same for `§` and `¶`                                                                                                                                           | all                                    | `narrow_glue`                                                     |   +   |     +     |
-| `nbsp.phone`         | the spaces inside a telephone number → glue                                                                                                                                                | all                                    |                                                                   |   +   |     -     |
-| `nbsp.short-words`   | glue after a word of the language's list                                                                                                                                                   | ru, en                                 | `add_short_words`, `remove_short_words`, `short_words_any_script` |   +   |     +     |
-| `nbsp.short-length`  | glue after any word of the language's script of at most N letters                                                                                                                          | ru                                     | `short_word_length`, `short_words_any_script`                     |   +   |     -     |
-| `nbsp.particles`     | glue before a particle of the language's list                                                                                                                                              | ru                                     | `add_particles`, `remove_particles`                               |   +   |     +     |
-| `nbsp.dash`          | glue before a spaced dash between operands: a produced or typed `—`, or a typed `–`                                                                                                        | ru (style `SpacedGlued`)               | `dash_style`                                                      |   +   |     +     |
+| Id                   | What it does                                                                                                                                                                                        | Languages                              | Settings                                                          | Prose | Interface |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------- | :---: | :-------: |
+| `symbols.copyright`  | `(c)` next to a year → `©`; `(r)`, `(tm)` after a capitalized word of two or more letters → `®`, `™`                                                                                                | all                                    |                                                                   |   +   |     -     |
+| `symbols.arrows`     | a lone `->`, `<-`, `<->` between spaces → `→`, `←`, `↔`                                                                                                                                             | all                                    |                                                                   |   +   |     -     |
+| `symbols.math`       | a lone `>=`, `<=`, `!=` → `≥`, `≤`, `≠`; `+-` alone or before a number → `±`                                                                                                                        | all                                    |                                                                   |   +   |     -     |
+| `ellipsis.dots`      | exactly `...` at a word end or alone (spaces, line breaks and window edges are boundaries) → `…`; `?...`, `!...`, `?!...` → the language's forms                                                    | all                                    |                                                                   |   +   |     +     |
+| `ellipsis.inner`     | `...` at a word start or between words (`...и тогда`, `да...нет`) → `…`                                                                                                                             | all                                    |                                                                   |   +   |     -     |
+| `dash.dialogue`      | `- ` or `-- ` at a line start before a word or an opening quote → `—` and glue after it                                                                                                             | ru                                     |                                                                   |   +   |     -     |
+| `dash.double-hyphen` | a lone `--` or `---` between operands → a dash in the language's style                                                                                                                              | ru, en                                 | `dash_style`                                                      |   +   |     -     |
+| `dash.spaced-hyphen` | a lone `-` between operands → a dash in the language's style; not when each side is a number, a range or a single-letter word, nor between foreign words or technical fragments, nor next to a flag | ru, en                                 | `dash_style`                                                      |   +   |     +     |
+| `range.placeholders` | `{Number}-{Number}`, `{Date}-{Date}` → range dash                                                                                                                                                   | all                                    |                                                                   |   +   |     +     |
+| `range.digits`       | a core `D+-D+`: exactly two numbers, no leading zeros, left smaller than right → range dash                                                                                                         | all                                    |                                                                   |   +   |     -     |
+| `range.context`      | `N-N` (integers, decimals, Roman numerals, `YYYY-YY`) with a unit, year or century word after it, or a page word before it → range dash                                                             | ru, en                                 | `add_units`, `remove_units`                                       |   +   |     -     |
+| `range.time`         | `HH:MM-HH:MM` → `HH:MM–HH:MM`                                                                                                                                                                       | all                                    |                                                                   |   +   |     -     |
+| `number.minus`       | a core `-D+` (with an optional decimal part) after a space, a line start or `(` → minus sign                                                                                                        | all                                    | `minus_sign`                                                      |   +   |     -     |
+| `number.times`       | `1920x1080` → `1920×1080`; `10 x 5` → `10 × 5` (`x`, `X`, `х`, `Х`; first factor without a leading zero)                                                                                            | all                                    |                                                                   |   +   |     -     |
+| `quotes.apostrophe`  | `'` between letters, after a digit or a slot before a letter, elisions, `'90s`, trailing possessive (`dogs'`) → `’`                                                                                 | all (elisions, decade, possessive: en) |                                                                   |   +   |     +     |
+| `quotes.pairs`       | straight quotes → pairs by level, quotes around slots; an unpaired quote stays and is reported                                                                                                      | ru, en                                 | `quote_pairs`, `single_quotes`                                    |   +   |     +     |
+| `quotes.primes`      | a quote after a number that is not a closing quote → `″`, `′`; `5'10` → `5′10`                                                                                                                      | all                                    |                                                                   |   +   |     -     |
+| `nbsp.abbreviations` | glue inside listed abbreviations (inserting a missing space: `т.е.` → `т.⍽е.`) and to the next word where the entry says                                                                            | ru, en                                 | `narrow_glue`                                                     |   +   |     +     |
+| `nbsp.initials`      | `А. С. Пушкин`, `Пушкин А. С.`, `J. R. R. Tolkien` → glue                                                                                                                                           | ru, en                                 | `narrow_glue`                                                     |   +   |     +     |
+| `nbsp.dates`         | day and month, month and day; a year and `г.`/`гг.`; a century and `в.`/`вв.` → glue                                                                                                                | ru, en                                 |                                                                   |   +   |     +     |
+| `nbsp.units`         | a number (literal, slot or range) and a unit → glue; percent by setting                                                                                                                             | all                                    | `add_units`, `remove_units`, `percent`                            |   +   |     +     |
+| `nbsp.signs`         | `№ 5` and `№5` → `№⍽5`; the same for `§` and `¶`                                                                                                                                                    | all                                    | `narrow_glue`                                                     |   +   |     +     |
+| `nbsp.phone`         | the spaces inside a telephone number → glue                                                                                                                                                         | all                                    |                                                                   |   +   |     -     |
+| `nbsp.short-words`   | glue after a word of the language's list                                                                                                                                                            | ru, en                                 | `add_short_words`, `remove_short_words`, `short_words_any_script` |   +   |     +     |
+| `nbsp.short-length`  | glue after any word of the language's script of at most N letters                                                                                                                                   | ru                                     | `short_word_length`, `short_words_any_script`                     |   +   |     -     |
+| `nbsp.particles`     | glue before a particle of the language's list                                                                                                                                                       | ru                                     | `add_particles`, `remove_particles`                               |   +   |     +     |
+| `nbsp.dash`          | glue before a spaced dash between operands: a produced or typed `—`, or a typed `–`                                                                                                                 | ru (style `SpacedGlued`)               | `dash_style`                                                      |   +   |     +     |
 
 Prose: 27 rules (every rule of version 1). Interface: 13 rules.
 
@@ -79,12 +79,15 @@ a city, not a year: `Школа №⍽5 г.⍽Москвы`.
   `Space` are not pattern spaces. Wherever a pattern says "a space", "one space", "single spaces" or
   "one space away" (`dash.*`, `symbols.*`, `number.minus`, `nbsp.*`), it needs a pattern space; at
   any other `Space` token the pattern does not match, so the rule does not fire and reports no
-  diagnostic. The indentation before `dash.dialogue` may be any horizontal whitespace; between the
-  dash and the word stands one pattern space.
+  diagnostic. The boundaries of `ellipsis.*` (section 8.6) are not patterns of this kind: there a
+  space is any `Space` token, a tab or a run of spaces included, since those rules change no space.
+  The indentation before `dash.dialogue` may be any horizontal whitespace; between the dash and the
+  word stands one pattern space.
 - A space is glued only if the next fragment starts with a letter, a digit, a slot (not `Other`), a
   protected span, an opening quote or an opening bracket, except where a rule names the next token
-  (`nbsp.dash` before a dash, `nbsp.units` before a unit). Never before a fragment that starts with
-  `-` (`ls -la` stays intact whatever the lists say).
+  (`nbsp.dash` before a dash, `nbsp.units` before a unit, `nbsp.short-words` before a sign of
+  `signs`). Never before a fragment that starts with `-` (`ls -la` stays intact whatever the lists
+  say).
 - A trigger word is a whole core, compared as section 7.1 (Lookups) says for its list. The wrapper
   does not hide it: `(в 2026)` → `(в⍽2026)`. A word followed by closing punctuation (`и,`) triggers
   nothing.
@@ -112,10 +115,10 @@ empty edit), with one space on each side (not a line break), an operand or closi
 (`, . ! ? … ) »` or a closing quote) on the left, and an operand, an opening quote or an opening
 bracket on the right → em dash. It does not fire, and reports `AmbiguousHyphen`, when:
 
-- each side is a number or a single-letter word, in any mix (`10 - 20`, `5 - 3 = 2`, `{a} - {b}`,
-  `a - b`, `x - y`, `5 - x`, `x - 5`, `{a} - x`): a range, a minus, a formula or a list item, which
-  the rule cannot tell apart; a `Number` slot counts as a number, a `Word` slot is not a
-  single-letter word;
+- each side is a number, a range or a single-letter word, in any mix (`10 - 20`, `5 - 3 = 2`,
+  `{a} - {b}`, `a - b`, `x - y`, `5 - x`, `x - 5`, `{a} - x`, `5–10 - 20`): a range, a minus, a
+  formula or a list item, which the rule cannot tell apart; a `Number` slot counts as a number, a
+  `Word` slot is not a single-letter word;
 - a flag or another fragment that starts with `-` stands on either side (`diff -u - file.txt`,
   `tar -cf - -C dir`, `Use - --force`): the `-` is most likely an argument (standard input, the end
   of options);
@@ -127,20 +130,22 @@ bracket on the right → em dash. It does not fire, and reports `AmbiguousHyphen
 
 Spacing by `DashStyle`: `SpacedGlued` (ru) and `Spaced` keep the author's spaces (`nbsp.dash` glues
 the one before the dash under `SpacedGlued`). `Closed` (en) removes both spaces (`word—word`) only
-when each of them is a single U+0020 and only between two plain words; with a glued space, a tab or
-a run of spaces on either side it keeps the author's spaces, as `Spaced` does. Two words are plain
-when the cores on both sides are words of letters (kind `Word` or `Joined`, or a one-word
-`Dictionary` core, section 8.2; letters with their marks and inner apostrophes only, no digit, sign
-or legal mark), and neither has a wrapper on the side facing the dash. Next to a number, a slot, a
-protected span, a technical fragment, or a wrapper on the inner side (a closing quote or bracket,
-`, . ! ? …` on the left, an opening quote or bracket on the right), `Closed` keeps the author's
-spaces, as `Spaced` does: `See https://example.com/docs - the guide` →
-`See https://example.com/docs — the guide`, `He said - "a cat"` → `He said — “a cat”`,
-`Hello, - he said` → `Hello, — he said`. So a merge always gives a `Joined` fragment (invariant I2),
-a URL or a flag never swallows the next word (autolinkers that cut a link at the next space would
-take `—the` into it), and `to_plain` can restore the spaces. Typed `—` and `–` are never changed,
-and no space around them is removed. On such a typed dash the rule matches with an empty edit and
-the same `consume` when its context holds; it raises `AmbiguousHyphen` only on a plain `-`.
+when each of them is a single U+0020 and only between two plain words; with a glued space on either
+side the rule fires and `Closed` keeps the author's spaces, as `Spaced` does (`word⍽- word` →
+`word⍽— word`); next to a tab or a run of spaces the rule does not fire (a pattern space, section
+8.2), and the hyphen stays. Two words are plain when the cores on both sides are words of letters
+(kind `Word` or `Joined`, or a one-word `Dictionary` core, section 8.2; letters with their marks and
+inner apostrophes only, no digit, sign or legal mark), and neither has a wrapper on the side facing
+the dash. Next to a number, a slot, a protected span, a technical fragment, or a wrapper on the
+inner side (a closing quote or bracket, `, . ! ? …` on the left, an opening quote or bracket on the
+right), `Closed` keeps the author's spaces, as `Spaced` does:
+`See https://example.com/docs - the guide` → `See https://example.com/docs — the guide`,
+`He said - "a cat"` → `He said — “a cat”`, `Hello, - he said` → `Hello, — he said`. So a merge
+always gives a `Joined` fragment (invariant I2), a URL or a flag never swallows the next word
+(autolinkers that cut a link at the next space would take `—the` into it), and `to_plain` can
+restore the spaces. Typed `—` and `–` are never changed, and no space around them is removed. On
+such a typed dash the rule matches with an empty edit and the same `consume` when its context holds;
+it raises `AmbiguousHyphen` only on a plain `-`.
 
 **`dash.double-hyphen`** (Prose). The same for a lone `--` or `---`, with the same refusals:
 `npm test -- --watch` stays. A typed `—` or `–` is matched by `dash.spaced-hyphen` (with an empty
@@ -163,23 +168,23 @@ comes from the classification of the input of the pass, in which `the` is still 
 (section 3.6); an already closed `Moscow—the capital` gets none, because there `the` is inside a
 `Joined` fragment and triggers nothing (section 4.3, I2).
 
-| Language | Input                          | Output                       | Mechanism                               |
-| -------- | ------------------------------ | ---------------------------- | --------------------------------------- |
-| ru       | `Москва - столица`             | `Москва⍽— столица`           | `dash.spaced-hyphen`, `nbsp.dash`       |
-| en       | `Moscow - the capital`         | `Moscow—the capital`         | style `Closed`                          |
-| en       | `Open host:8080 - now`         | `Open host:8080 — now`       | spaces kept by technical text           |
-| en       | `He said - "a cat"`            | `He said — “a cat”`          | spaces kept by a quote                  |
-| ru       | `Привет, - сказал он.`         | `Привет,⍽— сказал он.`       | closing punctuation allowed on the left |
-| ru       | `- Привет!\n- Пока.` (Prose)   | `—⍽Привет!\n—⍽Пока.`         | `dash.dialogue`                         |
-| ru       | `-- file` (Prose)              | `—⍽file`                     | `dash.dialogue`                         |
-| ru       | `Запустите -- сейчас.` (Prose) | `Запустите⍽— сейчас.`        | `dash.double-hyphen`                    |
-| ru       | `кто-то, tls-server`           | unchanged                    | no rule touches an inner hyphen         |
-| ru       | `10 - 20 штук`, `5 - 3 = 2`    | unchanged, `AmbiguousHyphen` | numbers on both sides                   |
-| en       | `x - 5`, `5 - x`               | unchanged, `AmbiguousHyphen` | a number and a single letter            |
-| ru       | `Выполните cat - file`         | unchanged, `AmbiguousHyphen` | foreign words on both sides             |
-| ru       | `Выполните diff -u - file.txt` | unchanged, `AmbiguousHyphen` | a flag next to the `-`                  |
-| en       | `tar -cf - -C dir`             | unchanged, `AmbiguousHyphen` | flags                                   |
-| ru       | `npm test -- --watch` (Prose)  | unchanged, `AmbiguousHyphen` | a flag next to the `--`                 |
+| Language | Input                          | Output                       | Mechanism                                            |
+| -------- | ------------------------------ | ---------------------------- | ---------------------------------------------------- |
+| ru       | `Москва - столица`             | `Москва⍽— столица`           | `dash.spaced-hyphen`, `nbsp.dash`                    |
+| en       | `Moscow - the capital`         | `Moscow—the capital`         | style `Closed`                                       |
+| en       | `Open host:8080 - now`         | `Open host:8080 — now`       | spaces kept by technical text                        |
+| en       | `He said - "a cat"`            | `He said — “a cat”`          | spaces kept by a quote                               |
+| ru       | `Привет, - сказал он.`         | `Привет,⍽— сказал он.`       | closing punctuation allowed on the left; `nbsp.dash` |
+| ru       | `- Привет!\n- Пока.` (Prose)   | `—⍽Привет!\n—⍽Пока.`         | `dash.dialogue`                                      |
+| ru       | `-- file` (Prose)              | `—⍽file`                     | `dash.dialogue`                                      |
+| ru       | `Запустите -- сейчас.` (Prose) | `Запустите⍽— сейчас.`        | `dash.double-hyphen`, `nbsp.dash`                    |
+| ru       | `кто-то, tls-server`           | unchanged                    | no rule touches an inner hyphen                      |
+| ru       | `10 - 20 штук`, `5 - 3 = 2`    | unchanged, `AmbiguousHyphen` | numbers on both sides                                |
+| en       | `x - 5`, `5 - x`               | unchanged, `AmbiguousHyphen` | a number and a single letter                         |
+| ru       | `Выполните cat - file`         | unchanged, `AmbiguousHyphen` | foreign words on both sides                          |
+| ru       | `Выполните diff -u - file.txt` | unchanged, `AmbiguousHyphen` | a flag next to the `-`                               |
+| en       | `tar -cf - -C dir`             | unchanged, `AmbiguousHyphen` | flags                                                |
+| ru       | `npm test -- --watch` (Prose)  | unchanged, `AmbiguousHyphen` | a flag next to the `--`                              |
 
 The inner hyphen of a compound word or identifier (`tls-server`, `кто-то`, `mother-in-law`, `db-01`)
 is changed by no rule: dash rules need spaces on both sides, range rules need numbers on both sides,
@@ -230,9 +235,11 @@ The rule for port ranges such as `8000-8100` is section 10.6.
   (`...и тогда`) and between two words without spaces (`да...нет`) → `…`. Not in Interface:
   `...args` and `a...b` occur in code.
 
-Examples: `Подождите...` → `Подождите…`; `... и тогда` → `… и тогда`; ru `Что?...` → `Что?..`; en
-`What?...` → `What?…`; `Что?…` unchanged. `и т.д...` → `и т.д…`: the run keeps the full stop of the
-abbreviation, and `nbsp.abbreviations` still reads it (section 8.7).
+Examples: `Подождите...` → `Подождите…`; `Подождите...\tДальше` → `Подождите…\tДальше` and
+`Подождите...  Дальше` → `Подождите…  Дальше` (any `Space` token is a boundary, section 8.2);
+`... и тогда` → `… и тогда`; ru `Что?...` → `Что?..`; en `What?...` → `What?…`; `Что?…` unchanged.
+`и т.д...` → `и т.д…`: the run keeps the full stop of the abbreviation, and `nbsp.abbreviations`
+still reads it (section 8.7).
 
 ### 8.7 No-break spaces
 
@@ -244,9 +251,9 @@ abbreviation, and `nbsp.abbreviations` still reads it (section 8.7).
   `и⍽т.⍽д…`. Entries with `Next` glue the space to the following operand (`см.⍽рис.⍽5`,
   `ул.⍽Ленина`, `Mr.⍽Smith`); `NextCapitalized` only before a capitalized word (`г.⍽Москва`). A
   `Next` or `NextCapitalized` entry directly after a number, a range, a `YearMonth` core, a date
-  core `D.M.YYYY` (check 13 of section 3.6) or a `Number` or `Date` slot does not bind forward: it
-  is a unit or a year with a sentence full stop (`5 ч. Потом`, `5–10 ч. Потом`, `2026 г. Затем`,
-  `1990–2000 г. Затем`, `21.11.2026 г. Затем`, `{d} г. Затем`). A label number or label range and a
+  core (section 8.2) or a `Number` or `Date` slot does not bind forward: it is a unit or a year with
+  a sentence full stop (`5 ч. Потом`, `5–10 ч. Потом`, `2026 г. Затем`, `1990–2000 г. Затем`,
+  `21.11.2026 г. Затем`, `21.11.26 г. Затем`, `{d} г. Затем`). A label number or label range and a
   percentage do not count here (section 8.2). A label number is not a number here:
   `Школа №5 г. Москвы` → `Школа №⍽5 г.⍽Москвы`, `§5 ч. 2` → `§⍽5 ч.⍽2`. With `narrow_glue` for
   abbreviations, `Narrow` goes only to the spaces between the parts of an entry (`т.⎵д.`); the space
@@ -266,11 +273,11 @@ abbreviation, and `nbsp.abbreviations` still reads it (section 8.7).
 - **`nbsp.dates`.** By `month_position`: `AfterDay` (ru) glues a day number 1 to 31 (or a `Number`
   slot) before a month form (`21⍽ноября`); `BeforeDay` glues a month form before a day number;
   `Both` (en) glues both orders (`November⍽21`, `21⍽November`). With year and century words (only in
-  languages that have them): a number, a range, a `YearMonth` core, a date core `D.M.YYYY` (check 13
-  of section 3.6; the core stays frozen, only the space after it is glued) or a `Number`/`Date` slot
-  before a year word ending in `.` (`2026⍽г.`, `1990–2000⍽гг.`, `2010-11⍽гг.`, `21.11.2026⍽г.`); a
-  Roman numeral, a number or a range of them before a century word ending in `.` (`XIX⍽в.`,
-  `XIX–XX⍽вв.`). Labels and percentages are not numbers here (section 8.2).
+  languages that have them): a number, a range, a `YearMonth` core, a date core (section 8.2; the
+  core stays frozen, only the space after it is glued) or a `Number`/`Date` slot before a year word
+  ending in `.` (`2026⍽г.`, `1990–2000⍽гг.`, `2010-11⍽гг.`, `21.11.2026⍽г.`, `21.11.26⍽г.`); a Roman
+  numeral, a number or a range of them before a century word ending in `.` (`XIX⍽в.`, `XIX–XX⍽вв.`).
+  Labels and percentages are not numbers here (section 8.2).
 - **`nbsp.units`.** A number (not a label or a percentage), a `Number` slot or a range, one space,
   then a unit of the list (longest match, case-sensitive, followed by a non-letter and non-digit) →
   glue: `5⍽МБ`, `30⍽с.`, `12⍽дн.`, `5–10⍽кг`, `{n}⍽дн.`, `5⍽ГБ/с`, `60⍽км/ч`. An ambiguous unit

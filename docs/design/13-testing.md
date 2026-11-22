@@ -68,8 +68,10 @@ gives the output of the whole set.
   and `Запустите -- сейчас.` → unchanged, `Cow::Borrowed` (`dash.spaced-hyphen` does not match `--`,
   section 8.4); `RuleSet::PROSE.without(Rule::DashDoubleHyphen)` with `Запустите -- сейчас.` →
   unchanged; `-- file` at a line start: ru (Prose) → `—⍽file` (`dash.dialogue`), en → unchanged; en
-  Closed `word  -  word` → unchanged, no diagnostic; `5 - x`, `x - 5`, `{a} - x` → unchanged,
-  `AmbiguousHyphen`; ru `Глава 5 - введение` with `dash.spaced-hyphen` and `nbsp.dash` →
+  Closed `word  -  word` and `word\t-\tword` → unchanged, no diagnostic; en Closed `word⍽- word` →
+  `word⍽— word`; `5 - x`, `x - 5`, `{a} - x` → unchanged, `AmbiguousHyphen`; ru `5–10 - 20` →
+  unchanged, `AmbiguousHyphen`; ru `1990–2000 - годы` with `dash.spaced-hyphen` and `nbsp.dash` →
+  `1990–2000⍽— годы`; ru `Глава 5 - введение` with `dash.spaced-hyphen` and `nbsp.dash` →
   `Глава 5⍽— введение` (`dash.spaced-hyphen` alone gives `Глава 5 — введение`); en
   `He said - " a cat"` in Prose and Interface → `He said - " a⍽cat"` (no dash: a quote without a
   role is not an opening quote, section 6.3; `AmbiguousQuote` and `UnmatchedQuote`, no
@@ -81,9 +83,10 @@ gives the output of the whole set.
 - `tests/rules_ellipsis.rs`: `Ждите - ...` with `ellipsis.dots` alone → `Ждите - …`; `...` alone →
   `…`; in both `report().protected()` is empty. `и т.д...` → `и т.д…`. Boundaries:
   `Подождите...\nДальше` → `Подождите…\nДальше`, `... слово` → `… слово`, `Слово ...` → `Слово …`,
-  ru `Что?...\nДа` → `Что?..\nДа`; ru `Подождите..." дальше` in Prose and Interface →
-  `Подождите…" дальше` (the quote is closing by its role, section 6.3, so `ellipsis.dots` fires;
-  `UnmatchedQuote`).
+  `Подождите...\tДальше` → `Подождите…\tДальше`, `Подождите...  Дальше` → `Подождите…  Дальше`,
+  `Слово\t...и тогда` (Prose) → `Слово\t…и тогда`, ru `Что?...\nДа` → `Что?..\nДа`; ru
+  `Подождите..." дальше` in Prose and Interface → `Подождите…" дальше` (the quote is closing by its
+  role, section 6.3, so `ellipsis.dots` fires; `UnmatchedQuote`).
 - `tests/rules_number.rs` (`number.times`): `10 x 5` with `add_units(["x"])` → `10 × 5`; `a × b` →
   unchanged, `report` lists `Technical(Unclassified)` for `×`; `10 X 5` → `10 × 5`; `10 Х 5` →
   `10 × 5`; `010 x 5` → unchanged.
@@ -99,15 +102,19 @@ gives the output of the whole set.
   `nbsp.signs`: `¶IV` → `¶⍽IV`, not borrowed; `¶XIX` → `¶⍽XIX`; `¶VV` → unchanged; ru `и т. д.` with
   `narrow_glue` for abbreviations → `и\u{A0}т.\u{202F}д.`; ru `5 м2` → `5⍽м2`, `5–10 м2` → `5–10⍽м2`
   (Prose), `5 м2x` → unchanged; en `I said no. Then I left.` → unchanged; en `See No. 5` →
-  `See No.⍽5`; ru `См. рис. 5` → `См.⍽рис.⍽5`; ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` →
-  unchanged; en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both sets); ru `Привезли 5 т груза` →
+  `See No.⍽5`; ru `См. рис. 5` → `См.⍽рис.⍽5`; ru Prose `стр. 9-12` → `стр.⍽9–12` and
+  `в 2010-11 гг.` → `в⍽2010–11⍽гг.` (a range is an operand, section 8.2); ru `1990–2000 — годы` →
+  `1990–2000⍽— годы` in both sets; ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` → unchanged;
+  en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both sets); ru `Привезли 5 т груза` →
   `Привезли 5⍽т груза`; en `Attached` `100⍽%` → unchanged; ru `1990–2000 г. Затем`,
   `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` →
   `г.⍽Москвы` (a label range); ru `21.11.2026 г.` → `21.11.2026⍽г.`; ru
   `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and `report().protected()` lists
-  `Technical(Version)` for the date; ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`,
-  `и ¶ 5` → `и⍽¶⍽5`; en `J. R. R. R. Tolkien` → unchanged (Interface); `nbsp.initials`: ru
-  `Об этом сказал А. Петров.` → `Об этом сказал А.⍽Петров.`, ru `Выберите вариант А. После этого` →
+  `Technical(Version)` for the date; ru `21.11.26 г.` → `21.11.26⍽г.`; ru
+  `Договор от 21.11.26 г. Затем` → no glue after `г.`; ru `0.2.27 г.` → unchanged (not a date core);
+  ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en
+  `J. R. R. R. Tolkien` → unchanged (Interface); `nbsp.initials`: ru `Об этом сказал А. Петров.` →
+  `Об этом сказал А.⍽Петров.`, ru `Выберите вариант А. После этого` →
   `Выберите вариант А.⍽После этого`, en `I chose plan B. Then I left.` →
   `I chose plan B.⍽Then I left.`, en `Neither did I. Then we left.` → `Neither did I.⍽Then we left.`
   (a single initial is glued after any word, section 10.8); ru `Выберите вариант Д. После этого` and
