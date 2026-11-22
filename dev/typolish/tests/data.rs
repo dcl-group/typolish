@@ -3,8 +3,8 @@
 //! `LanguageData` has no accessors except `tag`, so the stored values are read from its derived
 //! `Debug` output (the field names are those of section 7.1). The expected lists below were
 //! generated from the tables of the design by a script kept outside the repository. The check of
-//! the CLDR values against an extract of cldr-json and the validation rows of section 7.6 join in
-//! stage 3 (section 15.4).
+//! the CLDR values against an extract of cldr-json (`tests/common/cldr49.rs`) and the validation
+//! rows of section 7.6 joined in stage 3 (section 15.4); they stand at the end of the file.
 
 #![allow(
     clippy::unwrap_used,
@@ -18,9 +18,12 @@
 
 use std::collections::BTreeMap;
 
+#[path = "common/cldr49.rs"]
+mod cldr49;
+
 use typolish::{
-    Abbreviation, Bind, DashData, DashStyle, EllipsisForms, Language, LanguageData, MonthPosition,
-    NumberData, QuotePairs, Script,
+    Abbreviation, Bind, DashData, DashStyle, EllipsisForms, Error, Language, LanguageBuilder,
+    LanguageData, MonthPosition, NumberData, Output, QuotePairs, RuleSet, Script, Typographer,
 };
 
 const RU_UNITS: &[&str] = &[
@@ -725,4 +728,704 @@ fn built_in_tables_pass_validation() {
     assert_eq!(Language::from_data(&RU), Ok(Language::RU_RU));
     assert_eq!(Language::from_data(&EN), Ok(Language::EN_US));
     assert_eq!(Language::from_data(&COMMON), Ok(Language::COMMON));
+}
+
+// ---------------------------------------------------------------------------------------------
+// The CLDR 49 extract (section 13.9): quote pairs, decimal, group, minimum grouping digits,
+// percent pattern, range pattern, `nan`, `infinity`, month names and the units marked "CLDR 49".
+// ---------------------------------------------------------------------------------------------
+
+/// The built-in tables with the CLDR locale they take their values from (`en-US` inherits `en`,
+/// section 7.3).
+fn cldr_pairs() -> [(&'static LanguageData, &'static cldr49::Locale); 2] {
+    [
+        (&LanguageData::RU_RU, &cldr49::RU),
+        (&LanguageData::EN_US, &cldr49::EN),
+    ]
+}
+
+fn first_char(text: &str) -> char {
+    let mut it = text.chars();
+    let c = it.next().unwrap();
+    assert!(it.next().is_none(), "{text:?} is one character");
+    c
+}
+
+#[test]
+fn quote_pairs_are_the_cldr_delimiters() {
+    for (data, cldr) in cldr_pairs() {
+        let map = fields(data);
+        let want = cldr.delimiters.map(first_char);
+        assert_eq!(chars_of(&map["quotes"]), want, "{}", data.tag());
+    }
+}
+
+#[test]
+fn numbers_are_the_cldr_symbols() {
+    for (data, cldr) in cldr_pairs() {
+        let tag = data.tag();
+        let n = numbers(&fields(data));
+        let ch = |k: &str| chars_of(std::slice::from_ref(&n[k]))[0];
+        let st = |k: &str| strings(std::slice::from_ref(&n[k]))[0].clone();
+        assert_eq!(ch("decimal"), first_char(cldr.decimal), "{tag} decimal");
+        assert_eq!(ch("group"), first_char(cldr.group), "{tag} group");
+        assert_eq!(
+            n["min_grouping_digits"],
+            cldr.minimum_grouping_digits.to_string(),
+            "{tag} minimumGroupingDigits"
+        );
+        assert_eq!(st("nan"), cldr.nan, "{tag} nan");
+        assert_eq!(st("infinity"), cldr.infinity, "{tag} infinity");
+        // The percent pattern `#,##0 %` (a space, U+00A0 in ru) or `#,##0%`.
+        let after_zero = cldr.percent_pattern.rsplit_once('0').unwrap().1;
+        let spaced = after_zero.starts_with(char::is_whitespace);
+        assert_eq!(
+            n["percent_spaced"],
+            spaced.to_string(),
+            "{tag} percentFormat"
+        );
+        // The range pattern `{0}–{1}`.
+        let middle = cldr
+            .range_pattern
+            .strip_prefix("{0}")
+            .and_then(|r| r.strip_suffix("{1}"))
+            .unwrap();
+        assert_eq!(ch("range_dash"), first_char(middle.trim()), "{tag} range");
+        assert_eq!(
+            n["range_spaced"],
+            (middle != middle.trim()).to_string(),
+            "{tag} range spacing"
+        );
+    }
+}
+
+#[test]
+fn the_minus_sign_is_the_documented_deviation_from_cldr() {
+    // Section 7.5: CLDR 49 gives U+002D, typolish U+2212 (the task).
+    for (data, cldr) in cldr_pairs() {
+        assert_eq!(cldr.minus_sign, "-", "{}", data.tag());
+        let n = numbers(&fields(data));
+        assert_eq!(chars_of(std::slice::from_ref(&n["minus"]))[0], '\u{2212}');
+    }
+}
+
+fn cldr_months(cldr: &cldr49::Locale) -> Vec<String> {
+    let mut all: Vec<String> = cldr
+        .months_wide
+        .iter()
+        .chain(cldr.months_abbreviated.iter())
+        .map(|s| (*s).to_owned())
+        .collect();
+    all.sort();
+    all.dedup();
+    all
+}
+
+#[test]
+fn months_are_the_union_of_the_cldr_wide_and_abbreviated_forms() {
+    // ru: exactly the union, without duplicates (`мая` once).
+    let ru = list(&fields(&LanguageData::RU_RU), "months");
+    assert_eq!(ru, cldr_months(&cldr49::RU));
+    assert_eq!(ru.len(), 23);
+    // en: the union plus the dotted forms of the project (section 7.5).
+    let en = list(&fields(&LanguageData::EN_US), "months");
+    let union = cldr_months(&cldr49::EN);
+    assert_eq!(union.len(), 23);
+    for month in &union {
+        assert!(en.contains(month), "{month}");
+    }
+    let extra: Vec<&String> = en.iter().filter(|m| !union.contains(m)).collect();
+    assert_eq!(
+        extra,
+        [
+            "Apr.", "Aug.", "Dec.", "Feb.", "Jan.", "Mar.", "Nov.", "Oct.", "Sep.", "Sept."
+        ]
+    );
+}
+
+/// The symbol of a CLDR unit pattern: `{0}` and the spaces around it removed.
+fn unit_symbol(pattern: &str) -> String {
+    pattern
+        .replace("{0}", "")
+        .trim_matches([' ', '\u{a0}', '\u{202f}'])
+        .to_owned()
+}
+
+/// The units that the tables of sections 7.2 and 7.3 mark "project".
+const RU_PROJECT_UNITS: &[&str] = &[
+    "КБ",
+    "КиБ",
+    "МиБ",
+    "ГиБ",
+    "ТиБ",
+    "бит",
+    "Кбит",
+    "Гбит",
+    "Кбит/с",
+    "Мбит/с",
+    "Гбит/с",
+    "КБ/с",
+    "МБ/с",
+    "ГБ/с",
+    "сек.",
+    "мин.",
+    "сут.",
+    "дм",
+    "ц",
+    "°",
+    "°С",
+    "₽",
+    "руб.",
+    "коп.",
+    "$",
+    "€",
+    "тыс.",
+    "млн",
+    "млрд",
+    "трлн",
+    "шт.",
+    "экз.",
+    "чел.",
+    "об/мин",
+    "px",
+    "dpi",
+    "м2",
+    "м3",
+    "км2",
+    "см2",
+    "см3",
+    "мм2",
+];
+const EN_PROJECT_UNITS: &[&str] = &[
+    "KB", "KiB", "MiB", "GiB", "TiB", "bit", "kbit", "Mbit", "Gbit", "kbps", "Mbps", "Gbps",
+    "MB/s", "GB/s", "µs", "µm", "mph", "rpm", "ppi", "pt", "°",
+];
+
+fn sorted(mut items: Vec<String>) -> Vec<String> {
+    items.sort();
+    items.dedup();
+    items
+}
+
+#[test]
+fn units_marked_cldr_are_the_short_symbols_of_the_extract() {
+    for (data, cldr, project) in [
+        (&LanguageData::RU_RU, &cldr49::RU, RU_PROJECT_UNITS),
+        (&LanguageData::EN_US, &cldr49::EN, EN_PROJECT_UNITS),
+    ] {
+        let stored = list(&fields(data), "units");
+        let derived: Vec<String> = cldr
+            .units_short
+            .iter()
+            .chain(cldr.units_narrow.iter())
+            .map(|(_, pattern)| unit_symbol(pattern))
+            .collect();
+        // Every CLDR symbol is in the table, and the table holds nothing but the CLDR symbols and
+        // the project ones.
+        for symbol in &derived {
+            assert!(stored.contains(symbol), "{}: {symbol}", data.tag());
+        }
+        let expected = sorted(
+            derived
+                .iter()
+                .cloned()
+                .chain(project.iter().map(|s| (*s).to_owned()))
+                .collect(),
+        );
+        assert_eq!(stored, expected, "{}", data.tag());
+    }
+    // The counts of the design tables: ru 53 CLDR symbols, en 49 short and 3 narrow.
+    assert_eq!(cldr49::RU.units_short.len(), 53);
+    assert_eq!(cldr49::EN.units_short.len(), 49);
+    assert_eq!(cldr49::EN.units_narrow.len(), 3);
+}
+
+#[test]
+fn the_cldr_units_spell_the_symbols_of_the_design() {
+    // A few symbols with their separators: CLDR writes `{0} МБ` with U+0020 in ru (section 7.5,
+    // glue is the task's, not CLDR's) and `{0}°C` or `{0} °C` as the extract says.
+    let ru: Vec<(&str, String)> = cldr49::RU
+        .units_short
+        .iter()
+        .map(|(id, p)| (*id, unit_symbol(p)))
+        .collect();
+    for (id, symbol) in [
+        ("digital-megabyte", "МБ"),
+        ("duration-day", "дн."),
+        ("energy-kilowatt-hour", "кВт⋅ч"),
+        ("speed-kilometer-per-hour", "км/ч"),
+        ("graphics-dot-per-inch", "тчк/дюйм"),
+    ] {
+        assert!(ru.contains(&(id, symbol.to_owned())), "{id}");
+    }
+    let en: Vec<(&str, String)> = cldr49::EN
+        .units_short
+        .iter()
+        .chain(cldr49::EN.units_narrow.iter())
+        .map(|(id, p)| (*id, unit_symbol(p)))
+        .collect();
+    for (id, symbol) in [
+        ("digital-megabyte", "MB"),
+        ("duration-second", "sec"),
+        ("duration-second", "s"),
+        ("length-inch", "in"),
+        ("energy-kilowatt-hour", "kWh"),
+        ("digital-byte", "B"),
+    ] {
+        assert!(en.contains(&(id, symbol.to_owned())), "{id} {symbol}");
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Validation (section 7.6): `Language::from_data`
+// ---------------------------------------------------------------------------------------------
+
+/// A table that lives for the whole test run.
+fn leak(data: LanguageData) -> &'static LanguageData {
+    Box::leak(Box::new(data))
+}
+
+/// A valid table with a neutral tag: everything empty, the values of COMMON.
+fn base() -> LanguageData {
+    LanguageData::new("xx")
+}
+
+#[track_caller]
+fn accepted(data: LanguageData) -> Language {
+    let tag = data.tag();
+    Language::from_data(leak(data)).unwrap_or_else(|e| panic!("{tag}: {e}"))
+}
+
+/// Asserts `Error::InvalidLanguageData` that names the field, and returns nothing else.
+#[track_caller]
+fn rejected(data: LanguageData, field: &str) {
+    let tag = data.tag();
+    match Language::from_data(leak(data)) {
+        Err(Error::InvalidLanguageData {
+            tag: got, reason, ..
+        }) => {
+            assert_eq!(got, tag, "the error names the table");
+            assert!(
+                reason.contains(field),
+                "the reason should name the field `{field}`, it says {reason:?}"
+            );
+        }
+        Err(other) => panic!("{tag}: expected InvalidLanguageData, got {other:?}"),
+        Ok(_) => panic!("{tag}: a table that breaks section 7.6 was accepted (field {field})"),
+    }
+}
+
+#[test]
+fn a_neutral_table_is_valid() {
+    assert_eq!(accepted(base()).tag(), "xx");
+    assert_eq!(accepted(LanguageData::COMMON).tag(), "und");
+}
+
+#[test]
+fn tags_are_canonical() {
+    for tag in [
+        "ru", "ru-RU", "en-US", "es-419", "und", "xx", "zz-ZZ", "pt-BR",
+    ] {
+        let lang = Language::from_data(leak(base().with_tag(tag)));
+        assert_eq!(lang.as_ref().map(Language::tag), Ok(tag), "{tag}");
+    }
+    for tag in [
+        "EN-gb", "en-gb", "EN", "En-US", "ru-ru", "", "e", "eng", "en-GBR", "es-41", "es-4190",
+        "en_US", "en-", "-US", "en-US-x", " en", "en ", "ру",
+    ] {
+        rejected(base().with_tag(leak_str(tag)), "tag");
+    }
+}
+
+fn leak_str(text: &str) -> &'static str {
+    Box::leak(text.to_owned().into_boxed_str())
+}
+
+#[test]
+fn the_tag_en_gb_in_wrong_case_is_rejected_by_from_data() {
+    // Section 13.9: `Language::from_data` with the tag `EN-gb` gives `InvalidLanguageData`.
+    let data: &'static LanguageData = leak(LanguageData::EN_US.with_tag("EN-gb"));
+    match Language::from_data(data) {
+        Err(Error::InvalidLanguageData { tag, .. }) => assert_eq!(tag, "EN-gb"),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn quote_glyphs() {
+    // A table whose pairs hold `「」` is rejected (section 13.9).
+    rejected(
+        base().with_quotes(Some(QuotePairs::new(('「', '」'), ('«', '»')))),
+        "quotes",
+    );
+    rejected(
+        base().with_quotes(Some(QuotePairs::new(('«', '»'), ('「', '」')))),
+        "quotes",
+    );
+    // Straight quotes and primes would make the output input again.
+    for bad in ['"', '\'', '′', '″', 'a', '5', ' ', '-', '(', '…'] {
+        for position in 0..4 {
+            let mut glyphs = ['«', '»', '„', '“'];
+            glyphs[position] = bad;
+            let pairs = QuotePairs::new((glyphs[0], glyphs[1]), (glyphs[2], glyphs[3]));
+            rejected(base().with_quotes(Some(pairs)), "quotes");
+        }
+    }
+    // The four glyphs are pairwise distinct.
+    for pairs in [
+        QuotePairs::new(('«', '»'), ('«', '„')),
+        QuotePairs::new(('«', '«'), ('„', '“')),
+        QuotePairs::new(('«', '»'), ('„', '„')),
+        QuotePairs::new(('«', '»'), ('»', '“')),
+        QuotePairs::new(('“', '”'), ('“', '”')),
+    ] {
+        rejected(base().with_quotes(Some(pairs)), "quotes");
+    }
+    // The glyphs that the lexer reads as quotes, other than the four above, are valid.
+    accepted(base().with_quotes(Some(QuotePairs::new(('«', '»'), ('„', '“')))));
+    accepted(base().with_quotes(Some(QuotePairs::new(('“', '”'), ('‘', '’')))));
+    accepted(base().with_quotes(Some(QuotePairs::new(('„', '“'), ('‚', '‘')))));
+    accepted(base().with_quotes(Some(QuotePairs::new(('‹', '›'), ('«', '»')))));
+    accepted(base().with_quotes(None));
+}
+
+type Setter = fn(LanguageData, &'static [&'static str]) -> LanguageData;
+
+/// The word lists of section 7.6: lowercase entries.
+const WORD_LISTS: &[(&str, Setter)] = &[
+    ("elisions", |d, l| d.with_elisions(l)),
+    ("short_words", |d, l| d.with_short_words(l)),
+    ("particles", |d, l| d.with_particles(l)),
+    ("atom_exceptions", |d, l| d.with_atom_exceptions(l)),
+    ("year_words", |d, l| d.with_year_words(l)),
+    ("century_words", |d, l| d.with_century_words(l)),
+    ("range_lead_words", |d, l| d.with_range_lead_words(l)),
+];
+
+/// The lists that keep the case they are printed in.
+fn case_lists() -> Vec<(&'static str, Setter)> {
+    vec![
+        ("months", |d, l| d.with_months(l)),
+        ("units", |d, l| d.with_units(l)),
+    ]
+}
+
+#[test]
+fn every_list_is_strictly_sorted_free_of_duplicates_and_of_empty_or_spaced_entries() {
+    let mut all: Vec<(&str, Setter)> = WORD_LISTS.to_vec();
+    all.extend(case_lists());
+    for (field, set) in all {
+        accepted(set(base(), &[]));
+        accepted(set(base(), &["a"]));
+        accepted(set(base(), &["a", "b"]));
+        accepted(set(base(), &["а", "б", "в"]));
+        rejected(set(base(), &["b", "a"]), field);
+        rejected(set(base(), &["a", "a"]), field);
+        rejected(set(base(), &["a", "b", "b"]), field);
+        rejected(set(base(), &[""]), field);
+        rejected(set(base(), &["a b"]), field);
+        rejected(set(base(), &["a\u{a0}b"]), field);
+        rejected(set(base(), &["a\tb"]), field);
+        rejected(set(base(), &[" a"]), field);
+        rejected(set(base(), &["a "]), field);
+    }
+}
+
+#[test]
+fn sorting_is_by_code_point() {
+    // `A` < `a` < `я`: ASCII capitals before small letters before Cyrillic.
+    accepted(base().with_units(&["A", "a", "я"]));
+    rejected(base().with_units(&["a", "A"]), "units");
+    // A longer entry follows its prefix.
+    accepted(base().with_units(&["m", "m/s", "m²"]));
+    rejected(base().with_units(&["m/s", "m"]), "units");
+}
+
+#[test]
+fn word_lists_are_lowercase_and_the_others_keep_their_case() {
+    for (field, set) in WORD_LISTS {
+        rejected(set(base(), &["The"]), field);
+        rejected(set(base(), &["ТО"]), field);
+        rejected(set(base(), &["aB"]), field);
+        accepted(set(base(), &["the"]));
+        accepted(set(base(), &["то"]));
+    }
+    // `months`, `units`, `ambiguous_units` and abbreviations are printed in their own case.
+    accepted(base().with_months(&["April", "May", "апреля"]));
+    accepted(base().with_units(&["MB", "kB"]));
+    accepted(base().with_units(&["MB", "mb"]));
+    accepted(base().with_units(&["В", "в"]));
+    const MR: &[Abbreviation] = &[Abbreviation::new(&["Mr."], Bind::Next)];
+    accepted(base().with_abbreviations(MR));
+}
+
+#[test]
+fn units_do_not_start_with_an_ascii_digit() {
+    rejected(base().with_units(&["5px"]), "units");
+    rejected(base().with_units(&["0x"]), "units");
+    accepted(base().with_units(&["px5"]));
+    accepted(base().with_units(&["m2", "m²"]));
+    // A digit of another system is a letter for the lexer (section 2.11): accepted.
+    accepted(base().with_units(&["٣px"]));
+}
+
+#[test]
+fn ambiguous_units_are_also_units() {
+    rejected(base().with_ambiguous_units(&["x"]), "ambiguous_units");
+    rejected(
+        base().with_units(&["m"]).with_ambiguous_units(&["x"]),
+        "ambiguous_units",
+    );
+    accepted(base().with_units(&["x"]).with_ambiguous_units(&["x"]));
+    rejected(
+        base()
+            .with_units(&["x", "y"])
+            .with_ambiguous_units(&["y", "x"]),
+        "ambiguous_units",
+    );
+    rejected(
+        base().with_units(&["x"]).with_ambiguous_units(&["x", "x"]),
+        "ambiguous_units",
+    );
+}
+
+#[test]
+fn a_unit_that_is_a_short_word_or_a_particle_is_listed_as_ambiguous() {
+    // Compared with case: `с` must be listed, `В` need not (section 7.6).
+    rejected(
+        base().with_units(&["с"]).with_short_words(&["с"]),
+        "ambiguous_units",
+    );
+    accepted(
+        base()
+            .with_units(&["с"])
+            .with_short_words(&["с"])
+            .with_ambiguous_units(&["с"]),
+    );
+    accepted(base().with_units(&["В"]).with_short_words(&["в"]));
+    rejected(
+        base().with_units(&["ж"]).with_particles(&["ж"]),
+        "ambiguous_units",
+    );
+    accepted(
+        base()
+            .with_units(&["ж"])
+            .with_particles(&["ж"])
+            .with_ambiguous_units(&["ж"]),
+    );
+    accepted(base().with_units(&["Ж"]).with_particles(&["ж"]));
+}
+
+#[test]
+fn abbreviations_are_sorted_by_their_parts_and_free_of_duplicates() {
+    const SORTED: &[Abbreviation] = &[
+        Abbreviation::new(&["а."], Bind::Next),
+        Abbreviation::new(&["б."], Bind::Next),
+        Abbreviation::new(&["и", "т.", "д."], Bind::Inner),
+        Abbreviation::new(&["и", "т.", "п."], Bind::Inner),
+    ];
+    const UNSORTED: &[Abbreviation] = &[
+        Abbreviation::new(&["б."], Bind::Next),
+        Abbreviation::new(&["а."], Bind::Next),
+    ];
+    const UNSORTED_SECOND_PART: &[Abbreviation] = &[
+        Abbreviation::new(&["и", "т.", "п."], Bind::Inner),
+        Abbreviation::new(&["и", "т.", "д."], Bind::Inner),
+    ];
+    const SAME_PARTS: &[Abbreviation] = &[
+        Abbreviation::new(&["а."], Bind::Next),
+        Abbreviation::new(&["а."], Bind::NextCapitalized),
+    ];
+    const EMPTY_PART: &[Abbreviation] = &[Abbreviation::new(&[""], Bind::Next)];
+    const SPACED_PART: &[Abbreviation] = &[Abbreviation::new(&["т. д."], Bind::Inner)];
+    accepted(base().with_abbreviations(&[]));
+    accepted(base().with_abbreviations(SORTED));
+    rejected(base().with_abbreviations(UNSORTED), "abbreviations");
+    rejected(
+        base().with_abbreviations(UNSORTED_SECOND_PART),
+        "abbreviations",
+    );
+    rejected(base().with_abbreviations(SAME_PARTS), "abbreviations");
+    rejected(base().with_abbreviations(EMPTY_PART), "abbreviations");
+    rejected(base().with_abbreviations(SPACED_PART), "abbreviations");
+}
+
+#[test]
+fn number_data_is_checked() {
+    let with = |n: NumberData| base().with_numbers(n);
+    accepted(with(NumberData::new()));
+    // `decimal != group`.
+    rejected(
+        with(NumberData::new().with_decimal(',').with_group(',')),
+        "numbers",
+    );
+    rejected(
+        with(NumberData::new().with_decimal('.').with_group('.')),
+        "numbers",
+    );
+    // `min_grouping_digits <= 4`.
+    for digits in 0..=4 {
+        accepted(with(NumberData::new().with_min_grouping_digits(digits)));
+    }
+    rejected(
+        with(NumberData::new().with_min_grouping_digits(5)),
+        "numbers",
+    );
+    rejected(
+        with(NumberData::new().with_min_grouping_digits(255)),
+        "numbers",
+    );
+    // The minus sign is not a letter, a digit, whitespace, `"` or `'`.
+    for bad in ['a', 'я', '5', ' ', '\t', '\u{a0}', '"', '\''] {
+        rejected(with(NumberData::new().with_minus(bad)), "numbers");
+    }
+    for good in ['-', '\u{2212}', '\u{2013}', '~'] {
+        accepted(with(NumberData::new().with_minus(good)));
+    }
+    // The group separator is U+00A0, U+202F or not whitespace; not a letter or a digit.
+    for bad in ['a', '5', ' ', '\u{2009}', '\u{3000}', '\t'] {
+        rejected(with(NumberData::new().with_group(bad)), "numbers");
+    }
+    for good in ['\u{a0}', '\u{202f}', ',', '\'', '.', '_'] {
+        accepted(with(NumberData::new().with_decimal('!').with_group(good)));
+    }
+}
+
+#[test]
+fn signs_are_not_letters_or_digits() {
+    rejected(base().with_signs(&['a']), "signs");
+    rejected(base().with_signs(&['я']), "signs");
+    rejected(base().with_signs(&['5']), "signs");
+    accepted(base().with_signs(&['§', '¶', '№']));
+}
+
+#[test]
+fn ellipsis_forms_consist_of_question_exclamation_and_dots_only() {
+    accepted(base().with_ellipsis(EllipsisForms::new("?..", "!..", "?!..")));
+    accepted(base().with_ellipsis(EllipsisForms::new("?…", "!…", "?!…")));
+    accepted(base().with_ellipsis(EllipsisForms::new("?.", "!.", "?!.")));
+    for forms in [
+        EllipsisForms::new("?x", "!…", "?!…"),
+        EllipsisForms::new("?…", "! ", "?!…"),
+        EllipsisForms::new("?…", "!…", "?!a"),
+        EllipsisForms::new("?-", "!…", "?!…"),
+    ] {
+        rejected(base().with_ellipsis(forms), "ellipsis");
+    }
+}
+
+#[test]
+fn from_static_does_not_validate_and_never_panics() {
+    // Invalid data never panics, but rules may misbehave (section 2.2).
+    let bad = leak(
+        base()
+            .with_tag("EN-gb")
+            .with_short_words(&["б", "а", "а", ""])
+            .with_units(&["5x", "x"])
+            .with_quotes(Some(QuotePairs::new(('"', '"'), ('"', '"'))))
+            .with_numbers(NumberData::new().with_decimal(',').with_group(',')),
+    );
+    let lang = Language::from_static(bad);
+    assert_eq!(lang.tag(), "EN-gb");
+    let t = Typographer::new(lang, RuleSet::ALL);
+    for text in ["а б \"в\" 5 x - 5x... (c) 1000", "", "\"", "в а а б 5 x"] {
+        let _ = t.typeset(text, Output::Unicode);
+        let _ = t.report(text, Output::Unicode);
+    }
+}
+
+#[test]
+fn from_static_is_const() {
+    static DATA: LanguageData = LanguageData::EN_US.with_tag("en-GB");
+    static LANG: Language = Language::from_static(&DATA);
+    static T: Typographer = Typographer::new(Language::from_static(&DATA), RuleSet::PROSE);
+    assert_eq!(LANG.tag(), "en-GB");
+    assert_eq!(T.language().tag(), "en-GB");
+    assert_eq!(
+        Language::from_data(&DATA).as_ref().map(Language::tag),
+        Ok("en-GB")
+    );
+    // The design example (section 7.7): British English with spaced dashes needs no code.
+    static GB: LanguageData = LanguageData::EN_US
+        .with_tag("en-GB")
+        .with_dash_style(DashStyle::Spaced);
+    let t = Typographer::builder(Language::from_data(&GB).unwrap(), RuleSet::PROSE)
+        .build()
+        .unwrap();
+    assert_eq!(
+        t.typeset("Moscow - the capital", Output::Unicode),
+        "Moscow — the\u{a0}capital"
+    );
+}
+
+#[test]
+fn the_built_in_tables_validate_through_the_typographer_builder_too() {
+    // Section 13.9: built-in languages x built-in sets build without error.
+    for language in Language::builtin().chain([Language::COMMON]) {
+        for set in [
+            RuleSet::EMPTY,
+            RuleSet::PROSE,
+            RuleSet::INTERFACE,
+            RuleSet::ALL,
+        ] {
+            Typographer::builder(language.clone(), set).build().unwrap();
+        }
+    }
+}
+
+#[test]
+fn the_quote_pairs_of_a_typographer_builder_are_checked_with_invalid_setting() {
+    // Section 13.9: the same pairs that make `LanguageBuilder::build` fail with
+    // `InvalidLanguageData` give `InvalidSetting` in the typographer builder.
+    let pairs = QuotePairs::new(('«', '»'), ('«', '„'));
+    let err = LanguageBuilder::new("xx")
+        .quotes(Some(pairs))
+        .build()
+        .unwrap_err();
+    assert!(matches!(err, Error::InvalidLanguageData { .. }), "{err:?}");
+    let err = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+        .quote_pairs(pairs)
+        .build()
+        .unwrap_err();
+    assert!(
+        matches!(&err, Error::InvalidSetting { setting, .. } if *setting == "quote_pairs"),
+        "{err:?}"
+    );
+    // The pair `(«, »)` and `(«, „)` of section 13.9 for the builder of languages.
+    let err = LanguageBuilder::new("xx")
+        .quotes(Some(QuotePairs::new(('«', '»'), ('«', '„'))))
+        .build()
+        .unwrap_err();
+    assert!(matches!(err, Error::InvalidLanguageData { .. }));
+}
+
+#[test]
+fn the_language_builder_normalizes_the_case_of_the_tag() {
+    // Section 13.9: `LanguageBuilder::new("EN-gb").build()` gives a language with tag `en-GB`.
+    let lang = LanguageBuilder::new("EN-gb").build().unwrap();
+    assert_eq!(lang.tag(), "en-GB");
+    for (given, canonical) in [
+        ("en-gb", "en-GB"),
+        ("EN", "en"),
+        ("UND", "und"),
+        ("Es-419", "es-419"),
+        ("RU-ru", "ru-RU"),
+        ("zz", "zz"),
+    ] {
+        assert_eq!(
+            LanguageBuilder::new(given).build().unwrap().tag(),
+            canonical,
+            "{given}"
+        );
+    }
+    // A tag that is malformed beyond case is still an error.
+    for bad in ["", "english", "e", "en-GBR", "en_US"] {
+        assert!(
+            matches!(
+                LanguageBuilder::new(bad).build(),
+                Err(Error::InvalidLanguageData { .. })
+            ),
+            "{bad:?}"
+        );
+    }
 }
