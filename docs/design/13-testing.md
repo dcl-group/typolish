@@ -86,7 +86,14 @@ gives the output of the whole set.
   `He said - " a cat"` in Prose and Interface → `He said - " a⍽cat"` (no dash: a quote without a
   role is not an opening quote, section 6.3; `AmbiguousQuote` and `UnmatchedQuote`, no
   `AmbiguousHyphen`); en Closed, `dash.spaced-hyphen` alone: `Sign in - it's free` →
-  `Sign in—it's free` and `Sign up - it's free` → `Sign up—it's free` (the sets also give `it’s`).
+  `Sign in—it's free` and `Sign up - it's free` → `Sign up—it's free` (the sets also give `it’s`);
+  ru `кто-то - что-то` with `dash.spaced-hyphen` and `nbsp.dash` and in both sets →
+  `кто-то⍽— что-то` (a compound word is an operand of its script, section 8.2); ru
+  `tls-server - agent-ca` in both sets → unchanged, `AmbiguousHyphen` (Latin compound words are
+  foreign words); en `tls-server - agent-ca` → `tls-server — agent-ca`; en Closed
+  `mother-in-law - father-in-law` in Prose and Interface → `mother-in-law — father-in-law` (no merge
+  next to a compound word, section 8.4), and `mother-in-law — father-in-law` → unchanged,
+  `Cow::Borrowed`.
 - `tests/rules_range.rs`: `1941-1945 гг.` → the `Change` record of the dash names `range.digits`;
   `10-10` → unchanged, no diagnostic; `XIX-XX вв.` → `XIX–XX вв.`; `XX-XIX вв.`, `xix-xx вв.` and
   `ХIХ-ХХ вв.` (Cyrillic `Х`) → unchanged, the last with `MixedScript`.
@@ -118,8 +125,9 @@ gives the output of the whole set.
   `в 2010-11 гг.` → `в⍽2010–11⍽гг.` (a range is an operand, section 8.2); ru `1990–2000 — годы` →
   `1990–2000⍽— годы` in both sets; en `the 90's` and `of don't` with `nbsp.short-words` alone →
   `the⍽90's` and `of⍽don't`, ru `и don't` → `и⍽don't` (a core of kind `Word` is a word whatever its
-  number of tokens, section 8.2); ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` → unchanged;
-  en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both sets); ru `Привезли 5 т груза` →
+  number of tokens, section 8.2); ru `кто-то же` with `nbsp.particles` alone → `кто-то⍽же` (a
+  compound word is a word, section 8.2); ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` →
+  unchanged; en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both sets); ru `Привезли 5 т груза` →
   `Привезли 5⍽т груза`; en with `PercentSpacing::Attached`: `100⍽%` → unchanged (only a single
   U+0020 is removed, section 8.7); ru `1990–2000 г. Затем`, `2010-11 г. Затем`, `5–10 ч. Потом` → no
   glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` → `г.⍽Москвы` (a label range); ru
@@ -138,15 +146,17 @@ gives the output of the whole set.
   `nbsp.initials` → `Выберите вариант Д.⍽После этого`, `I chose plan P.⍽Then I left.`.
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
   ranges with negative ends (`−5–−1`) and equal ends (ru `8⍽000–8⍽000`, en `8,000–8,000`), decimals
-  (`Number::decimal` keeps precision), `f32` values (ru `0.1f32` → `0,1`, ru `1.1f32` → `1,1`, en
-  `1.1f32` → `1.1`, `f32::MAX`), negative infinity (ru `−∞`), `i128::MIN`, `u128::MAX`, `f64::NAN`,
-  infinities, `-0.0`, the grouping threshold (3 and 4 digits: ru `999`, `1⍽000`, en `999`, `1,000`),
-  `min_grouping_digits(0)` (no grouping for `1234567890`), `min_grouping_digits(4)` (`123456`
-  ungrouped, `1234567` grouped), `COMMON` (`1234567` ungrouped), `Number::fixed` ties, every output
-  kind, and nowrap with and without glue (`123` in ru has no element); the builder rejects
-  `group_separator(' ')`, `group_separator('\u{2009}')`, `minus_sign(' ')` and `minus_sign('"')`
-  with `InvalidSetting`; `group_separator('\u{202F}')` builds, and nowrap output wraps `12⎵345` in
-  one element.
+  (`Number::decimal` keeps precision), `Number::decimal` signs, leading zeros and zero (`+5` → `5`,
+  `007` → `007`, ru `0012345` → `0⍽012⍽345`, ru `-1.50` → `−1,50`, ru `-0.00` → `0,00`) and its
+  rejects (every case of section 2.11 → `InvalidNumber`), `Number::fixed(-0.001, 1)` → ru `0,0`,
+  `f32` values (ru `0.1f32` → `0,1`, ru `1.1f32` → `1,1`, en `1.1f32` → `1.1`, `f32::MAX`), negative
+  infinity (ru `−∞`), `i128::MIN`, `u128::MAX`, `f64::NAN`, infinities, `-0.0`, the grouping
+  threshold (3 and 4 digits: ru `999`, `1⍽000`, en `999`, `1,000`), `min_grouping_digits(0)` (no
+  grouping for `1234567890`), `min_grouping_digits(4)` (`123456` ungrouped, `1234567` grouped),
+  `COMMON` (`1234567` ungrouped), `Number::fixed` ties, every output kind, and nowrap with and
+  without glue (`123` in ru has no element); the builder rejects `group_separator(' ')`,
+  `group_separator('\u{2009}')`, `minus_sign(' ')` and `minus_sign('"')` with `InvalidSetting`;
+  `group_separator('\u{202F}')` builds, and nowrap output wraps `12⎵345` in one element.
 - `tests/output.rs`: every output kind on a fixed set of inputs, including unpaired quotes,
   backslashes in protected spans, line breaks, U+2028, U+2029 and blank lines between paragraphs
   with quotes on both sides, in every output kind, `<script>`, `${`, characters above the BMP;
@@ -331,8 +341,8 @@ the no-panic test.
    window no straight quote changed).
 4. **Slots and protected spans**: number, order, kinds and payloads of slots are kept;
    `texts().len() == slots().len() + 1`; protected spans and markup are byte for byte in place.
-5. **Technical fragments**: fragments classified as technical in the input appear in the output byte
-   for byte.
+5. **Technical fragments**: fragments classified as technical in the input, and compound words
+   (section 8.2), appear in the output byte for byte.
 6. **Letters and digits**: the sequence of letters and digits of the output equals that of the input
    (with `symbols.*` and `number.times` off).
 7. **Graphemes**: every edit of `report` starts and ends at a cluster boundary of the input, and

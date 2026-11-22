@@ -61,7 +61,7 @@ look at the context around it. Explicit protection is still needed for commands 
    it in one place (section 3.7).
 2. A property test: for every input and every rule set, every protected span and every slot of the
    input appears in the output byte for byte and in place; every fragment classified as technical in
-   the input appears in the output byte for byte (section 13.5).
+   the input, and every compound word, appears in the output byte for byte (section 13.5).
 3. `Report::protected()` shows which spans were recognized and why (`ProtectedKind`, `TechKind`),
    which answers "why did no rule fire here" (section 12.5).
 
@@ -73,8 +73,9 @@ look at the context around it. Explicit protection is still needed for commands 
   typed `–` or `—` is matched with an empty edit) with one pattern space (section 8.2) and an
   operand on each side (closing punctuation on the left or an opening quote or bracket on the right
   counts too; `dash.dialogue` needs only a line start on the left), never next to a flag or between
-  two technical fragments, and the closed style never joins a technical fragment to a word (section
-  8.4).
+  two technical fragments or foreign words (a compound word counts by the script of its letters,
+  section 8.2), and the closed style never joins a technical fragment or a compound word to a word
+  (section 8.4).
 - **M3 Whole operator.** A run of operator characters is one token and changes only if the whole run
   equals a table entry; `=>`, `>>`, `-->` are in no table.
 - **M4 Exact shape.** A shape rule needs the whole core to match: `D+-D+` with exactly two numbers,
@@ -204,13 +205,14 @@ expectation):
 ### 10.8 Known limits
 
 - A lone `-` between two plain words of the language is a dash in both sets. In English text
-  `cat - file` becomes `cat—file`; in Russian text it stays (foreign words on both sides). Next to a
-  flag a `-` is never a dash, even where one was meant (`флаг -v - он включает вывод`). Commands
-  with spaces must be protected with backticks or passed as `Piece::Protected`; the crate README
-  says so (section 13.10).
+  `cat - file` becomes `cat—file`, and `tls-server - agent-ca` becomes `tls-server — agent-ca`
+  (compound words are words of their script, section 8.2); in Russian text both stay (foreign words
+  on both sides). Next to a flag a `-` is never a dash, even where one was meant
+  (`флаг -v - он включает вывод`). Commands with spaces must be protected with backticks or passed
+  as `Piece::Protected`; the crate README says so (section 13.10).
 - With the closed style (en) the dash keeps the author's spaces next to anything but a plain word
-  (`Hello, — he said`, `Chapter — 5`, `See https://example.com — the guide`); only two plain words
-  are joined (`word—word`).
+  (`Hello, — he said`, `Chapter — 5`, `See https://example.com — the guide`,
+  `mother-in-law — father-in-law`); only two plain words are joined (`word—word`).
 - A capital letter with a full stop at a sentence end before a capitalized word gets a no-break
   space: a one-letter label (`вариант А.⍽После`, `plan B.⍽Then`), the English pronoun
   (`Neither did I.⍽Then`), a one-letter unit after a number (`220⍽В.⍽Затем`). The pattern cannot

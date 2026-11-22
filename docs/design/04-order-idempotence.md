@@ -95,13 +95,14 @@ agree and that every rule appears once.
   - a removed space merges fragments only into a non-technical `Joined` fragment (the closed-style
     dash) or a percentage into a percentage (the percent setting). The closed-style dash removes its
     two spaces, each a single U+0020, only between two plain words (section 8.4), so `word`, `—`,
-    `word` become one `Joined` fragment (check 22), never a technical one. On the next pass no rule
-    matches across the removed spaces: `dash.spaced-hyphen` and `dash.double-hyphen` need a dash
-    fragment with a space on each side (section 8.4), and a trigger word of a no-break rule must be
-    a whole core (section 8.2), so `the` in `Moscow—the` triggers nothing. The edits of the first
-    pass stay, because no rule changes a typographic form or a glued space (I3): the dash stays `—`,
-    and so does the glue that `nbsp.short-words` set after `the` in the same pass from the
-    classification of its input (section 3.6; `Moscow - the capital` → `Moscow—the⍽capital`). No
+    `word` become one `Joined` fragment (check 22), never a technical one; a compound word is not a
+    plain word, because its hyphens would make the merged core fail check 22. On the next pass no
+    rule matches across the removed spaces: `dash.spaced-hyphen` and `dash.double-hyphen` need a
+    dash fragment with a space on each side (section 8.4), and a trigger word of a no-break rule
+    must be a whole core (section 8.2), so `the` in `Moscow—the` triggers nothing. The edits of the
+    first pass stay, because no rule changes a typographic form or a glued space (I3): the dash
+    stays `—`, and so does the glue that `nbsp.short-words` set after `the` in the same pass from
+    the classification of its input (section 3.6; `Moscow - the capital` → `Moscow—the⍽capital`). No
     rule that did not match before matches now: the only rule that looks inside a `Joined` fragment
     is `ellipsis.inner`, which reads only the two words around its `...` or `…`, and the merge does
     not change them. `100 %` → `100%` with `PercentSpacing::Attached` or `Language` (en) merges a

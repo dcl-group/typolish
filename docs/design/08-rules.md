@@ -46,15 +46,15 @@ Prose: 27 rules (every rule of version 1). Interface: 13 rules.
 
 Terms: a **word** is a fragment whose core has kind `Word`, whatever its number of tokens (`word`,
 `it's`, `don't`, `90's`, `5'10`, `Brand(tm)`; check 23 and the special cases of section 3.6), and a
-one-word `Dictionary` core counts as one (below); a **number** is a `Number` fragment or a `Number`
-slot; an **operand** is a word, a number, a range (a `Range` or `YearMonth` core), a slot, a
-protected span or a fragment whose core is technical. A **Roman numeral** is defined in section 3.6
-(Latin capitals in the standard form, value 1 to 3999). A `Punctuation` fragment (wrapper tokens
-only, such as a lone `...`, section 3.6) is not an operand. A **date core** is a `Version` core
-(check 13 of section 3.6) of three numbers in the shape `D.M.YYYY` or `D.M.YY`, with the day 1 to 31
-and the month 1 to 12, leading zeros allowed (`21.11.2026`, `21.11.26`, `01.02.26`); the shape
-decides, so `1.2.27` is one and `0.2.27` is not. Two kinds of number name or measure something other
-than a quantity:
+one-word `Dictionary` core and a compound word count as one (below); a **number** is a `Number`
+fragment or a `Number` slot; an **operand** is a word, a number, a range (a `Range` or `YearMonth`
+core), a slot, a protected span or a technical fragment (section 3.6). A **Roman numeral** is
+defined in section 3.6 (Latin capitals in the standard form, value 1 to 3999). A `Punctuation`
+fragment (wrapper tokens only, such as a lone `...`, section 3.6) is not an operand. A **date core**
+is a `Version` core (check 13 of section 3.6) of three numbers in the shape `D.M.YYYY` or `D.M.YY`,
+with the day 1 to 31 and the month 1 to 12, leading zeros allowed (`21.11.2026`, `21.11.26`,
+`01.02.26`); the shape decides, so `1.2.27` is one and `0.2.27` is not. Two kinds of number name or
+measure something other than a quantity:
 
 - A **label number** follows a sign (`№5`, `№ 5`, `§⍽12`, `№ {n}`, and a Roman numeral such as `¶IV`
   or `¶ IV`; flag `LABEL`, section 3.6).
@@ -67,6 +67,20 @@ except in the rules that read a quantity or a year: `nbsp.units` (other than its
 space that `nbsp.signs` or the percent setting inserts or removes changes nothing for them
 (invariant I2). `nbsp.signs` itself glues a label to its sign. So `Школа №5 г. Москвы` reads `г.` as
 a city, not a year: `Школа №⍽5 г.⍽Москвы`.
+
+A **compound word** is a `Compound` core (check 21 of section 3.6: letters or digits joined by
+single hyphens, `кто-то`, `что-то`, `tls-server`, `mother-in-law`, `25-й`). It is not a technical
+fragment: only its hyphens are frozen, and no rule changes them (section 8.4). Wherever a rule reads
+a word it reads a compound word as one: an operand of the dash rules (`кто-то - что-то` →
+`кто-то⍽— что-то`, section 8.4), the operand after a short word (`в⍽tls-server`), the word before a
+particle (`кто-то⍽же`), a word inside quotes (`«кто-то»`); a list compares it as a whole core, as
+any trigger word. Its script is the script of its `Word` tokens (section 5.2): `кто-то` and `25-й`
+are Cyrillic words, `tls-server`, `agent-ca`, `db-01` and `mother-in-law` Latin words; a compound
+word with `Word` tokens of two scripts (`IT-отдел`) is a word of each of them, so it is not a word
+outside the language's script in Russian or in English text; one without a `Word` token
+(`123-45-67`, `{n}-{d}`) has no script and is never a word outside the language's script. A compound
+word is never a single-letter word, and it is not a plain word of the closed dash style (section
+8.4).
 
 Conditions that hold for every rule:
 
@@ -128,10 +142,12 @@ bracket on the right → em dash. It does not fire, and reports `AmbiguousHyphen
   `tar -cf - -C dir`, `Use - --force`): the `-` is most likely an argument (standard input, the end
   of options);
 - words outside the language's script or technical fragments stand on both sides, in any mix
-  (`cat - file` and `cat - /etc/hosts` in Russian text, `host:8080 - 10.0.0.1`): most often a
-  command line. A technical fragment counts as a foreign word here, in every language; a technical
-  fragment on one side and a word of the language on the other
-  (`Сервис слушает host:8080 - проверьте`) gets the dash.
+  (`cat - file`, `cat - /etc/hosts` and `tls-server - agent-ca` in Russian text,
+  `host:8080 - 10.0.0.1`): most often a command line. A technical fragment counts as a foreign word
+  here, in every language; a technical fragment on one side and a word of the language on the other
+  (`Сервис слушает host:8080 - проверьте`) gets the dash. A compound word counts by the script of
+  its letters, as any word (section 8.2): in Russian text `кто-то - что-то` gets the dash, while
+  `tls-server - agent-ca` (Latin compound words) does not, as `cat - file` does not.
 
 Spacing by `DashStyle`: `SpacedGlued` (ru) and `Spaced` keep the author's spaces (`nbsp.dash` glues
 the one before the dash under `SpacedGlued`). `Closed` (en) removes both spaces (`word—word`) only
@@ -141,22 +157,26 @@ side the rule fires and `Closed` keeps the author's spaces, as `Spaced` does (`w
 8.2), and the hyphen stays. Two words are plain when the cores on both sides are words of letters
 (kind `Word`, or a one-word `Dictionary` core, section 8.2; letters with their marks and inner
 apostrophes only, no digit, sign or legal mark), and neither has a wrapper on the side facing the
-dash. Next to a number, a slot, a protected span, a technical fragment, or a wrapper on the inner
-side (a closing quote or bracket, `, . ! ? …` on the left, an opening quote or bracket on the
-right), `Closed` keeps the author's spaces, as `Spaced` does:
-`See https://example.com/docs - the guide` → `See https://example.com/docs — the guide`,
-`He said - "a cat"` → `He said — “a cat”`, `Hello, - he said` → `Hello, — he said`. So a merge
-always gives a `Joined` fragment (invariant I2), a URL or a flag never swallows the next word
-(autolinkers that cut a link at the next space would take `—the` into it), and `to_plain` can
-restore the spaces. Typed `—` and `–` are never changed, and no space around them is removed. On
-such a typed dash the rule matches with an empty edit and the same `consume` (the tokens a match
-closes to the other rules of its phase, section 3.7) when its context holds; it raises
-`AmbiguousHyphen` only on a plain `-`. A `Joined` or a `Dimensions` core is not an operand (section
-8.2): a dash whose neighbour on one side is such a core, with no wrapper between them, is matched by
-no dash rule and gets no glue from `nbsp.dash`, and no diagnostic is raised (`Moscow—the - capital`,
-`5 - x—Moscow` and ru `1920x1080 — монитор` stay). Were a `Joined` core an operand, a `-` refused
-next to a single letter would fire on the next pass once a merge had made that letter part of a
-`Joined` core (`5 - x - Moscow` → `5 - x—Moscow` → `5 — x—Moscow`), against invariant I2.
+dash. A compound word is not a plain word: merged with the dash, its hyphens would give a core that
+check 22 does not accept (`mother-in-law—father-in-law` is not a `Joined` core and would be frozen
+by check 24), against invariant I2. Next to a number, a slot, a protected span, a technical
+fragment, a compound word, or a wrapper on the inner side (a closing quote or bracket, `, . ! ? …`
+on the left, an opening quote or bracket on the right), `Closed` keeps the author's spaces, as
+`Spaced` does: `See https://example.com/docs - the guide` →
+`See https://example.com/docs — the guide`, `He said - "a cat"` → `He said — “a cat”`,
+`Hello, - he said` → `Hello, — he said`, `mother-in-law - father-in-law` →
+`mother-in-law — father-in-law`. So a merge always gives a `Joined` fragment (invariant I2), a URL
+or a flag never swallows the next word (autolinkers that cut a link at the next space would take
+`—the` into it), and `to_plain` can restore the spaces. Typed `—` and `–` are never changed, and no
+space around them is removed. On such a typed dash the rule matches with an empty edit and the same
+`consume` (the tokens a match closes to the other rules of its phase, section 3.7) when its context
+holds; it raises `AmbiguousHyphen` only on a plain `-`. A `Joined` or a `Dimensions` core is not an
+operand (section 8.2): a dash whose neighbour on one side is such a core, with no wrapper between
+them, is matched by no dash rule and gets no glue from `nbsp.dash`, and no diagnostic is raised
+(`Moscow—the - capital`, `5 - x—Moscow` and ru `1920x1080 — монитор` stay). Were a `Joined` core an
+operand, a `-` refused next to a single letter would fire on the next pass once a merge had made
+that letter part of a `Joined` core (`5 - x - Moscow` → `5 - x—Moscow` → `5 — x—Moscow`), against
+invariant I2.
 
 **`dash.double-hyphen`** (Prose). The same for a lone `--` or `---`, with the same refusals:
 `npm test -- --watch` stays. A typed `—` or `–` is matched by `dash.spaced-hyphen` (with an empty
@@ -179,27 +199,31 @@ comes from the classification of the input of the pass, in which `the` is still 
 (section 3.6); an already closed `Moscow—the capital` gets none, because there `the` is inside a
 `Joined` fragment and triggers nothing (section 4.3, I2).
 
-| Language | Input                          | Output                       | Mechanism                                            |
-| -------- | ------------------------------ | ---------------------------- | ---------------------------------------------------- |
-| ru       | `Москва - столица`             | `Москва⍽— столица`           | `dash.spaced-hyphen`, `nbsp.dash`                    |
-| en       | `Moscow - the capital`         | `Moscow—the capital`         | style `Closed`                                       |
-| en       | `Open host:8080 - now`         | `Open host:8080 — now`       | spaces kept by technical text                        |
-| en       | `He said - "a cat"`            | `He said — “a cat”`          | spaces kept by a quote                               |
-| ru       | `Привет, - сказал он.`         | `Привет,⍽— сказал он.`       | closing punctuation allowed on the left; `nbsp.dash` |
-| ru       | `- Привет!\n- Пока.` (Prose)   | `—⍽Привет!\n—⍽Пока.`         | `dash.dialogue`                                      |
-| ru       | `-- file` (Prose)              | `—⍽file`                     | `dash.dialogue`                                      |
-| ru       | `Запустите -- сейчас.` (Prose) | `Запустите⍽— сейчас.`        | `dash.double-hyphen`, `nbsp.dash`                    |
-| ru       | `кто-то, tls-server`           | unchanged                    | no rule touches an inner hyphen                      |
-| ru       | `10 - 20 штук`, `5 - 3 = 2`    | unchanged, `AmbiguousHyphen` | numbers on both sides                                |
-| en       | `x - 5`, `5 - x`               | unchanged, `AmbiguousHyphen` | a number and a single letter                         |
-| ru       | `Выполните cat - file`         | unchanged, `AmbiguousHyphen` | foreign words on both sides                          |
-| ru       | `Выполните diff -u - file.txt` | unchanged, `AmbiguousHyphen` | a flag next to the `-`                               |
-| en       | `tar -cf - -C dir`             | unchanged, `AmbiguousHyphen` | flags                                                |
-| ru       | `npm test -- --watch` (Prose)  | unchanged, `AmbiguousHyphen` | a flag next to the `--`                              |
+| Language | Input                           | Output                          | Mechanism                                                         |
+| -------- | ------------------------------- | ------------------------------- | ----------------------------------------------------------------- |
+| ru       | `Москва - столица`              | `Москва⍽— столица`              | `dash.spaced-hyphen`, `nbsp.dash`                                 |
+| en       | `Moscow - the capital`          | `Moscow—the capital`            | style `Closed`                                                    |
+| en       | `Open host:8080 - now`          | `Open host:8080 — now`          | spaces kept by technical text                                     |
+| en       | `He said - "a cat"`             | `He said — “a cat”`             | spaces kept by a quote                                            |
+| ru       | `Привет, - сказал он.`          | `Привет,⍽— сказал он.`          | closing punctuation allowed on the left; `nbsp.dash`              |
+| ru       | `- Привет!\n- Пока.` (Prose)    | `—⍽Привет!\n—⍽Пока.`            | `dash.dialogue`                                                   |
+| ru       | `-- file` (Prose)               | `—⍽file`                        | `dash.dialogue`                                                   |
+| ru       | `Запустите -- сейчас.` (Prose)  | `Запустите⍽— сейчас.`           | `dash.double-hyphen`, `nbsp.dash`                                 |
+| ru       | `кто-то - что-то`               | `кто-то⍽— что-то`               | `dash.spaced-hyphen`, `nbsp.dash`; compound words of the language |
+| en       | `mother-in-law - father-in-law` | `mother-in-law — father-in-law` | style `Closed` keeps the spaces next to a compound word           |
+| ru       | `кто-то, tls-server`            | unchanged                       | no rule touches an inner hyphen                                   |
+| ru       | `10 - 20 штук`, `5 - 3 = 2`     | unchanged, `AmbiguousHyphen`    | numbers on both sides                                             |
+| en       | `x - 5`, `5 - x`                | unchanged, `AmbiguousHyphen`    | a number and a single letter                                      |
+| ru       | `Выполните cat - file`          | unchanged, `AmbiguousHyphen`    | foreign words on both sides                                       |
+| ru       | `tls-server - agent-ca`         | unchanged, `AmbiguousHyphen`    | Latin compound words: foreign words on both sides                 |
+| ru       | `Выполните diff -u - file.txt`  | unchanged, `AmbiguousHyphen`    | a flag next to the `-`                                            |
+| en       | `tar -cf - -C dir`              | unchanged, `AmbiguousHyphen`    | flags                                                             |
+| ru       | `npm test -- --watch` (Prose)   | unchanged, `AmbiguousHyphen`    | a flag next to the `--`                                           |
 
 The inner hyphen of a compound word or identifier (`tls-server`, `кто-то`, `mother-in-law`, `db-01`)
 is changed by no rule: dash rules need spaces on both sides, range rules need numbers on both sides,
-and the classifier freezes the hyphens of compounds (check 21 of section 3.6).
+and the classifier freezes the hyphens of compounds (check 21 of section 3.6). The compound word
+itself is an ordinary word for the rules, with the script of its letters (section 8.2).
 
 ### 8.5 Ranges
 
@@ -323,7 +347,8 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   `short_word_length` letters (`Он⍽пошёл`, `Мы⍽и⍽они`). Latin `ls`, `go`, `db` in Russian text do
   not count.
 - **`nbsp.particles`.** A word or a slot (not `Other`), one space, then a particle of the list (a
-  whole core, section 8.2) → glue: `сказал⍽бы`, `Знаешь⍽ли`, `{name}⍽же`.
+  whole core, section 8.2) → glue: `сказал⍽бы`, `Знаешь⍽ли`, `{name}⍽же`, `кто-то⍽же` (a compound
+  word is a word, section 8.2).
 - **`nbsp.dash`.** The space before a dash fragment that stands for a spaced dash (a produced or
   typed `—`, or a typed `–`, section 8.4) in the context of `dash.spaced-hyphen` (an operand or
   closing punctuation on the left, an operand, an opening quote or an opening bracket on the right,

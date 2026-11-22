@@ -57,12 +57,12 @@ U+202F, often preferred in typesetting but with weaker font support and no named
 
 **6.** **Em dash style for en-US.** Settled 2026-11-22: (a) closed `word—word` (Chicago Manual of
 Style, through secondary sources), joining only two plain words: next to a number, a slot, a
-protected span, a technical fragment or punctuation the author's spaces stay, so a URL never
-swallows the next word (section 8.4). With the default `PercentSpacing`, (a) is the only rule of
-Interface that removes spaces (a non-default `PercentSpacing` also removes the space before `%` and
-`‰`, section 8.2). Rejected: (b) `word⍽— word` with glue before the dash, as in Russian (the
-reference implementation does this); (c) spaced `word — word` without glue (AP style); `dash_style`
-gives both.
+protected span, a technical fragment, a compound word (section 15.2, item 16) or punctuation the
+author's spaces stay, so a URL never swallows the next word (section 8.4). With the default
+`PercentSpacing`, (a) is the only rule of Interface that removes spaces (a non-default
+`PercentSpacing` also removes the space before `%` and `‰`, section 8.2). Rejected: (b)
+`word⍽— word` with glue before the dash, as in Russian (the reference implementation does this); (c)
+spaced `word — word` without glue (AP style); `dash_style` gives both.
 
 **7.** **Literal numeric ranges in Prose** (`1941-1945`, `10-20`, `12-15`). Settled 2026-11-22: (a)
 in Prose `range.digits` (two ascending numbers without leading zeros) and `range.context` (a unit,

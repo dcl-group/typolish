@@ -36,7 +36,7 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 Decided by the maintainer on 2026-11-21; not reopened here:
 
 1. The crate is `typolish`, public on crates.io, independent of other projects; nothing is pushed or
-   published without the maintainer's word.
+   published without the maintainer's word (for the push, given on 2026-11-22: item 15).
 2. There is no external corpus; the round trip is tested on the project's own corpus, and stage
    reports say so (sections 12.2, 13.7).
 3. The reference implementation is installed only outside the repository. Its name appears nowhere
@@ -51,10 +51,11 @@ Decided by the maintainer on 2026-11-21; not reopened here:
 7. License, authors and copyright exactly as in zonewright: `license = "MIT OR Apache-2.0"`, no
    `authors` field (zonewright has none), the license texts copied verbatim with the copyright line
    `Copyright (c) 2026 Dmitry Bikman`; only the year changes when needed (section 14.5).
-8. Stages 2 to 5 run one after another after this design is approved, without waiting for the
-   maintainer between stages; the points of section 15.5 do not stop them (all of them were settled
-   on 2026-11-22), and a decision received later is applied in the running stage, together with the
-   change of the design, in the same commit. Stage 6 (HTML) is not done.
+8. Stages 2 to 5 run one after another after this design is approved (it was, on 2026-11-22: item
+   15), without waiting for the maintainer between stages; the points of section 15.5 do not stop
+   them (all of them were settled on 2026-11-22), and a decision received later is applied in the
+   running stage, together with the change of the design, in the same commit. Stage 6 (HTML) is not
+   done.
 9. Working notes and Cargo's target directory live outside the repository.
 
 Decided by the maintainer on 2026-11-22; not reopened here:
@@ -74,6 +75,23 @@ Decided by the maintainer on 2026-11-22; not reopened here:
 14. `nbsp.dash` glues the space before every typed `–` with spaces between operands, numbers
     included: ru `10 – 20` → `10⍽– 20`, `Москва – столица` → `Москва⍽– столица` (sections 4.5, 8.7).
     This is approved behavior.
+15. The design of version 0.1 is approved; stages 2 to 5 start (item 8, section 15.4). The
+    repository is pushed to its remote once development is finished, after stage 5 meets its
+    criteria (section 15.4), and not before; publishing on crates.io needs a separate word of the
+    maintainer.
+16. A compound word (a `Compound` core: letters or digits joined by single hyphens, `кто-то`,
+    `tls-server`) is an ordinary word and operand for the dash rules and every other rule, not a
+    technical fragment; only its hyphens are frozen, and no rule changes them. Its script is that of
+    its letters: ru `кто-то - что-то` → `кто-то⍽— что-то`; Latin compound words in Russian text are
+    foreign words, so ru `tls-server - agent-ca` stays (`AmbiguousHyphen`); in English text a dash
+    between compound words follows the language's style, and `Closed` keeps the author's spaces next
+    to a compound word, because a merge would give no valid fragment kind (invariant I2):
+    `mother-in-law - father-in-law` → `mother-in-law — father-in-law` (sections 3.6, 8.2, 8.4,
+    10.8).
+17. `Number::decimal` accepts an optional leading `+` or `-`; a `+` is not written. Digits are kept
+    as given, leading zeros and fraction digits included (`007` → `007`, ru `1.50` → `1,50`), and
+    grouping applies to the integer part as written. A zero value is written without a sign, as for
+    floats: `-0.00` → `0,00`, `Number::fixed(-0.001, 1)` → `0,0` (sections 2.7, 2.11).
 
 The task itself fixes further points used throughout: the minus sign U+2212 for numbers, the
 mandatory negative cases, HTML outside the core, `thiserror` for errors, `cargo deny check` clean,
@@ -217,3 +235,7 @@ when:
 - the name check is done: one query to the crates.io API, allowed by the maintainer (section 15.5,
   item 3), made in this stage and not before; the report gives its result, and a taken name goes to
   the maintainer.
+
+When these criteria pass, development is finished, and the repository is pushed to its remote
+(section 15.2, item 15); nothing is published on crates.io without a separate word of the
+maintainer.

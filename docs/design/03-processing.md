@@ -290,6 +290,12 @@ from the token `Kind` of section 3.5, although some names coincide (`Number`, `W
 | 23  | letters with their marks and digits only, with a quote `'` or `’` between two letters (`don't`) or between a digit and a letter (`90's`), or a quote `'` or `′` between a number of one to three digits and a final number of one or two digits (`5'10`, `5′10`), optionally a sign with a number or a Roman numeral (`№5`, `¶IV`), or a word with a legal mark (`Brand(tm)`) | `Word`                                      | no                                      |
 | 24  | anything else                                                                                                                                                                                                                                                                                                                                                                 | `Unclassified`                              | whole core                              |
 
+A **technical fragment** is one whose core the table freezes, whole or in part (the Frozen column is
+not "no"), other than a `Compound` core. A `Compound` core is not technical: only its hyphens are
+frozen, and for the rules it is a compound word, a word whose script is that of its letters (section
+8.2), so `кто-то`, `tls-server` and `mother-in-law` are operands like any word.
+`Report::protected()` still lists its hyphens, as `CompoundHyphens` (section 12.5).
+
 The patterns in the table describe the checks; in code every check is a function over the tokens of
 the core, without regular expressions. "Not first and not last" is what "inside" means everywhere in
 the table: `50%` does not match check 8 (the `%` is last) and is a number by check 15; `+-5` does

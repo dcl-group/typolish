@@ -595,9 +595,11 @@ Choices:
 pub struct Number<'n> { /* i128 | u128 | f32 | f64 | decimal digits borrowed from 'n */ }
 
 impl<'n> Number<'n> {
-    /// ASCII decimal: optional sign, digits, optional `.` and digits. Keeps the caller's
-    /// precision ("1.50" keeps two fraction digits). `.5`, `5.`, `1e3`, spaces and the empty
-    /// string are `Error::InvalidNumber`.
+    /// ASCII decimal: an optional sign `+` or `-`, digits, optional `.` and digits. A `+` is
+    /// accepted and not written. Digits are kept as given: leading zeros ("007" stays `007`)
+    /// and the caller's precision ("1.50" keeps two fraction digits). A zero value is written
+    /// without a sign ("-0.00" is `0,00` in ru). `.5`, `5.`, `1e3`, `--5`, `+-5`, a sign
+    /// without digits, spaces and the empty string are `Error::InvalidNumber` (section 2.11).
     pub fn decimal(text: &'n str) -> Result<Number<'n>, Error>;
     /// A float rounded to `fraction_digits` (round half to even on the exact binary value, as
     /// `format!("{:.N}")` in core).
@@ -627,6 +629,10 @@ assert_eq!(RU.format_number(1234, Output::Unicode).to_string(), "1\u{a0}234"); /
 assert_eq!(RU.format_number(12345, Output::Unicode).to_string(), "12\u{a0}345");
 assert_eq!(EN.format_number(1234, Output::Unicode).to_string(), "1,234");   // en: from 4 digits
 assert_eq!(RU.format_number(Number::decimal("1.50")?, Output::Unicode).to_string(), "1,50");
+assert_eq!(RU.format_number(Number::decimal("+5")?, Output::Unicode).to_string(), "5");
+assert_eq!(RU.format_number(Number::decimal("007")?, Output::Unicode).to_string(), "007");
+assert_eq!(RU.format_number(Number::decimal("-0.00")?, Output::Unicode).to_string(), "0,00");
+assert_eq!(RU.format_number(Number::fixed(-0.001, 1), Output::Unicode).to_string(), "0,0");
 assert_eq!(RU.format_number(0.1f32, Output::Unicode).to_string(), "0,1");   // f32 is not widened
 assert_eq!(RU.format_number(f64::NAN, Output::Unicode).to_string(), "не\u{a0}число");
 assert_eq!(RU.format_range(8000, 8100, Output::Unicode).to_string(), "8\u{a0}000–8\u{a0}100");
@@ -654,11 +660,18 @@ Formatting rules:
   infinities are written with the CLDR symbols of the language (`не⍽число`, `NaN`, `∞`); there is no
   error. `NaN` is written without a sign; negative infinity is the minus sign followed by the
   infinity symbol (`−∞`). Negative zero is written as `0`.
+- `Number::decimal` takes an optional leading `+` or `-`; a `+` is accepted and not written. Its
+  digits are written as given, leading zeros and every fraction digit included (`007` → `007`,
+  `1.50` → ru `1,50`); nothing is rounded or trimmed.
+- A zero value is written without a sign, for every variant: `-0.0` → `0`,
+  `Number::decimal("-0.00")` → `0,00`, and `Number::fixed(-0.001, 1)`, whose rounding gives `-0.0`,
+  → `0,0` (ru).
 - Grouping: with `min_grouping_digits` from 1 to 4 (the CLDR meaning of the parameter), the integer
   part is split by three digits when it has at least `3 + min_grouping_digits` digits; 0 is not a
   CLDR value and turns grouping off for numbers of every length (`COMMON` uses it, section 7.4).
   Defaults: ru and en 1 (from 4 digits), as in CLDR 49 (settled in section 15.5, item 4). The
-  fraction is not grouped.
+  fraction is not grouped. For `Number::decimal` the integer part is grouped as written, leading
+  zeros included (ru `0012345` → `0⍽012⍽345`).
 - Minus: U+2212 for both languages by default, as the task requires; a deviation from CLDR 49, where
   the minus sign is U+002D (section 7.5). Setting `minus_sign`.
 - Range: the language's CLDR range pattern, `{0}–{1}` (U+2013, no spaces) for both languages, for
@@ -824,6 +837,8 @@ impl ProtectedSpan {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ProtectedKind { Delimited, ProtectedPiece, Slot, Technical(TechKind) }
+/// `CompoundHyphens`: only the hyphens of a compound word; the word itself is not technical
+/// and is an operand like any word (section 8.2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TechKind {
@@ -944,7 +959,7 @@ pub enum Error {
 | `Language::from_data`, `LanguageBuilder::build` | `InvalidLanguageData`            | a check of section 7.6 fails                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `Rule::from_str`                                | `UnknownRule`                    | no such id                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `RuleSet::from_str`                             | `UnknownRule`, `InvalidRuleSet`  | `UnknownRule`: unknown id; `InvalidRuleSet`: an id both added and removed, a base name after the first item, a signed base name first, an empty item or string                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `Number::decimal`                               | `InvalidNumber`                  | not an ASCII decimal                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `Number::decimal`                               | `InvalidNumber`                  | not an ASCII decimal of section 2.7: the empty string; a sign without digits (`-`, `+`); more than one sign, or a sign that is not first or not `+` or `-` (`--5`, `+-5`, `5-`, `−5`, `±5`); no digit before or after the `.` (`.5`, `5.`, `-.5`); more than one `.`; an exponent (`1e3`); a `,`, a space or any other character                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `TypographerBuilder::build`                     | `RuleConflict`, `InvalidSetting` | (1) `RuleConflict`: a rule both enabled and disabled. `InvalidSetting`, checked in this order: (2) protection delimiters: an empty or whitespace delimiter or one containing a letter or digit, a delimiter equal to or a prefix of a delimiter of another pair, a delimiter that is a proper prefix of the other one of its pair (equal delimiters of one pair are allowed); (3) `QuotePairs`: `"` or `'` or a space or a letter (output would become input again, breaking idempotence), or four glyphs that are not pairwise distinct or not quote characters (section 7.6); (4) lists, in the order units, short words, particles: a word that is empty, contains a space, or is both added and removed; a unit that starts with a digit; (5) numbers: a group separator that is a digit, a letter, or whitespace other than U+00A0 and U+202F; a minus that is a digit, a letter, whitespace, `"` or `'` (it is written into text by `number.minus`; whitespace would erase the sign, a quote would break idempotence); `min_grouping_digits` above 4 (0 turns grouping off). The first failing check is reported (section 2.4). |
 
 Choices:

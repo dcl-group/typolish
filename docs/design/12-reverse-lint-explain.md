@@ -164,8 +164,9 @@ byte start, then byte end, then kind in the order of the `DiagnosticKind` declar
   with their kind: `Delimited` (backticks or own pairs), `ProtectedPiece`, `Slot`, or
   `Technical(TechKind)` for a frozen fragment (`Url`, `Email`, `Flag`, `Path`, `TimeRange` (the
   times only), `Colon`, `Operator`, `Identifier`, `Angle`, `Uuid`, `Hex`, `IsoDate`, `Version`,
-  `Dotted`, `List`, `CompoundHyphens`, `Unclassified`). This is the main tool for "why did no rule
-  fire here". A `Punctuation` fragment is not a protected span.
+  `Dotted`, `List`, `CompoundHyphens` (the hyphens of a compound word only; the word itself is not
+  technical and is an operand like any word, section 8.2), `Unclassified`). This is the main tool
+  for "why did no rule fire here". A `Punctuation` fragment is not a protected span.
 - `diagnostics()`: as in section 12.4.
 
 `Display` prints a table for reports of differences. For Russian Prose, input
