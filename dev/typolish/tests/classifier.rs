@@ -196,6 +196,18 @@ const DICTIONARY: &[Row] = &[
     ru("до н.э.", &[]),
     ru("т.е", &[(DOTTED, "т.е")]),
     ru("т.д", &[(DOTTED, "т.д")]),
+    // An entry without a `.` still matches a core that has a stop: the stop only adds the entries
+    // that end in `.`.
+    ru("Скорость 60 км/ч.", &[]),
+    ru("Скорость 60 км/ч...", &[]),
+    ru("Скорость 60 МБ/с.", &[]),
+    ru("Скорость 60 МБ/с…", &[]),
+    ru("Пришёл г-н.", &[]),
+    en("Speed 60 km/h.", &[]),
+    en("Speed 60 MB/s…", &[]),
+    en("Latency 5 \u{b5}s.", &[]),
+    en("km/h.", &[]),
+    common("км/ч.", &[(PATH, "км/ч")]),
 ];
 
 #[test]
@@ -227,6 +239,30 @@ fn check_0_user_units_come_first() {
         .build()
         .unwrap();
     assert_eq!(span_texts(&removed_deg, "°C"), [(UNCL, "°C")]);
+    // An added unit matches before a full stop too.
+    assert_eq!(span_texts(&added, "Run 20 req/s."), []);
+}
+
+#[test]
+fn check_0_has_no_length_limit() {
+    // Section 3.6 gives check 0 no bound: a long unit added by the caller is a unit.
+    let long = "килобайтвсекундунаядро/час";
+    assert!(long.len() > 48);
+    let plain = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    assert_eq!(
+        span_texts(&plain, "5 килобайтвсекундунаядро/час"),
+        [(PATH, long)]
+    );
+    let added = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+        .add_units([long])
+        .build()
+        .unwrap();
+    for text in [
+        "5 килобайтвсекундунаядро/час",
+        "Скорость 5 килобайтвсекундунаядро/час.",
+    ] {
+        assert_eq!(span_texts(&added, text), [], "{text}");
+    }
 }
 
 const URLS_AND_ADDRESSES: &[Row] = &[
@@ -961,7 +997,14 @@ fn mixed_script_words_raise_a_warning() {
 fn a_dictionary_entry_raises_no_mixed_script() {
     // `μs` (Greek mu) and `µs` (micro sign) are units of the English table (section 5.2).
     let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
-    for text in ["\u{3bc}s", "\u{b5}s", "5 \u{3bc}s", "5 \u{b5}s"] {
+    for text in [
+        "\u{3bc}s",
+        "\u{b5}s",
+        "5 \u{3bc}s",
+        "5 \u{b5}s",
+        "Latency 5 \u{b5}s.",
+        "Latency 5 \u{3bc}s…",
+    ] {
         let got = diagnostics_of(&t, text);
         assert!(
             got.iter().all(|d| d.0 != DiagnosticKind::MixedScript),

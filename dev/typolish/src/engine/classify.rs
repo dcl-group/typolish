@@ -456,6 +456,10 @@ fn special_case(data: &LanguageData, core: &[Tok], units: &[Unit]) -> Option<Fra
 }
 
 /// Check 0: the core equals an entry of the language's dictionaries (design sections 3.6, 7.1).
+///
+/// The visible text of the core is looked up first as it is; only when that finds nothing and the
+/// core has a stop is it looked up again with a full stop appended, for the entries that end in
+/// `.` (`т.е.`, `нояб.`). The stop adds matches; it never hides an entry without one (`км/ч.`).
 fn dictionary(
     t: &Typographer,
     data: &LanguageData,
@@ -464,23 +468,33 @@ fn dictionary(
     frag: &Frag,
     cs: &mut ClassifyScratch,
 ) -> bool {
-    const LONGEST: u32 = 48;
     let core = tokens
         .get(frag.core_start as usize..frag.core_end as usize)
         .unwrap_or_default();
     let (Some(first), Some(last)) = (core.first(), core.last()) else {
         return false;
     };
-    if core.iter().any(|t| t.kind.is_opaque())
-        || last.src.end.saturating_sub(first.src.start) > LONGEST
-    {
+    if core.iter().any(|t| t.kind.is_opaque()) {
         return false;
     }
+    // An elision starts with an apostrophe, which the wrapper cuts off.
+    let apostrophe = frag.core_start > frag.start
+        && tokens.get(frag.core_start as usize - 1).is_some_and(|t| {
+            t.kind == Kind::Quote && matches!(first_char(text, t), Some('\'' | '’'))
+        });
     cs.key.clear();
     cs.key.extend(visible(text, first.src.start, last.src.end));
-    if frag.stop {
-        cs.key.push('.');
+    if entry(t, data, apostrophe, cs) {
+        return true;
     }
+    frag.stop && {
+        cs.key.push('.');
+        entry(t, data, apostrophe, cs)
+    }
+}
+
+/// Whether `cs.key` equals an entry of check 0, compared as design section 7.1 says.
+fn entry(t: &Typographer, data: &LanguageData, apostrophe: bool, cs: &mut ClassifyScratch) -> bool {
     let key = cs.key.as_str();
     // Entries compared with case, an entry that starts with a lowercase letter also matching the
     // text with that letter in uppercase, except a single letter with a full stop (section 7.1).
@@ -499,7 +513,7 @@ fn dictionary(
     if t.has_unit(key) {
         return true;
     }
-    for k in cased.clone() {
+    for k in cased {
         if data.months.binary_search(k).is_ok() {
             return true;
         }
@@ -512,11 +526,6 @@ fn dictionary(
     if folded_in(data.atom_exceptions, key) || folded_in(data.elisions, key) {
         return true;
     }
-    // An elision starts with an apostrophe, which the wrapper cuts off.
-    let apostrophe = frag.core_start > frag.start
-        && tokens.get(frag.core_start as usize - 1).is_some_and(|t| {
-            t.kind == Kind::Quote && matches!(first_char(text, t), Some('\'' | '’'))
-        });
     apostrophe && !data.elisions.is_empty() && {
         cs.lowered.clear();
         cs.lowered.push('\'');
@@ -1567,6 +1576,43 @@ mod tests {
                 ("1.5-2.5", Range),
             ],
         );
+    }
+
+    #[test]
+    fn an_entry_without_a_full_stop_matches_a_core_that_has_a_stop() {
+        // Design section 3.6, check 0: the stop only adds the entries that end in `.`.
+        use FragKind::*;
+        let last = |language: Language, text: &str| {
+            let all = frags(language, text);
+            let (core, kind, _) = all.last().cloned().unwrap();
+            (core, kind)
+        };
+        for (text, core) in [
+            ("60 км/ч.", "км/ч"),
+            ("60 км/ч...", "км/ч"),
+            ("60 МБ/с.", "МБ/с"),
+            ("21 ноября.", "ноября"),
+            ("Пришёл г-н.", "г-н"),
+            ("т.е.", "т.е"),
+        ] {
+            assert_eq!(
+                last(Language::RU_RU, text),
+                (core.to_owned(), Dictionary),
+                "{text}"
+            );
+        }
+        for (text, core) in [
+            ("60 km/h.", "km/h"),
+            ("5 \u{b5}s.", "\u{b5}s"),
+            ("5 \u{b5}s…", "\u{b5}s"),
+            ("e.g.", "e.g"),
+        ] {
+            assert_eq!(
+                last(Language::EN_US, text),
+                (core.to_owned(), Dictionary),
+                "{text}"
+            );
+        }
     }
 
     #[test]
