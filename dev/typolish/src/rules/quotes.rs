@@ -659,10 +659,24 @@ pub(crate) fn analyze<R: Recorder>(
     // Single quotes at the top level and levels (sections 6.7 and 6.8).
     let mut enclosing = 0usize; // pairs of straight `"` and typed pairs
     let mut depth = 0usize; // every pair that counts for levels
+    // New pairs open around the current quote whose glyphs are of the primary and of the nested
+    // pair, and the first typed closer that stayed neutral inside one of its own family (section
+    // 6.6): a second pass would pair it with the new opener.
+    let mut open_new = [0usize; 2];
+    let mut repairs = None;
     for idx in 0..qs.len() {
         let Some(q) = qs.get(idx).copied() else {
             continue;
         };
+        if q.cat == Cat::Neutral {
+            if repairs.is_none()
+                && q.role == Some(Role::Close)
+                && family_index(q.fam).is_some_and(|f| open_new.get(f).is_some_and(|&n| n > 0))
+            {
+                repairs = Some(q.tok);
+            }
+            continue;
+        }
         if q.partner == NONE || !matches!(q.cat, Cat::Straight | Cat::Typed | Cat::Cond) {
             continue;
         }
@@ -686,6 +700,9 @@ pub(crate) fn analyze<R: Recorder>(
             }
             if !cancelled && q.cat == Cat::Straight {
                 set_glyphs(cx, qs, idx, level, marks);
+                if let Some(n) = level_family(cx, level).and_then(|f| open_new.get_mut(f)) {
+                    *n += 1;
+                }
             }
         } else {
             if !straight_s {
@@ -693,8 +710,26 @@ pub(crate) fn analyze<R: Recorder>(
             }
             if !q.cancelled {
                 depth = depth.saturating_sub(1);
+                // The level of the pair is the depth outside it.
+                if q.cat == Cat::Straight
+                    && let Some(n) = level_family(cx, depth).and_then(|f| open_new.get_mut(f))
+                {
+                    *n = n.saturating_sub(1);
+                }
             }
         }
+    }
+    if let Some(tok) = repairs {
+        // The window does not converge: no straight quote changes, step 1 stays.
+        if let Some(t) = cx.tok(tok as usize) {
+            diag(sink, DiagnosticKind::CrossingQuotes, Severity::Warning, t);
+        }
+        for q in qs.iter().filter(|q| q.cat == Cat::Straight) {
+            if let Some(m) = marks.get_mut(q.tok as usize) {
+                *m = q.step1;
+            }
+        }
+        return;
     }
 
     // Primes, the trailing possessive and the decade apostrophe (sections 6.5 and 6.6).
@@ -747,6 +782,33 @@ fn series(cx: &Cx<'_>, qs: &[Q], start: usize) -> (usize, Option<usize>, Option<
         }
     }
     (k, cx.prev(first_tok), cx.next(last_tok))
+}
+
+/// The index of a typed family in the counters of new pairs: 0 for `P`, 1 for `N`.
+fn family_index(fam: u8) -> Option<usize> {
+    match fam {
+        P => Some(0),
+        N => Some(1),
+        _ => None,
+    }
+}
+
+/// The family of the glyphs of a new pair at `level`, as `categorize` reads them on a second
+/// pass, as an index of `family_index`.
+fn level_family(cx: &Cx<'_>, level: usize) -> Option<usize> {
+    let pairs = cx.pairs?;
+    let open = if level.is_multiple_of(2) {
+        pairs.primary.0
+    } else {
+        pairs.nested.0
+    };
+    if open == pairs.primary.0 {
+        Some(0)
+    } else if open == pairs.nested.0 {
+        Some(1)
+    } else {
+        None
+    }
 }
 
 /// Writes the glyphs of the pair that opens at `qs[idx]` at `level`.

@@ -167,8 +167,14 @@ resolves as an inch: the outer pair is strong.
 
 ### 6.6 All or nothing per window
 
-After pass 2 the window **converges** when no pairs cross and every straight `"` with a role is
-paired or a prime. Then:
+After pass 2 the window **converges** when no pairs cross, every straight `"` with a role is paired
+or a prime, and no typed closer that stayed neutral (section 6.4) lies inside a new pair whose
+opening glyph, by its level (section 6.7), is of the closer's family. Such a closer gives
+`CrossingQuotes` (warning): on a second pass it would pair with that glyph and narrow the new pair,
+and what the first pass decided for the quotes between the closer and the end of the pair would no
+longer hold. In `x '"»b 5' c"` with `Everywhere` (Interface) a first pass would give `x '«»b 5' c»`
+and a second `x ««»b 5» c»`, so the window stays as it is; for the same reason `"a » b"` stays.
+Then, when the window converges:
 
 - every pair of straight quotes gets the glyphs of its level (section 6.7);
 - weak quotes resolved as primes get `″` or `′` (if `quotes.primes` is enabled);
@@ -255,13 +261,17 @@ The first pass either converged or did not.
 properly (section 6.5, item 2), and the family of each new glyph is the primary or the nested pair
 according to its level. On the second pass the stack meets the new glyphs in the same positions and
 pairs them the same way, because the pairs are properly nested and each opener and closer of a new
-pair share a family. Typed glyphs that were neutral on the first pass can pair with a new glyph on
-the second, but they never change, and such a re-pairing cannot enclose a straight `'` pair that was
-cancelled: that pair lay outside every pair of straight `"` and every typed pair of the first pass,
-and a re-pairing with a glyph inside a first-pass pair would have been a crossing, which contradicts
-convergence. A trailing-possessive `’` could close a neutral `‘` on the second pass; section 6.6
-therefore does not produce it after a neutral `‘`. So cancelled `'` pairs stay cancelled and count
-for no level, unpaired `'` stay unpaired, primes are not candidates, and nothing changes.
+pair share a family. A typed closer that was neutral on the first pass found no entry of its family
+on the stack (section 6.4; one covered by another entry would have been a crossing), so on the
+second pass the only entries of its family are new openers around it, and section 6.6 does not let
+the window converge when one of them shares its family: it pairs with no new glyph. A typed opener
+that was neutral on the first pass can pair with a new closer on the second, but it never changes,
+and such a re-pairing cannot enclose a straight `'` pair that was cancelled: that pair lay outside
+every pair of straight `"` and every typed pair of the first pass, and a re-pairing with a glyph
+inside a first-pass pair would have been a crossing, which contradicts convergence. A
+trailing-possessive `’` could close a neutral `‘` on the second pass; section 6.6 therefore does not
+produce it after a neutral `‘`. So cancelled `'` pairs stay cancelled and count for no level,
+unpaired `'` stay unpaired, primes are not candidates, and nothing changes.
 
 (b) **Not converged.** No straight quote changed. The quotes with roles and their families are the
 same on the second pass, so the window again does not converge, and nothing changes.

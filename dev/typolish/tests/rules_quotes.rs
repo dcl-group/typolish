@@ -376,6 +376,11 @@ fn diagnostics_of_section_6_12() {
         ("«a \"b» c\"", vec![(CrossingQuotes, Warning)]),
         ("Он сказал \"\"\" и ушёл.", vec![(AmbiguousQuote, Info); 3]),
         ("Цена 27»", vec![(UnmatchedQuote, Info)]),
+        // Section 6.6: a neutral closer inside a new pair of its family.
+        (
+            "Он сказал \"a » b\"",
+            vec![(UnmatchedQuote, Info), (CrossingQuotes, Warning)],
+        ),
         (
             "Поле Значение:\"\" и \"да\".",
             vec![(UnmatchedQuote, Warning)],
@@ -493,6 +498,21 @@ fn single_quote_modes() {
     }
     let t = ru(SingleQuotes::Everywhere);
     check_in("Everywhere", &t, ("'hi'", "«hi»"));
+    // Section 6.6: a neutral `»` inside the new pair `"…c"` would pair with its `«` on a second
+    // pass and let `5'` close the first `'`; the window does not converge, in every mode.
+    for mode in [
+        SingleQuotes::Everywhere,
+        SingleQuotes::NestedOnly,
+        SingleQuotes::Never,
+    ] {
+        for set in [RuleSet::INTERFACE, RuleSet::PROSE] {
+            let t = set_with(Language::RU_RU, set, mode);
+            check_unchanged("neutral closer", &t, "x '\"»b 5' c\"");
+            check_unchanged("neutral closer", &t, "'\"»90'\"");
+        }
+        let t = set_with(Language::EN_US, RuleSet::INTERFACE, mode);
+        check_unchanged("neutral closer", &t, "’'\"”»90'„\"");
+    }
     check_in(
         "Everywhere",
         &t,

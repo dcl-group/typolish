@@ -104,6 +104,11 @@ const SEEDS: &[&str] = &[
     "Введите \"-\" или \"—\"",
     // A series of three or more quotes of any form has no sign-only pair inside it (section 6.3).
     "\"--\"\"\"",
+    // A neutral typed closer inside a new pair of its family (section 6.6).
+    "x '\"»b 5' c\"",
+    "'\"»90'\"",
+    "’'\"”»90'„\"",
+    "\"a » b\"",
     "''''- a' b'",
 ];
 

@@ -341,7 +341,9 @@ the no-panic test.
    `Токен "SGVsbG8gd29ybGQ=" и "имя".`, `‘Note: 'beta' builds of the developers' tools`, `¶IV`,
    `‚Wort‘` with a `LanguageBuilder` language whose pairs are `„“` and `‚‘`, `100%`, `100‰` and
    `100 %` under every `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed
-   `word⍽- word`, `Sign in - it's free`).
+   `word⍽- word`, `Sign in - it's free`; the sign-only pair next to a dash, `Слово - "" да`,
+   `"" - 5`, `- "" да`; the rule of three, `"--"""` and `''''- a' b'`; and a neutral typed closer
+   inside a new pair of its family, `x '"»b 5' c"`, `'"»90'"`, en `’'"”»90'„"`).
 2. **Fixed-point oracle**: `f` repeated until nothing changes (at most three times) equals `f`; a
    difference prints the reports of both passes.
 3. **Invariants**, one property each: I1 (edits never change a token kind; insertions and removals
