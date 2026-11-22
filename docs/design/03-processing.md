@@ -116,13 +116,15 @@ enum Atom {
 ```
 
 An atom that is not text has no extent in the call's text: it stands at a position between two of
-its bytes and keeps its piece. A table of the `Text` pieces with their ranges in the call's text
-resolves a position to a piece when a record is made (section 3.11) and when output is written.
-Atoms, like tokens, hold positions and no references, so the buffers that keep them can be reused
-across calls (section 2.12). Positions are `u32`: an input with more than `u32::MAX` pieces or a
-call's text longer than `u32::MAX` bytes is returned unchanged, the safe outcome of section 2.11 for
-input the engine cannot represent. For templates, the pieces are first collected into the call-local
-vector (section 2.12), and only then is the scratch borrowed.
+its bytes and keeps its piece. An empty `Protected` or `Markup` piece is an atom like a non-empty
+one (it ends a token and is content for windows); only an empty `Text` piece adds nothing. A table
+of the `Text` pieces with their ranges in the call's text resolves a position to a piece when a
+record is made (section 3.11) and when output is written. Atoms, like tokens, hold positions and no
+references, so the buffers that keep them can be reused across calls (section 2.12). Positions are
+`u32`: an input with more than `u32::MAX` pieces or a call's text longer than `u32::MAX` bytes is
+returned unchanged, the safe outcome of section 2.11 for input the engine cannot represent. For
+templates, the pieces are first collected into the call-local vector (section 2.12), and only then
+is the scratch borrowed.
 
 Protection delimiters (section 10.1) cut `Text` atoms into `Text` and `Delimited` in two steps; the
 delimiters belong to the `Delimited` atoms:

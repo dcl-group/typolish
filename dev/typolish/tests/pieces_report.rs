@@ -215,6 +215,54 @@ fn windows_with_slots() {
 }
 
 #[test]
+fn empty_markup_and_protected_pieces_are_atoms() {
+    // Sections 2.6 and 3.3: a markup or protected piece is content and ends a token whether or not
+    // its text is empty; only empty `Text` pieces are skipped.
+    let t = interface();
+    for piece in [Piece::Markup(""), Piece::Protected("")] {
+        let got = report_records(
+            &t,
+            vec![Piece::Text("`a\n"), piece.clone(), Piece::Text("\nb`")],
+        );
+        assert_eq!(of_kind(&got, D), [(0, 0..3), (2, 0..3)], "{piece:?}");
+        let report = t.report_template(
+            vec![Piece::Text("`a\n"), piece.clone(), Piece::Text("\nb`")],
+            Output::Unicode,
+        );
+        assert!(report.diagnostics().is_empty(), "{piece:?}");
+    }
+    // An empty protected piece has its record, with the empty range of its piece.
+    let got = report_records(
+        &t,
+        vec![Piece::Text("a "), Piece::Protected(""), Piece::Text(" b")],
+    );
+    assert_eq!(of_kind(&got, ProtectedKind::ProtectedPiece), [(1, 0..0)]);
+    // An empty markup piece ends a token: `host` and `:8080` are two fragments, as with `<b>`.
+    for markup in ["", "<b>"] {
+        let got = report_records(
+            &t,
+            vec![
+                Piece::Text("host"),
+                Piece::Markup(markup),
+                Piece::Text(":8080"),
+            ],
+        );
+        assert_eq!(
+            got,
+            report_records(
+                &t,
+                vec![
+                    Piece::Text("host"),
+                    Piece::Markup("<i>"),
+                    Piece::Text(":8080"),
+                ],
+            ),
+            "{markup:?}"
+        );
+    }
+}
+
+#[test]
 fn a_fenced_block_across_a_slot() {
     let t = interface();
     let got = report_records(

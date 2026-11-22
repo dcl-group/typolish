@@ -102,11 +102,10 @@ pub(crate) fn layout<'x>(
                 at: pos,
                 kind: slot.kind(),
             }),
-            Input::Protected(text) if !text.is_empty() => {
-                atoms.push(Atom::Protected { piece, at: pos });
-            }
-            Input::Markup(text) if !text.is_empty() => atoms.push(Atom::Markup { piece, at: pos }),
-            Input::Protected(_) | Input::Markup(_) => {}
+            // An empty protected or markup piece is still an atom: it ends a token and is content
+            // (design sections 2.6, 3.3); only empty `Text` pieces are skipped.
+            Input::Protected(_) => atoms.push(Atom::Protected { piece, at: pos }),
+            Input::Markup(_) => atoms.push(Atom::Markup { piece, at: pos }),
         }
     }
     if copied {
