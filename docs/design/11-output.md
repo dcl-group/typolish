@@ -35,7 +35,8 @@ break inside the element.
 The characters the rules produce, and the same characters in the input. The quotes row holds every
 character that section 7.6 allows as a quote glyph (the `Quote` characters of section 3.5 other than
 `"`, `'`, `′` and `″`), so quote pairs set by the caller (`TypographerBuilder::quote_pairs`,
-`LanguageBuilder`) are covered too:
+`LanguageBuilder`) are covered too; a conformance check (section 13.9) fails when such a glyph is
+missing from the row:
 
 | Character             | Code points                                                                    | `HtmlStyle::NAMED`                                                                                    | `EscapeStyle::JS` |
 | --------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ----------------- |
@@ -133,12 +134,12 @@ backslashes; escaping after the crate would ruin its own escapes.
 - `JS_CODE_POINT` escapes the same characters as `JS` in the ES2015 form `\u{A0}` (`\u{27}` for `'`,
   `\u{1F600}` above the BMP, no surrogate pairs), for codebases that target modern engines only.
 - `CSS` writes the body of a CSS string (`content: "…"`): `\` → `\\`, `"` → `\"`, `'` → `\'`, the
-  controls U+0001 to U+001F and U+007F (among them LF, CR, FF and tab, the newlines of CSS) and `<`
-  → a hexadecimal escape followed by a space (`\a `, `\c `, `\3c `); U+0000, which CSS cannot carry
-  (it reads both a raw U+0000 and `\0 ` as U+FFFD), → `\fffd `; U+0085, U+2028 and U+2029 are not
-  newlines in CSS and are written as they are (escaped only with `non_ascii()`); the typographic set
-  → the same form (`\a0 `, `\2014 `). The trailing space ends the escape and is part of it, as CSS
-  defines.
+  controls U+0001 to U+001F and U+007F (among them tab and LF, CR and FF, the newlines of CSS) and
+  `<` → a hexadecimal escape followed by a space (`\a `, `\c `, `\3c `); U+0000, which CSS cannot
+  carry (it reads both a raw U+0000 and `\0 ` as U+FFFD), → `\fffd `; U+0085, U+2028 and U+2029 are
+  not newlines in CSS and are written as they are (escaped only with `non_ascii()`); the typographic
+  set → the same form (`\a0 `, `\2014 `). The trailing space ends the escape and is part of it, as
+  CSS defines.
 - With the default scope only the typographic set and the characters above are escaped; Cyrillic and
   other text, and the C1 controls U+0080 to U+009F (U+0085 among them), stay UTF-8. `non_ascii()`
   escapes every non-ASCII character for pipelines that require ASCII.
