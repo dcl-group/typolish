@@ -1,0 +1,24 @@
+[package]
+name = "typolish"
+version = "0.1.0"
+description = "Typesetting of plain text for a language: quotes, dashes, ellipses, no-break spaces and numbers."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["typography", "typesetting", "quotes", "nbsp", "i18n"]
+categories = ["text-processing", "internationalization"]
+exclude = ["tests/fixtures/unicode/", "tests/fixtures/whatwg-entities.txt"]
+
+[features]
+default = []
+
+[dependencies]
+thiserror = "2.0.21"
+
+[dev-dependencies]
+proptest = { version = "1.12.0", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true
