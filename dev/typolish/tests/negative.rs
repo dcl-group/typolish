@@ -537,9 +537,11 @@ fn fenced_blocks_are_protected_whole() {
             .find(|s| s.kind() == ProtectedKind::Delimited)
             .unwrap();
         assert_eq!(block.piece(), 0);
+        // The span runs from the opening run to the closing run; the indentation before the
+        // opening run is not part of it (section 10.1).
         assert_eq!(
             &input[block.range()],
-            &input[..input.rfind("```").unwrap() + 3]
+            &input[input.find("```").unwrap()..input.rfind("```").unwrap() + 3]
         );
     }
 }
