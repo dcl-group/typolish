@@ -7,10 +7,13 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 ### 13.1 Principles
 
 - Tests live in `dev/typolish/tests/` and run from `dev/` with no network; helpers are in
-  `tests/common/mod.rs` (lint allows: section 14.5). Slow tests are `#[ignore]` and run by hand in
-  stage 5 and before releases.
-- Fixtures are synthetic. No text from internal networks or third-party works enters the repository;
-  host names are neutral (`example.com`, `db.example.internal`).
+  `tests/common/mod.rs` and the property generators in `tests/common/strategies.rs` (lint allows:
+  section 14.5). Slow tests are `#[ignore]` and run by hand in stage 5 and before releases.
+- Fixtures are synthetic. No text from internal networks or third-party works enters the repository,
+  except two extracts of standards kept with the source and license of each in a header and excluded
+  from the published package: `tests/fixtures/unicode/` (section 13.6) and
+  `tests/fixtures/whatwg-entities.txt` (section 13.2). Host names are neutral (`example.com`,
+  `db.example.internal`).
 - Expectations are written with visible markers: the helper `vis("5⍽МБ")` replaces `⍽` with U+00A0
   and `⎵` with U+202F, and another helper checks that inputs contain no markers. On failure the
   helper prints invisible characters as markers.
@@ -142,9 +145,12 @@ gives the output of the whole set.
   U+0085) and `a\u{2028}b` (a raw U+2028); the fixed set stays as a regression table next to the
   safe-alphabet property; the typographic-set table of section 11.2 is compared with
   `tests/fixtures/whatwg-entities.txt`, an extract of `entities.json` of the HTML Living Standard
-  taken on 2026-11-21 (section 14.8), whose header names the source and the date: every name the
-  table writes exists there with that code point, U+202F and U+2011 have no name, and the test fails
-  when `HtmlStyle::NAMED` writes a numeric reference for a character that has a name there; en with
+  taken on 2026-11-21 (section 14.8), whose header names the source, the date and the license (CC BY
+  4.0, the license of WHATWG Living Standards, with its attribution line; the file is an unmodified
+  selection of entries), excluded from the published package like the Unicode fixture (section
+  13.6), with this comparison skipped when the file is absent: every name the table writes exists
+  there with that code point, U+202F and U+2011 have no name, and the test fails when
+  `HtmlStyle::NAMED` writes a numeric reference for a character that has a name there; en with
   `quote_pairs` set to primary `« »` and nested `‹ ›` turns `"a "b" c"` into
   `&laquo;a &lsaquo;b&rsaquo; c&raquo;` with `HtmlStyle::NAMED` and into `«a ‹b› c»` with
   `EscapeStyle::JS`.
@@ -302,11 +308,15 @@ the no-panic test.
 8. **Cow**: the output is `Borrowed` exactly when it equals the input byte for byte, for every
    output kind (`Html` and `Escaped` included), and a test-only entry point `typeset_unfiltered` (a
    `#[cfg(test)]` function in `src/engine/mod.rs`; this part of the property runs as a unit test
-   there, with the generators of this section, not in `tests/properties.rs`, so it adds nothing to
-   the public API or to the features), which runs the whole pipeline without the prefilter, gives
-   the same result as `typeset` and `typeset_template` on every generated input and template, for
-   every rule set and every output kind; so a missing trigger byte or encoded byte shows up as a
-   difference.
+   there, with the generators of this section, not in `tests/properties.rs`; the generators live in
+   `tests/common/strategies.rs`, which `tests/common/mod.rs` declares as `pub mod strategies;` and
+   `src/engine/mod.rs` includes as
+   `#[cfg(test)] #[path = "../../tests/common/strategies.rs"] mod strategies;`, and `lib.rs` has
+   `#[cfg(test)] extern crate self as typolish;` so that the `typolish::` paths of that file resolve
+   in both crates; so it adds nothing to the public API or to the features), which runs the whole
+   pipeline without the prefilter, gives the same result as `typeset` and `typeset_template` on
+   every generated input and template, for every rule set and every output kind; so a missing
+   trigger byte or encoded byte shows up as a difference.
 9. **Recorder independence**: `typeset`, `typeset_with` and `report` give the same result; `lint(x)`
    without its `TypographicChar` entries equals `report(x, Output::Unicode).diagnostics()`; applying
    `report(x).changes()` to `x` yields the result.
@@ -340,7 +350,9 @@ the no-panic test.
     section 11.6; in every escaped kind each `\` starts an escape that a strict parser of that
     syntax accepts (a CSS hex escape always ends with its space); with `non_ascii()` no byte from
     0x80; except with `HtmlStyle::CHARACTERS`, no raw character of the typographic set. The strict
-    parsers are test helpers next to the decoders.
+    parsers are test helpers next to the decoders. "Controls" here are those of the table of section
+    11.6, U+0000 to U+001F and U+007F; U+0085 and the other C1 characters are not among them and are
+    written raw by every escaped kind unless `non_ascii()` is set.
 
 ### 13.6 Unicode conformance
 

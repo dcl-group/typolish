@@ -103,19 +103,21 @@ print_stderr = "deny"
 `readme = "README.md"`, `keywords = ["typography", "typesetting", "quotes", "nbsp", "i18n"]`,
 `categories = ["text-processing", "internationalization"]` (both slugs exist on crates.io, checked
 on 2026-11-21), workspace inheritance for edition, rust-version, license and repository,
-`exclude = ["tests/fixtures/unicode/"]`, `[lints] workspace = true`, and the dependencies of section
-14.1. There is no `authors` field: zonewright has none, and the maintainer decided that license,
-authors and copyright are copied from it exactly. `lib.rs` also carries `#![forbid(unsafe_code)]`.
-The one exception is `tests/alloc.rs`: its counting allocator needs `unsafe impl GlobalAlloc`, so
-the file starts with `#![allow(unsafe_code)]` and a comment giving this reason. It is the only
-`unsafe` code in the package; `unsafe_code` stays `deny` for the workspace and `forbid` in `lib.rs`.
-`dev/clippy.toml` allows unwrap, expect, panic, indexing, dbg and print in tests, as in zonewright;
-these settings cover only `#[test]` functions and `#[cfg(test)]` modules, not test helpers, benches
-or examples. Therefore every root file of a non-library target starts with a `//!` line
-(`missing_docs` applies to each crate root) and an allow list: every `tests/*.rs` has
+`exclude = ["tests/fixtures/unicode/", "tests/fixtures/whatwg-entities.txt"]`,
+`[lints] workspace = true`, and the dependencies of section 14.1. There is no `authors` field:
+zonewright has none, and the maintainer decided that license, authors and copyright are copied from
+it exactly. `lib.rs` also carries `#![forbid(unsafe_code)]`. The one exception is `tests/alloc.rs`:
+its counting allocator needs `unsafe impl GlobalAlloc`, so the file starts with
+`#![allow(unsafe_code)]` and a comment giving this reason. It is the only `unsafe` code in the
+package; `unsafe_code` stays `deny` for the workspace and `forbid` in `lib.rs`. `dev/clippy.toml`
+allows unwrap, expect, panic, indexing, dbg and print in tests, as in zonewright; these settings
+cover only `#[test]` functions and `#[cfg(test)]` modules, not test helpers, benches or examples.
+Therefore every root file of a non-library target starts with a `//!` line (`missing_docs` applies
+to each crate root) and an allow list: every `tests/*.rs` has
 `#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing, clippy::print_stdout, clippy::print_stderr, clippy::dbg_macro)]`,
-which also covers `tests/common/mod.rs` through `mod common;`; `benches/load.rs` and every
-`examples/*.rs` have
+which also covers `tests/common/mod.rs` and `tests/common/strategies.rs` through `mod common;` (in
+`src/` that file is a `#[cfg(test)]` module, which `dev/clippy.toml` already covers);
+`benches/load.rs` and every `examples/*.rs` have
 `#![allow(clippy::print_stdout, clippy::print_stderr, clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic)]`
 (`examples/fluent_generator.rs` fails loudly on an unknown `TemplatePart`, section 2.14). `src/`
 keeps the full deny set and has no `allow` of these lints.
@@ -188,7 +190,7 @@ dev/
       engine/  mod.rs  ingest.rs  window.rs  lex.rs  classify.rs  phase.rs  render.rs  record.rs  scratch.rs
       rules/   mod.rs  symbols.rs  ellipsis.rs  dash.rs  range.rs  number.rs  quotes.rs  nbsp.rs
     tests/
-      common/mod.rs  rules_*.rs  negative.rs  parts.rs  numbers.rs  output.rs  fluent_isolation.rs
+      common/{mod,strategies}.rs  rules_*.rs  negative.rs  parts.rs  numbers.rs  output.rs  fluent_isolation.rs
       reference/{ru,en_us}.rs  properties.rs  graphemes.rs  roundtrip.rs  corpus.rs  alloc.rs
       load.rs  conformance.rs  data.rs  api.rs  lint.rs
       corpus/  fixtures/unicode/  fixtures/whatwg-entities.txt

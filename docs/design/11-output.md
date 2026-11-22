@@ -140,8 +140,8 @@ backslashes; escaping after the crate would ruin its own escapes.
   → the same form (`\a0 `, `\2014 `). The trailing space ends the escape and is part of it, as CSS
   defines.
 - With the default scope only the typographic set and the characters above are escaped; Cyrillic and
-  other text stays UTF-8. `non_ascii()` escapes every non-ASCII character for pipelines that require
-  ASCII.
+  other text, and the C1 controls U+0080 to U+009F (U+0085 among them), stay UTF-8. `non_ascii()`
+  escapes every non-ASCII character for pipelines that require ASCII.
 - The prefilter (section 3.2) takes the bytes that a style encodes from this same table, so text
   that needs escaping is never returned borrowed: `a</script>b` in `JS`, `AT&T` in `JSON` and `Да`
   with `JS.non_ascii()` always come out escaped.

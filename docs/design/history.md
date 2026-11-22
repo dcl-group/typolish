@@ -49,7 +49,8 @@ uses the values of `en` (checked). From `cldr-core` `supplemental/likelySubtags.
 49.0.0): `ru` → `ru-Cyrl-RU`, `en` → `en-Latn-US`, the likely-subtags rule behind section 2.2.
 
 **HTML entities**: every name in section 11.2 is in the WHATWG `entities.json`; U+202F and U+2011
-have no named reference.
+have no named reference. The license of the extract, CC BY 4.0, was read from the WHATWG IPR policy
+(section 7.1.1) on 2026-11-22.
 
 **crates.io categories**: `text-processing` and `internationalization` exist.
 
