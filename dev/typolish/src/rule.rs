@@ -78,10 +78,6 @@ pub enum Rule {
 }
 
 /// The phase a rule runs in (design section 3.8).
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "the phase engine of stage 2 walks ORDER")
-)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) enum Phase {
     Symbols,
@@ -96,10 +92,6 @@ pub(crate) enum Phase {
 /// The execution order: the table of design section 4.1.
 ///
 /// The engine walks this table; [`Rule::ALL`] lists the same rules in the same order.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "the phase engine of stage 2 walks ORDER")
-)]
 pub(crate) const ORDER: [(Rule, Phase); 27] = [
     (Rule::SymbolsCopyright, Phase::Symbols),
     (Rule::SymbolsArrows, Phase::Symbols),

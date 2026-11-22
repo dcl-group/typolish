@@ -1,25 +1,37 @@
-//! The pipeline (design section 3.1) and its entry points.
-//!
-//! So far the pipeline runs the prefilter, ingest and protection, windows, the lexer and the
-//! classifier, and records protected spans and the diagnostics of protection and the classifier.
-//! The phases and the rules come next in stage 2 (design section 15.4); until then no window
-//! changes, and every entry point returns its input.
+//! The pipeline (design section 3.1) and its entry points: the prefilter, ingest and protection,
+//! windows, the lexer, the classifier, the seven phases and rendering, with the records of
+//! `report`.
 
 pub(crate) mod classify;
-mod ingest;
-mod lex;
+pub(crate) mod ingest;
+pub(crate) mod lex;
 pub(crate) mod phase;
 pub(crate) mod record;
+mod render;
 pub(crate) mod scratch;
 mod window;
 
 use std::borrow::Cow;
 
 use crate::report::Records;
+use crate::rule::Phase;
 use crate::rules::Triggers;
-use crate::{DiagnosticKind, Output, Severity, Slot, Typographer};
+use crate::rules::quotes;
+use crate::{DiagnosticKind, Output, Rule, Severity, Slot, Typographer};
+use phase::{Cx, PhaseRules};
 use record::{Journal, Loc, NoRecord, Recorder, Sink};
 use scratch::Scratch;
+
+/// The phases in their order (design section 3.8).
+const PHASES: [Phase; 7] = [
+    Phase::Symbols,
+    Phase::Ellipsis,
+    Phase::Dash,
+    Phase::Range,
+    Phase::Number,
+    Phase::Quotes,
+    Phase::Nbsp,
+];
 
 /// One input piece without the caller's payload: the call-local vector of piece texts (design
 /// section 2.12).
@@ -31,7 +43,8 @@ pub(crate) enum Input<'t> {
     Markup(&'t str),
 }
 
-/// Runs the pipeline over `input` and reports whether any window changed.
+/// Runs the pipeline over `input` and reports whether any window changed; the edits of the changed
+/// windows are left in `scratch.edits` and the table of `Text` pieces in `scratch.pieces`.
 fn run<R: Recorder>(
     typographer: &Typographer,
     scratch: &mut Scratch,
@@ -60,9 +73,15 @@ fn run_on<R: Recorder>(
         delim,
         clusters,
         tokens,
+        next,
         classify,
+        removed,
+        edits,
+        marks,
+        quotes: quote_work,
         ..
     } = scratch;
+    edits.clear();
     let Some(text) = ingest::layout(input, buf, pieces, atoms) else {
         // Positions do not fit `u32`: the input is returned unchanged (design section 3.4).
         return false;
@@ -93,6 +112,14 @@ fn run_on<R: Recorder>(
     );
     core::mem::swap(atoms, next_atoms);
 
+    let active = typographer.compiled().active;
+    let phases = PHASES.map(|phase| (phase, PhaseRules::of(phase, active)));
+    let report_pairs = R::ACTIVE && active.contains(Rule::QuotesPairs);
+    let data = typographer.language().data();
+    let pairs = typographer.quote_pairs();
+    let single_quotes = typographer.single_quotes();
+    let dash = typographer.dash_data();
+
     let mut sink = Sink { rec, pieces, lens };
     for &(start, end) in delim.unclosed() {
         sink.diagnostic(
@@ -107,10 +134,41 @@ fn run_on<R: Recorder>(
         if R::ACTIVE {
             classify::record_protected(tokens, &classify.frags, &mut sink);
         }
-        // The phases run the active rules over the window here (stage 2, design section 3.8);
-        // no rule is implemented yet, so no window changes.
+        // The phases (design section 3.8): each one pass over a snapshot of the tokens, with the
+        // classification of the pass.
+        removed.clear();
+        let mut changed = false;
+        for (phase, rules) in &phases {
+            if rules.is_empty() {
+                continue;
+            }
+            let frags = &mut classify.frags;
+            let mut cx = Cx {
+                data,
+                text,
+                toks: tokens,
+                frags,
+                quotes: &[],
+                pairs,
+                single_quotes,
+                dash,
+            };
+            if *phase == Phase::Quotes {
+                quotes::analyze(&cx, quote_work, marks, &mut sink, report_pairs);
+                cx.quotes = marks;
+            }
+            let outcome = phase::run_phase(&cx, rules.as_slice(), next, removed, &mut sink);
+            core::mem::swap(tokens, next);
+            if outcome.moved {
+                phase::remap(tokens, frags);
+            }
+            changed |= outcome.changed;
+        }
+        if changed {
+            render::collect(tokens, removed, edits);
+        }
     }
-    false
+    !edits.is_empty()
 }
 
 /// The bytes that the output kind encodes (design section 3.2). Only `Output::Unicode` is
@@ -177,10 +235,11 @@ fn typeset_unfiltered<'a>(
     text: &'a str,
     _output: Output,
 ) -> Cow<'a, str> {
-    let _changed = run(typographer, scratch, &[Input::Text(text)], &mut NoRecord);
-    // Rendering of changed windows arrives with the phases (stage 2) and the encoders (stage 3);
-    // until then nothing changes, and the input comes back borrowed.
-    Cow::Borrowed(text)
+    if !run(typographer, scratch, &[Input::Text(text)], &mut NoRecord) {
+        return Cow::Borrowed(text);
+    }
+    // `Html` and `Escaped` are written as Unicode until the encoders of stage 3.
+    render::render_text(text, &scratch.edits, typographer.language().data())
 }
 
 /// `Typographer::typeset_template_with`: returns the texts in the n + 1 form and whether any of
@@ -210,20 +269,25 @@ pub(crate) fn typeset_template<'t>(
     });
     let changed = wanted(typographer, output, texts, encoded_only)
         && run(typographer, scratch, input, &mut NoRecord);
-    template_texts(input, slot_count, changed)
+    template_texts(typographer, scratch, input, slot_count, changed)
 }
 
-/// The texts of a template in the n + 1 form.
+/// The texts of a template in the n + 1 form after `run`, and whether any of them changed.
 fn template_texts<'t>(
+    typographer: &Typographer,
+    scratch: &Scratch,
     input: &[Input<'t>],
     slot_count: usize,
     changed: bool,
 ) -> (Vec<Cow<'t, str>>, bool) {
-    let mut texts = Vec::with_capacity(slot_count.saturating_add(1));
-    for group in input.split(|item| matches!(item, Input::Slot(_))) {
-        texts.push(merge(group));
-    }
-    (texts, changed)
+    let edits = if changed { &scratch.edits[..] } else { &[] };
+    render::render_template(
+        input,
+        &scratch.pieces,
+        edits,
+        slot_count,
+        typographer.language().data(),
+    )
 }
 
 /// `Typographer::report`: the whole pipeline with the journal, without the prefilter (design
@@ -235,8 +299,12 @@ pub(crate) fn report<'a>(
     _output: Output,
 ) -> (Cow<'a, str>, Records) {
     let mut journal = Journal::default();
-    let _changed = run(typographer, scratch, &[Input::Text(text)], &mut journal);
-    (Cow::Borrowed(text), journal.finish())
+    let result = if run(typographer, scratch, &[Input::Text(text)], &mut journal) {
+        render::render_text(text, &scratch.edits, typographer.language().data())
+    } else {
+        Cow::Borrowed(text)
+    };
+    (result, journal.finish())
 }
 
 /// `Typographer::report_template`.
@@ -249,33 +317,8 @@ pub(crate) fn report_template<'t>(
 ) -> (Vec<Cow<'t, str>>, bool, Records) {
     let mut journal = Journal::default();
     let changed = run(typographer, scratch, input, &mut journal);
-    let (texts, changed) = template_texts(input, slot_count, changed);
+    let (texts, changed) = template_texts(typographer, scratch, input, slot_count, changed);
     (texts, changed, journal.finish())
-}
-
-/// The text of the pieces between two slots: borrowed while it maps to at most one non-empty
-/// piece, otherwise one string allocated at its final length (design section 2.6, output
-/// contract item 2).
-fn merge<'t>(group: &[Input<'t>]) -> Cow<'t, str> {
-    let mut parts = group.iter().filter_map(|item| match *item {
-        Input::Text(text) | Input::Protected(text) | Input::Markup(text) if !text.is_empty() => {
-            Some(text)
-        }
-        Input::Text(_) | Input::Protected(_) | Input::Markup(_) | Input::Slot(_) => None,
-    });
-    let Some(first) = parts.next() else {
-        return Cow::Borrowed("");
-    };
-    if parts.clone().next().is_none() {
-        return Cow::Borrowed(first);
-    }
-    let len = parts
-        .clone()
-        .fold(first.len(), |len, text| len.saturating_add(text.len()));
-    let mut all = String::with_capacity(len);
-    all.push_str(first);
-    parts.for_each(|text| all.push_str(text));
-    Cow::Owned(all)
 }
 
 // The generators of design section 13.5; the file allows `dead_code` itself.
@@ -342,9 +385,36 @@ mod tests {
                 let slots = input.iter().filter(|i| matches!(i, Input::Slot(_))).count();
                 let mut scratch = Scratch::new();
                 let changed = run(&t, &mut scratch, &input, &mut NoRecord);
-                let (texts, changed) = template_texts(&input, slots, changed);
+                let (texts, changed) = template_texts(&t, &scratch, &input, slots, changed);
                 prop_assert_eq!(filtered.texts(), texts.as_slice());
                 prop_assert_eq!(filtered.changed(), changed);
+            }
+        }
+    }
+
+    /// Design section 3.11: the three recorders see the same run; `Diagnostics` keeps the
+    /// diagnostics of `Journal`, and `NoRecord` gives the result of `Journal`.
+    #[test]
+    fn the_recorders_agree() {
+        let inputs = [
+            "Он сказал \"привет.",
+            "«a \"b» c\"",
+            "Слово \" в тексте и 10 - 20 штук, Мoсква, don`t",
+            "He said - \"a cat\" at 5'10\".",
+            "- Привет!\n- Пока... 1941-45 гг.",
+        ];
+        for language in LANGUAGES {
+            for set in [RuleSet::PROSE, RuleSet::INTERFACE] {
+                let t = Typographer::new(language.clone(), set);
+                for text in inputs {
+                    let mut scratch = Scratch::new();
+                    let mut diagnostics = record::Diagnostics::default();
+                    let _ = run(&t, &mut scratch, &[Input::Text(text)], &mut diagnostics);
+                    let (result, records) = report(&t, &mut scratch, text, Output::Unicode);
+                    assert_eq!(diagnostics.finish(), records.diagnostics, "{text}");
+                    let plain = typeset_unfiltered(&t, &mut scratch, text, Output::Unicode);
+                    assert_eq!(plain, result, "{text}");
+                }
             }
         }
     }

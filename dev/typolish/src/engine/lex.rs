@@ -22,10 +22,16 @@ pub(crate) struct Tok {
     pub(crate) repl: Repl,
     pub(crate) glue: Glue,
     pub(crate) flags: Flags,
+    /// The index of the token's fragment in the classification of the pass (design section 3.6);
+    /// `NO_FRAG` for `Space` and `Newline` tokens, which belong to no fragment.
+    pub(crate) frag: u32,
 }
 
 /// `Tok::piece` of a token of the call's text.
 pub(crate) const NO_PIECE: u32 = u32::MAX;
+
+/// `Tok::frag` of a token outside every fragment.
+pub(crate) const NO_FRAG: u32 = u32::MAX;
 
 impl Tok {
     fn text(kind: Kind, start: u32, end: u32) -> Tok {
@@ -36,7 +42,16 @@ impl Tok {
             repl: Repl::Source,
             glue: Glue::None,
             flags: Flags::default(),
+            frag: NO_FRAG,
         }
+    }
+
+    /// An inserted `Space` token carrying glue, with an empty range at `at` (design section 3.5).
+    pub(crate) fn inserted(at: u32, glue: Glue) -> Tok {
+        let mut tok = Tok::text(Kind::Space, at, at);
+        tok.glue = glue;
+        tok.flags = Flags::INSERTED;
+        tok
     }
 
     /// Whether the token is `FROZEN`.
@@ -56,7 +71,6 @@ pub(crate) struct SrcSpan {
 
 /// The current text of a token.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[expect(dead_code, reason = "the rules of stage 2 replace text")]
 pub(crate) enum Repl {
     /// The source slice at `src`.
     Source,
@@ -68,7 +82,6 @@ pub(crate) enum Repl {
 
 /// The forms of the language's ellipsis data (`?..` or `?…` and the others).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[expect(dead_code, reason = "the rules of stage 2 replace text")]
 pub(crate) enum EllipsisForm {
     Question,
     Exclamation,
@@ -83,17 +96,17 @@ pub(crate) enum Glue {
     Narrow,
 }
 
-/// Token flags: `FROZEN`, `LABEL`, `CHANGED`, `INSERTED`.
+/// Token flags: `FROZEN`, `LABEL`, `CHANGED`, `INSERTED`, and `CORE` for a token of the core of
+/// its fragment (design section 3.6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub(crate) struct Flags(u8);
 
 impl Flags {
     pub(crate) const FROZEN: Flags = Flags(1);
     pub(crate) const LABEL: Flags = Flags(1 << 1);
-    #[cfg_attr(not(test), expect(dead_code, reason = "the phases of stage 2 set it"))]
     pub(crate) const CHANGED: Flags = Flags(1 << 2);
-    #[cfg_attr(not(test), expect(dead_code, reason = "the phases of stage 2 set it"))]
     pub(crate) const INSERTED: Flags = Flags(1 << 3);
+    pub(crate) const CORE: Flags = Flags(1 << 4);
 
     pub(crate) const fn contains(self, other: Flags) -> bool {
         self.0 & other.0 == other.0
@@ -283,7 +296,7 @@ const fn is_punct_char(c: char) -> bool {
 }
 
 /// The script of a letter from fixed ranges (design section 5.2), as a bit.
-const fn script_bit(c: char) -> u8 {
+pub(crate) const fn script_bit(c: char) -> u8 {
     match c {
         '\u{400}'..='\u{52f}'
         | '\u{1c80}'..='\u{1c8f}'

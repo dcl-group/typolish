@@ -7,6 +7,8 @@ use core::mem::size_of;
 use super::classify::ClassifyScratch;
 use super::ingest::{Atom, DelimScratch, TextPiece};
 use super::lex::Tok;
+use super::render::REdit;
+use crate::rules::quotes::{Mark, Work};
 
 /// When the buffers of the thread-local scratch have grown past this many bytes, it is replaced
 /// by a new one after the call.
@@ -43,7 +45,13 @@ pub struct Scratch {
     pub(crate) tokens: Vec<Tok>,
     pub(crate) next: Vec<Tok>,
     pub(crate) classify: ClassifyScratch,
-    pub(crate) quote_stack: Vec<u32>,
+    /// The source ranges of the spaces that the phases of a window removed.
+    pub(crate) removed: Vec<(u32, u32)>,
+    /// The edits of the changed windows of a call (design section 3.10).
+    pub(crate) edits: Vec<REdit>,
+    /// The decisions of the quote phase, one per token.
+    pub(crate) marks: Vec<Mark>,
+    pub(crate) quotes: Work,
 }
 
 impl Scratch {
@@ -61,7 +69,10 @@ impl Scratch {
             tokens: Vec::new(),
             next: Vec::new(),
             classify: ClassifyScratch::new(),
-            quote_stack: Vec::new(),
+            removed: Vec::new(),
+            edits: Vec::new(),
+            marks: Vec::new(),
+            quotes: Work::new(),
         }
     }
 
@@ -75,7 +86,10 @@ impl Scratch {
             + self.clusters.capacity() * size_of::<(u32, u32)>()
             + (self.tokens.capacity() + self.next.capacity()) * size_of::<Tok>()
             + self.classify.heap_bytes()
-            + self.quote_stack.capacity() * size_of::<u32>()
+            + self.removed.capacity() * size_of::<(u32, u32)>()
+            + self.edits.capacity() * size_of::<REdit>()
+            + self.marks.capacity() * size_of::<Mark>()
+            + self.quotes.heap_bytes()
     }
 }
 
@@ -121,7 +135,7 @@ mod tests {
 
     #[test]
     fn a_large_scratch_is_replaced() {
-        with_thread_scratch(|s| s.quote_stack.reserve(THREAD_LOCAL_LIMIT));
+        with_thread_scratch(|s| s.removed.reserve(THREAD_LOCAL_LIMIT));
         let after = with_thread_scratch(|s| s.heap_bytes());
         assert_eq!(after, 0);
     }

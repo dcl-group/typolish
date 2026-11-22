@@ -6,9 +6,10 @@
 //! [`Language`] and a [`RuleSet`] and then only applied; the [`Output`] kind is given with every
 //! call. Its design is in `docs/design/` of the repository.
 //!
-//! The crate is in development: the public types are in place, and the engine recognizes
-//! protected and technical fragments, which [`Typographer::report`] lists; no typographic rule is
-//! implemented yet, so every application method returns its input unchanged.
+//! The crate is in development: the engine recognizes protected and technical fragments and
+//! applies the rules of quotes, dashes and ellipses; [`Typographer::report`] lists every edit,
+//! protected span and diagnostic. The other rules (no-break spaces, numbers, symbols) change
+//! nothing yet.
 //!
 //! ```
 //! use typolish::{Language, Output, RuleSet, Typographer};
@@ -16,6 +17,10 @@
 //! static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
 //!
 //! assert_eq!(RU_UI.typeset("Файл не найден", Output::Unicode), "Файл не найден");
+//! assert_eq!(
+//!     RU_UI.typeset("Он сказал \"привет\" - и ушёл...", Output::Unicode),
+//!     "Он сказал «привет» — и ушёл…"
+//! );
 //! ```
 
 #![forbid(unsafe_code)]

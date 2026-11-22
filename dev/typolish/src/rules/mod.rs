@@ -1,5 +1,7 @@
-//! The rules (design section 8). So far each rule file declares the trigger bytes of its rules
-//! (design section 3.2); the rule functions arrive with the phases of stage 2.
+//! The rules (design section 8): `RULES`, the table of rule functions in the order of design
+//! section 4.1, the trigger bytes of every rule (design section 3.2), and the conditions that
+//! several rules share (design section 8.2). The rules of stage 3 (`symbols.*`, `number.*`,
+//! `nbsp.*`) declare their trigger bytes and match nothing yet.
 
 pub(crate) mod dash;
 pub(crate) mod ellipsis;
@@ -10,7 +12,127 @@ pub(crate) mod range;
 pub(crate) mod symbols;
 
 use crate::Rule;
-use crate::lang::data::LanguageData;
+pub(crate) use crate::engine::classify::{Frag, FragKind};
+use crate::engine::lex::{Kind, script_bit};
+use crate::engine::phase::{Cx, Match};
+use crate::lang::data::{LanguageData, Script};
+
+/// A rule: reads the input of its phase at an anchor token and proposes a match (design section
+/// 3.8).
+pub(crate) type RuleFn = fn(&Cx<'_>, usize) -> Option<Match>;
+
+/// A rule that matches nothing yet (stage 3).
+fn later(_cx: &Cx<'_>, _i: usize) -> Option<Match> {
+    None
+}
+
+/// The rule functions, indexed by `Rule as usize`, in the order of `ORDER` (design section 4.1).
+pub(crate) const RULES: [RuleFn; 27] = [
+    later,
+    later,
+    later,
+    ellipsis::dots,
+    ellipsis::inner,
+    dash::dialogue,
+    dash::double_hyphen,
+    dash::spaced_hyphen,
+    later,
+    later,
+    later,
+    later,
+    later,
+    later,
+    quotes::apostrophe,
+    quotes::pairs,
+    quotes::primes,
+    later,
+    later,
+    later,
+    later,
+    later,
+    later,
+    later,
+    later,
+    later,
+    later,
+];
+
+/// A word (design section 8.2): a `Word` core, a one-word `Dictionary` core or a compound word.
+pub(crate) fn is_word(cx: &Cx<'_>, f: &Frag) -> bool {
+    matches!(cx.kind_of(f), FragKind::Word | FragKind::Compound)
+}
+
+/// A number: a `Number` fragment or a `Number` slot (labels and percentages included).
+pub(crate) fn is_number(f: &Frag) -> bool {
+    f.kind == FragKind::Number
+}
+
+/// A range: a `Range` or `YearMonth` core.
+pub(crate) fn is_range(f: &Frag) -> bool {
+    matches!(f.kind, FragKind::Range | FragKind::YearMonth)
+}
+
+/// A technical fragment (design section 3.6): its core is frozen, whole or in part, and it is not
+/// a compound word.
+pub(crate) fn is_technical(f: &Frag) -> bool {
+    f.kind.tech().is_some() && f.kind != FragKind::Compound
+}
+
+/// An operand (design section 8.2): a word, a number, a range, a slot, a protected span or a
+/// technical fragment. A slot or a protected span alone is a `Word` or `Number` core.
+pub(crate) fn is_operand(cx: &Cx<'_>, f: &Frag) -> bool {
+    is_word(cx, f) || is_number(f) || is_range(f) || is_technical(f)
+}
+
+/// A word of one letter (`a`, `x`); a slot or a compound word is not one.
+pub(crate) fn single_letter(cx: &Cx<'_>, f: &Frag) -> bool {
+    if cx.kind_of(f) != FragKind::Word {
+        return false;
+    }
+    let mut core = cx.core(f);
+    match (core.next(), core.next()) {
+        (Some(i), None) if matches!(cx.kind(i), Some(Kind::Word(_))) => {
+            cx.visible(i, i).count() == 1
+        }
+        _ => false,
+    }
+}
+
+/// The scripts of the letters of a core, as bits of `script_bit`.
+fn scripts(cx: &Cx<'_>, f: &Frag) -> u8 {
+    cx.core(f)
+        .filter(|&i| matches!(cx.kind(i), Some(Kind::Word(_))))
+        .flat_map(|i| cx.visible(i, i))
+        .filter(|c| c.is_alphabetic())
+        .fold(0, |mask, c| mask | script_bit(c))
+}
+
+/// The bit of the language's script; `None` for `Script::Other`.
+fn language_script(data: &LanguageData) -> Option<u8> {
+    match data.script {
+        Script::Cyrillic => Some(1),
+        Script::Latin => Some(2),
+        Script::Greek => Some(4),
+        _ => None,
+    }
+}
+
+/// A word outside the language's script (design section 8.2): none of its letters is of the
+/// script; a compound word without letters counts as one in every language. A word of two
+/// scripts is a word of each.
+pub(crate) fn foreign(cx: &Cx<'_>, f: &Frag) -> bool {
+    if !is_word(cx, f) {
+        return false;
+    }
+    let mask = scripts(cx, f);
+    if mask == 0 {
+        return f.kind == FragKind::Compound
+            && !cx
+                .core(f)
+                .any(|i| matches!(cx.kind(i), Some(Kind::Word(_))));
+    }
+    language_script(cx.data).is_some_and(|bit| mask & bit == 0)
+}
 
 /// A set of bytes: the trigger bytes of rules and the bytes an output kind encodes (design
 /// section 3.2).
@@ -128,6 +250,15 @@ pub(crate) fn triggers(rule: Rule, data: &LanguageData, percent_edits: bool) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_table_follows_the_order() {
+        // `RULES` is indexed by `Rule as usize`, which follows `ORDER` (design section 4.1).
+        for (k, (rule, _)) in crate::rule::ORDER.iter().enumerate() {
+            assert_eq!(*rule as usize, k);
+        }
+        assert_eq!(RULES.len(), crate::rule::ORDER.len());
+    }
 
     #[test]
     fn sets_hold_their_bytes() {

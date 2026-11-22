@@ -206,6 +206,26 @@ pub(crate) fn classify<R: Recorder>(
     }
     lone_times(text, tokens, &mut cs.frags);
     labels(text, tokens, &mut cs.frags);
+    // Every token names its fragment, and the tokens of a core carry `CORE`: the phases find the
+    // classification of the pass through them after an edit inserted or removed a space (design
+    // section 3.6).
+    for (index, frag) in cs.frags.iter().enumerate() {
+        let Ok(index) = u32::try_from(index) else {
+            break;
+        };
+        for (i, tok) in tokens
+            .get_mut(frag.start as usize..frag.end as usize)
+            .unwrap_or_default()
+            .iter_mut()
+            .enumerate()
+        {
+            tok.frag = index;
+            let at = frag.start as usize + i;
+            if (frag.core_start as usize..frag.core_end as usize).contains(&at) {
+                tok.flags = tok.flags.with(Flags::CORE);
+            }
+        }
+    }
     if R::ACTIVE {
         slot_glue(tokens, sink);
     }

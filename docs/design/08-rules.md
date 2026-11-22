@@ -193,8 +193,10 @@ in English, and in Interface, it stays.
 
 **`dash.dialogue`** (Prose, languages with `dialogue`). At the start of the text or of a line, after
 optional indentation: `-` or `--`, one space, then a word or an opening quote → `—`, and the space
-after it is glued. Not in Interface: a line starting with `- ` in UI text is a list item. Settled in
-section 15.5, item 12.
+after it is glued. A typed `—` or `–` there counts as a `-` (section 4.3, I4): the dash stays and
+only a single U+0020 after it is glued (`— Привет` → `—⍽Привет`), the normalization of a space that
+`nbsp.dash` also makes (section 4.5). Not in Interface: a line starting with `- ` in UI text is a
+list item. Settled in section 15.5, item 12.
 
 Outputs show the rules named in the last column (with `quotes.pairs` where quotes appear); in the
 full sets other no-break rules add glue too (`Moscow—the⍽capital`, `“a⍽cat”`). The glue after `the`

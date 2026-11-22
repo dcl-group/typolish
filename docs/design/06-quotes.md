@@ -107,10 +107,11 @@ others.
 
 Typed glyphs have the role of their glyph in the language's pairs: in Russian `«` and `„` open, `»`
 and `“` close; in English `“` and `‘` open, `”` closes. U+2019 `’` closes a `‘` only if one is open
-and its neighbours allow a closing role (the closing test above: L ∉ {Space, OpenP, DashC} and R ∈
-{Space, CloseP, DashC}); otherwise it is an apostrophe and never blocks anything (it is both the
-apostrophe and the English closing single quote). So `’26` and `’tis` at a word start are always
-apostrophes.
+(on the stack of section 6.4 and covered by nothing but straight `'` entries, so that it never
+causes a crossing) and its neighbours allow a closing role (the closing test above: L ∉ {Space,
+OpenP, DashC} and R ∈ {Space, CloseP, DashC}); otherwise it is an apostrophe and never blocks
+anything (it is both the apostrophe and the English closing single quote). So `’26` and `’tis` at a
+word start are always apostrophes.
 
 ### 6.4 Families and stack matching
 

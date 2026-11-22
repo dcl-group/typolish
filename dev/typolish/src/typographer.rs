@@ -331,6 +331,25 @@ impl Typographer {
     }
 
     /// Whether backticks protect (design section 10.1).
+    /// The quote pairs in effect: the setting, or the language's.
+    pub(crate) fn quote_pairs(&self) -> Option<QuotePairs> {
+        self.settings.quote_pairs.or(self.language.data().quotes)
+    }
+
+    /// The `SingleQuotes` setting.
+    pub(crate) fn single_quotes(&self) -> SingleQuotes {
+        self.settings.single_quotes
+    }
+
+    /// The dash data in effect: the language's, with the style of the setting.
+    pub(crate) fn dash_data(&self) -> Option<DashData> {
+        match (self.language.data().dash, self.settings.dash_style) {
+            (Some(dash), Some(style)) => Some(DashData::new(style, dash.dialogue)),
+            (None, Some(style)) => Some(DashData::new(style, false)),
+            (dash, None) => dash,
+        }
+    }
+
     pub(crate) fn protects_backticks(&self) -> bool {
         self.settings.protect_backticks
     }
@@ -344,11 +363,7 @@ impl Typographer {
     fn supports(&self, rule: Rule) -> bool {
         let data = self.language.data();
         let s = &self.settings;
-        let dash = match (data.dash, s.dash_style) {
-            (Some(dash), Some(style)) => Some(DashData::new(style, dash.dialogue)),
-            (None, Some(style)) => Some(DashData::new(style, false)),
-            (dash, None) => dash,
-        };
+        let dash = self.dash_data();
         match rule {
             Rule::QuotesPairs => data.quotes.is_some() || s.quote_pairs.is_some(),
             Rule::DashDialogue => dash.is_some_and(|dash| dash.dialogue),

@@ -8,12 +8,18 @@ All notable changes to this crate are recorded in this file. The format follows
 
 Nothing released yet. Version 0.1.0 is in development.
 
-- `Typographer::report` and `Typographer::report_template` return the result together with the
-  protected spans (`ProtectedSpan`, `ProtectedKind`, `TechKind`) and the diagnostics (`Diagnostic`,
-  `DiagnosticKind`, `Severity`) of protection and the fragment classifier: backtick spans, fenced
-  blocks and own delimiter pairs, paragraph windows, and technical fragments such as flags, paths,
-  addresses, versions and identifiers. `Report` has no `Display` yet, and no typographic rule
-  changes text yet, so `changes()` is always empty.
+- `Typographer::report` and `Typographer::report_template` return the result together with every
+  edit (`Change`), the protected spans (`ProtectedSpan`, `ProtectedKind`, `TechKind`) and the
+  diagnostics (`Diagnostic`, `DiagnosticKind`, `Severity`): those of protection and the fragment
+  classifier (backtick spans, fenced blocks and own delimiter pairs, paragraph windows, and
+  technical fragments such as flags, paths, addresses, versions and identifiers) and those of the
+  rules. `Report` has no `Display` yet.
+- The phase engine applies the rules to strings and templates for `ru-RU`, `en-US` and
+  `Language::COMMON`: quotes by nesting level, apostrophes and primes (`quotes.apostrophe`,
+  `quotes.pairs`, `quotes.primes`, with `UnmatchedQuote`, `CrossingQuotes` and `AmbiguousQuote`),
+  dashes (`dash.dialogue`, `dash.double-hyphen`, `dash.spaced-hyphen`, with `AmbiguousHyphen`) and
+  ellipses (`ellipsis.dots`, `ellipsis.inner`). The `symbols.*`, `number.*` and `nbsp.*` rules are
+  accepted in rule sets but change nothing yet.
 
 - Known limitation of the development state: `Output::Html` and `Output::Escaped` are accepted but
   written as Unicode, without encoding, until their encoders are added; do not use them for

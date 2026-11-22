@@ -197,7 +197,8 @@ pub(crate) struct Tok {
     piece: u32,     // the piece of a token made from a slot, a protected piece or markup; none for text
     repl: Repl,     // Source (the text is the slice at src) | Char(char) | Ellipsis(EllipsisForm)
     glue: Glue,     // for Space tokens: None | NoBreak | Narrow (section 3.9)
-    flags: Flags,   // FROZEN, LABEL, CHANGED, INSERTED
+    flags: Flags,   // FROZEN, LABEL, CHANGED, INSERTED, CORE (a token of the core of its fragment)
+    frag: u32,      // its fragment in the classification of the pass (3.6); none for Space and Newline
 }
 
 pub(crate) enum Kind {
@@ -440,8 +441,9 @@ mutable access to tokens. It returns a proposal:
 
 ```rust
 pub(crate) struct Match {
-    consume: u8,      // tokens from the anchor that are closed to other rules of the phase
+    consume: u8,      // the tokens [anchor, anchor + consume] are closed to other rules of the phase
     edits: Edits,     // at most 6 edits inside [anchor, anchor + consume]; nbsp.phone glues up to five spaces
+    note: Option<u8>, // a refusal the rule reports (AmbiguousHyphen) at this offset; then no edits
 }
 
 pub(crate) enum Edit {
@@ -452,15 +454,17 @@ pub(crate) enum Edit {
 }
 ```
 
-The engine applies a proposal only if no affected token is `FROZEN` and no insertion falls inside a
-frozen fragment; otherwise the whole proposal is dropped. An insertion falls inside a frozen
-fragment when a token next to it is a frozen token of the call's text (a frozen core, the hyphen of
-a compound word, a frozen space); next to a slot or protected text, which are frozen but opaque, it
-falls outside them (`№{n}` → `№⍽{n}`). Every edit also lies within the tokens the proposal takes.
-The engine does not call rules at all when the anchor is frozen. This check sits in one place of the
-engine, so protection does not depend on the care of each rule. Edits next to a frozen fragment are
-allowed: the space between `в` and `10.0.0.0/8` is not part of the fragment, so `в⍽10.0.0.0/8` is
-fine, while the fragment itself is byte for byte intact.
+A rule that refuses a pattern and reports it (`AmbiguousHyphen`, section 8.4) returns a match
+without edits whose `note` names the token of the diagnostic; the engine records the diagnostic when
+it applies the match. The engine applies a proposal only if no affected token is `FROZEN` and no
+insertion falls inside a frozen fragment; otherwise the whole proposal is dropped. An insertion
+falls inside a frozen fragment when a token next to it is a frozen token of the call's text (a
+frozen core, the hyphen of a compound word, a frozen space); next to a slot or protected text, which
+are frozen but opaque, it falls outside them (`№{n}` → `№⍽{n}`). Every edit also lies within the
+tokens the proposal takes. The engine does not call rules at all when the anchor is frozen. This
+check sits in one place of the engine, so protection does not depend on the care of each rule. Edits
+next to a frozen fragment are allowed: the space between `в` and `10.0.0.0/8` is not part of the
+fragment, so `в⍽10.0.0.0/8` is fine, while the fragment itself is byte for byte intact.
 
 ### 3.8 Phases
 
@@ -477,7 +481,7 @@ fn run_phase<R: Recorder>(cx: &Cx<'_>, input: &[Tok], out: &mut Vec<Tok>, rec: &
             cx.active_in_phase().iter().find_map(|&r| RULES[r as usize](cx, i).map(|m| (r, m)))
         };
         match m {
-            Some((rule, m)) if cx.edits_allowed(i, &m) => { emit(out, input, i, rule, &m, rec); i += m.consume.max(1) as usize; }
+            Some((rule, m)) if cx.edits_allowed(i, &m) => { emit(out, input, i, rule, &m, rec); i += m.consume as usize + 1; }
             _ => { out.push(input[i]); i += 1; }
         }
     }
@@ -491,8 +495,12 @@ This is a sketch: real code has no panicking indexing. Properties of a phase:
    fragments with their kinds and flags that `Cx` gives, section 3.6), which is computed once per
    window before the first phase and is not recomputed after an edit.
 2. **First match.** At each position the rules of the phase are tried in the fixed order of section
-   4.1. The first rule that matches takes the anchor and `consume` tokens; positions inside the
-   taken range are not considered again in this phase.
+   4.1. The first rule that matches takes the tokens from the anchor to anchor + `consume`;
+   positions inside the taken range are not considered again in this phase. An edit can only reach
+   tokens from the anchor on, so `dash.double-hyphen` and `dash.spaced-hyphen`, whose closed style
+   removes the space before the dash, anchor at that space and take the space, the dash and the
+   space after it; `dash.dialogue` and the range, ellipsis and quote rules anchor at the token they
+   replace.
 3. **Match by class, not by product.** A rule matches a pattern whether or not it is already in its
    target form. If it is, the rule returns a `Match` with no edits and the same `consume`, and so it
    does on a typed typographic sign that it must not change (a typed dash, a typed `…`). For example
@@ -507,7 +515,9 @@ This is a sketch: real code has no panicking indexing. Properties of a phase:
 `Cx` gives rules read-only access: the text of a token (resolved from the call's inputs and its
 replacement), neighbours with `Format` and `Markup` tokens skipped, the fragment with its kind and
 flags, language data, settings, line and window starts, piece numbers. Two token vectors per window
-swap between phases.
+swap between phases. Every token names its fragment (`frag`, and `CORE` for a token of the core);
+after a phase that inserted or removed a `Space` token, the token ranges of the fragments are moved
+to their tokens, while the fragments, their kinds and flags stay those of the pass.
 
 ### 3.9 Glue marks
 
@@ -530,8 +540,10 @@ spaces and line breaks are never glued.
 ### 3.10 Rendering and Cow
 
 Rendering walks the tokens and writes each one's text (or glue) through the encoder of the output
-kind (section 11). The output string is created lazily: while no window has changed and encoding
-changes nothing, nothing is built. At the first change the output gets
+kind (section 11). The tokens of a changed window give one edit of the call's text per replaced
+token, glued space and inserted space, and the phases list the spaces they removed; the output is
+the input with these edits applied. The output string is created lazily: while no window has changed
+and encoding changes nothing, nothing is built. At the first change the output gets
 `String::with_capacity(len + len / 8)`, the unchanged prefix of the input is copied in, and windows
 are written from there, with the boundary characters between them (section 3.3). If nothing changed
 to the end, the result is `Cow::Borrowed(input)`. For templates the same holds per text: a text that

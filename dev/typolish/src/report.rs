@@ -166,6 +166,31 @@ pub struct Change {
 }
 
 impl Change {
+    /// A record of one piece.
+    pub(crate) fn new(
+        rule: Rule,
+        piece: usize,
+        range: Range<usize>,
+        replacement: String,
+    ) -> Change {
+        Change {
+            rule,
+            piece,
+            range,
+            replacement,
+        }
+    }
+
+    /// The order of design section 2.9: piece, byte start, byte end, then rule order.
+    pub(crate) fn sort_key(&self) -> (usize, usize, usize, u8) {
+        (
+            self.piece,
+            self.range.start,
+            self.range.end,
+            self.rule as u8,
+        )
+    }
+
     /// The rule that made the edit.
     ///
     /// ```

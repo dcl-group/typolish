@@ -1,20 +1,24 @@
 //! Recorders: what a call collects besides its result (design section 3.11).
 //!
 //! The engine is generic over `R: Recorder` and monomorphized: `typeset` uses `NoRecord`, whose
-//! `ACTIVE` is false, so the plain path skips the work of building records; `report` uses
+//! `ACTIVE` is false, so the plain path skips the work of building records; `lint` uses
+//! `Diagnostics` (stage 4 adds `lint`; the recorder is here with the others); `report` uses
 //! `Journal`. The engine resolves positions to pieces before it calls a recorder (one record per
-//! piece for a span, the first piece for a diagnostic), so a recorder only collects.
+//! piece for a change or a span, the first piece for a diagnostic), so a recorder only collects.
 
 use core::ops::Range;
 
 use super::ingest::TextPiece;
-use crate::report::{Diagnostic, ProtectedKind, ProtectedSpan, Records};
+use crate::report::{Change, Diagnostic, ProtectedKind, ProtectedSpan, Records};
 use crate::{DiagnosticKind, Rule, Severity};
 
 /// A sink for the records of one call.
 pub(crate) trait Recorder {
     /// Whether the recorder keeps anything; the engine builds no record when it is false.
     const ACTIVE: bool;
+
+    /// One record of one piece of an applied edit.
+    fn change(&mut self, change: Change);
 
     /// A protected span of one piece.
     fn protected(&mut self, span: ProtectedSpan);
@@ -30,10 +34,43 @@ impl Recorder for NoRecord {
     const ACTIVE: bool = false;
 
     #[inline(always)]
+    fn change(&mut self, _change: Change) {}
+
+    #[inline(always)]
     fn protected(&mut self, _span: ProtectedSpan) {}
 
     #[inline(always)]
     fn diagnostic(&mut self, _diagnostic: Diagnostic) {}
+}
+
+/// Records diagnostics only: the path of `lint` (design section 12.3), which stage 4 adds.
+#[cfg_attr(not(test), expect(dead_code, reason = "`lint` of stage 4 uses it"))]
+#[derive(Debug, Default)]
+pub(crate) struct Diagnostics {
+    diagnostics: Vec<Diagnostic>,
+}
+
+#[cfg_attr(not(test), expect(dead_code, reason = "`lint` of stage 4 uses it"))]
+impl Diagnostics {
+    /// The diagnostics in the order of design section 12.4.
+    pub(crate) fn finish(mut self) -> Vec<Diagnostic> {
+        self.diagnostics.sort_by_key(Diagnostic::sort_key);
+        self.diagnostics
+    }
+}
+
+impl Recorder for Diagnostics {
+    const ACTIVE: bool = true;
+
+    #[inline(always)]
+    fn change(&mut self, _change: Change) {}
+
+    #[inline(always)]
+    fn protected(&mut self, _span: ProtectedSpan) {}
+
+    fn diagnostic(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
 }
 
 /// Records everything: the path of `report`.
@@ -45,6 +82,7 @@ pub(crate) struct Journal {
 impl Journal {
     /// The records in the order of design sections 2.9 and 12.4.
     pub(crate) fn finish(mut self) -> Records {
+        self.records.changes.sort_by_key(Change::sort_key);
         self.records
             .protected
             .sort_by_key(|span| (span.piece(), span.range().start, span.range().end));
@@ -55,6 +93,10 @@ impl Journal {
 
 impl Recorder for Journal {
     const ACTIVE: bool = true;
+
+    fn change(&mut self, change: Change) {
+        self.records.changes.push(change);
+    }
 
     fn protected(&mut self, span: ProtectedSpan) {
         self.records.protected.push(span);
@@ -73,6 +115,20 @@ pub(crate) enum Loc {
     /// An input piece that has no extent in the call's text: a slot or a protected piece. A
     /// diagnostic or a span that starts at such a piece is reported at it.
     Piece(u32),
+}
+
+/// The `Text` piece that holds an insertion at `at`: the piece that ends there when `left`, the
+/// piece that starts there otherwise; a position inside a piece belongs to it either way.
+pub(crate) fn insertion_piece(pieces: &[TextPiece], at: u32, left: bool) -> Option<&TextPiece> {
+    let holds = |p: &&TextPiece| {
+        if left {
+            p.start < at && at <= p.end
+        } else {
+            p.start <= at && at < p.end
+        }
+    };
+    let first = pieces.partition_point(|p| p.end < at);
+    pieces.get(first..)?.iter().take(2).find(holds)
 }
 
 /// A recorder together with what resolves positions to pieces.
@@ -103,6 +159,31 @@ impl<R: Recorder> Sink<'_, R> {
                     )
                 })
             })
+    }
+
+    /// Records an applied edit of `rule` over `start..end` of the call's text: one record per piece
+    /// it covers, the first holding the whole replacement and the others an empty one (design
+    /// section 3.11). An insertion (an empty range) belongs to the `Text` piece that ends at its
+    /// position when `left` is true (the token before it is text), and otherwise to the one that
+    /// starts there.
+    pub(crate) fn change(&mut self, rule: Rule, start: u32, end: u32, left: bool, text: &str) {
+        if !R::ACTIVE {
+            return;
+        }
+        if start == end {
+            if let Some(p) = insertion_piece(self.pieces, start, left) {
+                let at = (start - p.start) as usize;
+                self.rec
+                    .change(Change::new(rule, p.piece as usize, at..at, text.to_owned()));
+            }
+            return;
+        }
+        let records: Vec<(usize, Range<usize>)> = self.split(start, end).collect();
+        for (n, (piece, range)) in records.into_iter().enumerate() {
+            let replacement = if n == 0 { text } else { "" };
+            self.rec
+                .change(Change::new(rule, piece, range, replacement.to_owned()));
+        }
     }
 
     /// Records a protected span: one record per piece it covers (design section 3.11).
