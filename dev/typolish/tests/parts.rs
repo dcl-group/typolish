@@ -1,13 +1,12 @@
-//! Templates: pieces, slots and the output contract of design sections 2.6 and 2.14, as far as the
-//! stage 2 rules (`quotes.*`, `dash.*`, `range.*`, `ellipsis.*`) reach them (section 13.2).
+//! Templates: pieces, slots and the output contract of design sections 2.6 and 2.14 (section 13.2).
 //!
-//! The rows run in Prose and Interface without the `nbsp.*` rules (stage 2 of section 15.4). The
-//! rows that need later parts join with them: the `nbsp.*` rules (the slot participation rows of
-//! `nbsp.units`, `nbsp.dates`, glue before and after a slot, abbreviations after a slot, labels
-//! and percent next to slots, `{a}-5 кг`, `{d} г. Затем`), `number.times` (`{w}x{h}`),
-//! `format_number` and the escaped and HTML outputs (the flow of section 2.14 for
-//! `EscapeStyle::RUST` and `EscapeStyle::JSON`, and with `HtmlStyle::NAMED.nowrap_class`), and
-//! nowrap groups at slots.
+//! The rows run in the full Prose and Interface (stage 3 of section 15.4): the expectations carry
+//! the glue of the `nbsp.*` rules, which also makes the slot participation rows of `nbsp.units`,
+//! `nbsp.dates`, glue before and after a slot, abbreviations after a slot, labels and percent next
+//! to slots, `{a}-5 кг` and `{d} г. Затем` testable. The row of `number.times` (`{w}x{h}`) needs
+//! that rule, `format_number` and the escaped and HTML outputs (the flow of section 2.14 for
+//! `EscapeStyle::RUST` and `EscapeStyle::JSON`, and with `HtmlStyle::NAMED.nowrap_class`) and
+//! nowrap groups at slots belong to the output tests of the same stage.
 
 #![allow(
     clippy::unwrap_used,
@@ -151,7 +150,7 @@ fn typeset_template_with_equals_typeset_template() {
         let a = t.typeset_template(pieces(), Output::Unicode);
         let b = t.typeset_template_with(&mut scratch, pieces(), Output::Unicode);
         assert_eq!(a, b, "{what}");
-        assert_eq!(texts(&a), ["Файл «", "» не найден…"], "{what}");
+        assert_eq!(texts(&a), ["Файл «", "» не\u{a0}найден…"], "{what}");
     }
 }
 
@@ -168,7 +167,7 @@ fn a_quote_pairs_across_a_slot() {
             ],
             Output::Unicode,
         );
-        assert_eq!(texts(&out), ["Файл «", "» не найден"], "{what}");
+        assert_eq!(texts(&out), ["Файл «", "» не\u{a0}найден"], "{what}");
         assert!(out.changed(), "{what}");
     }
     for (what, t) in sets(&Language::EN_US) {
@@ -182,7 +181,13 @@ fn a_quote_pairs_across_a_slot() {
             ],
             Output::Unicode,
         );
-        assert_eq!(texts(&out), ["Open “", "” and “", "”."], "{what}");
+        // `and` is a listed short word before an opening quote; the glue does not stick to the
+        // `Other` slot, which is inside the next fragment.
+        let plain: Vec<String> = texts(&out)
+            .iter()
+            .map(|t| t.replace('\u{a0}', " "))
+            .collect();
+        assert_eq!(plain, ["Open “", "” and “", "”."], "{what}");
     }
 }
 
@@ -225,7 +230,13 @@ fn markup_is_transparent_and_a_protected_piece_is_a_word() {
             ],
             Output::Unicode,
         );
-        assert_eq!(texts(&out), ["Он сказал «<b>да</b>»"], "{what}");
+        // Prose glues the two-letter `Он` to the word after it (`nbsp.short-length`).
+        let expected = if what.contains("Prose") {
+            "Он\u{a0}сказал «<b>да</b>»"
+        } else {
+            "Он сказал «<b>да</b>»"
+        };
+        assert_eq!(texts(&out), [expected], "{what}");
         let out = t.typeset_template::<()>(
             [
                 Piece::Text("\""),
@@ -236,7 +247,7 @@ fn markup_is_transparent_and_a_protected_piece_is_a_word() {
             ],
             Output::Unicode,
         );
-        assert_eq!(texts(&out), ["«--force» и «`ls`»"], "{what}");
+        assert_eq!(texts(&out), ["«--force» и\u{a0}«`ls`»"], "{what}");
     }
 }
 
@@ -300,12 +311,14 @@ fn backticks_protect_across_pieces() {
             ],
             Output::Unicode,
         );
+        // The command and its slot are protected; `to` is a short word, so the text after the
+        // slot gets its glue and is the only edit.
         assert_eq!(
             texts(&out),
-            ["Run `git checkout -- ", "` to reset."],
+            ["Run `git checkout -- ", "` to\u{a0}reset."],
             "{what}"
         );
-        assert!(!out.changed(), "{what}");
+        assert!(out.changed(), "{what}");
     }
     // The same words without protection are typeset in Prose (section 10.8).
     let t = prose(Language::EN_US);
@@ -376,9 +389,9 @@ fn row_prime_after_a_slot() {
             Output::Unicode,
         );
         let expected = if slot.kind() == SlotKind::Number {
-            "″ и всё"
+            "″ и\u{a0}всё"
         } else {
-            "\" и всё"
+            "\" и\u{a0}всё"
         };
         assert_eq!(texts(&out), ["Экран ", expected], "{name}");
     }
@@ -397,8 +410,9 @@ fn row_prime_after_a_slot() {
         ],
         Output::Unicode,
     );
-    assert_eq!(texts(&out), ["Экран ", "\" и всё"]);
-    assert!(!out.changed());
+    // Interface has no primes; the quote stays, and `и` before `всё` gets its glue.
+    assert_eq!(texts(&out), ["Экран ", "\" и\u{a0}всё"]);
+    assert!(out.changed());
     // A paired quote after a `Number` slot is not a prime: `"{n}"` → `«{n}»` (section 6.9).
     for (what, t) in sets(&Language::RU_RU) {
         let out = t.typeset_template(
@@ -418,7 +432,12 @@ fn row_prime_after_a_slot() {
             ],
             Output::Unicode,
         );
-        assert_eq!(texts(&out), ["Он сказал «диагональ ", "»."], "{what}");
+        let expected = if what.contains("Prose") {
+            ["Он\u{a0}сказал «диагональ ", "»."]
+        } else {
+            ["Он сказал «диагональ ", "»."]
+        };
+        assert_eq!(texts(&out), expected, "{what}");
     }
 }
 
@@ -453,12 +472,18 @@ fn row_operand_of_the_spaced_hyphen() {
                 [Piece::Slot("x", slot), Piece::Text(" - слово")],
                 Output::Unicode,
             );
-            assert_eq!(texts(&out), ["", " — слово"], "{what} {name}");
+            // `nbsp.dash` glues the space before the dash, but not next to an `Other` slot.
+            let expected = if slot.kind() == SlotKind::Other {
+                " — слово"
+            } else {
+                "\u{a0}— слово"
+            };
+            assert_eq!(texts(&out), ["", expected], "{what} {name}");
             let out = t.typeset_template(
                 [Piece::Text("слово - "), Piece::Slot("x", slot)],
                 Output::Unicode,
             );
-            assert_eq!(texts(&out), ["слово — ", ""], "{what} {name}");
+            assert_eq!(texts(&out), ["слово\u{a0}— ", ""], "{what} {name}");
         }
         for tail in [" - 5", " - x", " - 5–10"] {
             let out = t.typeset_template(
@@ -481,7 +506,7 @@ fn row_operand_of_the_spaced_hyphen() {
             [Piece::Slot("a", Slot::WORD), Piece::Text(" - x")],
             Output::Unicode,
         );
-        assert_eq!(texts(&out), ["", " — x"], "{what}");
+        assert_eq!(texts(&out), ["", "\u{a0}— x"], "{what}");
     }
 }
 
@@ -535,7 +560,8 @@ fn fluent_mapping_table() {
         ],
         Output::Unicode,
     );
-    assert_eq!(texts(&out), ["Стр. 9–12"]);
+    // `Стр.` is a `Next` abbreviation (a capital start matches), glued to the range.
+    assert_eq!(texts(&out), ["Стр.\u{a0}9–12"]);
     // `{ NUMBER($n) }`, `{ DATETIME($d) }`, `{ -brand }`, `{ $var }`: slots of the kinds.
     let out = ru.typeset_template(
         [
@@ -549,9 +575,11 @@ fn fluent_mapping_table() {
         ],
         Output::Unicode,
     );
+    // The example of section 2.6: the glue before the unit and before the dash lands in the
+    // text after the slot.
     assert_eq!(
         texts(&out)[..4].to_vec(),
-        ["Файл «", "» весит ", " МБ — удалить?", ""]
+        ["Файл «", "» весит ", "\u{a0}МБ\u{a0}— удалить?", ""]
     );
     let kinds: Vec<_> = out.slots().iter().map(|(n, s)| (*n, s.kind())).collect();
     assert_eq!(
@@ -586,10 +614,12 @@ fn select_variants_are_typeset_as_templates_of_their_own() {
         assert_eq!(kinds, [(DiagnosticKind::UnmatchedQuote, Severity::Warning)]);
     }
     assert!(!outer.result().changed());
-    assert!(!variant_one.result().changed());
+    // Nothing is paired in the variants; `и` before a word gets its glue, which is all.
+    assert_eq!(texts(variant_one.result()), ["привет\" и\u{a0}ушёл"]);
+    assert_eq!(texts(variant_other.result()), ["привет\" и\u{a0}ушли"]);
     // Each variant that is complete in itself is typeset.
     let out = t.typeset_template::<()>([Piece::Text("«да» \"нет\" и ушёл")], Output::Unicode);
-    assert_eq!(texts(&out), ["«да» «нет» и ушёл"]);
+    assert_eq!(texts(&out), ["«да» «нет» и\u{a0}ушёл"]);
 }
 
 #[test]
@@ -758,4 +788,302 @@ fn the_tmpl_helper_reads_what_the_tests_feed_it() {
         assert_eq!(out.texts()[0], "Файл «", "{what}");
         assert_eq!(out.texts()[1], "» весит ", "{what}");
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The slot participation table of section 2.6: the rows of the `nbsp.*` rules and the glue
+// (stage 3). One test per row; each slot kind is a column.
+// ---------------------------------------------------------------------------------------------
+
+fn alone(language: Language, rule: Rule) -> Typographer {
+    Typographer::new(language, typolish::RuleSet::EMPTY.with(rule))
+}
+
+/// The texts of `pieces` typeset with `t`.
+fn run<'t>(t: &Typographer, pieces: Vec<Piece<'t, &'static str>>) -> Vec<String> {
+    texts(&t.typeset_template(pieces, Output::Unicode))
+}
+
+#[test]
+fn row_units_on_the_left_of_a_unit() {
+    // `{n} МБ`: yes for `Number`; no for the other kinds. Alone and in both sets.
+    let mut configs = vec![("alone".to_owned(), alone(Language::RU_RU, Rule::NbspUnits))];
+    configs.extend(sets(&Language::RU_RU));
+    for (what, t) in &configs {
+        for (slot, name) in KINDS {
+            let out = run(t, vec![Piece::Slot("x", slot), Piece::Text(" МБ")]);
+            let expected = if slot.kind() == SlotKind::Number {
+                "\u{a0}МБ"
+            } else {
+                " МБ"
+            };
+            assert_eq!(out, ["", expected], "{what} {name}");
+        }
+        // `{n} дн.`, the example of the task.
+        let out = run(t, vec![Piece::Slot("n", Slot::NUMBER), Piece::Text(" дн.")]);
+        assert_eq!(out, ["", "\u{a0}дн."], "{what}");
+    }
+}
+
+#[test]
+fn row_dates_with_a_slot() {
+    // `{n} мая`: a `Number` slot is a day or a year; `{d} г.`: a `Date` slot is a year only;
+    // a `Word` slot and an `Other` slot are neither.
+    let mut configs = vec![("alone".to_owned(), alone(Language::RU_RU, Rule::NbspDates))];
+    configs.extend(sets(&Language::RU_RU));
+    for (what, t) in &configs {
+        for (slot, name) in KINDS {
+            let out = run(t, vec![Piece::Slot("x", slot), Piece::Text(" мая")]);
+            let expected = if slot.kind() == SlotKind::Number {
+                "\u{a0}мая"
+            } else {
+                " мая"
+            };
+            assert_eq!(out, ["", expected], "{what} {name} day");
+            let out = run(t, vec![Piece::Slot("x", slot), Piece::Text(" г.")]);
+            let expected = if matches!(slot.kind(), SlotKind::Number | SlotKind::Date) {
+                "\u{a0}г."
+            } else {
+                " г."
+            };
+            assert_eq!(out, ["", expected], "{what} {name} year");
+        }
+    }
+}
+
+#[test]
+fn row_a_next_abbreviation_after_a_slot() {
+    // `{n} ч. Потом`, `{d} г. Затем`: after a `Number` or a `Date` slot the abbreviation is a unit
+    // or a year with a sentence full stop and does not bind forward; after a `Word` or an `Other`
+    // slot it does.
+    let t = alone(Language::RU_RU, Rule::NbspAbbreviations);
+    for (slot, name) in KINDS {
+        for (abbr, tail) in [("ч.", "Потом"), ("г.", "Затем")] {
+            let out = run(
+                &t,
+                vec![
+                    Piece::Slot("x", slot),
+                    Piece::Text(&format!(" {abbr} {tail}")),
+                ],
+            );
+            let binds = matches!(slot.kind(), SlotKind::Word | SlotKind::Other);
+            let expected = if binds {
+                format!(" {abbr}\u{a0}{tail}")
+            } else {
+                format!(" {abbr} {tail}")
+            };
+            assert_eq!(out, ["", expected.as_str()], "{name} {abbr}");
+        }
+    }
+    // Section 13.2: `{d} г. Затем` gets no glue after `г.` in the sets either.
+    for (what, t) in sets(&Language::RU_RU) {
+        let out = run(
+            &t,
+            vec![Piece::Slot("d", Slot::DATE), Piece::Text(" г. Затем")],
+        );
+        assert_eq!(out, ["", "\u{a0}г. Затем"], "{what}");
+    }
+}
+
+#[test]
+fn row_glue_before_and_after_a_slot() {
+    // `в {x}`, `№ {x}`: glue before a `Number`, `Word` or `Date` slot, not before an `Other` one.
+    // `{x} же`: glue after the three, not after an `Other` slot.
+    let short = alone(Language::RU_RU, Rule::NbspShortWords);
+    let signs = alone(Language::RU_RU, Rule::NbspSigns);
+    let particles = alone(Language::RU_RU, Rule::NbspParticles);
+    for (slot, name) in KINDS {
+        let glued = slot.kind() != SlotKind::Other;
+        let out = run(&short, vec![Piece::Text("в "), Piece::Slot("x", slot)]);
+        assert_eq!(out, [if glued { "в\u{a0}" } else { "в " }, ""], "в {name}");
+        let out = run(&signs, vec![Piece::Text("№ "), Piece::Slot("x", slot)]);
+        assert_eq!(out, [if glued { "№\u{a0}" } else { "№ " }, ""], "№ {name}");
+        let out = run(&particles, vec![Piece::Slot("x", slot), Piece::Text(" же")]);
+        assert_eq!(
+            out,
+            ["", if glued { "\u{a0}же" } else { " же" }],
+            "{name} же"
+        );
+    }
+    // `в {x}` and `{x} же` in both sets.
+    for (what, t) in sets(&Language::RU_RU) {
+        let out = run(&t, vec![Piece::Text("в "), Piece::Slot("x", Slot::WORD)]);
+        assert_eq!(out, ["в\u{a0}", ""], "{what}");
+        let out = run(&t, vec![Piece::Text("в "), Piece::Slot("x", Slot::OTHER)]);
+        assert_eq!(out, ["в ", ""], "{what}");
+        let out = run(
+            &t,
+            vec![Piece::Slot("name", Slot::WORD), Piece::Text(" же")],
+        );
+        assert_eq!(out, ["", "\u{a0}же"], "{what}");
+    }
+}
+
+#[test]
+fn row_number_times_with_slots() {
+    // `{w}x{h}` in Prose: `Number` slots only (`number.times`, section 8.8).
+    let t = prose(Language::RU_RU);
+    let out = run(
+        &t,
+        vec![
+            Piece::Slot("w", Slot::NUMBER),
+            Piece::Text("x"),
+            Piece::Slot("h", Slot::NUMBER),
+        ],
+    );
+    assert_eq!(out, ["", "×", ""]);
+    for (a, b) in [
+        (Slot::WORD, Slot::WORD),
+        (Slot::DATE, Slot::DATE),
+        (Slot::OTHER, Slot::OTHER),
+        (Slot::NUMBER, Slot::WORD),
+    ] {
+        let out = run(
+            &t,
+            vec![Piece::Slot("w", a), Piece::Text("x"), Piece::Slot("h", b)],
+        );
+        assert_eq!(out, ["", "x", ""], "{a:?} {b:?}");
+    }
+}
+
+#[test]
+fn labels_next_to_slots() {
+    // Section 8.2: a `Number` slot after a sign is a label: `№ {n}` and `№{n}` are glued to the
+    // sign, the unit and date rules leave it alone, and `г.` after it is a city.
+    let t = alone(Language::RU_RU, Rule::NbspSigns);
+    let out = run(&t, vec![Piece::Text("№ "), Piece::Slot("n", Slot::NUMBER)]);
+    assert_eq!(out, ["№\u{a0}", ""]);
+    let out = run(&t, vec![Piece::Text("№"), Piece::Slot("n", Slot::NUMBER)]);
+    assert_eq!(out, ["№\u{a0}", ""]);
+    // `¶{n}` → `¶⍽{n}` (13.2), not borrowed.
+    let out = t.typeset_template(
+        [Piece::Text("¶"), Piece::Slot("n", Slot::NUMBER)],
+        Output::Unicode,
+    );
+    assert_eq!(texts(&out), ["¶\u{a0}", ""]);
+    assert!(out.changed());
+    assert!(matches!(out.texts()[0], Cow::Owned(_)));
+    // `№{n} г. Москвы` (13.2, both sets): `г.` is a city.
+    for (what, t) in sets(&Language::RU_RU) {
+        let out = run(
+            &t,
+            vec![
+                Piece::Text("Школа №"),
+                Piece::Slot("n", Slot::NUMBER),
+                Piece::Text(" г. Москвы"),
+            ],
+        );
+        assert_eq!(out, ["Школа №\u{a0}", " г.\u{a0}Москвы"], "{what}");
+    }
+    // The unit rule does not take a label: `№ {n} МБ` keeps its plain space before the unit.
+    let units = alone(Language::RU_RU, Rule::NbspUnits);
+    let out = run(
+        &units,
+        vec![
+            Piece::Text("№ "),
+            Piece::Slot("n", Slot::NUMBER),
+            Piece::Text(" МБ"),
+        ],
+    );
+    assert_eq!(out, ["№ ", " МБ"]);
+}
+
+#[test]
+fn percent_next_to_a_slot() {
+    use typolish::PercentSpacing::{Language as Lang, Spaced};
+    // `{n}%` in ru with `Spaced` and with `Language`: `{n}⍽%`; none of them borrowed.
+    for spacing in [Spaced, Lang] {
+        let t = Typographer::builder(Language::RU_RU, typolish::RuleSet::PROSE)
+            .percent(spacing)
+            .build()
+            .unwrap();
+        let out = t.typeset_template(
+            [Piece::Slot("n", Slot::NUMBER), Piece::Text("%")],
+            Output::Unicode,
+        );
+        assert_eq!(texts(&out), ["", "\u{a0}%"], "{spacing:?}");
+        assert!(out.changed());
+        assert!(matches!(out.texts()[1], Cow::Owned(_)));
+    }
+    // `{n}‰` with `nbsp.units` alone and `Spaced`.
+    let t = Typographer::builder(
+        Language::RU_RU,
+        typolish::RuleSet::EMPTY.with(Rule::NbspUnits),
+    )
+    .percent(Spaced)
+    .build()
+    .unwrap();
+    let out = t.typeset_template(
+        [Piece::Slot("n", Slot::NUMBER), Piece::Text("‰")],
+        Output::Unicode,
+    );
+    assert_eq!(texts(&out), ["", "\u{a0}‰"]);
+    assert!(out.changed());
+    // As written (the default): an attached sign stays attached, a spaced one is glued.
+    let t = alone(Language::RU_RU, Rule::NbspUnits);
+    assert_eq!(
+        run(&t, vec![Piece::Slot("n", Slot::NUMBER), Piece::Text("%")]),
+        ["", "%"]
+    );
+    assert_eq!(
+        run(&t, vec![Piece::Slot("n", Slot::NUMBER), Piece::Text(" %")]),
+        ["", "\u{a0}%"]
+    );
+}
+
+#[test]
+fn ranges_with_a_literal_next_to_a_slot() {
+    // A `Number` slot and a literal number form a range for the unit rule, whose dash no rule
+    // edits: `{a}-5 кг` → `{a}-5⍽кг`; `5-{d} г.` is not a range (`Compound`): unchanged.
+    for (what, t) in sets(&Language::RU_RU) {
+        let out = run(
+            &t,
+            vec![Piece::Slot("a", Slot::NUMBER), Piece::Text("-5 кг")],
+        );
+        assert_eq!(out, ["", "-5\u{a0}кг"], "{what}");
+        let out = t.typeset_template(
+            [
+                Piece::Text("5-"),
+                Piece::Slot("d", Slot::DATE),
+                Piece::Text(" г."),
+            ],
+            Output::Unicode,
+        );
+        assert_eq!(texts(&out), ["5-", " г."], "{what}");
+        assert!(!out.changed(), "{what}");
+    }
+    let t = alone(Language::RU_RU, Rule::NbspUnits);
+    let out = run(
+        &t,
+        vec![Piece::Slot("a", Slot::NUMBER), Piece::Text("-5 кг")],
+    );
+    assert_eq!(out, ["", "-5\u{a0}кг"]);
+}
+
+#[test]
+fn the_flow_of_a_template_with_a_unit_and_a_dash() {
+    // The example of section 2.4: `Файл "{name}" весит {size} МБ - удалить?` in Interface.
+    let t = interface(Language::RU_RU);
+    let out = run(
+        &t,
+        vec![
+            Piece::Text("Файл \""),
+            Piece::Slot("name", Slot::WORD),
+            Piece::Text("\" весит "),
+            Piece::Slot("size", Slot::NUMBER),
+            Piece::Text(" МБ - удалить?"),
+        ],
+    );
+    assert_eq!(out, ["Файл «", "» весит ", "\u{a0}МБ\u{a0}— удалить?"]);
+    // And the range of the same section: `{a}-{b} дн.`.
+    let out = run(
+        &t,
+        vec![
+            Piece::Slot("a", Slot::NUMBER),
+            Piece::Text("-"),
+            Piece::Slot("b", Slot::NUMBER),
+            Piece::Text(" дн."),
+        ],
+    );
+    assert_eq!(out, ["", "\u{2013}", "\u{a0}дн."]);
 }

@@ -2,9 +2,9 @@
 //! sections 8.1, 8.5, 10.6 and 13.2).
 //!
 //! A row that names no configuration runs with the one rule of its table, alone
-//! (`RuleSet::EMPTY.with(rule)`), and in the built-in sets that hold it, without the `nbsp.*`
-//! rules while stage 3 is not delivered (section 15.4): the glue that the full sets add after a
-//! range (`2010–11⍽гг.`) is not in these outputs.
+//! (`RuleSet::EMPTY.with(rule)`), and in the built-in sets that hold it, in full since stage 3
+//! (section 15.4): the glue that the full sets add after a range (`2010–11⍽гг.`) is part of the
+//! outputs there (`common::set_glue`); the rows of `ranges_in_the_full_sets` spell it out.
 
 #![allow(
     clippy::unwrap_used,
@@ -532,8 +532,9 @@ fn placeholders_disabled() {
 }
 
 #[test]
-fn ranges_in_the_sets_without_nbsp() {
-    // Prose: the literal paths; Interface: only the placeholder path (section 10.6).
+fn ranges_in_the_full_sets() {
+    // Prose: the literal paths; Interface: only the placeholder path (section 10.6). The glue of
+    // the `nbsp.*` rules is part of the expectations (sections 10.6 and 10.7).
     let p = prose(Language::RU_RU);
     let ui = interface(Language::RU_RU);
     let rows: &[(&str, &str, &str)] = &[
@@ -541,19 +542,19 @@ fn ranges_in_the_sets_without_nbsp() {
         ("ports 8000-8100", "ports 8000–8100", "ports 8000-8100"),
         (
             "Порты 8000-8100 с балансировкой",
-            "Порты 8000–8100 с балансировкой",
-            "Порты 8000-8100 с балансировкой",
+            "Порты 8000–8100 с⍽балансировкой",
+            "Порты 8000-8100 с⍽балансировкой",
         ),
-        ("в 2010-11 гг.", "в 2010–11 гг.", "в 2010-11 гг."),
-        ("2010-11 гг.", "2010–11 гг.", "2010-11 гг."),
-        ("2026-11 гг.", "2026-11 гг.", "2026-11 гг."),
+        ("в 2010-11 гг.", "в⍽2010–11⍽гг.", "в⍽2010-11⍽гг."),
+        ("2010-11 гг.", "2010–11⍽гг.", "2010-11⍽гг."),
+        ("2026-11 гг.", "2026-11⍽гг.", "2026-11⍽гг."),
         ("2026-11", "2026-11", "2026-11"),
         ("123-4567", "123–4567", "123-4567"),
-        ("+7 495 123-4567", "+7 495 123–4567", "+7 495 123-4567"),
-        ("+7 495 123-45-67", "+7 495 123-45-67", "+7 495 123-45-67"),
+        ("+7 495 123-4567", "+7⍽495⍽123–4567", "+7 495 123-4567"),
+        ("+7 495 123-45-67", "+7⍽495⍽123-45-67", "+7 495 123-45-67"),
         (
             "+1 300 200 100 50",
-            "+1 300 200 100 50",
+            "+1⍽300⍽200⍽100⍽50",
             "+1 300 200 100 50",
         ),
         (
@@ -563,7 +564,7 @@ fn ranges_in_the_sets_without_nbsp() {
         ),
     ];
     for (input, prose_out, ui_out) in rows {
-        check_in("Prose", &p, (input, prose_out));
-        check_in("Interface", &ui, (input, ui_out));
+        common::check_exact("Prose", &p, (input, prose_out));
+        common::check_exact("Interface", &ui, (input, ui_out));
     }
 }

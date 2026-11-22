@@ -3,10 +3,10 @@
 //! freezing, listed by `protected()`; its tokens stay byte for byte; and no edit other than glue
 //! falls inside a frozen span. `tests/negative.rs` holds the same rows at the level of `typeset`.
 //!
-//! The rows run alone and in the two sentence frames of each language; the `nbsp.*` rules come in
-//! stage 3 and are removed from the sets (`without_nbsp`), so in Interface no edit at all occurs.
-//! Row 24 in English and row 25 (`if a<b and c>d` gets glue, short Cyrillic words get none) join
-//! the full-set tables with the `nbsp.*` rules.
+//! The rows run alone and in the two sentence frames of each language, in the full sets (stage 3):
+//! in Interface no edit occurs, except the glue that row 24's `if a<b and c>d` gets in English
+//! (`if` and `and` are listed short words, `if⍽a<b and⍽c>d`, section 10.5); row 25 (short Latin
+//! words in Russian text, short Cyrillic words in English text) gets none.
 //!
 //! The reference tables with the 405 corpus cases are generated outside this change and join
 //! `tests/negative.rs` with their stage (design sections 13.3, 13.4).
@@ -27,7 +27,7 @@ mod probe;
 
 use std::borrow::Cow;
 
-use common::{show, without_nbsp};
+use common::{interface, prose, show};
 use probe::{SETS, span_texts, spans_of, tech};
 use typolish::{DiagnosticKind, Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
 
@@ -221,23 +221,39 @@ fn run_case(language: &Language, frames: &[&str; 2], c: &Case) {
             );
         }
         for base in [RuleSet::INTERFACE, RuleSet::PROSE] {
-            let t = without_nbsp(language.clone(), base);
+            let t = Typographer::new(language.clone(), base);
             assert_spans_intact(&t, input, &what);
         }
-        // Interface unchanged and borrowed, through `typeset` and through `report`.
-        let t = without_nbsp(language.clone(), RuleSet::INTERFACE);
+        // Interface: unchanged and borrowed, through `typeset` and through `report`, except for
+        // the glue of row 24 in English.
+        let t = interface(language.clone());
         let report = t.report(input, Output::Unicode);
-        assert!(
-            matches!(report.result(), Cow::Borrowed(s) if *s == input.as_str()),
-            "{what}: {} came back as {}",
-            show(input),
-            show(report.result())
-        );
-        assert!(report.changes().is_empty(), "{what}: {}", show(input));
-        assert!(
-            matches!(t.typeset(input, Output::Unicode), Cow::Borrowed(_)),
-            "{what}"
-        );
+        let glued = *language == Language::EN_US && c.text.contains("if a<b and c>d");
+        if glued {
+            assert!(!report.changes().is_empty(), "{what}: {}", show(input));
+            for change in report.changes() {
+                assert_eq!(change.rule(), typolish::Rule::NbspShortWords, "{what}");
+                assert_eq!(change.replacement(), "\u{a0}", "{what}");
+            }
+            assert_eq!(
+                report.result().replace('\u{a0}', " "),
+                *input,
+                "{what}: only glue differs"
+            );
+            assert!(matches!(report.result(), Cow::Owned(_)), "{what}");
+        } else {
+            assert!(
+                matches!(report.result(), Cow::Borrowed(s) if *s == input.as_str()),
+                "{what}: {} came back as {}",
+                show(input),
+                show(report.result())
+            );
+            assert!(report.changes().is_empty(), "{what}: {}", show(input));
+            assert!(
+                matches!(t.typeset(input, Output::Unicode), Cow::Borrowed(_)),
+                "{what}"
+            );
+        }
     }
 }
 
@@ -370,7 +386,7 @@ const STRESS: &[(&str, Option<Spans>)] = &[
 #[test]
 fn stress_strings_have_their_kinds_and_stay_unchanged_in_interface() {
     for (language, _) in languages() {
-        let interface = without_nbsp(language.clone(), RuleSet::INTERFACE);
+        let interface = interface(language.clone());
         for (text, spans) in STRESS {
             if let Some(spans) = spans {
                 for set in SETS {
@@ -391,11 +407,7 @@ fn stress_strings_have_their_kinds_and_stay_unchanged_in_interface() {
                 show(report.result())
             );
             assert!(report.changes().is_empty());
-            assert_spans_intact(
-                &without_nbsp(language.clone(), RuleSet::PROSE),
-                text,
-                "Prose",
-            );
+            assert_spans_intact(&prose(language.clone()), text, "Prose");
         }
     }
 }
@@ -405,7 +417,7 @@ fn mentions_are_listed_as_emails() {
     // Section 10.8: `@user` is frozen whole as an `Email`; `@user` and `@here` come out
     // unchanged in Interface.
     for (language, _) in languages() {
-        let t = without_nbsp(language, RuleSet::INTERFACE);
+        let t = interface(language);
         for text in ["@user", "@here", "Ping @user now", "Ping @here, please"] {
             let report = t.report(text, Output::Unicode);
             let kinds: Vec<ProtectedKind> = report.protected().iter().map(|s| s.kind()).collect();

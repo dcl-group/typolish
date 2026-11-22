@@ -1,14 +1,13 @@
 //! The mandatory negative cases of design section 10.5 and the stress strings of section 10.7 at
-//! the level of `typeset`: in Interface without the `nbsp.*` rules every case comes back unchanged
-//! and borrowed, alone, in the two sentence frames of each language and as a `Piece::Text` next to
-//! slots; in Prose (again without `nbsp.*`) the rows that Prose leaves unchanged do the same, and
-//! rows 3 and 10 give the output that section 10.5 names for Prose. The interaction strings of
-//! section 10.7, fenced blocks, Swiss grouping and the 405 negative cases of the reference tables
-//! (`tests/reference/{ru,en_us}.rs`, section 13.4) are checked here too, through `report`.
-//!
-//! Glue of the `nbsp.*` rules, row 24's `if a<b and c>d` with its glue and row 25 with short words
-//! join with stage 3 (design sections 13.3 and 15.4); the checks through `report` already allow
-//! glue outside the token.
+//! the level of `typeset`: in the full Interface every case comes back unchanged and borrowed,
+//! alone, in the two sentence frames of each language and as a `Piece::Text` next to slots, with
+//! the two exceptions that section 10.5 names (row 24's `if a<b and c>d` in English gets its glue,
+//! `if⍽a<b and⍽c>d`; row 25 is checked in English with short Cyrillic words); in the full Prose
+//! the rows that Prose leaves unchanged do the same, and rows 3 and 10 give the output that
+//! section 10.5 names for Prose. The interaction strings of section 10.7, fenced blocks, Swiss
+//! grouping and the 405 negative cases of the reference tables (`tests/reference/{ru,en_us}.rs`,
+//! section 13.4) are checked here too, through `report`: the token of a case stays byte for byte
+//! and the only other edits are the glue of `nbsp.*` rules outside it.
 
 #![allow(
     clippy::unwrap_used,
@@ -31,7 +30,7 @@ mod ru;
 use std::borrow::Cow;
 use std::ops::Range;
 
-use common::{RefRow, check_in, check_unchanged, interface, prose, show, vis, without_nbsp};
+use common::{RefRow, check_exact, check_in, check_unchanged, interface, prose, show, vis};
 use probe::{diagnostics_of, spans_of};
 use typolish::{
     DiagnosticKind, Language, Output, Piece, ProtectedKind, Rule, RuleSet, Slot, TechKind,
@@ -203,10 +202,46 @@ fn unchanged(t: &typolish::Typographer, text: &str, what: &str) {
     );
 }
 
+/// What the full sets give for a case (section 10.5): the case itself, except `if a<b and c>d` in
+/// English, where `if` and `and` are listed short words and the glue goes outside the frozen
+/// fragments.
+fn expected_of(english: bool, text: &str) -> String {
+    if english {
+        text.replace("if a<b and c>d", "if\u{a0}a<b and\u{a0}c>d")
+    } else {
+        text.to_owned()
+    }
+}
+
+/// Checks that `t` gives the expected output for `text` and that the result is borrowed exactly
+/// when it is the text.
+#[track_caller]
+fn expect(t: &typolish::Typographer, text: &str, english: bool, what: &str) {
+    let expected = expected_of(english, text);
+    if expected == text {
+        unchanged(t, text, what);
+    } else {
+        let out = t.typeset(text, Output::Unicode);
+        assert!(
+            matches!(out, Cow::Owned(ref s) if *s == expected),
+            "{what}: {} came back as {}, expected {}",
+            show(text),
+            show(&out),
+            show(&expected)
+        );
+    }
+}
+
 fn run_row(t: &typolish::Typographer, frames: &[&str; 2], text: &str, what: &str) {
-    unchanged(t, text, what);
+    let english = frames[0].starts_with("Run");
+    expect(t, text, english, what);
     for frame in frames {
-        unchanged(t, &frame.replace('X', text), &format!("{what} in a frame"));
+        expect(
+            t,
+            &frame.replace('X', text),
+            english,
+            &format!("{what} in a frame"),
+        );
     }
     let spaced = format!(" {text} ");
     let pieces = [
@@ -216,13 +251,19 @@ fn run_row(t: &typolish::Typographer, frames: &[&str; 2], text: &str, what: &str
     ];
     let out = t.typeset_template(pieces, Output::Unicode);
     assert_eq!(out.texts().len(), 3, "{what}");
-    assert!(
-        matches!(&out.texts()[1], Cow::Borrowed(s) if *s == spaced),
-        "{what}: next to slots {} came back as {}",
-        show(&spaced),
-        show(&out.texts()[1])
-    );
-    assert!(!out.changed(), "{what}");
+    let expected = expected_of(english, &spaced);
+    if expected == spaced {
+        assert!(
+            matches!(&out.texts()[1], Cow::Borrowed(s) if *s == spaced),
+            "{what}: next to slots {} came back as {}",
+            show(&spaced),
+            show(&out.texts()[1])
+        );
+        assert!(!out.changed(), "{what}");
+    } else {
+        assert_eq!(out.texts()[1], expected, "{what}: next to slots");
+        assert!(out.changed(), "{what}");
+    }
     let glued = [
         Piece::Text(frames[0].split('X').next().unwrap()),
         Piece::Text(text),
@@ -233,9 +274,9 @@ fn run_row(t: &typolish::Typographer, frames: &[&str; 2], text: &str, what: &str
 }
 
 #[test]
-fn interface_without_nbsp_leaves_every_row_unchanged() {
+fn interface_leaves_every_row_unchanged_except_the_two_that_section_10_5_names() {
     for (lang, frames) in languages() {
-        let t = without_nbsp(lang.clone(), RuleSet::INTERFACE);
+        let t = interface(lang.clone());
         for r in ROWS {
             for text in r.texts {
                 run_row(
@@ -258,9 +299,63 @@ fn interface_without_nbsp_leaves_every_row_unchanged() {
 }
 
 #[test]
-fn prose_without_nbsp_leaves_the_unchanged_rows_unchanged() {
+fn row_24_gets_its_glue_in_english_and_only_there() {
+    // `if` and `and` are listed English short words (section 10.5): the glue goes outside `a<b`
+    // and `c>d`, which stay byte for byte. In Russian text `if` and `and` are Latin words.
+    let want = "if\u{a0}a<b and\u{a0}c>d";
+    for t in [interface(Language::EN_US), prose(Language::EN_US)] {
+        check_exact("en", &t, ("if a<b and c>d", want));
+        check_exact(
+            "en",
+            &t,
+            ("Run if a<b and c>d now.", &format!("Run {want} now.")),
+        );
+        check_exact(
+            "en",
+            &t,
+            (
+                "Value: if a<b and c>d, then more.",
+                &format!("Value: {want}, then more."),
+            ),
+        );
+    }
+    for t in [interface(Language::RU_RU), prose(Language::RU_RU)] {
+        check_unchanged("ru", &t, "if a<b and c>d");
+        check_unchanged("ru", &t, "Запустите if a<b and c>d сейчас.");
+    }
+    // The other forms of row 24 stay in English: `a` is followed by a fragment that starts with `<`.
+    let t = interface(Language::EN_US);
+    for text in ["<word>", "vec<int>", "a <b> c"] {
+        check_unchanged("en", &t, text);
+    }
+    // `report` lists the glue as `nbsp.short-words` and nothing else.
+    let r = t.report("if a<b and c>d", Output::Unicode);
+    let rules: Vec<_> = r.changes().iter().map(|c| c.rule()).collect();
+    assert_eq!(rules, [Rule::NbspShortWords, Rule::NbspShortWords]);
+}
+
+#[test]
+fn row_25_short_words_of_the_other_script_get_no_glue() {
+    // ru text: Latin `ls`, `a`, `go`, `db`, `to`; en text: Cyrillic `и`, `в`, `к`, even before
+    // a word (section 10.5, row 25; `short_words_any_script(false)`, M5).
+    for t in [interface(Language::RU_RU), prose(Language::RU_RU)] {
+        for text in SHORT_LATIN_RU {
+            check_unchanged("ru", &t, &format!("Запустите {text} сервер сейчас."));
+            check_unchanged("ru", &t, &format!("{text} server"));
+        }
+    }
+    for t in [interface(Language::EN_US), prose(Language::EN_US)] {
+        for text in SHORT_CYRILLIC_EN {
+            check_unchanged("en", &t, &format!("Run {text} server now."));
+            check_unchanged("en", &t, &format!("{text} server"));
+        }
+    }
+}
+
+#[test]
+fn prose_leaves_the_unchanged_rows_unchanged() {
     for (lang, frames) in languages() {
-        let t = without_nbsp(lang.clone(), RuleSet::PROSE);
+        let t = prose(lang.clone());
         for r in ROWS.iter().filter(|r| r.prose_unchanged) {
             for text in r.texts {
                 run_row(
@@ -271,15 +366,24 @@ fn prose_without_nbsp_leaves_the_unchanged_rows_unchanged() {
                 );
             }
         }
+        // Row 25 in Prose: unchanged (M5), the length rule counts only words of the script.
+        let short: &[&str] = if lang == Language::RU_RU {
+            SHORT_LATIN_RU
+        } else {
+            SHORT_CYRILLIC_EN
+        };
+        for text in short {
+            run_row(&t, &frames, text, &format!("{lang} prose row 25 {text:?}"));
+        }
         // Row 3 in Prose: the lone `--` alone is unchanged.
         unchanged(&t, "--", &format!("{lang} prose row 3"));
     }
 }
 
 #[test]
-fn interface_without_nbsp_leaves_the_stress_strings_unchanged() {
+fn interface_leaves_the_stress_strings_unchanged() {
     for (lang, _) in languages() {
-        let t = without_nbsp(lang.clone(), RuleSet::INTERFACE);
+        let t = interface(lang.clone());
         for text in STRESS {
             unchanged(&t, text, &format!("{lang} {text:?}"));
         }
@@ -287,13 +391,13 @@ fn interface_without_nbsp_leaves_the_stress_strings_unchanged() {
 }
 
 #[test]
-fn interface_without_nbsp_leaves_the_whitespace_cases_unchanged() {
+fn interface_leaves_the_whitespace_cases_unchanged() {
     // Interaction strings of section 10.7 that no rule of Interface touches.
-    let en = without_nbsp(Language::EN_US, RuleSet::INTERFACE);
+    let en = interface(Language::EN_US);
     for text in ["word  -  word", "word\t-\tword"] {
         unchanged(&en, text, text);
     }
-    let ru = without_nbsp(Language::RU_RU, RuleSet::INTERFACE);
+    let ru = interface(Language::RU_RU);
     for text in ["т.  е.", "№\t5"] {
         unchanged(&ru, text, text);
     }
@@ -306,7 +410,7 @@ fn the_rows_are_complete() {
     assert_eq!(numbers, (1..=27).collect::<Vec<u8>>());
 }
 
-// Prose, rows 3 and 10 (section 10.5, last column); the glue of `nbsp.*` is stage 3.
+// Prose, rows 3 and 10 (section 10.5, last column).
 
 #[test]
 fn row_3_in_prose() {
@@ -316,7 +420,7 @@ fn row_3_in_prose() {
     let en = prose(Language::EN_US);
     check_unchanged("ru", &ru, "--");
     check_unchanged("en", &en, "--");
-    check_in("ru", &ru, ("Запустите -- сейчас.", "Запустите — сейчас."));
+    check_exact("ru", &ru, ("Запустите -- сейчас.", "Запустите⍽— сейчас."));
     check_unchanged("ru", &ru, "Значение: --, затем далее.");
     check_in("en", &en, ("Run -- now.", "Run—now."));
     check_unchanged("en", &en, "Value: --, then more.");
@@ -331,13 +435,15 @@ fn row_3_in_prose() {
             "Run git checkout—file now.",
         ),
     );
-    // `report` names the rule.
+    // `report` names the rule; in Russian `nbsp.dash` also glues the space before the dash.
     let r = ru.report("Запустите -- сейчас.", Output::Unicode);
+    let rules: Vec<Rule> = r.changes().iter().map(|c| c.rule()).collect();
     assert!(
-        !r.changes().is_empty()
-            && r.changes()
+        rules.contains(&Rule::DashDoubleHyphen)
+            && rules
                 .iter()
-                .all(|c| c.rule() == Rule::DashDoubleHyphen)
+                .all(|c| matches!(c, Rule::DashDoubleHyphen | Rule::NbspDash)),
+        "{rules:?}"
     );
     let r = en.report("git checkout -- file", Output::Unicode);
     assert!(
@@ -397,10 +503,12 @@ fn row_10_in_prose() {
 
 #[test]
 fn stress_strings_in_prose() {
-    // Prose changes the telephone fragments (a range, section 10.8) and, from stage 3, the
-    // arrows; every other string stays, borrowed.
+    // Prose glues and changes the telephone fragments (section 10.8) and sets the arrows (symbols
+    // are a rule of the same stage: both outputs are accepted until they exist); every other
+    // string stays, borrowed.
     let changed: &[(&str, &[&str])] = &[
-        ("+7 495 123-4567", &["+7 495 123–4567"]),
+        ("+7 495 123-4567", &["+7⍽495⍽123–4567"]),
+        ("+1 300 200 100 50", &["+1⍽300⍽200⍽100⍽50"]),
         ("123-4567", &["123–4567"]),
         // `symbols.arrows` is stage 3: unchanged until then.
         ("x -> y; z => w", &["x -> y; z => w", "x → y; z => w"]),
@@ -414,7 +522,7 @@ fn stress_strings_in_prose() {
                 Some((_, allowed)) => {
                     let got = t.typeset(text, Output::Unicode);
                     assert!(
-                        allowed.contains(&&*got),
+                        allowed.iter().any(|a| vis(a) == *got),
                         "{language} Prose: {} came back as {}",
                         show(text),
                         show(&got)
@@ -427,33 +535,33 @@ fn stress_strings_in_prose() {
 
 #[test]
 fn interaction_strings_of_section_10_7() {
-    // Exact output in both sets, ru and en unless a language is given; the glue of the `nbsp.*`
-    // rules is not in these outputs (stage 3). Rows: input, Interface, Prose.
+    // Exact output in both sets, ru and en unless a language is given, glue of the other rules
+    // included (the table of section 10.7). Rows: input, Interface, Prose.
     type Table = &'static [(&'static str, &'static str, &'static str)];
     let both: Table = &[
-        ("+7 495 123-4567", "+7 495 123-4567", "+7 495 123–4567"),
+        ("+7 495 123-4567", "+7 495 123-4567", "+7⍽495⍽123–4567"),
         ("123-4567", "123-4567", "123–4567"),
         (
             "+1 300 200 100 50",
             "+1 300 200 100 50",
-            "+1 300 200 100 50",
+            "+1⍽300⍽200⍽100⍽50",
         ),
         ("2026-11", "2026-11", "2026-11"),
         ("5 - x", "5 - x", "5 - x"),
         ("x - 5", "x - 5", "x - 5"),
     ];
     let ru_only: Table = &[
-        ("2010-11 гг.", "2010-11 гг.", "2010–11 гг."),
-        ("2026-11 гг.", "2026-11 гг.", "2026-11 гг."),
+        ("2010-11 гг.", "2010-11⍽гг.", "2010–11⍽гг."),
+        ("2026-11 гг.", "2026-11⍽гг.", "2026-11⍽гг."),
         (
             "21.11.2026 г. Затем",
-            "21.11.2026 г. Затем",
-            "21.11.2026 г. Затем",
+            "21.11.2026⍽г. Затем",
+            "21.11.2026⍽г. Затем",
         ),
         (
             "21.11.26 г. Затем",
-            "21.11.26 г. Затем",
-            "21.11.26 г. Затем",
+            "21.11.26⍽г. Затем",
+            "21.11.26⍽г. Затем",
         ),
         ("-- file", "-- file", "—⍽file"),
         (
@@ -483,12 +591,12 @@ fn interaction_strings_of_section_10_7() {
         let ui = interface(language.clone());
         let pr = prose(language.clone());
         for (input, interface_out, prose_out) in table.iter().flat_map(|t| t.iter()) {
-            check_in(
+            check_exact(
                 &format!("{language} Interface"),
                 &ui,
                 (input, interface_out),
             );
-            check_in(&format!("{language} Prose"), &pr, (input, prose_out));
+            check_exact(&format!("{language} Prose"), &pr, (input, prose_out));
         }
     }
     // `5 - x` and `x - 5` report `AmbiguousHyphen` in both sets.
@@ -708,8 +816,10 @@ fn check_case(
                     r.id
                 );
             }
+            // Never before a fragment that starts with `-`, except `nbsp.dash` before the dash it
+            // glues to (sections 8.2 and 8.7).
             assert!(
-                !r.input[range.end..].starts_with('-'),
+                change.rule() == Rule::NbspDash || !r.input[range.end..].starts_with('-'),
                 "{what}: {}: glue before a hyphen: {change:?}",
                 r.id
             );
@@ -779,13 +889,14 @@ fn the_reference_tables_hold_405_negative_cases() {
 #[test]
 fn corpus_cases_keep_their_token_in_interface() {
     // Section 13.3: in Interface every case keeps its token byte for byte; the only other edits
-    // are glue marks of `nbsp.*` rules outside it. Without the `nbsp.*` rules (stage 2) that
-    // means no edit at all, and the output is the input, borrowed.
+    // are glue marks of `nbsp.*` rules outside it (some cases sit in sentences with listed short
+    // words, `Это a и b в тексте`), and the output, with its glue read as ordinary spaces, is the
+    // input.
     for (language, frames, rows) in [
         (Language::RU_RU, FRAMES_RU, negative_rows(ru::ROWS)),
         (Language::EN_US, FRAMES_EN, negative_rows(en_us::ROWS)),
     ] {
-        let t = without_nbsp(language.clone(), RuleSet::INTERFACE);
+        let t = interface(language.clone());
         for r in rows {
             let allowed = [r.input.to_owned()];
             check_case(
@@ -798,7 +909,10 @@ fn corpus_cases_keep_their_token_in_interface() {
             );
             let report = t.report(r.input, Output::Unicode);
             assert!(
-                report.changes().is_empty(),
+                report
+                    .changes()
+                    .iter()
+                    .all(|c| c.rule().id().starts_with("nbsp.")),
                 "{}: {:?}",
                 r.id,
                 report.changes()
@@ -816,7 +930,7 @@ fn corpus_cases_keep_their_token_in_prose() {
         (Language::EN_US, FRAMES_EN, negative_rows(en_us::ROWS)),
     ] {
         let ru = language == Language::RU_RU;
-        let t = without_nbsp(language.clone(), RuleSet::PROSE);
+        let t = prose(language.clone());
         let edits = [
             Rule::RangeDigits,
             Rule::RangeContext,

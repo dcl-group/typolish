@@ -6,6 +6,7 @@
 
 #![allow(dead_code)]
 
+pub mod set_glue;
 pub mod strategies;
 
 use std::borrow::Cow;
@@ -46,11 +47,33 @@ pub fn input(text: &str) -> String {
     text
 }
 
+/// The expectation of a table row in a full built-in set. The stage 2 tables give the output of
+/// the quote, dash, range and ellipsis rules; in the full `PROSE` and `INTERFACE` the `nbsp.*` rules
+/// add their glue (design section 15.4), which `set_glue::TABLE` lists for the rows it touches. A
+/// typographer without the short-word rule, and a row that the table does not list, keep the
+/// expectation as written.
+pub fn expected_in_set(t: &Typographer, source: &str, alone: String) -> String {
+    let kind = if t.rules().contains(Rule::NbspShortLength) {
+        "prose"
+    } else if t.rules().contains(Rule::NbspShortWords) {
+        "interface"
+    } else {
+        return alone;
+    };
+    let tag = t.language().tag();
+    for (lang, set, input, plain, full) in set_glue::TABLE {
+        if *lang == tag && *set == kind && vis(input) == source && vis(plain) == alone {
+            return vis(full);
+        }
+    }
+    alone
+}
+
 /// Typesets a table row (input and expectation written with markers) as Unicode and compares.
 #[track_caller]
 pub fn check(typographer: &Typographer, row: (&str, &str)) {
     let source = input(row.0);
-    let expected = vis(row.1);
+    let expected = expected_in_set(typographer, &source, vis(row.1));
     let got = typographer.typeset(&source, Output::Unicode);
     assert!(
         got == expected,
@@ -67,8 +90,9 @@ pub fn check(typographer: &Typographer, row: (&str, &str)) {
     );
 }
 
-/// A typographer with the rules of `set` except the `nbsp.*` rules (stage 2 runs set-level tables
-/// without them, section 15.4).
+/// A typographer with the rules of `set` except the `nbsp.*` rules. Stage 2 ran its set-level
+/// tables with it (section 15.4); stage 3 runs them in the full sets (`prose`, `interface`), and
+/// this helper stays for the tests that look at the other rules of a set on their own.
 pub fn without_nbsp(language: Language, set: RuleSet) -> Typographer {
     let mut builder = Typographer::builder(language, set);
     for rule in Rule::ALL.iter().filter(|r| r.id().starts_with("nbsp.")) {
@@ -103,28 +127,26 @@ pub fn only(language: Language, rules: &[Rule]) -> Typographer {
     Typographer::new(language, rules.iter().copied().collect())
 }
 
-/// Prose without the `nbsp.*` rules (stage 2, design section 15.4).
+/// Prose in full, `nbsp.*` rules included (stage 3, design section 15.4).
 pub fn prose(language: Language) -> Typographer {
-    without_nbsp(language, RuleSet::PROSE)
+    Typographer::new(language, RuleSet::PROSE)
 }
 
-/// Interface without the `nbsp.*` rules (stage 2, design section 15.4).
+/// Interface in full, `nbsp.*` rules included (stage 3, design section 15.4).
 pub fn interface(language: Language) -> Typographer {
-    without_nbsp(language, RuleSet::INTERFACE)
+    Typographer::new(language, RuleSet::INTERFACE)
 }
 
-/// A built-in set without the `nbsp.*` rules and without `rule`: the rule disabled in a set.
+/// A built-in set without `rule`: the rule disabled in a set.
 pub fn without_rule(language: Language, set: RuleSet, rule: Rule) -> Typographer {
-    let mut builder = Typographer::builder(language, set).disable(rule);
-    for nbsp in Rule::ALL.iter().filter(|r| r.id().starts_with("nbsp.")) {
-        builder = builder.disable(*nbsp);
-    }
-    builder.build().unwrap()
+    Typographer::builder(language, set)
+        .disable(rule)
+        .build()
+        .unwrap()
 }
 
 /// The typographers a rule table runs with (design section 13.2): the rule alone, and each
-/// built-in set that holds the rule, without the `nbsp.*` rules while stage 3 is not delivered.
-/// The name says which one failed.
+/// built-in set that holds the rule, in full. The name says which one failed.
 pub fn configs(language: &Language, rule: Rule) -> Vec<(String, Typographer)> {
     let mut out = vec![(
         format!("{language} {} alone", rule.id()),
@@ -133,8 +155,8 @@ pub fn configs(language: &Language, rule: Rule) -> Vec<(String, Typographer)> {
     for (name, set) in [("Prose", RuleSet::PROSE), ("Interface", RuleSet::INTERFACE)] {
         if set.contains(rule) {
             out.push((
-                format!("{language} {name} without nbsp"),
-                without_nbsp(language.clone(), set),
+                format!("{language} {name}"),
+                Typographer::new(language.clone(), set),
             ));
         }
     }
@@ -144,7 +166,7 @@ pub fn configs(language: &Language, rule: Rule) -> Vec<(String, Typographer)> {
 /// Typesets a table row (written with markers) with `t` and compares, naming `what` on failure;
 /// the result is borrowed exactly when it equals the input.
 #[track_caller]
-pub fn check_in(what: &str, t: &Typographer, row: (&str, &str)) {
+pub fn check_exact(what: &str, t: &Typographer, row: (&str, &str)) {
     let source = input(row.0);
     let expected = vis(row.1);
     let got = t.typeset(&source, Output::Unicode);
@@ -161,6 +183,16 @@ pub fn check_in(what: &str, t: &Typographer, row: (&str, &str)) {
         "{what}: Cow::Borrowed exactly when the output equals the input: {}",
         show(&source)
     );
+}
+
+/// Typesets a table row of a stage 2 table (written with markers) with `t` and compares, naming
+/// `what` on failure. In a full built-in set the expectation of the row is completed with the glue
+/// of the `nbsp.*` rules (`expected_in_set`); everywhere else it is `check_exact`.
+#[track_caller]
+pub fn check_in(what: &str, t: &Typographer, row: (&str, &str)) {
+    let source = input(row.0);
+    let expected = expected_in_set(t, &source, vis(row.1));
+    check_exact(what, t, (row.0, &expected));
 }
 
 /// Runs every row with every typographer.

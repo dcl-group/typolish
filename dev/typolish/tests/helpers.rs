@@ -13,8 +13,8 @@
 mod common;
 
 use common::{
-    TmplPiece, assert_no_markers, configs, interface, only, parse_tmpl, prose, row, show, vis,
-    without_rule,
+    TmplPiece, assert_no_markers, configs, expected_in_set, interface, only, parse_tmpl, prose,
+    row, show, vis, without_nbsp, without_rule,
 };
 use typolish::{Language, Rule, RuleSet, SlotKind};
 
@@ -90,11 +90,16 @@ fn only_runs_exactly_the_given_rules() {
 }
 
 #[test]
-fn the_set_helpers_drop_the_nbsp_rules_and_the_named_rule() {
-    for t in [prose(Language::RU_RU), interface(Language::RU_RU)] {
-        assert!(t.rules().iter().all(|r| !r.id().starts_with("nbsp.")));
-    }
+fn the_set_helpers_give_the_full_sets_and_drop_the_named_rule() {
+    // Stage 3: `prose` and `interface` are the built-in sets in full.
+    assert_eq!(prose(Language::RU_RU).rules(), RuleSet::PROSE);
+    assert_eq!(interface(Language::RU_RU).rules(), RuleSet::INTERFACE);
     assert!(prose(Language::EN_US).rules().contains(Rule::QuotesPairs));
+    assert!(
+        prose(Language::EN_US)
+            .rules()
+            .contains(Rule::NbspShortLength)
+    );
     assert!(
         !interface(Language::EN_US)
             .rules()
@@ -103,12 +108,44 @@ fn the_set_helpers_drop_the_nbsp_rules_and_the_named_rule() {
     let t = without_rule(Language::RU_RU, RuleSet::PROSE, Rule::DashDoubleHyphen);
     assert!(!t.rules().contains(Rule::DashDoubleHyphen));
     assert!(t.rules().contains(Rule::DashSpacedHyphen));
-    assert!(t.rules().iter().all(|r| !r.id().starts_with("nbsp.")));
+    assert!(t.rules().contains(Rule::NbspDash));
+    assert_eq!(t.rules(), RuleSet::PROSE.without(Rule::DashDoubleHyphen));
+}
+
+#[test]
+fn without_nbsp_drops_the_nbsp_rules_only() {
+    for set in [RuleSet::PROSE, RuleSet::INTERFACE] {
+        let t = without_nbsp(Language::RU_RU, set);
+        assert!(t.rules().iter().all(|r| !r.id().starts_with("nbsp.")));
+        assert!(t.rules().contains(Rule::QuotesPairs));
+    }
+}
+
+#[test]
+fn the_glue_of_a_set_row_comes_from_the_table_of_set_glue() {
+    // A row of a stage 2 table is completed with the glue of the full set (section 15.4).
+    let prose = prose(Language::RU_RU);
+    let interface = interface(Language::RU_RU);
+    let alone = only(Language::RU_RU, &[Rule::QuotesPairs]);
+    let source = vis("Он сказал \"привет\" и ушёл.");
+    let plain = vis("Он сказал «привет» и ушёл.");
+    assert_eq!(
+        expected_in_set(&prose, &source, plain.clone()),
+        vis("Он⍽сказал «привет» и⍽ушёл.")
+    );
+    assert_eq!(
+        expected_in_set(&interface, &source, plain.clone()),
+        vis("Он сказал «привет» и⍽ушёл.")
+    );
+    // A typographer without the short-word rule and a row that the table does not list keep the
+    // expectation as written.
+    assert_eq!(expected_in_set(&alone, &source, plain.clone()), plain);
+    assert_eq!(expected_in_set(&prose, "x", "y".to_owned()), "y".to_owned());
 }
 
 #[test]
 fn configs_name_the_rule_alone_and_the_sets_that_hold_it() {
-    // `ellipsis.dots` is in both sets, `range.digits` in Prose only, `nbsp.dash` is removed.
+    // `ellipsis.dots` is in both sets, `range.digits` in Prose only.
     assert_eq!(configs(&Language::RU_RU, Rule::EllipsisDots).len(), 3);
     assert_eq!(configs(&Language::RU_RU, Rule::RangeDigits).len(), 2);
     let names: Vec<_> = configs(&Language::EN_US, Rule::RangeDigits)

@@ -2,10 +2,11 @@
 //! and 13.2).
 //!
 //! A row that names no configuration runs with the three quote rules (section 13.2), and the rows
-//! marked as set-level also run inside Prose and Interface without the `nbsp.*` rules (stage 2 of
-//! section 15.4; stage 3 switches those tables to the full sets). As in section 6.12 the outputs
-//! show only the edits of the rules that run. Rows of 6.12 that sit next to another stage 2 rule
-//! (an ellipsis, a spaced hyphen) run with the three quote rules only.
+//! marked as set-level also run inside the full Prose and Interface (stage 3 of section 15.4; the
+//! stage 2 tables ran them without the `nbsp.*` rules). As in section 6.12 the outputs show only
+//! the edits of the rules that run; in the full sets the glue of the `nbsp.*` rules is added to the
+//! rows that it touches (`common::set_glue`, `common::expected_in_set`). Rows of 6.12 that sit next
+//! to another stage 2 rule (an ellipsis, a spaced hyphen) run with the three quote rules only.
 
 #![allow(
     clippy::unwrap_used,
@@ -51,17 +52,16 @@ fn quotes_with(language: Language, mode: SingleQuotes) -> Typographer {
     .unwrap()
 }
 
-/// A built-in set without the `nbsp.*` rules and with a `SingleQuotes` mode.
+/// A built-in set with a `SingleQuotes` mode.
 fn set_with(language: Language, set: RuleSet, mode: SingleQuotes) -> Typographer {
-    let mut builder = Typographer::builder(language, set).single_quotes(mode);
-    for rule in Rule::ALL.iter().filter(|r| r.id().starts_with("nbsp.")) {
-        builder = builder.disable(*rule);
-    }
-    builder.build().unwrap()
+    Typographer::builder(language, set)
+        .single_quotes(mode)
+        .build()
+        .unwrap()
 }
 
 /// The three typographers of a language that a set-level row runs with: the quote rules alone,
-/// Prose and Interface (both without `nbsp.*`).
+/// Prose and Interface (both in full).
 fn all_three(language: &Language) -> Vec<(String, Typographer)> {
     vec![
         (format!("{language} quotes alone"), quotes(language.clone())),
@@ -646,7 +646,14 @@ fn slots_next_to_quotes() {
             ],
             Output::Unicode,
         );
-        assert_eq!(out.texts(), ["Файл «", "» не найден"], "{what}");
+        // In the sets `не` is a short word (`nbsp.short-words`).
+        let glued = what.contains("Prose") || what.contains("Interface");
+        let expected = if glued {
+            ["Файл «", "» не\u{a0}найден"]
+        } else {
+            ["Файл «", "» не найден"]
+        };
+        assert_eq!(out.texts(), expected, "{what}");
         let out = t.typeset_template(
             [
                 Piece::Text("\""),
@@ -657,7 +664,13 @@ fn slots_next_to_quotes() {
             ],
             Output::Unicode,
         );
-        assert_eq!(out.texts(), ["«", "» и «", "»"], "{what}");
+        // `и` is a short word before an opening quote.
+        let expected = if glued {
+            ["«", "» и\u{a0}«", "»"]
+        } else {
+            ["«", "» и «", "»"]
+        };
+        assert_eq!(out.texts(), expected, "{what}");
     }
 }
 
