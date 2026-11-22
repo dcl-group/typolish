@@ -5,7 +5,8 @@ holds one-time material that the other sections rely on.
 
 ### 14.8 Checks behind this design
 
-All checks were run on 2026-11-21 on the development machine, outside the repository.
+All checks were run on 2026-11-21 on the development machine, outside the repository, unless a
+passage gives another date.
 
 **Dependency versions** (crates.io sparse index and crates.io API):
 
@@ -28,7 +29,8 @@ no normal dependencies; `#![deny(missing_docs, unsafe_code)]`; public `Graphemes
 
 **Toolchain**: `rustc 1.100.0 (0ef1bc386 2026-11-09)`; `char::UNICODE_VERSION == (18, 0, 0)`;
 `cargo-deny 0.20.2`, `cargo-hack` and clippy installed; the rustup toolchain `1.100.0` is installed
-besides `stable` (`cargo +1.100.0 -V` prints `cargo 1.100.0 (3acc79c0c 2026-11-05)`).
+besides `stable` (`cargo +1.100.0 -V` prints `cargo 1.100.0 (3acc79c0c 2026-11-05)`; checked on
+2026-11-22).
 
 **Dependency tree and cargo-deny**: a throwaway workspace with the manifests and `deny.toml` of
 section 14.5 resolved 23 packages besides `typolish` (all listed in section 14.1, including the
@@ -50,8 +52,8 @@ uses the values of `en` (checked). From `cldr-core` `supplemental/likelySubtags.
 49.0.0): `ru` → `ru-Cyrl-RU`, `en` → `en-Latn-US`, the likely-subtags rule behind section 2.2.
 
 **HTML entities**: every name in section 11.2 is in the WHATWG `entities.json`; U+202F and U+2011
-have no named reference. The license of the extract, CC BY 4.0, was read from the WHATWG IPR policy
-(section 7.1.1) on 2026-11-22.
+have no named reference. The license of the extract, CC BY 4.0, was read from §7.1.1 of the WHATWG
+IPR policy on 2026-11-22.
 
 **crates.io categories**: `text-processing` and `internationalization` exist.
 
