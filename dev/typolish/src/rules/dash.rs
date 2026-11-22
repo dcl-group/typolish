@@ -9,7 +9,7 @@ use super::{Frag, FragKind, Triggers, foreign, is_number, is_operand, is_range, 
 use super::{is_word, single_letter};
 use crate::DashStyle;
 use crate::SlotKind;
-use crate::engine::lex::{Glue, Kind, Repl};
+use crate::engine::lex::{Glue, Kind, NO_FRAG, Repl};
 use crate::engine::phase::{Cx, Edit, Edits, Match};
 
 /// `dash.dialogue`: a hyphen at a line start; a typed dash there is matched too, and its space
@@ -29,13 +29,21 @@ fn offset(i: usize, j: usize) -> Option<u8> {
 
 /// Whether the token at `d` is a dash fragment on its own: its fragment holds no other token than
 /// `Format` and `Markup` tokens (no wrapper either).
+///
+/// A fragment is a contiguous run of tokens, so it is enough that neither non-transparent neighbor
+/// belongs to it; the fragment itself is not scanned, which keeps the phase linear when a long run
+/// of transparent tokens precedes many dashes (design section 3.12).
 fn lone_dash(cx: &Cx<'_>, d: usize) -> bool {
-    let Some(f) = cx.frag_of(d) else {
+    let Some(f) = cx.tok(d).map(|t| t.frag) else {
         return false;
     };
-    f.kind == FragKind::OperatorRun
-        && (f.start as usize..f.end as usize)
-            .all(|j| j == d || cx.kind(j).is_some_and(Kind::is_transparent))
+    let same = |j: Option<usize>| j.is_some_and(|j| cx.tok(j).is_some_and(|t| t.frag == f));
+    f != NO_FRAG
+        && cx
+            .frag_of(d)
+            .is_some_and(|fr| fr.kind == FragKind::OperatorRun)
+        && !same(cx.prev(d))
+        && !same(cx.next(d))
 }
 
 /// `dash.dialogue` (design section 8.4): at the start of the text or of a line, after optional

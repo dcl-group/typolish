@@ -382,6 +382,20 @@ fn pathological_runs_finish() {
         ("digits", big("1234567890", 100_000)),
         ("comma list", big("a,", 100_000)),
         ("fences", big("```\na\n```\n", 100_000)),
+        // A long run of transparent tokens before many dashes of one fragment each.
+        (
+            "zero-width prefix before dashes",
+            big("\u{200b}", 100_000) + &big("-\u{200b}", 100_000),
+        ),
+        (
+            "joiner prefix before dashes",
+            big("\u{2060}\u{200c}", 100_000) + &big("-\u{200b}", 100_000),
+        ),
+        // Many straight quotes in the wrapper of one technical fragment.
+        (
+            "quotes around a path",
+            big("\"", 100_000) + &big("a:b/", 100_000) + &big("\"", 100_000),
+        ),
     ];
     for t in all_typographers() {
         for (name, input) in &inputs {

@@ -419,8 +419,9 @@ pub(crate) fn analyze<R: Recorder>(
     };
 
     // Candidates and step 1 (sections 6.1 and 6.2).
+    let mut facts = None;
     for q in qs.iter_mut() {
-        categorize(cx, q);
+        categorize(cx, q, &mut facts);
     }
 
     // Roles of series (section 6.3) and weak quotes (section 6.5).
@@ -784,7 +785,7 @@ fn word_start(cx: &Cx<'_>, i: usize) -> bool {
 }
 
 /// Sets what a quote is for pairing, and the decisions of step 1 (sections 6.1 and 6.2).
-fn categorize(cx: &Cx<'_>, q: &mut Q) {
+fn categorize(cx: &Cx<'_>, q: &mut Q, facts: &mut Option<WrapperFacts>) {
     let i = q.tok as usize;
     let Some(t) = cx.tok(i) else {
         return;
@@ -796,7 +797,7 @@ fn categorize(cx: &Cx<'_>, q: &mut Q) {
     if matches!(q.glyph, '′' | '″') {
         return;
     }
-    if straight && !wrapper_candidate(cx, i) {
+    if straight && !wrapper_candidate(cx, i, facts) {
         return;
     }
     if matches!(q.glyph, '\'' | APOSTROPHE_CHAR)
@@ -843,8 +844,23 @@ fn categorize(cx: &Cx<'_>, q: &mut Q) {
     };
 }
 
+/// What `wrapper_candidate` reads of one technical fragment, computed once per fragment.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct WrapperFacts {
+    frag: u32,
+    /// The core holds a straight quote.
+    core_has: bool,
+    /// The leading wrapper holds a straight quote.
+    start_has: bool,
+    /// The core ends in `=`.
+    ends_in_eq: bool,
+}
+
 /// Whether a straight quote in the wrapper of a frozen fragment is a candidate (section 6.1).
-fn wrapper_candidate(cx: &Cx<'_>, i: usize) -> bool {
+///
+/// The quotes are visited in token order and the tokens of a fragment are contiguous, so `facts`
+/// holds the facts of the last fragment met and each fragment is scanned once (section 3.12).
+fn wrapper_candidate(cx: &Cx<'_>, i: usize, facts: &mut Option<WrapperFacts>) -> bool {
     let Some(frag) = cx.frag_of(i) else {
         return true;
     };
@@ -852,15 +868,26 @@ fn wrapper_candidate(cx: &Cx<'_>, i: usize) -> bool {
     if !technical || cx.in_core(i) {
         return true;
     }
-    let straight = |j: usize| is_quote(cx, j) && matches!(cx.chr(j), Some('"' | '\''));
-    let core_has = (frag.core_start as usize..frag.core_end as usize).any(straight);
-    if core_has {
+    let index = cx.tok(i).map_or(u32::MAX, |t| t.frag);
+    let f = match *facts {
+        Some(f) if f.frag == index => f,
+        _ => {
+            let straight = |j: usize| is_quote(cx, j) && matches!(cx.chr(j), Some('"' | '\''));
+            let f = WrapperFacts {
+                frag: index,
+                core_has: (frag.core_start as usize..frag.core_end as usize).any(straight),
+                start_has: (frag.start as usize..frag.core_start as usize).any(straight),
+                ends_in_eq: frag.core_end > frag.core_start
+                    && cx.src(frag.core_end as usize - 1).ends_with('='),
+            };
+            *facts = Some(f);
+            f
+        }
+    };
+    if f.core_has {
         return false;
     }
-    let ends_in_eq =
-        frag.core_end > frag.core_start && cx.src(frag.core_end as usize - 1).ends_with('=');
-    let start_has = (frag.start as usize..frag.core_start as usize).any(straight);
-    !(ends_in_eq && !start_has && i >= frag.core_end as usize)
+    !(f.ends_in_eq && !f.start_has && i >= frag.core_end as usize)
 }
 
 /// Step 1 (section 6.2): a certain apostrophe or prime.

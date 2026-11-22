@@ -591,7 +591,11 @@ piece. A span or a diagnostic that starts at a slot or a protected piece is repo
   of the two buffers.
 - Inputs exercised by the load tests (section 13.8): long runs of `"`, `'`, backticks, `-`, `.`,
   `(`; alternating Cyrillic and Latin letters; a string of ZWJ emoji; one 1 MiB line without spaces
-  (one fragment: the classifier is linear, freezing is one pass); quote nesting 10 000 deep.
+  (one fragment: the classifier is linear, freezing is one pass); quote nesting 10 000 deep; a long
+  run of `Format` tokens (U+200B, U+2060 U+200C) before many dashes, each a fragment of its own (a
+  rule reads the nearest non-transparent neighbors of a token, never the whole run again); many
+  straight quotes in the wrapper of one technical fragment (what the quote phase reads of a fragment
+  is computed once per fragment).
 
 ### 3.13 Rejected engine designs
 
