@@ -1,8 +1,8 @@
 # typolish design
 
-Status: the design of version 0.1, approved by the maintainer on 2026-11-22; implementation starts
-with stage 2 (section 15.4). No code exists yet. Once code exists, where this document and the code
-disagree, one of them is fixed in the same change.
+Status: the design of version 0.1, approved by the maintainer on 2026-11-22; implementation is under
+way in `dev/typolish`, stage 2 (section 15.4). Where this document and the code disagree, one of
+them is fixed in the same change.
 
 Conventions used below:
 

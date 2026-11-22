@@ -141,14 +141,15 @@ questions for the maintainer. In every stage the gates of section 14.7 pass befo
 any deviation from this design is written into the design in the same change.
 
 **Stage 2: core.** The stage starts by compiling the atom and token representation without
-references (sections 3.4, 3.5, 2.12) in a scratch crate outside the repository, because no check has
-compiled it yet (section 14.8). Then: repository skeleton after zonewright (`AGENTS.md`,
-`CLAUDE.md`, README and CHANGELOG with an `Unreleased` section, license files, `dev/` workspace,
-`deny.toml`, `clippy.toml`, `.gitignore`, `.gitattributes`, Prettier files). `Rule` with all 27 ids
-and `ORDER`, `RuleSet` with `FromStr` and `Display`, `Language` and the built-in tables as far as
-these rules need them, `Language::from_static`, and `LanguageBuilder` (at least quote pairs and the
-tag; the idempotence seed `‚Wort‘` needs it), with every dictionary that the classifier reads in
-check 0 (units, abbreviation parts, elisions, month forms, atom exceptions) complete for ru and en,
+references (sections 3.4, 3.5, 2.12), because no check had compiled it (section 14.8); it was
+compiled as the first code of the crate rather than in a scratch crate outside the repository. Then:
+repository skeleton after zonewright (`AGENTS.md`, `CLAUDE.md`, README and CHANGELOG with an
+`Unreleased` section, license files, `dev/` workspace, `deny.toml`, `clippy.toml`, `.gitignore`,
+`.gitattributes`, Prettier files). `Rule` with all 27 ids and `ORDER`, `RuleSet` with `FromStr` and
+`Display`, `Language` and the built-in tables as far as these rules need them,
+`Language::from_static`, and `LanguageBuilder` (at least quote pairs and the tag; the idempotence
+seed `‚Wort‘` needs it), with every dictionary that the classifier reads in check 0 (units,
+abbreviation parts, elisions, month forms, atom exceptions) complete for ru and en,
 `Typographer::new` and the builder, `Piece` and `Template`, ingest and protection, windows, lexer,
 classifier with labels, freezing, the phase engine, the recorders with `report` (changes, protected
 spans and diagnostics; its `Display` comes in stage 4), rendering for `Output::Unicode`, the

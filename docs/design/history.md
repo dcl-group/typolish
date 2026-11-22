@@ -81,6 +81,13 @@ corpus of 820 cases (432 ru, 388 en-US; 405 negative cases: ru 207, en-US 198) w
 settings. Section 8.12 summarizes its recorded behavior. Nine of the 820 outputs were not idempotent
 (lists `a,b,c` and look-alike replacement), which motivated sections 3.13 and 4.
 
+**Atom and token representation** (stage 2, 2026-11-22): compiled with `rustc 1.100.0` as the first
+code of the crate (`src/engine/ingest.rs`, `src/engine/lex.rs`, `src/engine/scratch.rs`), with the
+lints of section 14.5 and `-D warnings`. `Atom` and `Tok` hold piece numbers and `u32` byte offsets,
+no references; `Scratch` holds vectors of them and lives in a `thread_local!` `RefCell` with `const`
+initialization; it is filled from inputs of any lifetime, and `Typographer` and `Scratch` are
+asserted `Send + Sync + 'static` in a `const` item. `Tok` is at most 40 bytes (a unit test).
+
 **Not checked:**
 
 - Whether the name `typolish` is free on crates.io: the maintainer allowed one query to the
@@ -89,7 +96,4 @@ settings. Section 8.12 summarizes its recorded behavior. Nine of the 820 outputs
   English norms marked "secondary" rest on Wikipedia articles (section 15.5, item 16).
 - The design was not compiled as a whole; the allocation and linearity claims are verified by tests
   in stages 3 and 5 (section 15.4).
-- The atom and token representation without references (sections 3.4, 3.5), which lets `Scratch`
-  live in a thread-local without `unsafe`, was not compiled. The stage plan (section 15.4) puts this
-  check first in stage 2.
 - `GraphemeBreakTest.txt` for Unicode 17.0.0 is fetched in stage 2.
