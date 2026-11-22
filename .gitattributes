@@ -1,0 +1,5 @@
+# Text files are stored with LF line endings.
+* text=auto eol=lf
+# Test fixtures and corpus snapshots are compared byte for byte (design sections 13.6, 13.7).
+dev/typolish/tests/fixtures/** -text
+dev/typolish/tests/corpus/** -text

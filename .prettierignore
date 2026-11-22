@@ -1,0 +1,12 @@
+target/
+**/target/
+node_modules/
+Cargo.lock
+*.lock
+
+# Agent working copies (git worktree)
+.claude/
+
+# Test fixtures and corpus snapshots are compared byte for byte
+**/tests/fixtures/
+**/tests/corpus/
