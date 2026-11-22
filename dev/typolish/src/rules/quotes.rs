@@ -178,7 +178,8 @@ fn straight_role(cx: &Cx<'_>, l: Option<usize>, r: Option<usize>) -> Option<Role
 
 /// The role of a quote by the local rule of design section 6.3, as other rules read it (section
 /// 8.2): a typed glyph has the role of its glyph in the language's pairs, a straight quote the
-/// role its neighbors give.
+/// role its neighbors give, the sign-only pair included. The quote phase gives a straight quote
+/// the same role, so its glyph has that role on a second pass (section 4.3, I4).
 pub(crate) fn local_role(cx: &Cx<'_>, i: usize) -> Option<Role> {
     if !is_quote(cx, i) {
         return None;
@@ -186,6 +187,14 @@ pub(crate) fn local_role(cx: &Cx<'_>, i: usize) -> Option<Role> {
     match cx.chr(i)? {
         '"' | '\'' => {
             let (l, r) = neighbors(cx, i);
+            // As in the quote phase, a later pair overrides an earlier one: the opening role of a
+            // pair that starts here wins over the closing role of a pair that ends here.
+            if class(cx, l).opens() && sign_only_partner(cx, i, || series_count(cx, i)).is_some() {
+                return Some(Role::Open);
+            }
+            if class(cx, r).ends() && sign_only_opener(cx, i).is_some() {
+                return Some(Role::Close);
+            }
             straight_role(cx, l, r)
         }
         c => {
@@ -919,9 +928,9 @@ fn step1(cx: &Cx<'_>, i: usize, glyph: char) -> Option<Mark> {
 /// Sign-only pairs (section 6.3) whose first quote is in the series `qs[start..end]`, which has
 /// `L` of class `Space`, `OpenP` or `DashC`: the first opens and the second closes.
 fn sign_only(cx: &Cx<'_>, qs: &mut [Q], start: usize, end: usize) {
-    let series = qs.get(start..end).unwrap_or_default();
-    let doubles = series.iter().filter(|q| q.glyph == '"').count();
-    let singles = series.iter().filter(|q| q.glyph == '\'').count();
+    // Every quote of the series counts for the rule of three, whatever its form: the count is the
+    // same on a second pass, where some of the quotes have become glyphs (section 6.11).
+    let count = end - start;
     for a in start..end {
         let Some(q1) = qs.get(a).copied() else {
             continue;
@@ -929,50 +938,13 @@ fn sign_only(cx: &Cx<'_>, qs: &mut [Q], start: usize, end: usize) {
         if q1.cat != Cat::Straight {
             continue;
         }
-        let i = q1.tok as usize;
-        let frag = cx.tok(i).map(|t| t.frag);
-        // The next token that is not a sign, in the same fragment.
-        let mut j = cx.next(i);
-        while let Some(k) = j {
-            if cx.tok(k).map(|t| t.frag) != frag {
-                j = None;
-                break;
-            }
-            let sign = matches!(
-                cx.kind(k),
-                Some(
-                    Kind::Punct(_)
-                        | Kind::Dots
-                        | Kind::Dash
-                        | Kind::Operator(_)
-                        | Kind::Open(_)
-                        | Kind::Close(_)
-                        | Kind::Times
-                )
-            ) && !cx.tok(k).is_some_and(Tok::is_frozen);
-            if !sign {
-                break;
-            }
-            j = cx.next(k);
-        }
-        let Some(k) = j else {
+        let Some(k) = sign_only_partner(cx, q1.tok as usize, || count) else {
             continue;
         };
         let Ok(b) = qs.binary_search_by_key(&k, |q| q.tok as usize) else {
             continue;
         };
-        let Some(q2) = qs.get(b).copied() else {
-            continue;
-        };
-        if q2.cat != Cat::Straight || q2.glyph != q1.glyph {
-            continue;
-        }
-        // In one series, a run of three or more straight quotes of one character has none.
-        if b < end && (if q1.glyph == '"' { doubles } else { singles }) >= 3 {
-            continue;
-        }
-        let (_, r2) = neighbors(cx, k);
-        if !class(cx, r2).ends() {
+        if qs.get(b).is_none_or(|q2| q2.cat != Cat::Straight) {
             continue;
         }
         let fam = if q1.glyph == '"' { D } else { S };
@@ -987,4 +959,90 @@ fn sign_only(cx: &Cx<'_>, qs: &mut [Q], start: usize, end: usize) {
             q.weak = false;
         }
     }
+}
+
+/// Whether the token at `k` is a sign between the quotes of a sign-only pair (section 6.3).
+fn is_sign(cx: &Cx<'_>, k: usize) -> bool {
+    matches!(
+        cx.kind(k),
+        Some(
+            Kind::Punct(_)
+                | Kind::Dots
+                | Kind::Dash
+                | Kind::Operator(_)
+                | Kind::Open(_)
+                | Kind::Close(_)
+                | Kind::Times
+        )
+    ) && !cx.tok(k).is_some_and(Tok::is_frozen)
+}
+
+/// The second quote of a sign-only pair (section 6.3) whose first quote is the straight quote at
+/// `i`: the next token that is not a sign, in the same fragment, is a straight quote of the same
+/// character whose series has R of class `Space`, `CloseP` or `DashC`. Two quotes of one series
+/// are no pair when the series holds three or more quotes of any form; `count` gives that number
+/// for the series of `i`. L of the first quote is the caller's to check.
+fn sign_only_partner(cx: &Cx<'_>, i: usize, count: impl FnOnce() -> usize) -> Option<usize> {
+    let glyph = cx.chr(i).filter(|c| matches!(c, '"' | '\''))?;
+    let frag = cx.tok(i)?.frag;
+    let adjacent = cx.next(i);
+    let mut j = adjacent;
+    while let Some(k) = j {
+        if cx.tok(k).map(|t| t.frag) != Some(frag) {
+            return None;
+        }
+        if !is_sign(cx, k) {
+            break;
+        }
+        j = cx.next(k);
+    }
+    let k = j?;
+    if !is_quote(cx, k) || cx.chr(k) != Some(glyph) {
+        return None;
+    }
+    if j == adjacent && count() >= 3 {
+        return None;
+    }
+    let (_, r2) = neighbors(cx, k);
+    class(cx, r2).ends().then_some(k)
+}
+
+/// The first quote of a sign-only pair whose second quote is the straight quote at `i`, with L of
+/// its series of class `Space`, `OpenP` or `DashC`: the mirror of [`sign_only_partner`].
+fn sign_only_opener(cx: &Cx<'_>, i: usize) -> Option<usize> {
+    let glyph = cx.chr(i)?;
+    let frag = cx.tok(i)?.frag;
+    let mut j = cx.prev(i);
+    while let Some(k) = j {
+        if cx.tok(k).map(|t| t.frag) != Some(frag) {
+            return None;
+        }
+        if !is_sign(cx, k) {
+            break;
+        }
+        j = cx.prev(k);
+    }
+    let a = j?;
+    if !is_quote(cx, a) || cx.chr(a) != Some(glyph) {
+        return None;
+    }
+    let (l, _) = neighbors(cx, a);
+    (class(cx, l).opens() && sign_only_partner(cx, a, || series_count(cx, a)) == Some(i))
+        .then_some(a)
+}
+
+/// The number of quotes, of any form, in the series that holds the quote at `i`.
+fn series_count(cx: &Cx<'_>, i: usize) -> usize {
+    let mut count = 1;
+    let mut l = cx.prev(i);
+    while let Some(j) = l.filter(|&j| is_quote(cx, j)) {
+        count += 1;
+        l = cx.prev(j);
+    }
+    let mut r = cx.next(i);
+    while let Some(j) = r.filter(|&j| is_quote(cx, j)) {
+        count += 1;
+        r = cx.next(j);
+    }
+    count
 }

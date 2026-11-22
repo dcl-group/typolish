@@ -113,8 +113,11 @@ Conditions that hold for every rule:
   does not hide it: `(в 2026)` → `(в⍽2026)`. A word followed by closing punctuation (`и,`) triggers
   nothing.
 - An 'opening quote' or a 'closing quote' in a pattern of a rule is a quote with that role by the
-  local rule of section 6.3, computed from its neighbours when the rule runs; a typed glyph has its
-  own role, a straight quote that 6.3 gives neither role is neither.
+  local rule of section 6.3, the sign-only pair included, computed from its neighbours when the rule
+  runs; a typed glyph has its own role, a straight quote that 6.3 gives neither role is neither. The
+  sign-only pair belongs here because the quote phase places it: in `Слово - "" да` the `""` is an
+  opening quote on the first pass as `«»` is on the second (section 4.3, I4). Where one quote ends a
+  sign-only pair and starts another, the later pair wins, as in the quote phase.
 - Rules that insert a space: `nbsp.abbreviations` (`т.е.`), `nbsp.signs` (`№5`), `nbsp.units` with
   `PercentSpacing::Language` (ru) or `Spaced` (`100%` → `100⍽%`). Rules that remove spaces (each
   removes only a single U+0020): `dash.spaced-hyphen` and `dash.double-hyphen` with the `Closed`

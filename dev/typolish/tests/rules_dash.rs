@@ -211,6 +211,33 @@ fn spaced_hyphen_with_a_quote_after_it() {
 }
 
 #[test]
+fn a_sign_only_pair_is_a_quote_for_the_dash_rules() {
+    // Sections 6.3 and 8.2: the local rule includes the sign-only pair, so the dash rules read
+    // `""` as an opening (or closing) quote on the first pass as on the second (section 4.3, I4).
+    let ru_ui = interface(Language::RU_RU);
+    let ru_prose = prose(Language::RU_RU);
+    check_in("ru Interface", &ru_ui, ("Слово - \"\" да", "Слово — «» да"));
+    check_in("ru Prose", &ru_prose, ("Слово - \"\" да", "Слово — «» да"));
+    for (what, t) in [("ru Interface", &ru_ui), ("ru Prose", &ru_prose)] {
+        check_in(what, t, ("\"\" - 5", "«» — 5"));
+    }
+    check_in("ru Prose", &ru_prose, ("- \"\" да", "—⍽«» да"));
+    check_in("ru Prose", &ru_prose, ("-- \"\"", "—⍽«»"));
+    check_in("ru Prose", &ru_prose, ("- \"-\" да", "—⍽«-» да"));
+    check_in(
+        "en Prose",
+        &prose(Language::EN_US),
+        ("Word - \"\" yes", "Word — “” yes"),
+    );
+    // The rule alone reads the same roles from the straight quotes.
+    let t = only(Language::RU_RU, &[SPACED]);
+    check_in("alone", &t, ("Слово - \"\" да", "Слово — \"\" да"));
+    check_in("alone", &t, ("\"\" - 5", "\"\" — 5"));
+    // Three quotes in a series have no sign-only pair: no role, no dash.
+    check_unchanged("alone", &t, "Слово - \"\"\" да");
+}
+
+#[test]
 fn spaced_hyphen_next_to_the_apostrophe_rule() {
     // `Sign in - it's free` and `Sign up - it's free` (section 8.4): the rule alone leaves the
     // apostrophe, the sets also give `it’s`.

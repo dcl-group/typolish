@@ -86,8 +86,10 @@ character before it, with `Format` and `Markup` tokens skipped: `27\u{AD}"` and
   rules above say (`"?"`, `"..."`, `"-"`, `"—"`, `"->"`). The two quotes may be adjacent: nothing
   between them also counts, so `""` is a sign-only pair; `Format` and `Markup` tokens between them
   count as nothing (section 5.4), so `"\u{2068}\u{2069}"` is a sign-only pair too. This rule
-  overrides the role of the whole series. A series of three or more straight quotes of one character
-  has no sign-only pair inside it;
+  overrides the role of the whole series. A series of three or more quotes, of any form, has no
+  sign-only pair inside it (`"""`, `''''`, and also `”""`: there a first pass has set one quote of
+  `"""` as the closer of a pair that `"--` opened, and counting only straight quotes would let a
+  second pass pair the two that stayed, against section 6.11);
 - otherwise no role: spaces on both sides (`Слово " в тексте`) or letters on both sides (`a"b`).
 
 The look-through and the sign-only pair never turn a closing quote into an opening one: a quote with

@@ -97,6 +97,9 @@ const RU_ROWS: &[(&str, &str)] = &[
     // Sign-only pairs whose second quote is in a series of its own.
     ("Введите \"-\" или \"—\"", "Введите «-» или «—»"),
     ("Введите \"-\"", "Введите «-»"),
+    // A series of three quotes of any form has no sign-only pair inside it (section 6.3).
+    ("a \"--\"\"\" b", "a «--»\"\" b"),
+    ("a «--»\"\" b", "a «--»\"\" b"),
     ("\"?\"", "«?»"),
     ("«»", "«»"),
     ("Он сказал \"\" и ушёл.", "Он сказал «» и ушёл."),

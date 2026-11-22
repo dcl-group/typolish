@@ -96,6 +96,15 @@ const SEEDS: &[&str] = &[
     "Sign in - it's free",
     "Подождите...\nДальше",
     "Экран \u{2068}27\u{2069}\" и \"ручка\"",
+    // A sign-only pair next to a dash (sections 6.3 and 8.2).
+    "Слово - \"\" да",
+    "\"\" - 5",
+    "- \"\" да",
+    "-- \"\"",
+    "Введите \"-\" или \"—\"",
+    // A series of three or more quotes of any form has no sign-only pair inside it (section 6.3).
+    "\"--\"\"\"",
+    "''''- a' b'",
 ];
 
 #[test]
