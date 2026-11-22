@@ -123,14 +123,33 @@ fn encoded(output: Output) -> Triggers {
 }
 
 /// The prefilter (design section 3.2): whether any byte of the texts can make a rule or the
-/// output kind change something.
+/// output kind change something. `texts` are read by the rules and written by the encoder;
+/// `encoded_only` are written by the encoder and read by no rule (protected and markup pieces).
 fn wanted<'a>(
     typographer: &Typographer,
     output: Output,
-    texts: impl Iterator<Item = &'a str> + Clone,
+    texts: impl Iterator<Item = &'a str>,
+    encoded_only: impl Iterator<Item = &'a str>,
 ) -> bool {
-    let set = typographer.compiled().triggers.union(encoded(output));
-    texts.clone().any(|text| set.any_in(text.as_bytes()))
+    scan(
+        typographer.compiled().triggers,
+        encoded(output),
+        texts,
+        encoded_only,
+    )
+}
+
+/// The byte scan of the prefilter: `texts` against the rule triggers and the encoded set,
+/// `encoded_only` against the encoded set alone.
+fn scan<'a>(
+    triggers: Triggers,
+    encoded: Triggers,
+    mut texts: impl Iterator<Item = &'a str>,
+    mut encoded_only: impl Iterator<Item = &'a str>,
+) -> bool {
+    let set = triggers.union(encoded);
+    texts.any(|text| set.any_in(text.as_bytes()))
+        || (encoded != Triggers::NONE && encoded_only.any(|text| encoded.any_in(text.as_bytes())))
 }
 
 /// `Typographer::typeset_with`.
@@ -140,7 +159,12 @@ pub(crate) fn typeset<'a>(
     text: &'a str,
     output: Output,
 ) -> Cow<'a, str> {
-    if !wanted(typographer, output, core::iter::once(text)) {
+    if !wanted(
+        typographer,
+        output,
+        core::iter::once(text),
+        core::iter::empty(),
+    ) {
         return Cow::Borrowed(text);
     }
     typeset_unfiltered(typographer, scratch, text, output)
@@ -176,8 +200,16 @@ pub(crate) fn typeset_template<'t>(
         Input::Text(text) => Some(*text),
         _ => None,
     });
-    let changed =
-        wanted(typographer, output, texts) && run(typographer, scratch, input, &mut NoRecord);
+    // Markup is written as is in Unicode and HTML output and encoded in escaped output (design
+    // sections 3.2, 11).
+    let escaped = matches!(output, Output::Escaped(_));
+    let encoded_only = input.iter().filter_map(move |item| match item {
+        Input::Protected(text) => Some(*text),
+        Input::Markup(text) if escaped => Some(*text),
+        _ => None,
+    });
+    let changed = wanted(typographer, output, texts, encoded_only)
+        && run(typographer, scratch, input, &mut NoRecord);
     template_texts(input, slot_count, changed)
 }
 
@@ -315,6 +347,36 @@ mod tests {
                 prop_assert_eq!(filtered.changed(), changed);
             }
         }
+    }
+
+    #[test]
+    fn protected_and_markup_pieces_are_scanned_against_the_encoded_set_only() {
+        // Design section 3.2: the encoder writes protected pieces (and markup in escaped output),
+        // so their bytes are matched against the encoded set; the rules never read them.
+        let triggers = Triggers::of(b"-");
+        let encoded = Triggers::of(b"\"");
+        let none = core::iter::empty::<&str>;
+        assert!(!scan(triggers, encoded, ["a"].into_iter(), none()));
+        assert!(scan(
+            triggers,
+            encoded,
+            ["a"].into_iter(),
+            ["\""].into_iter()
+        ));
+        assert!(!scan(
+            triggers,
+            encoded,
+            ["a"].into_iter(),
+            ["-"].into_iter()
+        ));
+        assert!(scan(triggers, encoded, ["a-"].into_iter(), none()));
+        assert!(scan(triggers, encoded, ["\""].into_iter(), none()));
+        assert!(!scan(
+            triggers,
+            Triggers::NONE,
+            ["a"].into_iter(),
+            ["\""].into_iter()
+        ));
     }
 
     #[test]

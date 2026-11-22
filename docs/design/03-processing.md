@@ -62,9 +62,13 @@ without it). So `typeset("a</script>b", Output::Escaped(EscapeStyle::JS))` is ne
 in Interface, where no rule reacts to `<`. For short interface strings without signs this skips the
 whole pipeline; the scan is linear and allocates nothing.
 
-For `typeset_template` the prefilter scans the bytes of all `Text` pieces together; a slot
-contributes no byte, so every rule that can edit next to a slot needs its trigger byte in the text
-beside the slot (`{n}%` is caught by `%`, `№{n}` by `№`, `{n} МБ` by the space).
+For `typeset_template` the trigger set of the rules is matched against the bytes of all `Text`
+pieces together; a slot contributes no byte, so every rule that can edit next to a slot needs its
+trigger byte in the text beside the slot (`{n}%` is caught by `%`, `№{n}` by `№`, `{n} МБ` by the
+space). The set of bytes that the output kind encodes is matched against the `Text` and `Protected`
+pieces and, for `Output::Escaped` only, the `Markup` pieces too, because those are the pieces the
+encoder writes (section 11). If no byte matches either set, the call returns every text borrowed
+without lexing.
 
 The prefilter belongs to `typeset`, `typeset_with`, `typeset_into`, `typeset_template` and
 `typeset_template_with` only. `report`, `report_template`, `lint` and `lint_template` always run the
