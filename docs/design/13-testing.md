@@ -440,8 +440,11 @@ the no-panic test.
   by a `Prepend` character before ASCII: `\u{600}123`, `\u{6DD}` + space at the end of the text,
   `a\u{600}b`. They come out unchanged; `\u{600}1` is a `Symbol`, and no edit falls between U+0600
   and the ASCII character after it. A lexer unit test compares the cluster boundaries of the fast
-  path with `grapheme_indices(true)` on every line of the fixture and on generated strings that mix
-  ASCII with `Prepend`, `Extend`, `ZWJ` and `SpacingMark` characters.
+  path with `grapheme_indices(true)` on generated strings that mix ASCII with a character of every
+  `Grapheme_Cluster_Break` class and Indic conjunct class that the fixture uses (`Prepend`,
+  `Extend`, `ZWJ`, `SpacingMark`, the Hangul classes, regional indicators, pictographs and the
+  rest). The fixture itself is read only by `tests/graphemes.rs`, which runs every line of it: a
+  unit test in `src/` reads no file (section 13.9 checks that `src/` contains no `std::fs`).
 
 ### 13.7 Own corpus
 

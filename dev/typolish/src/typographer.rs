@@ -8,6 +8,7 @@ use crate::engine::{self, Input, scratch::Scratch};
 use crate::lang::data::{
     DashData, DashStyle, QUOTE_GLYPHS, QuotePairs, fold_char, is_valid_group, is_valid_minus,
 };
+use crate::report::Report;
 use crate::rules::{self, Triggers};
 use crate::{Error, Language, Output, Piece, Rule, RuleSet, Template};
 
@@ -307,6 +308,25 @@ impl Typographer {
         Compiled { active, triggers }
     }
 
+    /// Whether the text is a unit of the language with the builder's additions and removals,
+    /// compared with case (design section 7.1).
+    pub(crate) fn has_unit(&self, text: &str) -> bool {
+        let units = &self.settings.units;
+        let found = |list: &[String]| list.binary_search_by(|u| u.as_str().cmp(text)).is_ok();
+        found(&units.added)
+            || (self.language.data().units.binary_search(&text).is_ok() && !found(&units.removed))
+    }
+
+    /// Whether backticks protect (design section 10.1).
+    pub(crate) fn protects_backticks(&self) -> bool {
+        self.settings.protect_backticks
+    }
+
+    /// The own protection pairs (design section 10.1).
+    pub(crate) fn protection_pairs(&self) -> &[(String, String)] {
+        &self.settings.protect_between
+    }
+
     /// Whether the language, with the settings, has the data a rule needs.
     fn supports(&self, rule: Rule) -> bool {
         let data = self.language.data();
@@ -436,6 +456,66 @@ impl Typographer {
         let (input, slots) = split_pieces(pieces);
         let (texts, changed) = engine::typeset_template(self, scratch, &input, slots.len(), output);
         Template::from_parts(texts, slots, changed)
+    }
+
+    /// The same result as [`Typographer::typeset`], plus every edit, every protected span and
+    /// every diagnostic (design sections 2.9 and 12.5).
+    ///
+    /// `report` always runs the whole pipeline, even on a string that no rule reacts to, so the
+    /// diagnostics of protection and the classifier and the protected spans are complete (design
+    /// section 3.2). It uses the thread-local working memory and makes no allocation promise.
+    ///
+    /// ```
+    /// use typolish::{DiagnosticKind, Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let r = RU.report("Порт host:8080, см. `--config`", Output::Unicode);
+    /// let kinds: Vec<_> = r.protected().iter().map(|s| s.kind()).collect();
+    /// assert_eq!(kinds, [ProtectedKind::Technical(TechKind::Colon), ProtectedKind::Delimited]);
+    ///
+    /// let r = RU.report("don`t", Output::Unicode);
+    /// assert_eq!(r.diagnostics()[0].kind(), &DiagnosticKind::UnclosedDelimiter);
+    /// ```
+    pub fn report<'a>(&self, text: &'a str, output: Output) -> Report<'a> {
+        let (result, records) = engine::scratch::with_thread_scratch(|scratch| {
+            engine::report(self, scratch, text, output)
+        });
+        Report::new(result, records, vec![text])
+    }
+
+    /// The same result as [`Typographer::typeset_template`], plus every edit, every protected
+    /// span and every diagnostic; a span over several pieces gives one record per piece, and a
+    /// diagnostic is reported at its first piece (design section 3.11).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, ProtectedKind, RuleSet, Typographer};
+    ///
+    /// static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    ///
+    /// let r = EN.report_template::<()>([Piece::Text("Run `ls"), Piece::Text(" -la`")], Output::Unicode);
+    /// let records: Vec<_> = r.protected().iter().map(|s| (s.piece(), s.range())).collect();
+    /// assert_eq!(records, [(0, 4..7), (1, 0..5)]);
+    /// assert!(r.protected().iter().all(|s| s.kind() == ProtectedKind::Delimited));
+    /// ```
+    pub fn report_template<'t, S>(
+        &self,
+        pieces: impl IntoIterator<Item = Piece<'t, S>>,
+        output: Output,
+    ) -> Report<'t, Template<'t, S>> {
+        let (input, slots) = split_pieces(pieces);
+        let slot_count = slots.len();
+        let (texts, changed, records) = engine::scratch::with_thread_scratch(|scratch| {
+            engine::report_template(self, scratch, &input, slot_count, output)
+        });
+        let inputs = input
+            .iter()
+            .map(|item| match *item {
+                Input::Text(text) | Input::Protected(text) | Input::Markup(text) => text,
+                Input::Slot(_) => "",
+            })
+            .collect();
+        Report::new(Template::from_parts(texts, slots, changed), records, inputs)
     }
 }
 

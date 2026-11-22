@@ -87,7 +87,11 @@ inside the text of a token, too (section 3.6), so a word with soft hyphens from 
 preprocessor is still a word: `21 ноя\u{AD}бря` gets its glue, and `Мо\u{AD}скве` is a `Word`, not
 `Unclassified`. UAX #29 makes U+00AD a cluster of its own, so the characters stay exactly where they
 were. A ZWNJ or ZWJ inside a cluster moves with its cluster, and no edit falls between it and the
-character before it.
+character before it. Any other `Extend` character, such as a combining mark, at the start of a text
+or after a `Control`, `CR` or `LF` character also forms a cluster of its own; that cluster is a
+`Symbol` (section 3.5), so it is frozen with the fragment it belongs to: in `a:b\t\u{301}c:d` the
+tab separates, and the colon core is `\u{301}c:d`; a mark alone between two line breaks is an
+`Unclassified` fragment.
 
 This matters for strings that `fluent-bundle` formats at run time: by default it wraps every
 placeable in U+2068 FIRST STRONG ISOLATE and U+2069 POP DIRECTIONAL ISOLATE. With transparency,

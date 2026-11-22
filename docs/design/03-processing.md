@@ -14,9 +14,9 @@ input (&str | pieces)
   │  0. prefilter (typeset* only): no byte that an active rule or the
   │     output kind reacts to → Cow::Borrowed                              (3.2)
   │  1. ingest: pieces → stream of atoms (Text, Slot, Protected, Markup);
-  │     fenced backtick blocks cut out as Protected atoms                  (3.4)
+  │     fenced backtick blocks cut out as Delimited atoms                  (3.4)
   │  2. windows: split by paragraph; a fenced block is never split         (3.3)  ┐
-  │  3. delimiters: other protection delimiters cut Protected atoms out    (3.4)  │
+  │  3. delimiters: other protection delimiters cut Delimited atoms out    (3.4)  │
   │     of Text, matched across pieces within the window                          │
   │  4. lexer: atoms → class-invariant tokens over grapheme clusters      (3.5)  │ per window
   │  5. classifier: fragments → kind, FROZEN and LABEL flags               (3.6)  │
@@ -99,44 +99,53 @@ nothing" in quote pairing.
 
 ### 3.4 Ingest
 
-Input becomes a stream of atoms:
+The text of all `Text` pieces of a call is read as one string, the **call's text**: for string input
+it is the input itself (one `Text` piece with index 0); for pieces it is the concatenation of their
+`Text` pieces, copied into a buffer of the scratch (section 2.12) unless at most one of them is
+non-empty. Input becomes a stream of atoms over it:
 
 ```rust
 enum Atom {
-    Text { piece: u32, range: Range<u32> },              // byte range in the input piece
-    Slot { piece: u32, slot: Slot },
-    Protected { piece: u32, range: Range<u32>, delimited: bool },
-    Markup { piece: u32, range: Range<u32> },
+    Text { start: u32, end: u32 },                 // a range of the call's text: adjacent Text pieces
+    Delimited { start: u32, end: u32 },            // cut out by delimiters, the delimiters included
+    Slot { piece: u32, at: u32, kind: SlotKind },  // at: its position in the call's text
+    Protected { piece: u32, at: u32 },             // a Piece::Protected
+    Markup { piece: u32, at: u32 },
+    Boundary { start: u32, end: u32 },             // the characters of a window boundary (3.3)
 }
 ```
 
+An atom that is not text has no extent in the call's text: it stands at a position between two of
+its bytes and keeps its piece. A table of the `Text` pieces with their ranges in the call's text
+resolves a position to a piece when a record is made (section 3.11) and when output is written.
 Atoms, like tokens, hold positions and no references, so the buffers that keep them can be reused
 across calls (section 2.12). Positions are `u32`: an input with more than `u32::MAX` pieces or a
-piece longer than `u32::MAX` bytes is returned unchanged, the safe outcome of section 2.11 for input
-the engine cannot represent. String input is one `Text` piece with index 0. For templates, the
-pieces are first collected into the call-local vector (section 2.12), and only then is the scratch
-borrowed.
+call's text longer than `u32::MAX` bytes is returned unchanged, the safe outcome of section 2.11 for
+input the engine cannot represent. For templates, the pieces are first collected into the call-local
+vector (section 2.12), and only then is the scratch borrowed.
 
-Protection delimiters (section 10.1) cut `Text` atoms into `Text` and
-`Protected { delimited: true }` in two steps; the delimiters belong to the protected atoms:
+Protection delimiters (section 10.1) cut `Text` atoms into `Text` and `Delimited` in two steps; the
+delimiters belong to the `Delimited` atoms:
 
 1. Over the whole input, before windows are found, fenced backtick blocks (as section 10.1 defines
    them; 10.1 is normative) are cut out. They may contain blank lines.
 2. Within each window, the other delimiters (single and double backtick runs, longer runs that do
-   not open a fenced block, own pairs) are matched over the text of the window across pieces.
-   Adjacent `Text` pieces are read as one text, so a delimiter may even be split between them;
-   slots, protected pieces and markup between an opening and a closing delimiter end up inside the
-   span. Inside it, `Text` atoms become `Protected { delimited: true }`, while a slot stays a slot
-   and markup stays markup.
+   not open a fenced block, own pairs) are matched over the text of the window across pieces. At a
+   position, an own delimiter is tried before a backtick run (the validation of section 10.1 lets at
+   most one own delimiter match there). Adjacent `Text` pieces are read as one text, so a delimiter
+   may even be split between them; slots, protected pieces and markup between an opening and a
+   closing delimiter end up inside the span. Inside it, `Text` atoms become `Delimited`, while a
+   slot stays a slot and markup stays markup; so does a protected piece. A fenced block is cut the
+   same way.
 
 So the Fluent message ``Run `git checkout -- { $branch }` to reset.`` protects the whole command
 with the slot inside, and a template of `Text` pieces behaves exactly as their concatenation
 (property 10 of section 13.5).
 
-A slot or a protected atom becomes one opaque token: it is always `FROZEN`, takes part in rule
-context through its class (section 3.5), and is never inside the range of an edit. A markup atom
-becomes a zero-width token that is transparent for context: rules look through it for neighbours,
-and edits never touch it.
+A slot, a protected piece or a `Delimited` atom becomes one opaque token (`Slot` or `Protected`): it
+is always `FROZEN`, takes part in rule context through its class (section 3.5), and is never inside
+the range of an edit. A markup atom becomes a zero-width token that is transparent for context:
+rules look through it for neighbours, and edits never touch it.
 
 Lexing reads a run of adjacent `Text` atoms with no other atom between them as one text, so a token
 (a run of dots, dashes or spaces, a word, a number) may span a piece boundary; property 10 of
@@ -177,7 +186,8 @@ each. Every other cluster, each line break included (`\r\n` is one), is a token 
 ```rust
 pub(crate) struct Tok {
     kind: Kind,
-    src: SrcSpan,   // first piece and byte offset, last piece and byte offset: a token may span adjacent Text pieces
+    src: SrcSpan,   // a byte range of the call's text (3.4): a token may span adjacent Text pieces
+    piece: u32,     // the piece of a token made from a slot, a protected piece or markup; none for text
     repl: Repl,     // Source (the text is the slice at src) | Char(char) | Ellipsis(EllipsisForm)
     glue: Glue,     // for Space tokens: None | NoBreak | Narrow (section 3.9)
     flags: Flags,   // FROZEN, LABEL, CHANGED, INSERTED
@@ -205,9 +215,11 @@ pub(crate) enum Kind {
 }
 ```
 
-`SrcSpan` is `{ start_piece: u32, start: u32, end_piece: u32, end: u32 }`; for string input both
-pieces are 0. The quote glyphs a language may use (section 7.6) are exactly the `Quote` characters
-other than `"`, `'`, `′` and `″`.
+`SrcSpan` is `{ start: u32, end: u32 }`, a range of the call's text; the table of `Text` pieces
+(section 3.4) gives the pieces it covers. A token made from a slot, a protected piece or markup has
+an empty range at its position and names its piece in `piece`. `Protected` covers both a `Delimited`
+atom (a range, no piece) and a protected piece (a piece, an empty range). The quote glyphs a
+language may use (section 7.6) are exactly the `Quote` characters other than `"`, `'`, `′` and `″`.
 
 A token holds no reference. Its current text is the source slice at `src`, unless a rule replaced
 it; `repl` then names the replacement. Every replacement of version 1 is one character (a quote
@@ -224,8 +236,11 @@ and `©` are `LegalMark`; ` ` and `⍽` are `Space`. Kinds carry no field descri
 is read from the token's text. `Op` and `Mark` are semantic ids (arrow right, copyright), the same
 for both forms. Multi-character plain forms are lexed greedily from a fixed table into one token, so
 replacing `(c)` with `©` changes the text of one token rather than turning three tokens into one.
-Operators are lexed only whole from the table: `-->` is not in it, so the lexer sees `Dash` of
-length 2 and `Punct('>')`, and no dash rule fires (there is no space to the right of `--`).
+Operators are lexed only whole from the table: the lexer takes the maximal run of the characters `-`
+`<` `>` `=` `!` `+` (each a cluster of its own) and makes it one `Operator` token only if the whole
+run is an entry; otherwise it lexes the run character by character. `-->` is not in the table, so
+the lexer sees `Dash` of length 2 and `Punct('>')`, and no dash rule fires (there is no space to the
+right of `--`); `<-->` is `Punct('<')`, `Dash` of length 2 and `Punct('>')`.
 
 Every rule edit changes only the replacement or the `glue` of a token, never its kind. The only
 structural edits are inserting a `Space` token and removing a `Space` token. Section 4 builds the
@@ -326,14 +341,27 @@ Order matters in these places:
 - 24 last: anything the grammar does not recognize as a word or a number is frozen. The classifier
   is a white list; when it is wrong, it is wrong on the safe side.
 
+How some checks read a core, where the table is short:
+
+- Check 0: a multi-part abbreviation is matched written together, as its consecutive parts that all
+  end in a full stop (`т.е.` for `т.` `е.`, `т.ч.` for `в` `т.` `ч.`); an elision, which starts with
+  an apostrophe that the start wrapper cuts off, is matched together with that apostrophe.
+- Check 5: hours have one or two digits, minutes and seconds two.
+- Check 7: operator tokens count in both forms (`→` as `->`), so a replacement keeps the kind.
+- Check 8: the kind is `Operator` when an operator character other than `_` stands inside,
+  `Identifier` when only `_` does, and `Angle` otherwise (the core starts with `<` or ends with
+  `>`); `x->` is `Angle`, `vec<int>` `Operator`.
+- Check 11: the letters `a` to `f` count in either case.
+
 Special cases. The first four are decided before the table and win over every check, check 0
 included (the first on the whole fragment, the other three on the core); the others change how the
 checks read a core:
 
-- A lone fragment `x`, `X`, `х`, `Х` or `×` between two number fragments (`10 x 5`) has kind
-  `Times`, in both forms, so the kind survives the replacement. The lexer gives `×` the token kind
-  `Times` in every position; a lone `×` fragment that does not stand between two number fragments
-  falls through the table to check 24 (`Unclassified`, frozen).
+- A lone fragment `x`, `X`, `х`, `Х` or `×` between two number fragments (`10 x 5`: the fragments
+  directly before and after it in the window have kind `Number`) has kind `Times`, in both forms, so
+  the kind survives the replacement. The lexer gives `×` the token kind `Times` in every position; a
+  lone `×` fragment that does not stand between two number fragments falls through the table to
+  check 24 (`Unclassified`, frozen).
 - A core that is a single `Dash` token in any form (`-`, `--`, `---`, `–`, `—`) is an `OperatorRun`
   ("dash fragment"; its wrapper stays editable, so `"-"` is one too), so a lone `-` and the `—` that
   replaces it have one kind; dash rules decide its fate by context. A typed `—` or `–` is matched by
@@ -503,9 +531,10 @@ maps to one unchanged input piece borrows it.
 
 ```rust
 pub(crate) trait Recorder {
-    fn change(&mut self, rule: Rule, at: SrcSpan, replacement: &str);
-    fn protected(&mut self, at: SrcSpan, kind: ProtectedKind);
-    fn diagnostic(&mut self, kind: DiagnosticKind, rule: Option<Rule>, at: SrcSpan);
+    const ACTIVE: bool;                          // false for NoRecord: the engine builds no record
+    fn change(&mut self, change: Change);        // one record of one piece (stage 2, with the phases)
+    fn protected(&mut self, span: ProtectedSpan);
+    fn diagnostic(&mut self, diagnostic: Diagnostic);
 }
 pub(crate) struct NoRecord;     // every method empty and #[inline(always)]
 pub(crate) struct Diagnostics;  // diagnostics only (lint)
@@ -514,12 +543,14 @@ pub(crate) struct Journal;      // everything (report)
 
 The engine is generic over `R: Recorder` and monomorphized: `typeset` uses `NoRecord`, so the plain
 path contains no recording code; `lint` uses `Diagnostics`; `report` uses `Journal`. Rules do not
-depend on the recorder; a test compares the three modes on the corpus. `Journal` splits a span that
-crosses piece boundaries: a change becomes one record per piece in input order, the first holding
-the whole replacement and the others an empty replacement (a deletion); a protected span becomes one
-record per piece it covers; a diagnostic is reported at its first piece, with the range clipped to
-that piece. `Diagnostics` clips a diagnostic the same way, so `lint` and `report` give equal
-diagnostics (section 12.3).
+depend on the recorder; a test compares the three modes on the corpus. The engine resolves the
+positions of the call's text to pieces before it calls the recorder, and splits a span that crosses
+piece boundaries: a change becomes one record per piece in input order, the first holding the whole
+replacement and the others an empty replacement (a deletion); a protected span becomes one record
+per piece it covers; a diagnostic is reported at its first piece, with the range clipped to that
+piece. A span or a diagnostic that starts at a slot or a protected piece is reported at that piece.
+`Diagnostics` gets diagnostics clipped the same way, so `lint` and `report` give equal diagnostics
+(section 12.3).
 
 ### 3.12 Complexity and pathological input
 

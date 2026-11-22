@@ -219,6 +219,11 @@ the self-tests of `tests/common/`, and section 13.2 says which rows live where. 
 holds the `Rule` and `RuleSet` tables of sections 2.3, 4.1 and 9.2; it is not one of the rule tables
 `rules_*.rs`.
 
+The tables of ingest, windows, the lexer and the classifier (stage 2) observe the engine through
+`report` and `report_template` and live in their own targets: `classifier.rs`, `protection.rs`,
+`pieces_report.rs`, `lexer.rs`, `negative_report.rs`, `engine_properties.rs` and `ingest_rules.rs`,
+with the helpers of `tests/common/probe.rs`, which these targets include through `#[path]`.
+
 `AGENTS.md` follows the skeleton of zonewright and adds two hard rules: the name of the reference
 implementation never appears in the repository, and commits end with
 `Co-Authored-By: Claude <noreply@anthropic.com>`. `CLAUDE.md` is a pointer to `AGENTS.md`. Cargo's

@@ -1,0 +1,158 @@
+//! Recorders: what a call collects besides its result (design section 3.11).
+//!
+//! The engine is generic over `R: Recorder` and monomorphized: `typeset` uses `NoRecord`, whose
+//! `ACTIVE` is false, so the plain path skips the work of building records; `report` uses
+//! `Journal`. The engine resolves positions to pieces before it calls a recorder (one record per
+//! piece for a span, the first piece for a diagnostic), so a recorder only collects.
+
+use core::ops::Range;
+
+use super::ingest::TextPiece;
+use crate::report::{Diagnostic, ProtectedKind, ProtectedSpan, Records};
+use crate::{DiagnosticKind, Rule, Severity};
+
+/// A sink for the records of one call.
+pub(crate) trait Recorder {
+    /// Whether the recorder keeps anything; the engine builds no record when it is false.
+    const ACTIVE: bool;
+
+    /// A protected span of one piece.
+    fn protected(&mut self, span: ProtectedSpan);
+
+    /// A diagnostic, already reported at its first piece.
+    fn diagnostic(&mut self, diagnostic: Diagnostic);
+}
+
+/// Records nothing: the path of `typeset`.
+pub(crate) struct NoRecord;
+
+impl Recorder for NoRecord {
+    const ACTIVE: bool = false;
+
+    #[inline(always)]
+    fn protected(&mut self, _span: ProtectedSpan) {}
+
+    #[inline(always)]
+    fn diagnostic(&mut self, _diagnostic: Diagnostic) {}
+}
+
+/// Records everything: the path of `report`.
+#[derive(Debug, Default)]
+pub(crate) struct Journal {
+    records: Records,
+}
+
+impl Journal {
+    /// The records in the order of design sections 2.9 and 12.4.
+    pub(crate) fn finish(mut self) -> Records {
+        self.records
+            .protected
+            .sort_by_key(|span| (span.piece(), span.range().start, span.range().end));
+        self.records.diagnostics.sort_by_key(Diagnostic::sort_key);
+        self.records
+    }
+}
+
+impl Recorder for Journal {
+    const ACTIVE: bool = true;
+
+    fn protected(&mut self, span: ProtectedSpan) {
+        self.records.protected.push(span);
+    }
+
+    fn diagnostic(&mut self, diagnostic: Diagnostic) {
+        self.records.diagnostics.push(diagnostic);
+    }
+}
+
+/// Where a record lies before it is resolved to pieces.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Loc {
+    /// A byte range of the call's text.
+    Flat(u32, u32),
+    /// An input piece that has no extent in the call's text: a slot or a protected piece. A
+    /// diagnostic or a span that starts at such a piece is reported at it.
+    Piece(u32),
+}
+
+/// A recorder together with what resolves positions to pieces.
+pub(crate) struct Sink<'a, R> {
+    pub(crate) rec: &'a mut R,
+    /// The `Text` pieces of the input with their ranges in the call's text, in order.
+    pub(crate) pieces: &'a [TextPiece],
+    /// The length of every input piece, by piece index.
+    pub(crate) lens: &'a [u32],
+}
+
+impl<R: Recorder> Sink<'_, R> {
+    /// The pieces that a range of the call's text covers, with the range in each.
+    fn split(&self, start: u32, end: u32) -> impl Iterator<Item = (usize, Range<usize>)> + '_ {
+        let first = self.pieces.partition_point(|p| p.end <= start);
+        self.pieces
+            .get(first..)
+            .unwrap_or_default()
+            .iter()
+            .take_while(move |p| p.start < end)
+            .filter_map(move |p| {
+                let s = start.max(p.start);
+                let e = end.min(p.end);
+                (s < e).then(|| {
+                    (
+                        p.piece as usize,
+                        (s - p.start) as usize..(e - p.start) as usize,
+                    )
+                })
+            })
+    }
+
+    /// Records a protected span: one record per piece it covers (design section 3.11).
+    pub(crate) fn protected(&mut self, at: Loc, kind: ProtectedKind) {
+        if !R::ACTIVE {
+            return;
+        }
+        match at {
+            Loc::Piece(piece) => {
+                let len = match kind {
+                    ProtectedKind::Slot => 0,
+                    _ => self.lens.get(piece as usize).copied().unwrap_or(0),
+                };
+                self.rec
+                    .protected(ProtectedSpan::new(piece as usize, 0..len as usize, kind));
+            }
+            Loc::Flat(start, end) => {
+                let records: Vec<(usize, Range<usize>)> = self.split(start, end).collect();
+                for (piece, range) in records {
+                    self.rec.protected(ProtectedSpan::new(piece, range, kind));
+                }
+            }
+        }
+    }
+
+    /// Records a diagnostic at its first piece, the range clipped to that piece (design section
+    /// 3.11).
+    pub(crate) fn diagnostic(&mut self, kind: DiagnosticKind, severity: Severity, at: Loc) {
+        self.diagnostic_of(kind, severity, None, at);
+    }
+
+    /// Records a diagnostic that a rule raised.
+    pub(crate) fn diagnostic_of(
+        &mut self,
+        kind: DiagnosticKind,
+        severity: Severity,
+        rule: Option<Rule>,
+        at: Loc,
+    ) {
+        if !R::ACTIVE {
+            return;
+        }
+        let (piece, range) = match at {
+            Loc::Piece(piece) => (piece as usize, 0..0),
+            Loc::Flat(start, end) => match self.split(start, end).next() {
+                Some(first) => first,
+                None => return,
+            },
+        };
+        self.rec
+            .diagnostic(Diagnostic::new(kind, severity, rule, piece, range));
+    }
+}

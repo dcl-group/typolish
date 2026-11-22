@@ -100,7 +100,13 @@ fn a_space_with_a_mark_is_a_frozen_space_that_still_separates() {
         ("a:b \u{200d}c:d", vec![(COLON, "a:b"), (COLON, "c:d")]),
         ("a:b \u{200c}c:d", vec![(COLON, "a:b"), (COLON, "c:d")]),
         ("a:b\u{a0}\u{301}c:d", vec![(COLON, "a:b"), (COLON, "c:d")]),
-        ("a:b\t\u{301}c:d", vec![(COLON, "a:b"), (COLON, "c:d")]),
+        // A tab is a `Control` character, so the mark after it is a cluster of its own (UAX #29,
+        // rules GB4 and GB5), a `Symbol` at the start of the next fragment (design sections 3.5
+        // and 5.1): the tab still separates, and the mark belongs to the colon fragment's core.
+        (
+            "a:b\t\u{301}c:d",
+            vec![(COLON, "a:b"), (COLON, "\u{301}c:d")],
+        ),
     ];
     expect(&rows);
 }

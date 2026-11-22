@@ -6,7 +6,8 @@
 //! [`Language`] and a [`RuleSet`] and then only applied; the [`Output`] kind is given with every
 //! call. Its design is in `docs/design/` of the repository.
 //!
-//! The crate is in development: the public types are in place, and no typographic rule is
+//! The crate is in development: the public types are in place, and the engine recognizes
+//! protected and technical fragments, which [`Typographer::report`] lists; no typographic rule is
 //! implemented yet, so every application method returns its input unchanged.
 //!
 //! ```
@@ -25,6 +26,7 @@ mod lang;
 mod language;
 mod output;
 mod piece;
+mod report;
 mod rule;
 mod rules;
 mod typographer;
@@ -43,6 +45,9 @@ pub use lang::data::{
 pub use language::Language;
 pub use output::{EscapeStyle, HtmlStyle, Output};
 pub use piece::{Piece, Slot, SlotKind, Template, TemplatePart};
+pub use report::{
+    Change, Diagnostic, DiagnosticKind, ProtectedKind, ProtectedSpan, Report, Severity, TechKind,
+};
 pub use rule::{Rule, RuleSet};
 pub use typographer::{NarrowGlue, PercentSpacing, SingleQuotes, Typographer, TypographerBuilder};
 

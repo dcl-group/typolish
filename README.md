@@ -9,8 +9,8 @@ numbers. The built-in languages are `ru-RU` and `en-US`; other languages are add
 
 In development; nothing is released. The design is in
 [`docs/design/`](https://github.com/dcl-group/typolish/tree/main/docs/design). The public types are
-in place, and no typographic rule is implemented yet: every application method returns its input
-unchanged.
+in place, and the engine recognizes protected and technical fragments, which `Typographer::report`
+lists; no typographic rule is implemented yet: every application method returns its input unchanged.
 
 ## Usage
 

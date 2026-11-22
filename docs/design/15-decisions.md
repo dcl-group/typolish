@@ -151,17 +151,19 @@ repository skeleton after zonewright (`AGENTS.md`, `CLAUDE.md`, README and CHANG
 seed `‚Wort‘` needs it), with every dictionary that the classifier reads in check 0 (units,
 abbreviation parts, elisions, month forms, atom exceptions) complete for ru and en,
 `Typographer::new` and the builder, `Piece` and `Template`, ingest and protection, windows, lexer,
-classifier with labels, freezing, the phase engine, the recorders with `report` (changes, protected
-spans and diagnostics; its `Display` comes in stage 4), rendering for `Output::Unicode`
-(`Output::Html` and `Output::Escaped` are accepted but written as Unicode until stage 3, and their
-rustdoc and the changelog say so), the thread-local and explicit scratch; the generated tables
-`tests/reference/ru.rs` and `tests/reference/en_us.rs` with all 820 rows (case id, input and
-recorded output; the corpus group of a case, such as `neg.list`, is the prefix of its case id,
-section 13.4; the `AGREE`/`DIVERGE` group and the reason code come in stage 5), the row type in
-`tests/common/mod.rs`, and `tests/negative.rs`, which reads their `neg.*` rows through `#[path]`
-(sections 13.3 and 14.6). Rules: `quotes.*`, `dash.*`, `range.*`, `ellipsis.*` for ru and en. The
-`nbsp.*` rules come in stage 3, so in this stage the set-level tables run with them removed from the
-sets (a test helper), and stage 3 switches the same tables to the full sets. Ready when:
+classifier with labels, freezing, the phase engine, the recorders with `report` and
+`report_template` (changes, protected spans and diagnostics; the `Display` of `Report` comes in
+stage 4; `report_template` came with `report`, because the engine and the journal are the same for
+pieces), rendering for `Output::Unicode` (`Output::Html` and `Output::Escaped` are accepted but
+written as Unicode until stage 3, and their rustdoc and the changelog say so), the thread-local and
+explicit scratch; the generated tables `tests/reference/ru.rs` and `tests/reference/en_us.rs` with
+all 820 rows (case id, input and recorded output; the corpus group of a case, such as `neg.list`, is
+the prefix of its case id, section 13.4; the `AGREE`/`DIVERGE` group and the reason code come in
+stage 5), the row type in `tests/common/mod.rs`, and `tests/negative.rs`, which reads their `neg.*`
+rows through `#[path]` (sections 13.3 and 14.6). Rules: `quotes.*`, `dash.*`, `range.*`,
+`ellipsis.*` for ru and en. The `nbsp.*` rules come in stage 3, so in this stage the set-level
+tables run with them removed from the sets (a test helper), and stage 3 switches the same tables to
+the full sets. Ready when:
 
 - `typeset` and `typeset_template` work for ru, en and COMMON with these rules;
 - the rule tables of these rules pass, alone and in both sets without the `nbsp.*` rules;
@@ -204,8 +206,8 @@ section 2.15 and a `LazyLock` typographer built as in section 2.4). Ready when:
   `cargo run --example per_request`).
 
 **Stage 4: reverse transformation, source check, explain mode.** `to_plain`, `to_plain_template`,
-`lint`, `lint_template`, every diagnostic of section 12.4, `report_template` and the `Display` of
-`Report` (`report` itself exists since stage 2); the own corpus (section 13.7) with snapshots
+`lint`, `lint_template`, every diagnostic of section 12.4 and the `Display` of `Report` (`report`
+and `report_template` exist since stage 2); the own corpus (section 13.7) with snapshots
 (`tests/corpus.rs`) and `roundtrip-known.tsv` (`tests/roundtrip.rs`); `examples/fluent_generator.rs`
 (the generator of section 2.14 over a few hard-coded messages, `report_template` with
 `Output::Escaped(EscapeStyle::RUST)`). Ready when:

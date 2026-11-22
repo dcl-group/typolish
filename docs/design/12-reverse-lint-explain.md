@@ -145,10 +145,12 @@ never decides for the caller.
 
 `Diagnostic` carries its kind, severity, the rule that raised it (`Option<Rule>`), the piece and the
 byte range. A diagnostic over several pieces is reported at its first piece, with the range clipped
-to that piece (section 3.11), in `lint` as in `report`. `Severity` is ordered (`Info < Warning`).
-Diagnostics, in `report`, `report_template`, `lint` and `lint_template`, are ordered by piece, then
-byte start, then byte end, then kind in the order of the `DiagnosticKind` declaration
-(`TypographicChar` last). `Diagnostic` implements `Display`:
+to that piece (section 3.11), in `lint` as in `report`. `Severity` is ordered (`Info < Warning`). A
+diagnostic that starts at a slot is reported at the slot's piece with the empty range `0..0`:
+`SlotGlue` for `{n}МБ` and `{a}{b}` at the first slot, for `МБ{n}` at the letters. Diagnostics, in
+`report`, `report_template`, `lint` and `lint_template`, are ordered by piece, then byte start, then
+byte end, then kind in the order of the `DiagnosticKind` declaration (`TypographicChar` last).
+`Diagnostic` implements `Display`:
 `warning quotes.pairs 0:10..11: straight quote has no pair; left as is`.
 
 ### 12.5 Explain mode
@@ -166,7 +168,11 @@ byte start, then byte end, then kind in the order of the `DiagnosticKind` declar
   times only), `Colon`, `Operator`, `Identifier`, `Angle`, `Uuid`, `Hex`, `IsoDate`, `Version`,
   `Dotted`, `List`, `CompoundHyphens` (the hyphens of a compound word only; the word itself is not
   technical and is an operand like any word, section 8.2), `Unclassified`). This is the main tool
-  for "why did no rule fire here". A `Punctuation` fragment is not a protected span.
+  for "why did no rule fire here". A `Punctuation` fragment is not a protected span. A slot has no
+  text, so its `Slot` record holds its piece and the empty range `0..0`; a `ProtectedPiece` record
+  covers its whole piece; a frozen core with a slot or protected text inside gives records for its
+  text only, around the records of the slot or the protected text (`{host}:{port}` gives `Slot`,
+  `Technical(Colon)` for `:`, `Slot`).
 - `diagnostics()`: as in section 12.4.
 
 `Display` prints a table for reports of differences. For Russian Prose, input

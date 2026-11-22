@@ -426,12 +426,19 @@ fn fragments_never_cross_a_separator() {
     let t = interface();
     for sep in BOUNDARIES.iter().chain(NOT_BOUNDARIES) {
         let input = format!("a:b{sep}c:d");
-        assert_eq!(
-            span_texts(&t, &input),
-            [(COLON, "a:b"), (COLON, "c:d")],
-            "{}",
-            show(&input)
-        );
+        // A combining mark after a line break is a cluster of its own (UAX #29, rule GB4), so it
+        // is a `Symbol` fragment between the line breaks, frozen by check 24 (design sections
+        // 3.5, 3.6 and 5.1); it is content of the separator, not part of a neighbor.
+        let expected: &[(ProtectedKind, &str)] = if sep.contains('\u{301}') {
+            &[
+                (COLON, "a:b"),
+                (tech(TechKind::Unclassified), "\u{301}"),
+                (COLON, "c:d"),
+            ]
+        } else {
+            &[(COLON, "a:b"), (COLON, "c:d")]
+        };
+        assert_eq!(span_texts(&t, &input), expected, "{}", show(&input));
     }
 }
 

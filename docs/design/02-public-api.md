@@ -1006,10 +1006,11 @@ tooling path and make no allocation promise, so version 1 has no `_with` variant
 one later is not breaking). `typeset_template` has no `_into` form, because its result owns its
 vectors.
 
-The working buffers (atoms and tokens of the current window, two token vectors for phases, the quote
-stack) live in a `Scratch`. Atoms and tokens hold no references into the input: a token stores its
-piece number, a byte range in that piece and, when a rule replaced its text, a replacement id
-(sections 3.4, 3.5). So `Scratch` holds only `'static` data, is `Send + Sync`, and is reused for
+The working buffers (the call's text of a template, atoms and tokens of the current window, two
+token vectors for phases, the quote stack) live in a `Scratch`. Atoms and tokens hold no references
+into the input: a token stores a byte range of the call's text (the input itself, or the
+concatenation of the `Text` pieces of a template) and, when a rule replaced its text, a replacement
+id (sections 3.4, 3.5). So `Scratch` holds only `'static` data, is `Send + Sync`, and is reused for
 inputs of any lifetime without `unsafe` (the crate forbids it). `Scratch::new()` is a `const fn`,
 and `Scratch` implements `Default`. `typeset` uses one held in a `thread_local!` (`RefCell<Scratch>`
 with `const` initialization) and reused, so after the first call on a thread the hot path does not

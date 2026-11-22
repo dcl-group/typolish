@@ -4,7 +4,8 @@ use core::cell::RefCell;
 use core::fmt;
 use core::mem::size_of;
 
-use super::ingest::Atom;
+use super::classify::ClassifyScratch;
+use super::ingest::{Atom, DelimScratch, TextPiece};
 use super::lex::Tok;
 
 /// When the buffers of the thread-local scratch have grown past this many bytes, it is replaced
@@ -31,9 +32,17 @@ const THREAD_LOCAL_LIMIT: usize = 64 * 1024;
 /// ```
 #[derive(Default)]
 pub struct Scratch {
+    /// The call's text when it is copied from several `Text` pieces.
+    pub(crate) text: String,
+    pub(crate) pieces: Vec<TextPiece>,
+    pub(crate) lens: Vec<u32>,
     pub(crate) atoms: Vec<Atom>,
+    pub(crate) next_atoms: Vec<Atom>,
+    pub(crate) delim: DelimScratch,
+    pub(crate) clusters: Vec<(u32, u32)>,
     pub(crate) tokens: Vec<Tok>,
     pub(crate) next: Vec<Tok>,
+    pub(crate) classify: ClassifyScratch,
     pub(crate) quote_stack: Vec<u32>,
 }
 
@@ -42,17 +51,30 @@ impl Scratch {
     #[must_use]
     pub const fn new() -> Scratch {
         Scratch {
+            text: String::new(),
+            pieces: Vec::new(),
+            lens: Vec::new(),
             atoms: Vec::new(),
+            next_atoms: Vec::new(),
+            delim: DelimScratch::new(),
+            clusters: Vec::new(),
             tokens: Vec::new(),
             next: Vec::new(),
+            classify: ClassifyScratch::new(),
             quote_stack: Vec::new(),
         }
     }
 
     /// The capacity of the buffers in bytes.
     fn heap_bytes(&self) -> usize {
-        self.atoms.capacity() * size_of::<Atom>()
+        self.text.capacity()
+            + self.pieces.capacity() * size_of::<TextPiece>()
+            + self.lens.capacity() * size_of::<u32>()
+            + (self.atoms.capacity() + self.next_atoms.capacity()) * size_of::<Atom>()
+            + self.delim.heap_bytes()
+            + self.clusters.capacity() * size_of::<(u32, u32)>()
             + (self.tokens.capacity() + self.next.capacity()) * size_of::<Tok>()
+            + self.classify.heap_bytes()
             + self.quote_stack.capacity() * size_of::<u32>()
     }
 }

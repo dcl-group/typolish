@@ -1,17 +1,23 @@
 //! The pipeline (design section 3.1) and its entry points.
 //!
-//! So far the pipeline has the prefilter and ingest only: windows, the lexer, the classifier and
-//! the phases arrive with the rules of stage 2 (design section 15.4). No rule is implemented yet,
-//! so every window is unchanged and every entry point returns its input.
+//! So far the pipeline runs the prefilter, ingest and protection, windows, the lexer and the
+//! classifier, and records protected spans and the diagnostics of protection and the classifier.
+//! The phases and the rules come next in stage 2 (design section 15.4); until then no window
+//! changes, and every entry point returns its input.
 
+pub(crate) mod classify;
 mod ingest;
 mod lex;
+pub(crate) mod record;
 pub(crate) mod scratch;
+mod window;
 
 use std::borrow::Cow;
 
+use crate::report::Records;
 use crate::rules::Triggers;
-use crate::{Output, Slot, Typographer};
+use crate::{DiagnosticKind, Output, Severity, Slot, Typographer};
+use record::{Journal, Loc, NoRecord, Recorder, Sink};
 use scratch::Scratch;
 
 /// One input piece without the caller's payload: the call-local vector of piece texts (design
@@ -25,14 +31,84 @@ pub(crate) enum Input<'t> {
 }
 
 /// Runs the pipeline over `input` and reports whether any window changed.
-fn run(_typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) -> bool {
-    if !ingest::ingest(input, &mut scratch.atoms) {
+fn run<R: Recorder>(
+    typographer: &Typographer,
+    scratch: &mut Scratch,
+    input: &[Input<'_>],
+    rec: &mut R,
+) -> bool {
+    let mut text = core::mem::take(&mut scratch.text);
+    let changed = run_on(typographer, scratch, input, &mut text, rec);
+    text.clear();
+    scratch.text = text;
+    changed
+}
+
+fn run_on<R: Recorder>(
+    typographer: &Typographer,
+    scratch: &mut Scratch,
+    input: &[Input<'_>],
+    buf: &mut String,
+    rec: &mut R,
+) -> bool {
+    let Scratch {
+        atoms,
+        next_atoms,
+        pieces,
+        lens,
+        delim,
+        clusters,
+        tokens,
+        classify,
+        ..
+    } = scratch;
+    let Some(text) = ingest::layout(input, buf, pieces, atoms) else {
         // Positions do not fit `u32`: the input is returned unchanged (design section 3.4).
         return false;
+    };
+    lens.clear();
+    if R::ACTIVE {
+        lens.extend(input.iter().map(|item| match item {
+            Input::Text(s) | Input::Protected(s) | Input::Markup(s) => {
+                u32::try_from(s.len()).unwrap_or(u32::MAX)
+            }
+            Input::Slot(_) => 0,
+        }));
     }
-    // The phases of stage 2 run the active rules over each window here, reading the active set
-    // and the trigger set that the typographer computes once when it is built (design section
-    // 3.2), not per call. No rule is implemented yet, so no window changes.
+    let backticks = typographer.protects_backticks();
+    if backticks {
+        ingest::cut_fences(text, atoms, next_atoms, delim);
+        core::mem::swap(atoms, next_atoms);
+    }
+    window::split_windows(text, atoms, next_atoms);
+    core::mem::swap(atoms, next_atoms);
+    ingest::cut_delimiters(
+        text,
+        atoms,
+        backticks,
+        typographer.protection_pairs(),
+        next_atoms,
+        delim,
+    );
+    core::mem::swap(atoms, next_atoms);
+
+    let mut sink = Sink { rec, pieces, lens };
+    for &(start, end) in delim.unclosed() {
+        sink.diagnostic(
+            DiagnosticKind::UnclosedDelimiter,
+            Severity::Warning,
+            Loc::Flat(start, end),
+        );
+    }
+    for window in atoms.split(|atom| matches!(atom, ingest::Atom::Boundary { .. })) {
+        lex::lex_window(text, window, clusters, tokens);
+        classify::classify(typographer, text, tokens, classify, &mut sink);
+        if R::ACTIVE {
+            classify::record_protected(tokens, &classify.frags, &mut sink);
+        }
+        // The phases run the active rules over the window here (stage 2, design section 3.8);
+        // no rule is implemented yet, so no window changes.
+    }
     false
 }
 
@@ -76,7 +152,7 @@ fn typeset_unfiltered<'a>(
     text: &'a str,
     _output: Output,
 ) -> Cow<'a, str> {
-    let _changed = run(typographer, scratch, &[Input::Text(text)]);
+    let _changed = run(typographer, scratch, &[Input::Text(text)], &mut NoRecord);
     // Rendering of changed windows arrives with the phases (stage 2) and the encoders (stage 3);
     // until then nothing changes, and the input comes back borrowed.
     Cow::Borrowed(text)
@@ -99,7 +175,8 @@ pub(crate) fn typeset_template<'t>(
         Input::Text(text) => Some(*text),
         _ => None,
     });
-    let changed = wanted(typographer, output, texts) && run(typographer, scratch, input);
+    let changed =
+        wanted(typographer, output, texts) && run(typographer, scratch, input, &mut NoRecord);
     template_texts(input, slot_count, changed)
 }
 
@@ -114,6 +191,33 @@ fn template_texts<'t>(
         texts.push(merge(group));
     }
     (texts, changed)
+}
+
+/// `Typographer::report`: the whole pipeline with the journal, without the prefilter (design
+/// section 3.2).
+pub(crate) fn report<'a>(
+    typographer: &Typographer,
+    scratch: &mut Scratch,
+    text: &'a str,
+    _output: Output,
+) -> (Cow<'a, str>, Records) {
+    let mut journal = Journal::default();
+    let _changed = run(typographer, scratch, &[Input::Text(text)], &mut journal);
+    (Cow::Borrowed(text), journal.finish())
+}
+
+/// `Typographer::report_template`.
+pub(crate) fn report_template<'t>(
+    typographer: &Typographer,
+    scratch: &mut Scratch,
+    input: &[Input<'t>],
+    slot_count: usize,
+    _output: Output,
+) -> (Vec<Cow<'t, str>>, bool, Records) {
+    let mut journal = Journal::default();
+    let changed = run(typographer, scratch, input, &mut journal);
+    let (texts, changed) = template_texts(input, slot_count, changed);
+    (texts, changed, journal.finish())
 }
 
 /// The text of the pieces between two slots: borrowed while it maps to at most one non-empty
@@ -204,7 +308,7 @@ mod tests {
                     .collect();
                 let slots = input.iter().filter(|i| matches!(i, Input::Slot(_))).count();
                 let mut scratch = Scratch::new();
-                let changed = run(&t, &mut scratch, &input);
+                let changed = run(&t, &mut scratch, &input, &mut NoRecord);
                 let (texts, changed) = template_texts(&input, slots, changed);
                 prop_assert_eq!(filtered.texts(), texts.as_slice());
                 prop_assert_eq!(filtered.changed(), changed);

@@ -1,10 +1,9 @@
 //! Atoms, protection, windows and the classifier for pieces (design sections 3.3, 3.4, 3.6,
 //! 10.1), observed through `report_template`.
 //!
-//! `report_template` is an API of stage 4 (design section 15.4), so this file builds only from
-//! then on; the string forms of the same rows are in `tests/protection.rs` and
-//! `tests/classifier.rs`, and the output of the rules that read these decisions is in
-//! `tests/ingest_rules.rs`.
+//! `report_template` came with `report` in stage 2 (design section 15.4). The string forms of the
+//! same rows are in `tests/protection.rs` and `tests/classifier.rs`, and the output of the rules
+//! that read these decisions is in `tests/ingest_rules.rs`.
 
 #![allow(
     clippy::unwrap_used,
