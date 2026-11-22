@@ -36,7 +36,11 @@ gives the output of the whole set.
 - classifier tables (unit tests of `engine/classify.rs`, stage 2): `Ph.D.` and `А.С.` are
   `Abbreviation`, `report().protected()` is empty; `№`, `§§` and `¶` alone are `Sign` fragments, not
   frozen, and `Документ № 5` has an empty `report().protected()`; `¶IV` and `№5` are `Word`
-  (check 23) with the `LABEL` flag, and so is `IV` in `¶ IV`.
+  (check 23) with the `LABEL` flag, and so is `IV` in `¶ IV`; `(c)`, `©`, `(c)2026` and `2026(c)`
+  are `Word` cores, not frozen, and `(c) 2026` has an empty `report().protected()`; `XIX`, `IV` and
+  `MCMXCIV` are Roman numerals (`XIX-XX` is a `Range`, `IV` in `¶ IV` has `LABEL`), while `IIII`,
+  `IC`, `VV`, `xix`, `Mix` and `ХIХ` (Cyrillic `Х`) are not (`IIII-V` and `xix-xx` are `Compound`,
+  `VV` in `¶ VV` has no `LABEL`).
 - `tests/rules_quotes.rs`: ru `"?"` → `«?»`, `«»` unchanged, `report().protected()` empty; en
   `He is 5'10" tall.` (Prose) → `He is 5′10″ tall.`; en `the 90's` → `the 90’s`; en `1'000'000` →
   unchanged; ru `Он сказал "" и ушёл.` → `Он сказал «» и ушёл.`; ru `Пустая строка "".` →
@@ -53,11 +57,13 @@ gives the output of the whole set.
   unchanged, no diagnostic (frozen fragment, section 10.8).
 - `tests/rules_dash.rs`: ru `Ждите - ...` with `dash.spaced-hyphen` alone → unchanged, no
   `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` with
-  `dash.spaced-hyphen` alone → unchanged, `Cow::Borrowed` (the sets give `Moscow — the⍽capital`); ru
-  `Москва – столица` with `nbsp.dash` alone → `Москва⍽– столица` (en dash kept, glue from
-  `nbsp.dash`); ru `10 – 20` with `nbsp.dash` alone and in both sets → `10⍽– 20` (a typed dash
-  between numbers gets the glue too, section 8.7); en and ru, Interface: `git checkout -- file` and
-  `Запустите -- сейчас.` → unchanged, `Cow::Borrowed` (`dash.spaced-hyphen` does not match `--`,
+  `dash.spaced-hyphen` alone → unchanged, `Cow::Borrowed` (the sets give `Moscow — the⍽capital`); en
+  Closed `Moscow - the capital` in Prose and Interface → `Moscow—the⍽capital` (stage 2, without the
+  `nbsp.*` rules: `Moscow—the capital`), and `Moscow—the capital` in both sets → unchanged,
+  `Cow::Borrowed`; ru `Москва – столица` with `nbsp.dash` alone → `Москва⍽– столица` (en dash kept,
+  glue from `nbsp.dash`); ru `10 – 20` with `nbsp.dash` alone and in both sets → `10⍽– 20` (a typed
+  dash between numbers gets the glue too, section 8.7); en and ru, Interface: `git checkout -- file`
+  and `Запустите -- сейчас.` → unchanged, `Cow::Borrowed` (`dash.spaced-hyphen` does not match `--`,
   section 8.4); `RuleSet::PROSE.without(Rule::DashDoubleHyphen)` with `Запустите -- сейчас.` →
   unchanged; `-- file` at a line start: ru (Prose) → `—⍽file` (`dash.dialogue`), en → unchanged; en
   Closed `word  -  word` → unchanged, no diagnostic; `5 - x`, `x - 5`, `{a} - x` → unchanged,
@@ -68,7 +74,8 @@ gives the output of the whole set.
   `AmbiguousHyphen`); en Closed, `dash.spaced-hyphen` alone: `Sign in - it's free` →
   `Sign in—it's free` and `Sign up - it's free` → `Sign up—it's free` (the sets also give `it’s`).
 - `tests/rules_range.rs`: `1941-1945 гг.` → the `Change` record of the dash names `range.digits`;
-  `10-10` → unchanged, no diagnostic.
+  `10-10` → unchanged, no diagnostic; `XIX-XX вв.` → `XIX–XX вв.`; `XX-XIX вв.`, `xix-xx вв.` and
+  `ХIХ-ХХ вв.` (Cyrillic `Х`) → unchanged, the last with `MixedScript`.
 - `tests/rules_ellipsis.rs`: `Ждите - ...` with `ellipsis.dots` alone → `Ждите - …`; `...` alone →
   `…`; in both `report().protected()` is empty. `и т.д...` → `и т.д…`. Boundaries:
   `Подождите...\nДальше` → `Подождите…\nДальше`, `... слово` → `… слово`, `Слово ...` → `Слово …`,
@@ -78,29 +85,33 @@ gives the output of the whole set.
 - `tests/rules_number.rs` (`number.times`): `10 x 5` with `add_units(["x"])` → `10 × 5`; `a × b` →
   unchanged, `report` lists `Technical(Unclassified)` for `×`; `10 X 5` → `10 × 5`; `10 Х 5` →
   `10 × 5`; `010 x 5` → unchanged.
-- `tests/rules_symbols.rs` (`symbols.copyright`): `Brand(Tm)` → unchanged; `symbols.arrows` and
-  `symbols.math`: `x  ->  y`, `x\t>=\t5` → unchanged, no diagnostic.
+- `tests/rules_symbols.rs` (`symbols.copyright`): `(c) 2026` → `© 2026`, `(C) 2026` and `(с) 2026`
+  (Cyrillic `с`) → `© 2026`, `(c)2026` → `©2026`, `2020-2026 (c)` → `2020-2026 ©`, `Brand (r)` →
+  `Brand ®`, `Brand(tm)` → `Brand™`; `вариант (c)`, `f(c)`, `(R) знак`, `S(r) = πr²` → unchanged;
+  `2020-2026(c)` → unchanged, and `report().protected()` lists `Technical(Unclassified)` for it;
+  `Brand(Tm)` → unchanged; `symbols.arrows` and `symbols.math`: `x  ->  y`, `x\t>=\t5` → unchanged,
+  no diagnostic.
 - `tests/rules_nbsp.rs` (stage 3): ru `А.С. Пушкин` → `А.С.⍽Пушкин` (`nbsp.initials`); `и т.д...`
   with `ellipsis.dots` and `nbsp.abbreviations` → `и⍽т.⍽д…`; `и т. д…` → `и⍽т.⍽д…`; en `etc...` with
   `ellipsis.dots` and `nbsp.abbreviations` → `etc…` (`etc` with its stop is `Dictionary`);
-  `nbsp.signs`: `¶IV` → `¶⍽IV`, not borrowed; ru `и т. д.` with `narrow_glue` for abbreviations →
-  `и\u{A0}т.\u{202F}д.`; ru `5 м2` → `5⍽м2`, `5–10 м2` → `5–10⍽м2` (Prose), `5 м2x` → unchanged; en
-  `I said no. Then I left.` → unchanged; en `See No. 5` → `See No.⍽5`; ru `См. рис. 5` →
-  `См.⍽рис.⍽5`; ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` → unchanged; en `on 5 May` →
-  `on 5⍽May` (`on⍽5⍽May` in both sets); ru `Привезли 5 т груза` → `Привезли 5⍽т груза`; en
-  `Attached` `100⍽%` → unchanged; ru `1990–2000 г. Затем`, `2010-11 г. Затем`, `5–10 ч. Потом` → no
-  glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` → `г.⍽Москвы` (a label range); ru
-  `21.11.2026 г.` → `21.11.2026⍽г.`; ru `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and
-  `report().protected()` lists `Technical(Version)` for the date; ru, Prose and Interface: `в §5` →
-  `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en `J. R. R. R. Tolkien` → unchanged (Interface);
-  `nbsp.initials`: ru `Об этом сказал А. Петров.` → `Об этом сказал А.⍽Петров.`, ru
-  `Выберите вариант А. После этого` → `Выберите вариант А.⍽После этого`, en
-  `I chose plan B. Then I left.` → `I chose plan B.⍽Then I left.`, en `Neither did I. Then we left.`
-  → `Neither did I.⍽Then we left.` (a single initial is glued after any word, section 10.8); ru
-  `Выберите вариант Д. После этого` and en `I chose plan P. Then I left.` with `nbsp.abbreviations`
-  alone → unchanged (a single letter with a full stop matches an abbreviation only as written,
-  section 7.1), and with `nbsp.initials` → `Выберите вариант Д.⍽После этого`,
-  `I chose plan P.⍽Then I left.`.
+  `nbsp.signs`: `¶IV` → `¶⍽IV`, not borrowed; `¶XIX` → `¶⍽XIX`; `¶VV` → unchanged; ru `и т. д.` with
+  `narrow_glue` for abbreviations → `и\u{A0}т.\u{202F}д.`; ru `5 м2` → `5⍽м2`, `5–10 м2` → `5–10⍽м2`
+  (Prose), `5 м2x` → unchanged; en `I said no. Then I left.` → unchanged; en `See No. 5` →
+  `See No.⍽5`; ru `См. рис. 5` → `См.⍽рис.⍽5`; ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` →
+  unchanged; en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both sets); ru `Привезли 5 т груза` →
+  `Привезли 5⍽т груза`; en `Attached` `100⍽%` → unchanged; ru `1990–2000 г. Затем`,
+  `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` →
+  `г.⍽Москвы` (a label range); ru `21.11.2026 г.` → `21.11.2026⍽г.`; ru
+  `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and `report().protected()` lists
+  `Technical(Version)` for the date; ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`,
+  `и ¶ 5` → `и⍽¶⍽5`; en `J. R. R. R. Tolkien` → unchanged (Interface); `nbsp.initials`: ru
+  `Об этом сказал А. Петров.` → `Об этом сказал А.⍽Петров.`, ru `Выберите вариант А. После этого` →
+  `Выберите вариант А.⍽После этого`, en `I chose plan B. Then I left.` →
+  `I chose plan B.⍽Then I left.`, en `Neither did I. Then we left.` → `Neither did I.⍽Then we left.`
+  (a single initial is glued after any word, section 10.8); ru `Выберите вариант Д. После этого` and
+  en `I chose plan P. Then I left.` with `nbsp.abbreviations` alone → unchanged (a single letter
+  with a full stop matches an abbreviation only as written, section 7.1), and with `nbsp.initials` →
+  `Выберите вариант Д.⍽После этого`, `I chose plan P.⍽Then I left.`.
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
   ranges with negative ends (`−5–−1`) and equal ends (ru `8⍽000–8⍽000`, en `8,000–8,000`), decimals
   (`Number::decimal` keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`,
@@ -153,7 +164,15 @@ gives the output of the whole set.
   equal; a copy with a different list of short words is not equal.
 - `tests/lint.rs`: every diagnostic kind of section 12.4 with a firing and a non-firing row;
   `TypographicChar` is absent inside `https://example.com/a–b`, inside backticks and in `Markup`,
-  absent for `©` with `symbols.copyright` off, present for `—` between words with the dash rules on.
+  absent for `©` with `symbols.copyright` off, present for `©` in `© 2026` with `symbols.copyright`
+  on (a lone legal mark is not frozen, section 3.6), absent for a typed `–` with spaces (ru Prose:
+  `Москва – столица`, `10 – 20`, where `to_plain` returns the input), exactly one entry, on the
+  U+00A0, for ru Prose `Москва⍽– столица` and `10⍽– 20`, present for `—` between words with the dash
+  rules on; inputs without a trigger byte keep their diagnostics and protected spans through
+  `report` and `lint` (no prefilter, section 3.2): ru Interface `Мoсква` (Latin `o`) →
+  `MixedScript`; `report_template([Slot(n, NUMBER), Text("МБ")])` → `SlotGlue` (warning);
+  `[Slot(a), Slot(b)]` → `SlotGlue` (info); ``don`t`` → `UnclosedDelimiter`; `` `code` `` →
+  `report().protected()` holds one `Delimited` record.
 - `tests/fluent_isolation.rs`: run-time strings with U+2068 and U+2069 around values give the same
   typesetting as without them, with the isolates unchanged (section 5.4).
 

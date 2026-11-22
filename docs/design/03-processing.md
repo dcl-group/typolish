@@ -11,8 +11,8 @@ here are planned under `dev/typolish/src/` (section 14.6).
 
 ```text
 input (&str | pieces)
-  │  0. prefilter: no byte that an active rule or the output kind
-  │     reacts to → Cow::Borrowed                                          (3.2)
+  │  0. prefilter (typeset* only): no byte that an active rule or the
+  │     output kind reacts to → Cow::Borrowed                              (3.2)
   │  1. ingest: pieces → stream of atoms (Text, Slot, Protected, Markup);
   │     fenced backtick blocks cut out as Protected atoms                  (3.4)
   │  2. windows: split by paragraph; a fenced block is never split         (3.3)  ┐
@@ -59,8 +59,15 @@ in Interface, where no rule reacts to `<`. For short interface strings without s
 whole pipeline; the scan is linear and allocates nothing.
 
 For `typeset_template` the prefilter scans the bytes of all `Text` pieces together; a slot
-contributes no byte, so every rule that can fire next to a slot needs its trigger byte in the text
+contributes no byte, so every rule that can edit next to a slot needs its trigger byte in the text
 beside the slot (`{n}%` is caught by `%`, `№{n}` by `№`, `{n} МБ` by the space).
+
+The prefilter belongs to `typeset`, `typeset_with`, `typeset_into` and `typeset_template` only.
+`report`, `report_template`, `lint` and `lint_template` always run the whole pipeline: the
+diagnostics of the classifier and of protection (`MixedScript`, `SlotGlue`, `UnclosedDelimiter`) and
+the records of `protected()` do not come from a rule and need no trigger byte (`Мoсква`, `{a}{b}`,
+`{n}МБ`, ``don`t`` and `` `code` `` contain none). Their result still equals that of `typeset`
+(property 9 of section 13.5).
 
 ### 3.3 Windows
 
@@ -227,7 +234,8 @@ of dots. `[ ]`, `{ }` and `< >` are not wrapper: they belong to technical notati
 `{x}`, `<T>`). The wrapper stays editable (it is sentence punctuation). The rest, the **core**, gets
 one kind. The **stop** of a core is the token right after it, when that token is a `Dots` token in
 any form (`.`, `..`, `...`, `…`). Checks 0 and 14 read a core that has a stop as if a single full
-stop followed it. A `LegalMark` token is one token, so `(c)` keeps its parentheses.
+stop followed it. A `LegalMark` token is one token, so `(c)` keeps its parentheses, and its core is
+not frozen (special cases below).
 
 If the start wrapper and the end wrapper together take every token of a fragment (`...`, `…`, `"`,
 `«»`, `()`, `?!`, `,`, `"?"`), the fragment has no core and its kind is `Punctuation`. No check of
@@ -292,9 +300,9 @@ Order matters in these places:
 - 24 last: anything the grammar does not recognize as a word or a number is frozen. The classifier
   is a white list; when it is wrong, it is wrong on the safe side.
 
-Special cases. The first three are decided before the table and win over every check, check 0
-included (the first two on the whole fragment, the third on the core); the others change how the
-checks read a core:
+Special cases. The first four are decided before the table and win over every check, check 0
+included (the first two on the whole fragment, the third and the fourth on the core); the others
+change how the checks read a core:
 
 - A lone fragment `x`, `X`, `х`, `Х` or `×` between two number fragments (`10 x 5`) has kind
   `Times`, in both forms, so the kind survives the replacement. The lexer gives `×` the token kind
@@ -307,6 +315,12 @@ checks read a core:
 - A core that is only a sign of the language's `signs`, single or doubled (`№`, `§§`, `¶`), has kind
   `Sign`: it is not frozen and not technical, and no check of the table runs on it; `nbsp.signs`,
   `nbsp.short-words` and the `LABEL` rule below read it.
+- A core that is a single `LegalMark` token in either form, alone or with one `Number` token
+  attached before or after it (`(c)`, `©`, `(r)`, `(tm)`, `(c)2026`, `2026(c)`), has kind `Word`: it
+  is not frozen and not technical, and no check of the table runs on it. Whether `(c)`, `(r)` or
+  `(tm)` changes is decided by `symbols.copyright` from the context (section 8.9: `вариант (c)`
+  stays). A legal mark attached to a word is a `Word` by check 23 (`Brand(tm)`, `f(c)`); one
+  attached to anything else (`2020-2026(c)`) falls through to check 24.
 - A `Number` slot inside a core counts as a number. A `Date` slot counts as a number only in check
   17 and only when both sides are `Date` slots (`{d1}-{d2}` is a `Range`); in every other position
   it counts as letters, so `{n}-{d}` and `5-{d}` are `Compound`. A `Number` slot and a literal
@@ -318,6 +332,16 @@ checks read a core:
 - `Format` tokens (section 5.4) inside a fragment, and ZWNJ and ZWJ inside the text of a token, are
   skipped by every check and by list lookups: `ноя\u{AD}бря` is the word `ноября` for check 23 and
   for the month list, and `сло\u{200D}во` is the word `слово`. They stay in the text.
+
+**Roman numerals.** A Roman numeral is a `Word` token of Latin capital letters in the standard form
+`M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})`, not empty; its value is 1 to 3999
+(`Format` tokens and ZWNJ/ZWJ are skipped as everywhere in this section). `XIX`, `IV`, `MCMXCIV` and
+a single `I`, `V` or `X` are Roman numerals; `IIII`, `IC`, `VV`, `XM`, lowercase `xix`, mixed-case
+`Mix` and words with Cyrillic look-alike letters are not (`ХIХ` with Cyrillic `Х` is a `Mixed` word
+and raises `MixedScript`, section 5.7). A Roman numeral counts only where a check or a rule names it
+(checks 17 and 23, the `LABEL` flag below, `range.context`, `nbsp.dates`, `nbsp.signs`), so `I` or
+`C` elsewhere is an ordinary word. `range.context` compares two Roman numerals by value (`XIX-XX`:
+19 < 20); a Roman numeral and an Arabic number are not compared.
 
 **Label numbers.** A sign of the language's `signs` (`№`, `§`, `¶`, also doubled) followed by a
 number names something; it counts nothing. After the checks, the classifier sets the `LABEL` flag
@@ -342,8 +366,10 @@ a rule such as "space after a colon" does not know that the colon belongs to an 
 ("Сервис слушает host:8080 - проверьте"), and the quotes, dashes and spaces around them are wanted.
 
 The classifier runs once per window, before the phases. Edits inside a pass never trigger
-reclassification; section 4.3 (invariant I2) states why the kinds and flags on the output are the
-ones the next pass computes.
+reclassification: the fragments, kinds and flags it computed hold for every phase of the pass, also
+where an earlier phase removed the space between two fragments (in `Moscow - the capital` the
+no-break phase still reads `the` as a whole core after the dash phase made `Moscow—the`). Section
+4.3 (invariant I2) states why the kinds and flags on the output are the ones the next pass computes.
 
 ### 3.7 Freezing and edit refusal
 

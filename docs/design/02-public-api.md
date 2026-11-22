@@ -966,10 +966,11 @@ that calls the typographer meets a free scratch. Should `try_borrow_mut` fail an
 with a local buffer, without panicking. `typeset_with` takes a caller-held `Scratch` (one per
 worker), for callers that do not want thread-local state, for example executors that move tasks
 between threads or a future `no_std` build. The texts of template pieces are the only per-call data
-with a lifetime; they go into a call-local vector, the third allocation of `typeset_template`. A
-prefilter returns `Cow::Borrowed` without touching the buffers when the input contains no byte that
-any active rule reacts to and no byte that the output kind encodes (section 3.2). A test with a
-counting global allocator checks this table (section 13.8).
+with a lifetime; they go into a call-local vector, the third allocation of `typeset_template`. In
+`typeset*` a prefilter returns `Cow::Borrowed` without touching the buffers when the input contains
+no byte that any active rule reacts to and no byte that the output kind encodes (section 3.2);
+`report*` and `lint*` always run the pipeline. A test with a counting global allocator checks this
+table (section 13.8).
 
 Rejected: a new token vector on every call (one to three allocations per string, unchanged ones
 included); streaming without a buffer (quote pairing defers decisions to the end of a paragraph).

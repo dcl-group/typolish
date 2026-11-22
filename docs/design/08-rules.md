@@ -45,9 +45,13 @@ Prose: 27 rules (every rule of version 1). Interface: 13 rules.
 ### 8.2 Common conditions
 
 Terms: a **word** is a `Word` token; a **number** is a `Number` fragment or a `Number` slot; an
-**operand** is a word, a number, a slot, a protected span or a fragment whose core is technical. A
-`Punctuation` fragment (wrapper tokens only, such as a lone `...`, section 3.6) is not an operand.
-Two kinds of number name or measure something other than a quantity:
+**operand** is a word, a number, a range (a `Range` or `YearMonth` core), a slot, a protected span
+or a fragment whose core is technical. A **Roman numeral** is defined in section 3.6 (Latin capitals
+in the standard form, value 1 to 3999). A `Punctuation` fragment (wrapper tokens only, such as a
+lone `...`, section 3.6) is not an operand. A **date core** is a `Version` core (check 13 of section
+3.6) of three numbers in the shape `D.M.YYYY` or `D.M.YY`, with the day 1 to 31 and the month 1 to
+12, leading zeros allowed (`21.11.2026`, `21.11.26`, `01.02.26`); the shape decides, so `1.2.27` is
+one and `0.2.27` is not. Two kinds of number name or measure something other than a quantity:
 
 - A **label number** follows a sign (`№5`, `№ 5`, `§⍽12`, `№ {n}`, and a Roman numeral such as `¶IV`
   or `¶ IV`; flag `LABEL`, section 3.6).
@@ -151,7 +155,10 @@ after it is glued. Not in Interface: a line starting with `- ` in UI text is a l
 section 15.5, item 12.
 
 Outputs show the rules named in the last column (with `quotes.pairs` where quotes appear); in the
-full sets other no-break rules add glue too (`Moscow—the⍽capital`, `“a⍽cat”`).
+full sets other no-break rules add glue too (`Moscow—the⍽capital`, `“a⍽cat”`). The glue after `the`
+comes from the classification of the input of the pass, in which `the` is still a whole core
+(section 3.6); an already closed `Moscow—the capital` gets none, because there `the` is inside a
+`Joined` fragment and triggers nothing (section 4.3, I2).
 
 | Language | Input                          | Output                       | Mechanism                               |
 | -------- | ------------------------------ | ---------------------------- | --------------------------------------- |
@@ -186,19 +193,20 @@ and the classifier freezes the hyphens of compounds (check 21 of section 3.6).
   `2026-11` (a year and month, check 12), `1-2-3` (three numbers), `01-12` (leading zero), `20-10`
   (descending), `10-10` (equal); none of these reports a diagnostic.
 - **`range.context`** (Prose): `N-N` where N is an unsigned integer, a decimal with the language's
-  separator or a Roman numeral, left smaller than right where comparable, or `YYYY-YY` with the tail
-  greater than the last two digits of the year, with a context: a unit, a year word or a century
-  word directly after it, or a range lead word directly before it. `1941-45 гг.` → `1941–45⍽гг.`,
-  `XIX-XX вв.` → `XIX–XX⍽вв.`, `1,5-2,5 кг` → `1,5–2,5⍽кг`, `стр. 9-12` → `стр.⍽9–12`. A `YearMonth`
-  core (check 12) is read as `YYYY-YY` here: `в 2010-11 гг.` → `в⍽2010–11⍽гг.`,
-  `сезон 2011-12 годов` → `сезон 2011–12 годов`, while `2026-11 гг.` (tail not greater) and
-  `2010-11` without a year word stay. Leading zeros still refuse (`стр. 010-020` stays). This path
-  also catches the shapes that `range.digits` refuses on purpose (Roman numerals, decimals,
-  two-digit year tails); where both rules match (`1941-1945 гг.`) the edits are equal and the report
-  names `range.digits`, the earlier rule. An ambiguous unit counts as context only where
-  `nbsp.units` would glue it (before punctuation, a line break or the end), so
-  `Порты 8000-8100 с балансировкой` has no context for this rule (`range.digits` still gives
-  `8000–8100` in Prose, section 10.6). A label range takes no context (`§§ 5-7 г.`, section 8.2).
+  separator or a Roman numeral, left smaller than right where both sides are numbers or both are
+  Roman numerals (by value, section 3.6), or `YYYY-YY` with the tail greater than the last two
+  digits of the year, with a context: a unit, a year word or a century word directly after it, or a
+  range lead word directly before it. `1941-45 гг.` → `1941–45⍽гг.`, `XIX-XX вв.` → `XIX–XX⍽вв.`,
+  `1,5-2,5 кг` → `1,5–2,5⍽кг`, `стр. 9-12` → `стр.⍽9–12`. A `YearMonth` core (check 12) is read as
+  `YYYY-YY` here: `в 2010-11 гг.` → `в⍽2010–11⍽гг.`, `сезон 2011-12 годов` → `сезон 2011–12 годов`,
+  while `2026-11 гг.` (tail not greater) and `2010-11` without a year word stay. Leading zeros still
+  refuse (`стр. 010-020` stays). This path also catches the shapes that `range.digits` refuses on
+  purpose (Roman numerals, decimals, two-digit year tails); where both rules match (`1941-1945 гг.`)
+  the edits are equal and the report names `range.digits`, the earlier rule. An ambiguous unit
+  counts as context only where `nbsp.units` would glue it (before punctuation, a line break or the
+  end), so `Порты 8000-8100 с балансировкой` has no context for this rule (`range.digits` still
+  gives `8000–8100` in Prose, section 10.6). A label range takes no context (`§§ 5-7 г.`, section
+  8.2).
 - **`range.time`** (Prose): `HH:MM[:SS]-HH:MM[:SS]` (check 5) → `HH:MM–HH:MM`.
 
 The dash comes from `NumberData::range_dash` of the language, the same field `format_range` uses.
@@ -346,12 +354,13 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
 ### 8.9 Symbols
 
 - **`symbols.copyright`**: `(c)`, `(C)` and Cyrillic `(с)`, `(С)` → `©` only when a four-digit year
-  or a range of years stands next to it, attached or one space away: `(c) 2026` → `© 2026`,
-  `2020-2026 (c)`. Otherwise `(c)` is a list item and stays (`вариант (c)`, `f(c)`). `(tm)`, `(TM)`,
-  `(r)`, `(R)` → `™`, `®` after a brand name: a capitalized word of at least two letters, attached
-  (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` → `Brand ®`), and not followed by an
-  operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a function argument and stays:
-  `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
+  stands next to it, attached or one space away, or a range of years one space away: `(c) 2026` →
+  `© 2026`, `(c)2026` → `©2026`, `2020-2026 (c)` → `2020-2026 ©`. A mark attached to a range
+  (`2020-2026(c)`) is not a word (section 3.6) and stays. Otherwise `(c)` is a list item and stays
+  (`вариант (c)`, `f(c)`). `(tm)`, `(TM)`, `(r)`, `(R)` → `™`, `®` after a brand name: a capitalized
+  word of at least two letters, attached (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` →
+  `Brand ®`), and not followed by an operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a
+  function argument and stays: `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
 - **`symbols.arrows`**: an operator fragment that is exactly `->`, `<-` or `<->`, with a space on
   each side → `→`, `←`, `↔`. `=>`, `-->`, `<-->`, `->>` are not in the table; `a->b` is frozen.
 - **`symbols.math`**: an operator fragment that is exactly `>=`, `<=` or `!=`, with a space on each
