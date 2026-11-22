@@ -24,7 +24,9 @@ mod probe;
 use std::borrow::Cow;
 
 use common::show;
-use common::strategies::{any_text, risky_text, rule_set};
+use common::strategies::{
+    PROTECTION_CONFIGS, any_text, delimiter_text, protection_typographer, risky_text, rule_set,
+};
 use probe::{SETS, check_clusters, spans_of};
 use proptest::prelude::*;
 use typolish::{DiagnosticKind, Language, Output, ProtectedKind, RuleSet, Typographer};
@@ -186,11 +188,32 @@ fn assert_report(t: &Typographer, text: &str) -> Result<(), TestCaseError> {
     Ok(())
 }
 
+/// A string for property 14: arbitrary Unicode, risky pieces, clusters, control characters, and
+/// the delimiters of own protection pairs.
+fn no_panic_text() -> impl Strategy<Value = String> {
+    prop_oneof![
+        any_text(),
+        "\\PC*|.*|\\p{Cc}*",
+        cluster_text(),
+        delimiter_text(),
+    ]
+}
+
+/// A typographer for property 14: the default protection or one of the own-pair
+/// configurations.
+fn no_panic_typographer(config: usize, lang: usize, set: RuleSet) -> Typographer {
+    if config == PROTECTION_CONFIGS {
+        typographer(lang, set)
+    } else {
+        protection_typographer(config, LANGUAGES[lang % 3].clone(), set)
+    }
+}
+
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(4000))]
+    #![proptest_config(ProptestConfig::with_cases(10_000))]
 
     /// 14. No panic in the lexer and the classifier on arbitrary strings, with well-formed
-    /// results.
+    /// results: 10 000 cases in a normal run (design section 13.5).
     #[test]
     fn report_never_panics_and_is_well_formed(
         text in any_text(), lang in 0usize..3, set in rule_set(),
@@ -199,15 +222,48 @@ proptest! {
     }
 
     #[test]
+    fn report_never_panics_on_arbitrary_unicode(text in "\\PC*|.*|\\p{Cc}*", lang in 0usize..3) {
+        assert_report(&typographer(lang, RuleSet::ALL), &text)?;
+    }
+
+    /// Own protection pairs and backticks off (design section 10.1): the delimiter matching of
+    /// `protect_between` and `protect_backticks(false)` on generated input.
+    #[test]
+    fn report_never_panics_with_own_protection_pairs(
+        text in prop_oneof![delimiter_text(), any_text()],
+        config in 0usize..PROTECTION_CONFIGS,
+        lang in 0usize..3,
+        set in rule_set(),
+    ) {
+        assert_report(&protection_typographer(config, LANGUAGES[lang].clone(), set), &text)?;
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(1_000_000))]
+
+    /// 14. The long run of design section 13.5: 1 000 000 strings through `report`, so the lexer
+    /// and the classifier run whatever the trigger bytes. Run with `cargo test -- --ignored`.
+    #[test]
+    #[ignore = "long run of design section 13.5, property 14"]
+    fn no_panic_on_arbitrary_strings_long(
+        text in no_panic_text(),
+        config in 0usize..=PROTECTION_CONFIGS,
+        lang in 0usize..3,
+        set in rule_set(),
+    ) {
+        assert_report(&no_panic_typographer(config, lang, set), &text)?;
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(4000))]
+
+    #[test]
     fn report_never_panics_on_cluster_text(
         text in cluster_text(), lang in 0usize..3, set in rule_set(),
     ) {
         assert_report(&typographer(lang, set), &text)?;
-    }
-
-    #[test]
-    fn report_never_panics_on_arbitrary_unicode(text in "\\PC*|.*|\\p{Cc}*", lang in 0usize..3) {
-        assert_report(&typographer(lang, RuleSet::ALL), &text)?;
     }
 
     /// The empty set has no rule: nothing changes, and the output is borrowed.

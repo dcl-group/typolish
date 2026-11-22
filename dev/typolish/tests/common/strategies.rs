@@ -4,7 +4,7 @@
 #![allow(dead_code, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use proptest::prelude::*;
-use typolish::{Rule, RuleSet, Slot, SlotKind};
+use typolish::{Language, Rule, RuleSet, Slot, SlotKind, Typographer};
 
 /// Fragments that rules react to or that output kinds encode.
 pub const RISKY: &[&str] = &[
@@ -163,11 +163,18 @@ pub enum GenPiece {
 
 /// A list of generated pieces; slot payloads are their indices.
 pub fn pieces() -> impl Strategy<Value = Vec<GenPiece>> {
+    pieces_of(risky_text)
+}
+
+/// A list of generated pieces whose texts come from `text`; slot payloads are their indices.
+pub fn pieces_of<S: Strategy<Value = String> + 'static>(
+    text: fn() -> S,
+) -> impl Strategy<Value = Vec<GenPiece>> {
     prop::collection::vec(
         prop_oneof![
-            4 => risky_text().prop_map(GenPiece::Text),
+            4 => text().prop_map(GenPiece::Text),
             2 => slot_kind().prop_map(|k| GenPiece::Slot(0, k)),
-            1 => risky_text().prop_map(GenPiece::Protected),
+            1 => text().prop_map(GenPiece::Protected),
             1 => prop::sample::select(vec!["<b>", "</b>", "<br>", "&amp;", ""]).prop_map(|m| GenPiece::Markup(m.to_owned())),
         ],
         0..8,
@@ -213,4 +220,38 @@ pub fn rule_set() -> impl Strategy<Value = RuleSet> {
                 .collect()
         }),
     ]
+}
+
+/// The delimiters of the protection configurations of `protection_typographer`.
+pub const DELIMITERS: &[&str] = &["|", "{{", "}}", "⟦", "⟧", "«", "»", "`", "``", "```"];
+
+/// The number of configurations `protection_typographer` knows.
+pub const PROTECTION_CONFIGS: usize = 5;
+
+/// A typographer with own protection pairs or with backtick protection off (design section 10.1):
+/// equal delimiters `|`, multi-byte `{{` `}}` and `⟦` `⟧`, `«` `»` with backticks off, and a
+/// backtick pair of its own next to the backtick runs.
+pub fn protection_typographer(config: usize, language: Language, set: RuleSet) -> Typographer {
+    let builder = Typographer::builder(language, set);
+    let builder = match config % PROTECTION_CONFIGS {
+        0 => builder.protect_between("|", "|"),
+        1 => builder.protect_between("{{", "}}"),
+        2 => builder.protect_between("⟦", "⟧"),
+        3 => builder.protect_backticks(false).protect_between("«", "»"),
+        _ => builder.protect_between("`", "`"),
+    };
+    builder.build().unwrap()
+}
+
+/// A string of risky pieces mixed with the delimiters of `protection_typographer`.
+pub fn delimiter_text() -> impl Strategy<Value = String> {
+    prop::collection::vec(
+        prop_oneof![
+            2 => prop::sample::select(RISKY),
+            1 => prop::sample::select(DELIMITERS),
+            1 => prop::sample::select(&["\n", "\n\n", " ", "a", "1"][..]),
+        ],
+        0..20,
+    )
+    .prop_map(|v| v.concat())
 }

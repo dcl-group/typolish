@@ -22,7 +22,10 @@ mod probe;
 use std::borrow::Cow;
 use std::ops::Range;
 
-use common::strategies::{GenPiece, borrow, pieces, risky_text, rule_set};
+use common::strategies::{
+    GenPiece, PROTECTION_CONFIGS, borrow, delimiter_text, pieces, pieces_of,
+    protection_typographer, risky_text, rule_set,
+};
 use probe::{SETS, records, tech};
 use proptest::prelude::*;
 use typolish::{
@@ -523,6 +526,90 @@ proptest! {
     }
 }
 
+/// The structure of a report of pieces (property 14): the records are slices of their pieces, in
+/// order, and `report_template` gives what `typeset_template` gives.
+fn assert_template(t: &Typographer, parts: &[GenPiece]) -> Result<(), TestCaseError> {
+    let input = borrow(parts);
+    let report = t.report_template(input.iter().copied(), Output::Unicode);
+    let plain = t.typeset_template(input.iter().copied(), Output::Unicode);
+    prop_assert_eq!(report.result().texts(), plain.texts());
+    prop_assert_eq!(
+        report.result().texts().len(),
+        report.result().slots().len() + 1
+    );
+    let mut last = (0usize, 0usize);
+    for span in report.protected() {
+        prop_assert!(span.piece() < parts.len(), "{:?}", report.protected());
+        let text = match &parts[span.piece()] {
+            GenPiece::Text(text) | GenPiece::Protected(text) => Some(text.as_str()),
+            GenPiece::Slot(..) => None,
+            GenPiece::Markup(_) => {
+                prop_assert!(false, "a record for markup: {:?}", report.protected());
+                None
+            }
+        };
+        if let Some(text) = text {
+            prop_assert!(text.get(span.range()).is_some());
+        }
+        let key = (span.piece(), span.range().start);
+        prop_assert!(
+            key >= last,
+            "records out of order: {:?}",
+            report.protected()
+        );
+        last = key;
+    }
+    let slots = parts
+        .iter()
+        .filter(|p| matches!(p, GenPiece::Slot(..)))
+        .count();
+    let slot_records = report
+        .protected()
+        .iter()
+        .filter(|s| s.kind() == SLOT)
+        .count();
+    prop_assert_eq!(slot_records, slots);
+    for d in report.diagnostics() {
+        prop_assert!(d.piece() < parts.len().max(1));
+    }
+    Ok(())
+}
+
+/// Property 10 for own protection pairs: Text pieces cut anywhere protect like their
+/// concatenation.
+fn assert_cut(t: &Typographer, text: &str, cut: prop::sample::Index) -> Result<(), TestCaseError> {
+    let boundaries: Vec<usize> = text
+        .char_indices()
+        .map(|(i, _)| i)
+        .chain([text.len()])
+        .collect();
+    let at = boundaries[cut.index(boundaries.len())];
+    let (a, b) = text.split_at(at);
+    let whole = t.report(text, Output::Unicode);
+    let parts = t.report_template::<()>([Piece::Text(a), Piece::Text(b)], Output::Unicode);
+    let mut merged: Vec<(ProtectedKind, usize, usize)> = Vec::new();
+    for s in whole.protected() {
+        let (start, end) = (s.range().start, s.range().end);
+        match merged.last_mut() {
+            Some(last) if last.0 == s.kind() && last.2 == start => last.2 = end,
+            _ => merged.push((s.kind(), start, end)),
+        }
+    }
+    prop_assert_eq!(absolute(&records(parts.protected()), &[0, a.len()]), merged);
+    let whole_diags: Vec<_> = whole
+        .diagnostics()
+        .iter()
+        .map(|d| d.kind().clone())
+        .collect();
+    let part_diags: Vec<_> = parts
+        .diagnostics()
+        .iter()
+        .map(|d| d.kind().clone())
+        .collect();
+    prop_assert_eq!(part_diags, whole_diags);
+    Ok(())
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(2000))]
 
@@ -532,34 +619,52 @@ proptest! {
     fn report_template_is_well_formed(parts in pieces(), lang in 0usize..3, set in rule_set()) {
         let language = [Language::RU_RU, Language::EN_US, Language::COMMON][lang].clone();
         let t = Typographer::new(language, set);
-        let input = borrow(&parts);
-        let report = t.report_template(input.iter().copied(), Output::Unicode);
-        let plain = t.typeset_template(input.iter().copied(), Output::Unicode);
-        prop_assert_eq!(report.result().texts(), plain.texts());
-        prop_assert_eq!(report.result().texts().len(), report.result().slots().len() + 1);
-        let mut last = (0usize, 0usize);
-        for span in report.protected() {
-            prop_assert!(span.piece() < parts.len(), "{:?}", report.protected());
-            let text = match &parts[span.piece()] {
-                GenPiece::Text(text) | GenPiece::Protected(text) => Some(text.as_str()),
-                GenPiece::Slot(..) => None,
-                GenPiece::Markup(_) => {
-                    prop_assert!(false, "a record for markup: {:?}", report.protected());
-                    None
-                }
-            };
-            if let Some(text) = text {
-                prop_assert!(text.get(span.range()).is_some());
-            }
-            let key = (span.piece(), span.range().start);
-            prop_assert!(key >= last, "records out of order: {:?}", report.protected());
-            last = key;
-        }
-        let slots = parts.iter().filter(|p| matches!(p, GenPiece::Slot(..))).count();
-        let slot_records = report.protected().iter().filter(|s| s.kind() == SLOT).count();
-        prop_assert_eq!(slot_records, slots);
-        for d in report.diagnostics() {
-            prop_assert!(d.piece() < parts.len().max(1));
-        }
+        assert_template(&t, &parts)?;
+    }
+
+    /// The same with own protection pairs and backticks off (design section 10.1).
+    #[test]
+    fn report_template_is_well_formed_with_own_protection_pairs(
+        parts in pieces_of(delimiter_text),
+        config in 0usize..PROTECTION_CONFIGS,
+        lang in 0usize..3,
+        set in rule_set(),
+    ) {
+        let language = [Language::RU_RU, Language::EN_US, Language::COMMON][lang].clone();
+        assert_template(&protection_typographer(config, language, set), &parts)?;
+    }
+
+    /// Property 10 with own protection pairs: a span over the cut is matched like in the string.
+    #[test]
+    fn text_pieces_protect_like_their_concatenation_with_own_protection_pairs(
+        text in delimiter_text(),
+        config in 0usize..PROTECTION_CONFIGS,
+        lang in 0usize..3,
+        cut in any::<prop::sample::Index>(),
+    ) {
+        let language = [Language::RU_RU, Language::EN_US, Language::COMMON][lang].clone();
+        assert_cut(&protection_typographer(config, language, RuleSet::INTERFACE), &text, cut)?;
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(1_000_000))]
+
+    /// 14. The long run of design section 13.5 for pieces. Run with `cargo test -- --ignored`.
+    #[test]
+    #[ignore = "long run of design section 13.5, property 14"]
+    fn no_panic_on_arbitrary_pieces_long(
+        parts in prop_oneof![pieces(), pieces_of(delimiter_text)],
+        config in 0usize..=PROTECTION_CONFIGS,
+        lang in 0usize..3,
+        set in rule_set(),
+    ) {
+        let language = [Language::RU_RU, Language::EN_US, Language::COMMON][lang].clone();
+        let t = if config == PROTECTION_CONFIGS {
+            Typographer::new(language, set)
+        } else {
+            protection_typographer(config, language, set)
+        };
+        assert_template(&t, &parts)?;
     }
 }
