@@ -139,10 +139,12 @@ never decides for the caller.
 | `TypographicChar`   | info     | `lint` only                                | a character that `to_plain` would change (section 12.3)                                                    |
 
 `Diagnostic` carries its kind, severity, the rule that raised it (`Option<Rule>`), the piece and the
-byte range. `Severity` is ordered (`Info < Warning`). Diagnostics, in `report`, `report_template`,
-`lint` and `lint_template`, are ordered by piece, then byte start, then byte end, then kind in the
-order of the `DiagnosticKind` declaration (`TypographicChar` last). `Diagnostic` implements
-`Display`: `warning quotes.pairs 0:10..11: straight quote has no pair; left as is`.
+byte range. A diagnostic over several pieces is reported at its first piece, with the range clipped
+to that piece (section 3.11), in `lint` as in `report`. `Severity` is ordered (`Info < Warning`).
+Diagnostics, in `report`, `report_template`, `lint` and `lint_template`, are ordered by piece, then
+byte start, then byte end, then kind in the order of the `DiagnosticKind` declaration
+(`TypographicChar` last). `Diagnostic` implements `Display`:
+`warning quotes.pairs 0:10..11: straight quote has no pair; left as is`.
 
 ### 12.5 Explain mode
 
@@ -153,11 +155,12 @@ order of the `DiagnosticKind` declaration (`TypographicChar` last). `Diagnostic`
   Unicode. Records are ordered by position, then by rule order; if two rules touched one position (a
   replacement and a glue next to it), there are two records. Empty edits ("already done") are not
   recorded.
-- `protected()`: the spans no rule may touch, with their kind: `Delimited` (backticks or own pairs),
-  `ProtectedPiece`, `Slot`, or `Technical(TechKind)` for a frozen fragment (`Url`, `Email`, `Flag`,
-  `Path`, `TimeRange` (the times only), `Colon`, `Operator`, `Identifier`, `Angle`, `Uuid`, `Hex`,
-  `IsoDate`, `Version`, `Dotted`, `List`, `CompoundHyphens`, `Unclassified`). This is the main tool
-  for "why did no rule fire here". A `Punctuation` fragment is not a protected span.
+- `protected()`: the spans no rule may touch, one record per piece a span covers (section 3.11),
+  with their kind: `Delimited` (backticks or own pairs), `ProtectedPiece`, `Slot`, or
+  `Technical(TechKind)` for a frozen fragment (`Url`, `Email`, `Flag`, `Path`, `TimeRange` (the
+  times only), `Colon`, `Operator`, `Identifier`, `Angle`, `Uuid`, `Hex`, `IsoDate`, `Version`,
+  `Dotted`, `List`, `CompoundHyphens`, `Unclassified`). This is the main tool for "why did no rule
+  fire here". A `Punctuation` fragment is not a protected span.
 - `diagnostics()`: as in section 12.4.
 
 `Display` prints a table for reports of differences. For Russian Prose, input

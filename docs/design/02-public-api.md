@@ -73,6 +73,7 @@ impl Language {
     /// Whether the language has the data a rule needs. A rule without data is inert.
     pub fn supports(&self, rule: Rule) -> bool;
 }
+/// The same as `from_tag`.
 impl core::str::FromStr for Language { type Err = Error; }
 impl core::fmt::Display for Language { /* the tag */ }
 ```
@@ -213,29 +214,32 @@ Ids:
   the id: one rule serves every language, and language data shapes its behavior. A rule without the
   data it needs is inert for that language and is absent from `Typographer::active_rules()`.
 - An id never changes meaning. A renamed rule keeps its old id as an alias in `from_id`. A removed
-  rule stays as a `#[deprecated]` variant that does nothing until the next breaking release; its id
-  is then reserved forever, and `FromStr` of `Rule` and of `RuleSet` answers with
-  `Error::RemovedRule { id, release }` ("rule id `{id}` was removed in {release}"), a variant added
-  to the `#[non_exhaustive]` `Error` by the release that first removes a rule; version 1 has no
-  removed rules. A deprecated variant is not in `Rule::ALL`, in the order table of section 4.1 or in
-  any built-in set (`ALL`, `PROSE`, `INTERFACE`, base names of `FromStr`), and never in
-  `active_rules()`. `with` may still add it; `contains`, `iter` (after the other rules) and
-  `Display` show it, so the round trip of section 13.9 holds.
+  rule stays as a `#[deprecated]` variant that does nothing until the next breaking release; while
+  the variant exists, `FromStr` of `Rule` and of `RuleSet` accepts its id. That breaking release
+  deletes the variant; its id is then reserved forever, and `FromStr` of `Rule` and of `RuleSet`
+  answers with `Error::RemovedRule { id, release }` ("rule id `{id}` was removed in {release}"), a
+  variant added to the `#[non_exhaustive]` `Error` by the first release that deletes a deprecated
+  variant; version 1 has no removed rules. A deprecated variant is not in `Rule::ALL`, in the order
+  table of section 4.1 or in any built-in set (`ALL`, `PROSE`, `INTERFACE`, base names of
+  `FromStr`), and never in `active_rules()`. `with` may still add it; `contains`, `iter` (after the
+  other rules) and `Display` show it, so the round trip of section 13.9 holds.
 - The string id serves configuration files of callers, reports and test tables. The enum variant
   gives compile-time checking in code.
 
 `RuleSet::from_str` grammar: comma-separated items, spaces around commas allowed. The first item may
 be a base set name (`prose`, `interface`, `empty`, `all`); without one the base is `empty`. Every
-other item is an id, optionally prefixed by `+` (add) or `-` (remove). Spaces around every item, the
-first and the last included, are ignored; a string of spaces is one empty item. No space may follow
-a sign (`+ a` is the unknown id ` a`). The same id given twice with the same sign is not an error.
-The result is `(base ∪ added) \ removed`, independent of item order. An unknown id is
+other item, and the first one when it is not a base name, is an id, optionally prefixed by `+` (add)
+or `-` (remove). Spaces around every item, the first and the last included, are ignored; a string of
+spaces is one empty item. No space may follow a sign (`+ a` is the unknown id ` a`); a sign with
+nothing after it (`+`, `-`) is an empty item. The same id given twice with the same sign is not an
+error. The result is `(base ∪ added) \ removed`, independent of item order. An unknown id is
 `Error::UnknownRule`. `Error::InvalidRuleSet` covers the rest, with these reasons: an id both added
 and removed ("rule both added and removed"), a base name in a later position, with or without a sign
-("base set name after the first item"), and an empty item or an empty string ("empty item").
-`Display` prints plain ids, and the base name `empty` for the empty set, so
-`s.to_string().parse() == Ok(s)` for every set, `EMPTY` included (a test, section 13.9). The base
-`all` and `RuleSet::ALL` take in rules added in later releases (section 15.1).
+("base set name after the first item"), a base name with a sign in the first position ("sign before
+a base set name"), and an empty item or an empty string ("empty item"). `Display` prints plain ids,
+and the base name `empty` for the empty set, so `s.to_string().parse() == Ok(s)` for every set,
+`EMPTY` included (a test, section 13.9). The base `all` and `RuleSet::ALL` take in rules added in
+later releases (section 15.1).
 
 Why an enum with a bit set: `RuleSet` is 16 bytes, `Copy` and usable in `const` items
 (`RuleSet::INTERFACE.with(Rule::NumberTimes)`); membership is one bit test. Bit positions are an
@@ -760,14 +764,16 @@ impl<'a, T> Report<'a, T> {
     pub fn into_result(self) -> T;
     /// Edits ordered by position, then by rule order.
     pub fn changes(&self) -> &[Change];
-    /// Spans that no rule may touch, with the reason (section 12.5).
+    /// Spans that no rule may touch, with the reason (section 12.5); a span over several
+    /// pieces gives one record per piece (section 3.11).
     pub fn protected(&self) -> &[ProtectedSpan];
-    /// Ordered by piece, byte range, then kind (section 12.4).
+    /// Ordered by piece, byte range, then kind (section 12.4). A diagnostic over several pieces
+    /// is reported at its first piece, with the range clipped to that piece (section 3.11).
     pub fn diagnostics(&self) -> &[Diagnostic];
     /// The input text an edit replaced.
     pub fn original(&self, change: &Change) -> &'a str;
 }
-impl<T> core::fmt::Display for Report<'_, T> { /* one line per edit, then protected spans */ }
+impl<T> core::fmt::Display for Report<'_, T> { /* one line per record of changes(), then per record of protected() */ }
 
 /// One atomic edit in terms of the input and the Unicode result.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -914,7 +920,7 @@ pub enum Error {
 | `Language::from_tag`                            | `UnknownLanguage`                | the tag is malformed or has no data                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `Language::from_data`, `LanguageBuilder::build` | `InvalidLanguageData`            | a check of section 7.6 fails                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `Rule::from_str`                                | `UnknownRule`                    | no such id                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `RuleSet::from_str`                             | `UnknownRule`, `InvalidRuleSet`  | `UnknownRule`: unknown id; `InvalidRuleSet`: an id both added and removed, a base name after the first item, an empty item or string                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `RuleSet::from_str`                             | `UnknownRule`, `InvalidRuleSet`  | `UnknownRule`: unknown id; `InvalidRuleSet`: an id both added and removed, a base name after the first item, a signed base name first, an empty item or string                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `Number::decimal`                               | `InvalidNumber`                  | not an ASCII decimal                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `TypographerBuilder::build`                     | `RuleConflict`, `InvalidSetting` | (1) `RuleConflict`: a rule both enabled and disabled. `InvalidSetting`, checked in this order: (2) protection delimiters: an empty or whitespace delimiter or one containing a letter or digit, a delimiter equal to or a prefix of a delimiter of another pair, a delimiter that is a proper prefix of the other one of its pair (equal delimiters of one pair are allowed); (3) `QuotePairs`: `"` or `'` or a space or a letter (output would become input again, breaking idempotence), or four glyphs that are not pairwise distinct or not quote characters (section 7.6); (4) lists, in the order units, short words, particles: a word that is empty, contains a space, or is both added and removed; a unit that starts with a digit; (5) numbers: a group separator that is a digit, a letter, or whitespace other than U+00A0 and U+202F; a minus that is a digit, a letter, whitespace, `"` or `'` (it is written into text by `number.minus`; whitespace would erase the sign, a quote would break idempotence); `min_grouping_digits` above 4 (0 turns grouping off). The first failing check is reported (section 2.4). |
 
@@ -928,7 +934,8 @@ Choices:
   section 14.5). If an internal invariant is violated anyway (a bug), the engine returns the input
   unchanged for that window rather than panicking; a test with arbitrary strings, including lone
   combining marks, emoji sequences and control characters, guards this.
-- `RemovedRule` is not in version 1: it arrives with the first removed rule (section 2.3).
+- `RemovedRule` is not in version 1: it arrives with the first release that deletes a deprecated
+  rule variant (section 2.3).
 - Fields are `&'static str` when the value comes from a closed set (a setting name, a fixed reason)
   and `String` when the text is the caller's or built per call (a tag, an offending word).
 
@@ -993,7 +1000,9 @@ included); streaming without a buffer (quote pairing defers decisions to the end
   go into the middle); the representation of `RuleSet`; the contents of language lists; the text of
   `summary()` and of the `Display` of `Error`, `Diagnostic` and `Report`. The `Display` of `Rule`,
   `RuleSet` and `Language` is part of the contract: it prints the id, the id list and the tag, and
-  `FromStr` reads it back.
+  `FromStr` reads it back. For `Language` the round trip covers the built-in languages and `COMMON`
+  (section 2.2): the tag of a caller's language (`from_data`, `from_static`, `LanguageBuilder`) is
+  not in the registry, and `FromStr` answers it with `Error::UnknownLanguage`.
 - The policy for changes of output, for new built-in languages and for the MSRV is section 15.1.
 - `cargo-semver-checks` is not installed on the development machine. For 0.1.0 there is no previous
   release; the public surface is fixed by the doctests. From the second release on, the preparation

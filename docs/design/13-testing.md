@@ -163,13 +163,19 @@ gives the output of the whole set.
   `Change`, `ProtectedSpan` and `Diagnostic`. Rows: a builder with two violations (`RuleConflict`
   and `InvalidSetting`) gives equal `Error`s for two orders of its calls; the accessors of
   `ProtectedSpan` on the example of section 12.5 (`kind() == Technical(Colon)`, `piece() == 0`,
-  `range() == 25..34`); `RuleSet::from_str`, one row per case of section 2.3: an unknown id →
-  `UnknownRule`, an id both added and removed, a base name after the first item (with and without a
-  sign), an empty item and an empty string → `InvalidRuleSet` with the reason of section 2.3;
-  `" prose , +number.times "` → Ok, `"+nbsp.dash,+nbsp.dash"` → Ok, `"   "` → `InvalidRuleSet`,
-  `"+ nbsp.dash"` → `UnknownRule`; `protect_between`: `("|", "|")` → Ok, `("[", "[[")` →
-  `InvalidSetting`, `("{{", "}}")` together with `("{{", "]]")` → `InvalidSetting`, `("a1", "|")` →
-  `InvalidSetting`; `Language::RU_RU` equals a copy built by
+  `range() == 25..34`); a delimited span over ``Text("Run `ls")``, ``Text(" -la`")`` → two
+  `Delimited` records, `0:4..7` and `1:0..5`; `MixedScript` on `Text("Мо")`, `Text("sква")` → one
+  diagnostic, `piece() == 0`, `range() == 0..4`, equal in `report_template` and `lint_template`;
+  `RuleSet::from_str`, one row per case of section 2.3: an unknown id → `UnknownRule`, an id both
+  added and removed, a base name after the first item (with and without a sign), an empty item and
+  an empty string → `InvalidRuleSet` with the reason of section 2.3; `" prose , +number.times "` →
+  Ok, `"+nbsp.dash,+nbsp.dash"` → Ok, `"   "` → `InvalidRuleSet`, `"+ nbsp.dash"` → `UnknownRule`;
+  `"-nbsp.dash"` → Ok (`EMPTY`), `"+"` and `"prose,-"` → `InvalidRuleSet` ("empty item"), `"+prose"`
+  → `InvalidRuleSet` ("sign before a base set name"); `protect_between`: `("|", "|")` → Ok,
+  `("[", "[[")` → `InvalidSetting`, `("{{", "}}")` together with `("{{", "]]")` → `InvalidSetting`,
+  `("a1", "|")` → `InvalidSetting`; a language built by
+  `LanguageBuilder::from_language(&Language::RU_RU, "ru-KZ")` prints `ru-KZ`, and
+  `"ru-KZ".parse::<Language>()` → `UnknownLanguage`; `Language::RU_RU` equals a copy built by
   `LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")` with no changes, and their hashes are
   equal; a copy with a different list of short words is not equal.
 - `tests/lint.rs`: every diagnostic kind of section 12.4 with a firing and a non-firing row;
@@ -417,14 +423,15 @@ byte-identical; `dev/typolish/README.md` is a symlink to the root README;
 unique and of the documented form, `Rule::from_str(r.id()) == Ok(r)`;
 `Language::from_tag(l.tag()) == Ok(l)` for `Language::builtin()` and `COMMON`, and
 `from_tag("UND") == Ok(COMMON)`; `s.to_string().parse() == Ok(s)` for `RuleSet::EMPTY` (printed
-`empty`), `ALL`, `PROSE`, `INTERFACE` and generated sets; the composition of Prose and Interface
-matches section 9.2; the rustdoc of every builder setting names exactly the rules that list it in
-the settings column of section 8.1; `src/` contains no `std::env`, `std::fs`, `std::net`,
-`std::time` or `unsafe`; `src/lang/*.rs` contain no `fn`, `impl`, `match` or `if`; replacement
-tables produce no letter and no digit; built-in languages × built-in sets build without error. A
-unit test next to the prefilter checks, for every built-in set and language, that the trigger set
-equals the union of the trigger constants of the active rules. Checks that read `docs/design/` skip
-when the file is absent (the published package has no design).
+`empty`), `ALL`, `PROSE`, `INTERFACE` and generated sets (deprecated rules included while their
+variant exists); the composition of Prose and Interface matches section 9.2; the rustdoc of every
+builder setting names exactly the rules that list it in the settings column of section 8.1; `src/`
+contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; `src/lang/*.rs` contain no
+`fn`, `impl`, `match` or `if`; replacement tables produce no letter and no digit; built-in languages
+× built-in sets build without error. A unit test next to the prefilter checks, for every built-in
+set and language, that the trigger set equals the union of the trigger constants of the active
+rules. Checks that read `docs/design/` skip when the file is absent (the published package has no
+design).
 
 `tests/data.rs` runs the validation of section 7.6 on every built-in table (so the order and
 duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,

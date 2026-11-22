@@ -487,7 +487,8 @@ depend on the recorder; a test compares the three modes on the corpus. `Journal`
 crosses piece boundaries: a change becomes one record per piece in input order, the first holding
 the whole replacement and the others an empty replacement (a deletion); a protected span becomes one
 record per piece it covers; a diagnostic is reported at its first piece, with the range clipped to
-that piece.
+that piece. `Diagnostics` clips a diagnostic the same way, so `lint` and `report` give equal
+diagnostics (section 12.3).
 
 ### 3.12 Complexity and pathological input
 
