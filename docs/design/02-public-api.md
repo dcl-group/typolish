@@ -1002,7 +1002,10 @@ included); streaming without a buffer (quote pairing defers decisions to the end
   `RuleSet` and `Language` is part of the contract: it prints the id, the id list and the tag, and
   `FromStr` reads it back. For `Language` the round trip covers the built-in languages and `COMMON`
   (section 2.2): the tag of a caller's language (`from_data`, `from_static`, `LanguageBuilder`) is
-  not in the registry, and `FromStr` answers it with `Error::UnknownLanguage`.
+  read against the registry too, so `FromStr` answers it with `Error::UnknownLanguage`, or, when
+  `from_tag` resolves the tag (a built-in tag, its bare language subtag such as `ru`, or `und`),
+  with that built-in language or `COMMON`, which is not equal to the caller's language when their
+  data differ.
 - The policy for changes of output, for new built-in languages and for the MSRV is section 15.1.
 - `cargo-semver-checks` is not installed on the development machine. For 0.1.0 there is no previous
   release; the public surface is fixed by the doctests. From the second release on, the preparation
@@ -1074,15 +1077,19 @@ run time the application formats `Number` arguments with `format_number` of the 
 (the same `typographer(tag)` function in a shared crate) and `Output::Unicode`, so template and
 value fit together: the compiler has already turned the literal body into Unicode, and a value
 escaped again would show its escapes (`1\u{a0}000` instead of `1⍽000`). Values are inserted as they
-are (section 11.1). A generator of a JS bundle writes its texts with `EscapeStyle::JSON` or
-`EscapeStyle::JS` the same way, and its run-time values are plain Unicode too. With `Output::Html`
-the texts are HTML, not bodies of Rust literals: they may hold `\` (from a protected span such as
-`C:\temp`), raw line breaks and, with a nowrap style, the `"` of `<span class="nowrap">`. Such a
-generator writes each text as a complete Rust literal itself,
+are (section 11.1). A generator of a JS bundle writes the texts of an `Output::Escaped` template
+with `EscapeStyle::JSON` or `EscapeStyle::JS` the same way, and its run-time values are plain
+Unicode too. With `Output::Html` the texts are HTML, not bodies of string literals, and no
+`EscapeStyle` applies to them: they may hold `\` (from a protected span such as `C:\temp`), raw line
+breaks and, with a nowrap style, the `"` of `<span class="nowrap">`. Such a generator writes each
+text as a complete string literal of the target language itself. In Rust code that is
 `TemplatePart::Text(t) => code.push_str(&format!("s.push_str({t:?}); "))` (the `Debug` form of `str`
-is a valid Rust string literal), and its run-time code escapes `Word`, `Date` and `Other` values
-itself and formats numbers with the same `Output::Html`; the crate encodes only the texts (section
-11.1).
+is a valid Rust string literal); in a JS or JSON bundle it is the JSON string of the text, written
+by a JSON encoder, with `<`, U+2028 and U+2029 written as `\u003c`, `\u2028` and `\u2029` as
+`EscapeStyle::JSON` does (section 11.6), so that every JavaScript engine reads it back unchanged,
+also inside a `<script>` element (the `Debug` form is not JSON: it writes U+00A0 as `\u{a0}`). Its
+run-time code escapes `Word`, `Date` and `Other` values itself and formats numbers with the same
+`Output::Html`; the crate encodes only the texts (section 11.1).
 
 ### 2.15 Per-request use
 
