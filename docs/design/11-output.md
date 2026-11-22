@@ -55,8 +55,8 @@ missing from the row:
 
 Every name and every absence of a name in the table was checked against the WHATWG list of named
 character references on 2026-11-21 (section 14.8); the table is a `const` in `src/output.rs`, and a
-test compares it with an extract of that list kept in `tests/fixtures/` (section 13.2). `№`, `§`,
-`¶` and `°` are not in the set: no rule produces them, and they are written as characters.
+test compares it with `tests/fixtures/whatwg-entities.txt`, an extract of that list (section 13.2).
+`№`, `§`, `¶` and `°` are not in the set: no rule produces them, and they are written as characters.
 
 ### 11.3 Unicode
 
@@ -87,16 +87,17 @@ narrow space keeps its width, a hyphen the caller typed as U+2011 comes back as 
 ordinary space inside the element can only be U+00A0 glue, which keeps decoding exact (section
 11.8). The class string is escaped as an attribute value. Groups do not nest.
 
-- Example: `и⍽т.⍽д.` → `<span class="nowrap">и т. д.</span>`; a telephone number glued by
-  `nbsp.phone` → `<span class="nowrap">+7 495 123-45-67</span>`; the same number typed by the caller
-  with U+00A0 and U+2011 → `<span class="nowrap">+7 495 123&#x2011;45&#x2011;67</span>`.
+- Example: `и⍽т.⍽д.` → `<span class="nowrap">и т. д.</span>`; a telephone number `+7 495 123-45-67`
+  glued by `nbsp.phone` (Prose) → `<span class="nowrap">+7 495 123-45-67</span>`; the same number
+  typed by the caller with U+00A0 and U+2011 →
+  `<span class="nowrap">+7 495 123&#x2011;45&#x2011;67</span>`.
 - Numbers: `format_number` and `format_range` in nowrap mode write one element around the whole
   result when it contains glue (a group separator U+00A0 or U+202F), and no element otherwise: ru
   `-12345` → `<span class="nowrap">&minus;12 345</span>`, ru `123` → `123`, en `1234` → `1,234`.
-- Templates: the n + 1 form always has room for the tags. A group that starts with slot i opens at
-  the end of `texts()[i]`; a group that ends with slot j closes at the start of `texts()[j + 1]`; a
-  slot inside a group stays inside the element (`в {city}` → texts
-  `["<span class=\"nowrap\">в ", "</span>"]`).
+- Templates: the n + 1 form (n slots and n + 1 texts, `texts()[i]` before `slots()[i]`, section 2.6)
+  always has room for the tags. A group that starts with slot i opens at the end of `texts()[i]`; a
+  group that ends with slot j closes at the start of `texts()[j + 1]`; a slot inside a group stays
+  inside the element (`в {city}` → texts `["<span class=\"nowrap\">в ", "</span>"]`).
 - Splits: a group that crosses a `Markup` piece is split there, because a span cannot be opened
   across foreign markup; the glue at the split is written as an entity, and `report` adds
   `NowrapFallback` (info). A group also ends at a protected span, without a diagnostic: the span's
@@ -126,13 +127,14 @@ backslashes; escaping after the crate would ruin its own escapes.
 
 - `JS` and `JS_HEX` use only escapes valid in every JavaScript string form, so the result is safe in
   single-quoted, double-quoted and template literals and inside an HTML `<script>` element. `JS_HEX`
-  is the `\xHH` form the task shows (`\x00`), with the same complete container escaping.
+  is the `\xHH` form (`\x00`), with the same complete container escaping.
 - `JSON` uses only escapes that JSON defines and also escapes U+2028, U+2029, `<`, `>` and `&`, so
   the result is safe to embed in a script element too.
 - `RUST` is for code generated at build time (section 2.14): the body of a normal (non-raw) string
   literal.
-- `JS_CODE_POINT` escapes the same characters as `JS` in the ES2015 form `\u{A0}` (`\u{27}` for `'`,
-  `\u{1F600}` above the BMP, no surrogate pairs), for codebases that target modern engines only.
+- `JS_CODE_POINT` escapes the same characters as `JS` in the ES2015 form, with uppercase hex digits
+  and no leading zeros (`\u{A0}`, `\u{27}` for `'`, `\u{0}` for U+0000, `\u{2028}`, `\u{1F600}`
+  above the BMP, no surrogate pairs), for codebases that target modern engines only.
 - `CSS` writes the body of a CSS string (`content: "…"`): `\` → `\\`, `"` → `\"`, `'` → `\'`, the
   controls U+0001 to U+001F and U+007F (among them tab and LF, CR and FF, the newlines of CSS) and
   `<` → a hexadecimal escape followed by a space (`\a `, `\c `, `\3c `); U+0000, which CSS cannot

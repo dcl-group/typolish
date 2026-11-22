@@ -15,8 +15,9 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   `tests/fixtures/whatwg-entities.txt` (section 13.2). Host names are neutral (`example.com`,
   `db.example.internal`).
 - Expectations are written with visible markers: the helper `vis("5⍽МБ")` replaces `⍽` with U+00A0
-  and `⎵` with U+202F, and another helper checks that inputs contain no markers. On failure the
-  helper prints invisible characters as markers.
+  and `⎵` with U+202F (inputs in the tables are written with markers and go through `vis` too), and
+  another helper asserts that a string passed to the typographer, after `vis`, contains no marker
+  characters. On failure the helper prints invisible characters as markers.
 - The reference implementation is not run by the tests. Its recorded pairs are plain tables; its
   name appears nowhere in the repository (a script outside the repository checks `git diff --cached`
   and the commit message before every commit, since a test in the repository would have to contain
@@ -58,9 +59,10 @@ gives the output of the whole set.
   `"a 'b c" 5'` → `“a 'b c” 5′` (Prose) and `“a 'b c” 5'` (Interface); en `“Say "hi" at 5”` →
   `“Say ‘hi’ at 5”`; ru `Цена 27»` → unchanged, `UnmatchedQuote` (info); ru `Папка "/etc/" пуста` →
   `Папка «/etc/» пуста`; en `Run "x->" now` → `Run “x->” now`; ru `Адрес "::1"` → `Адрес «::1»`; en
-  `She loves 'the dogs'` → unchanged, and with `Never` → `She loves 'the dogs’`; en
-  `He said ‘x’(see note)` → unchanged, `UnmatchedQuote` (info); ru `Он сказал:"привет" и ушёл.` →
-  unchanged, no diagnostic (frozen fragment, section 10.8).
+  `She loves 'the dogs'` → unchanged, and with `Never` → `She loves 'the dogs’`; en `'42'` with
+  `Never` → `’42′` (Prose) and `’42'` (Interface); en `He said ‘x’(see note)` → unchanged,
+  `UnmatchedQuote` (info); ru `Он сказал:"привет" и ушёл.` → unchanged, no diagnostic (frozen
+  fragment, section 10.8).
 - `tests/rules_dash.rs`: ru `Ждите - ...` with `dash.spaced-hyphen` alone → unchanged, no
   `AmbiguousHyphen`, `report().protected()` empty; en Closed `Moscow — the capital` with
   `dash.spaced-hyphen` alone → unchanged, `Cow::Borrowed` (the sets give `Moscow — the⍽capital`); en
@@ -110,21 +112,21 @@ gives the output of the whole set.
   with `ellipsis.dots` and `nbsp.abbreviations` → `и⍽т.⍽д…`; `и т. д…` → `и⍽т.⍽д…`; en `etc...` with
   `ellipsis.dots` and `nbsp.abbreviations` → `etc…` (`etc` with its stop is `Dictionary`);
   `nbsp.signs`: `¶IV` → `¶⍽IV`, not borrowed; `¶XIX` → `¶⍽XIX`; `¶VV` → unchanged; ru `и т. д.` with
-  `narrow_glue` for abbreviations → `и\u{A0}т.\u{202F}д.`; ru `5 м2` → `5⍽м2`, `5–10 м2` → `5–10⍽м2`
-  (Prose), `5 м2x` → unchanged; en `I said no. Then I left.` → unchanged; en `See No. 5` →
+  `narrow_glue(NarrowGlue::ABBREVIATIONS)` → `и\u{A0}т.\u{202F}д.`; ru `5 м2` → `5⍽м2`, `5–10 м2` →
+  `5–10⍽м2` (Prose), `5 м2x` → unchanged; en `I said no. Then I left.` → unchanged; en `See No. 5` →
   `See No.⍽5`; ru `См. рис. 5` → `См.⍽рис.⍽5`; ru Prose `стр. 9-12` → `стр.⍽9–12` and
   `в 2010-11 гг.` → `в⍽2010–11⍽гг.` (a range is an operand, section 8.2); ru `1990–2000 — годы` →
   `1990–2000⍽— годы` in both sets; en `the 90's` and `of don't` with `nbsp.short-words` alone →
   `the⍽90's` and `of⍽don't`, ru `и don't` → `и⍽don't` (a core of kind `Word` is a word whatever its
   number of tokens, section 8.2); ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` → unchanged;
   en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both sets); ru `Привезли 5 т груза` →
-  `Привезли 5⍽т груза`; en `Attached` `100⍽%` → unchanged; ru `1990–2000 г. Затем`,
-  `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` →
-  `г.⍽Москвы` (a label range); ru `21.11.2026 г.` → `21.11.2026⍽г.`; ru
-  `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and `report().protected()` lists
-  `Technical(Version)` for the date; ru `21.11.26 г.` → `21.11.26⍽г.`; ru
-  `Договор от 21.11.26 г. Затем` → no glue after `г.`; ru `0.2.27 г.` → unchanged (not a date core);
-  ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en
+  `Привезли 5⍽т груза`; en with `PercentSpacing::Attached`: `100⍽%` → unchanged (only a single
+  U+0020 is removed, section 8.7); ru `1990–2000 г. Затем`, `2010-11 г. Затем`, `5–10 ч. Потом` → no
+  glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` → `г.⍽Москвы` (a label range); ru
+  `21.11.2026 г.` → `21.11.2026⍽г.`; ru `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and
+  `report().protected()` lists `Technical(Version)` for the date; ru `21.11.26 г.` → `21.11.26⍽г.`;
+  ru `Договор от 21.11.26 г. Затем` → no glue after `г.`; ru `0.2.27 г.` → unchanged (not a date
+  core); ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en
   `J. R. R. R. Tolkien` → unchanged (Interface); `nbsp.initials`: ru `Об этом сказал А. Петров.` →
   `Об этом сказал А.⍽Петров.`, ru `Выберите вариант А. После этого` →
   `Выберите вариант А.⍽После этого`, en `I chose plan B. Then I left.` →
@@ -136,14 +138,15 @@ gives the output of the whole set.
   `nbsp.initials` → `Выберите вариант Д.⍽После этого`, `I chose plan P.⍽Then I left.`.
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
   ranges with negative ends (`−5–−1`) and equal ends (ru `8⍽000–8⍽000`, en `8,000–8,000`), decimals
-  (`Number::decimal` keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`,
-  `f32::MAX`), `i128::MIN`, `u128::MAX`, `f64::NAN`, infinities, `-0.0`, the grouping threshold (3
-  and 4 digits: ru `999`, `1⍽000`, en `999`, `1,000`), `min_grouping_digits(0)` (no grouping for
-  `1234567890`), `min_grouping_digits(4)` (`123456` ungrouped, `1234567` grouped), `COMMON`
-  (`1234567` ungrouped), `Number::fixed` ties, every output kind, and nowrap with and without glue
-  (`123` in ru has no element); the builder rejects `group_separator(' ')`,
-  `group_separator('\u{2009}')`, `minus_sign(' ')` and `minus_sign('"')` with `InvalidSetting`;
-  `group_separator('\u{202F}')` builds, and nowrap output wraps `12⎵345` in one element.
+  (`Number::decimal` keeps precision), `f32` values (ru `0.1f32` → `0,1`, ru `1.1f32` → `1,1`, en
+  `1.1f32` → `1.1`, `f32::MAX`), negative infinity (ru `−∞`), `i128::MIN`, `u128::MAX`, `f64::NAN`,
+  infinities, `-0.0`, the grouping threshold (3 and 4 digits: ru `999`, `1⍽000`, en `999`, `1,000`),
+  `min_grouping_digits(0)` (no grouping for `1234567890`), `min_grouping_digits(4)` (`123456`
+  ungrouped, `1234567` grouped), `COMMON` (`1234567` ungrouped), `Number::fixed` ties, every output
+  kind, and nowrap with and without glue (`123` in ru has no element); the builder rejects
+  `group_separator(' ')`, `group_separator('\u{2009}')`, `minus_sign(' ')` and `minus_sign('"')`
+  with `InvalidSetting`; `group_separator('\u{202F}')` builds, and nowrap output wraps `12⎵345` in
+  one element.
 - `tests/output.rs`: every output kind on a fixed set of inputs, including unpaired quotes,
   backslashes in protected spans, line breaks, U+2028, U+2029 and blank lines between paragraphs
   with quotes on both sides, in every output kind, `<script>`, `${`, characters above the BMP;
@@ -163,18 +166,18 @@ gives the output of the whole set.
   `quote_pairs` set to primary `« »` and nested `‹ ›` turns `"a "b" c"` into
   `&laquo;a &lsaquo;b&rsaquo; c&raquo;` with `HtmlStyle::NAMED` and into
   `\u00ABa \u2039b\u203A c\u00BB` with `EscapeStyle::JS`.
-- `tests/parts.rs`: templates, including the walk-through of section 2.14, select variants, `Other`
-  slots, nowrap groups starting and ending at slots, the slot participation table of section 2.6 row
-  by row (with `{Date}-{Date}` → `{Date}–{Date}` and `{Number}-{Date}` unchanged), labels
-  (`№{n} г. Москвы`), and backtick protection across pieces (``Run `git checkout -- { $b }` ``);
-  tokens across pieces: `[Text("Ждём."), Text("..")]` → `Ждём…` with two `Change` records, and
-  `[Text("Ждём."), Markup("<b>"), Text("..")]` → unchanged; percent and signs next to slots: `{n}%`
-  in ru with `PercentSpacing::Spaced` and with `Language` → `{n}⍽%`; `{n}‰` with
-  `RuleSet::EMPTY.with(Rule::NbspUnits)` and `Spaced` → `{n}⍽‰`; `¶{n}` → `¶⍽{n}`; none of them
-  borrowed; `{a}-5 кг` → `{a}-5⍽кг`; `5-{d} г.` → unchanged; ru `{d} г. Затем` (a `Date` slot) → no
-  glue after `г.`; ru `Text("Скажи \"раз\n")`, `Slot(Other)`, `Text("\nдва\"")` → quotes paired
-  `«раз … два»`, one window; an empty list of pieces → `texts() == [""]` (borrowed), no slots,
-  `changed() == false`; `fill` inserts values unchanged (a value `<b>` stays `<b>` in
+- `tests/parts.rs`: templates, including the Fluent mapping table of section 2.14 (each row as a
+  piece list), select variants, `Other` slots, nowrap groups starting and ending at slots, the slot
+  participation table of section 2.6 row by row (with `{Date}-{Date}` → `{Date}–{Date}` and
+  `{Number}-{Date}` unchanged), labels (`№{n} г. Москвы`), and backtick protection across pieces
+  (``Run `git checkout -- { $b }` ``); tokens across pieces: `[Text("Ждём."), Text("..")]` → `Ждём…`
+  with two `Change` records, and `[Text("Ждём."), Markup("<b>"), Text("..")]` → unchanged; percent
+  and signs next to slots: `{n}%` in ru with `PercentSpacing::Spaced` and with `Language` → `{n}⍽%`;
+  `{n}‰` with `RuleSet::EMPTY.with(Rule::NbspUnits)` and `Spaced` → `{n}⍽‰`; `¶{n}` → `¶⍽{n}`; none
+  of them borrowed; `{a}-5 кг` → `{a}-5⍽кг`; `5-{d} г.` → unchanged; ru `{d} г. Затем` (a `Date`
+  slot) → no glue after `г.`; ru `Text("Скажи \"раз\n")`, `Slot(Other)`, `Text("\nдва\"")` → quotes
+  paired `«раз … два»`, one window; an empty list of pieces → `texts() == [""]` (borrowed), no
+  slots, `changed() == false`; `fill` inserts values unchanged (a value `<b>` stays `<b>` in
   `Output::Html`), as section 11.1 states; the flow of section 2.14 for `EscapeStyle::RUST` and
   `EscapeStyle::JSON`: ru `{n} руб.` with a `Number` slot, each text decoded by the test decoder of
   section 13.5 and joined with `format_number(1000, Output::Unicode)` gives `1⍽000⍽руб.` with a real
@@ -257,7 +260,10 @@ gives the output of the whole set.
 The 820 cases of the scouting corpus, with the output of the reference implementation (default
 settings, recorded outside the repository), become `tests/reference/{ru,en_us}.rs` through a script
 outside the repository, data modules included by the test target `tests/reference.rs` (section
-14.6). Every case is in one of two groups, each a plain table row:
+14.6). Every row holds a case id, the input and the recorded output. A case id starts with the
+corpus group of the case and ends with its language and number (`neg.list.ru.518`,
+`neg.list.ctx.ru.519`, `quote.apostrophe.en-US.023`); the `neg.*` groups of section 13.3 are found
+by this prefix. From stage 5 every case is also in one of two groups, each a plain table row:
 
 - `AGREE`: our output equals the recorded one;
 - `DIVERGE`: our output is written out together with a reason code from section 8.12 (`NoGuess`,
@@ -288,6 +294,12 @@ in `AGREE` or moved to `DIVERGE` with a reason code. The stage 5 comparison (sec
 version named in the header.
 
 ### 13.5 Properties
+
+Test files: properties 1 to 12 and 14 to 17 live in `tests/properties.rs` (the prefilter part of
+property 8 is a unit test, below); property 13 lives in `tests/roundtrip.rs` together with the table
+test of `roundtrip-known.tsv`; `tests/corpus.rs` compares the snapshots of section 13.7
+(`expected/`) and runs idempotence on the corpus; the `#[ignore]` test `load_is_linear` of section
+13.8 lives in `tests/load.rs`.
 
 `proptest` generators: a grammar of risky pieces (straight and typed quotes, `-`, `--`, `—`, `–`,
 `.`, `...`, `…`, numbers, units, short words of both languages, technical fragments from section
@@ -449,10 +461,11 @@ U+00A0 and must not be normalized.
   `#![allow(unsafe_code)]`, section 14.5; the allocator counts and delegates to
   `std::alloc::System`) checks the table of section 2.12: zero allocations for an unchanged string
   after warm-up (both through the prefilter and through the full pipeline), one for a changed
-  string, zero for `format_number` written into a buffer with room, zero in `Typographer::new`; ru
-  `Сохранить` in Interface → `Cow::Borrowed`, no lexing; an iterator of template pieces that calls
-  `typeset` adds no allocations beyond the table of section 2.12; after an input larger than 64 KiB
-  the first short call allocates and the second does not.
+  string, zero for `format_number` written with `write!` into a `String` with room (the `Display`
+  path of section 2.12) and for `typeset_into` into a buffer with room, zero in `Typographer::new`;
+  ru `Сохранить` in Interface → `Cow::Borrowed`, no lexing; an iterator of template pieces that
+  calls `typeset` adds no allocations beyond the table of section 2.12; after an input larger than
+  64 KiB the first short call allocates and the second does not.
 
 Rejected: `criterion` (a heavy tree: `clap`, `serde`, `regex`, `rayon`) and `divan` (last release in
 2025-04); linear behavior needs no statistics package.
@@ -467,15 +480,17 @@ unique and of the documented form, `Rule::from_str(r.id()) == Ok(r)`;
 `Language::from_tag(l.tag()) == Ok(l)` for `Language::builtin()` and `COMMON`, and
 `from_tag("UND") == Ok(COMMON)`; `s.to_string().parse() == Ok(s)` for `RuleSet::EMPTY` (printed
 `empty`), `ALL`, `PROSE`, `INTERFACE` and generated sets (deprecated rules included while their
-variant exists); the composition of Prose and Interface matches section 9.2; the rustdoc of every
+variant exists); the composition of Prose and Interface, and the rule lists in their rustdoc, match
+section 9.2 and the Prose and Interface columns of sections 4.1 and 8.1; the rustdoc of every
 builder setting names exactly the rules that list it in the settings column of section 8.1; `src/`
-contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; `src/lang/*.rs` contain no
-`fn`, `impl`, `match` or `if`; replacement tables produce no letter and no digit; every character
-the lexer reads as `Quote` (section 3.5) other than `"` and `'` is in the table of section 11.2, `′`
-and `″` in the primes row and the others in the quotes row; built-in languages × built-in sets build
-without error. A unit test next to the prefilter checks, for every built-in set and language, that
-the trigger set equals the union of the trigger constants of the active rules. Checks that read
-`docs/design/` skip when the file is absent (the published package has no design).
+contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; `src/lang/ru_ru.rs`,
+`src/lang/en_us.rs` and `src/lang/common.rs` contain no `fn`, `impl`, `match` or `if` (section 7.1);
+replacement tables produce no letter and no digit; every character the lexer reads as `Quote`
+(section 3.5) other than `"` and `'` is in the table of section 11.2, `′` and `″` in the primes row
+and the others in the quotes row; built-in languages × built-in sets build without error. A unit
+test next to the prefilter checks, for every built-in set and language, that the trigger set equals
+the union of the trigger constants of the active rules. Checks that read `docs/design/` skip when
+the file is absent (the published package has no design).
 
 `tests/data.rs` runs the validation of section 7.6 on every built-in table (so the order and
 duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,

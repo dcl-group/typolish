@@ -175,8 +175,8 @@ comment.
 
 ### 14.6 Repository layout
 
-Following zonewright; stage 2 creates the skeleton (everything except `docs/design/`, which this
-commit adds, and the modules, tests and examples that later stages of section 15.4 deliver).
+Following zonewright; stage 2 creates the skeleton (everything except `docs/design/`, which already
+exists, and the modules, tests and examples that later stages of section 15.4 deliver).
 
 ```text
 AGENTS.md  CLAUDE.md  README.md  CHANGELOG.md  LICENSE-MIT  LICENSE-APACHE
