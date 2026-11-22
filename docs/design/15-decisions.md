@@ -152,15 +152,16 @@ seed `‚Wort‘` needs it), with every dictionary that the classifier reads in 
 abbreviation parts, elisions, month forms, atom exceptions) complete for ru and en,
 `Typographer::new` and the builder, `Piece` and `Template`, ingest and protection, windows, lexer,
 classifier with labels, freezing, the phase engine, the recorders with `report` (changes, protected
-spans and diagnostics; its `Display` comes in stage 4), rendering for `Output::Unicode`, the
-thread-local and explicit scratch; the generated tables `tests/reference/ru.rs` and
-`tests/reference/en_us.rs` with all 820 rows (case id, input and recorded output; the corpus group
-of a case, such as `neg.list`, is the prefix of its case id, section 13.4; the `AGREE`/`DIVERGE`
-group and the reason code come in stage 5), the row type in `tests/common/mod.rs`, and
-`tests/negative.rs`, which reads their `neg.*` rows through `#[path]` (sections 13.3 and 14.6).
-Rules: `quotes.*`, `dash.*`, `range.*`, `ellipsis.*` for ru and en. The `nbsp.*` rules come in stage
-3, so in this stage the set-level tables run with them removed from the sets (a test helper), and
-stage 3 switches the same tables to the full sets. Ready when:
+spans and diagnostics; its `Display` comes in stage 4), rendering for `Output::Unicode`
+(`Output::Html` and `Output::Escaped` are accepted but written as Unicode until stage 3, and their
+rustdoc and the changelog say so), the thread-local and explicit scratch; the generated tables
+`tests/reference/ru.rs` and `tests/reference/en_us.rs` with all 820 rows (case id, input and
+recorded output; the corpus group of a case, such as `neg.list`, is the prefix of its case id,
+section 13.4; the `AGREE`/`DIVERGE` group and the reason code come in stage 5), the row type in
+`tests/common/mod.rs`, and `tests/negative.rs`, which reads their `neg.*` rows through `#[path]`
+(sections 13.3 and 14.6). Rules: `quotes.*`, `dash.*`, `range.*`, `ellipsis.*` for ru and en. The
+`nbsp.*` rules come in stage 3, so in this stage the set-level tables run with them removed from the
+sets (a test helper), and stage 3 switches the same tables to the full sets. Ready when:
 
 - `typeset` and `typeset_template` work for ru, en and COMMON with these rules;
 - the rule tables of these rules pass, alone and in both sets without the `nbsp.*` rules;

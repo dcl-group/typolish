@@ -7,3 +7,7 @@ All notable changes to this crate are recorded in this file. The format follows
 ## Unreleased
 
 Nothing released yet. Version 0.1.0 is in development.
+
+- Known limitation of the development state: `Output::Html` and `Output::Escaped` are accepted but
+  written as Unicode, without encoding, until their encoders are added; do not use them for
+  untrusted text.

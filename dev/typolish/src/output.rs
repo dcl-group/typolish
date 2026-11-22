@@ -23,8 +23,14 @@ pub enum Output {
     Unicode,
     /// HTML text: `& < > " '` escaped, typographic characters as entities, no-break groups as
     /// entities or as nowrap elements.
+    ///
+    /// Not encoded yet: until the encoders of stage 3 this kind is written as Unicode; do not use
+    /// it for untrusted text.
     Html(HtmlStyle),
     /// The body of a string literal of a given syntax, ready to paste between its quotes.
+    ///
+    /// Not encoded yet: until the encoders of stage 3 this kind is written as Unicode; do not use
+    /// it for untrusted text.
     Escaped(EscapeStyle),
 }
 
