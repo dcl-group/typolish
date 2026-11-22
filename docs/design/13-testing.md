@@ -333,8 +333,11 @@ the no-panic test.
   (section 5.7, with the units `μs` and `µs` raising no `MixedScript`) and format characters
   (section 5.4, with U+00AD inside words: `21 ноя\u{AD}бря` gets its glue, `в Мо\u{AD}скве` is a
   `Word`; `сло\u{200D}во` is a `Word`; `21 ноя\u{200C}бря` gets its glue (`21⍽ноя\u{200C}бря`); ZWNJ
-  at the start of a text is a `Format` token; `"\u{200C}a` and `1\u{200D}2` are a `Symbol` followed
-  by a letter or digit and come out unchanged; U+0020 + U+200D is a frozen `Space`; through
+  at the start of a text is a `Format` token; a ZWNJ or ZWJ after a tab, U+0000, U+007F, U+0085 or
+  U+00AD (`a\t\u{200D}b`, `a\u{0}\u{200C}b`, `a\u{7F}\u{200D}b`, `a\u{85}\u{200D}b`,
+  `a\u{AD}\u{200D}b`) is a `Format` token of its own, and `\n\u{200C}\u{200D}a` gives one `Format`
+  token for the two characters; all come out unchanged; `"\u{200C}a` and `1\u{200D}2` are a `Symbol`
+  followed by a letter or digit and come out unchanged; U+0020 + U+200D is a frozen `Space`; through
   `report`, no edit falls between a ZWNJ or ZWJ and the character before it).
 - Tables for clusters led by a non-letter: keycaps `1️⃣` and `#️⃣`, `"` + U+0301, each alone and right
   after ASCII text (`Шаги 1️⃣-3️⃣`, `a"\u{301}b`), so that the ASCII fast path of section 3.5 hands

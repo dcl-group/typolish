@@ -150,8 +150,9 @@ character to itself (U+0600 + `1`, rule GB9b of UAX #29). The gain is for Latin 
 text most ASCII bytes stand next to non-ASCII characters and go to the segmenter. A token's class
 comes from the first character of its first cluster, except that a cluster of several characters
 whose first character is not a letter is a `Symbol` (keycaps `1️⃣` and `#️⃣`, `"` + U+0301, `"` +
-U+200C, `1` + U+200D); `\r\n` stays a `Newline`, and a whitespace character with a combining mark,
-ZWNJ or ZWJ attached is a frozen `Space` (below).
+U+200C, `1` + U+200D), except a cluster of ZWNJ and ZWJ only, which is a `Format` token (section
+5.4); `\r\n` stays a `Newline`, and a whitespace character with a combining mark, ZWNJ or ZWJ
+attached is a frozen `Space` (below).
 
 Clusters join into tokens as follows: clusters led by a letter join into one `Word`, ASCII digits
 into one `Number`, `-` into one `Dash`, `.` into one `Dots`, horizontal whitespace into one `Space`.
@@ -173,7 +174,7 @@ pub(crate) enum Kind {
     Number,           // a run of ASCII digits
     Space,            // a run of horizontal whitespace: U+0020, U+00A0, U+202F, U+2009, tab, ...
     Newline,          // \n, \r\n, \r, U+0085, U+2028; U+2029 always ends a window and is never a token
-    Format,           // U+00AD, U+200B, U+200E, U+200F, U+202A..U+202E, U+2060..U+2064, U+2066..U+2069, U+FEFF; U+200C and U+200D only as a cluster of their own (section 5.4)
+    Format,           // U+00AD, U+200B, U+200E, U+200F, U+202A..U+202E, U+2060..U+2064, U+2066..U+2069, U+FEFF; U+200C and U+200D only in a cluster of ZWNJ and ZWJ only (section 5.4)
     Quote,            // " ' « » „ “ ” ‘ ’ ‚ ‹ › ′ ″
     Dash,             // a run of '-' (length 1..), U+2010 ‐, U+2011 ‑, U+2012 ‒, – — U+2015 ―, −
     Dots,             // a run of '.' (length 1..), …
@@ -217,10 +218,11 @@ structural edits are inserting a `Space` token and removing a `Space` token. Sec
 idempotence argument on this.
 
 A cluster of several characters that starts with a non-letter (`"` + U+0301, `1️⃣`, `#️⃣`) is a
-`Symbol` and no rule changes it. A cluster that starts with a whitespace character and carries a
-combining mark, ZWNJ or ZWJ is a `Space` token flagged `FROZEN`: it separates fragments but is never
-glued or removed, and the mark stays where it is (section 5.3). Emoji with ZWJ, modifiers, flags and
-keycaps are single `Symbol` tokens and are never cut or replaced.
+`Symbol` (except a cluster of ZWNJ and ZWJ only, section 5.4) and no rule changes it. A cluster that
+starts with a whitespace character and carries a combining mark, ZWNJ or ZWJ is a `Space` token
+flagged `FROZEN`: it separates fragments but is never glued or removed, and the mark stays where it
+is (section 5.3). Emoji with ZWJ, modifiers, flags and keycaps are single `Symbol` tokens and are
+never cut or replaced.
 
 ### 3.6 Fragments and the classifier
 
