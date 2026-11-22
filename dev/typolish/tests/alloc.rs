@@ -116,6 +116,25 @@ fn an_unchanged_string_does_not_allocate_after_warm_up() {
     assert!(matches!(out, Cow::Borrowed(_)));
 }
 
+#[test]
+fn an_unchanged_string_through_the_whole_pipeline_does_not_allocate_after_warm_up() {
+    // Section 13.8: a string with trigger bytes (`.`, `-`, digits) goes through ingest, windows,
+    // the lexer and the classifier, with protection and technical fragments, and no rule of
+    // Interface changes it.
+    const INPUT: &str = "Адрес host:8080, версия v1.2.3, код `a-b`\n\nПуть /usr/bin, id 0x1F";
+    let _ = RU_UI.typeset(INPUT, Output::Unicode);
+    let (allocs, reallocs, out) = count(|| RU_UI.typeset(INPUT, Output::Unicode));
+    assert_eq!((allocs, reallocs), (0, 0));
+    assert!(matches!(out, Cow::Borrowed(_)));
+
+    let mut scratch = Scratch::new();
+    let _ = RU_UI.typeset_with(&mut scratch, INPUT, Output::Unicode);
+    let (allocs, reallocs, out) =
+        count(|| RU_UI.typeset_with(&mut scratch, INPUT, Output::Unicode));
+    assert_eq!((allocs, reallocs), (0, 0));
+    assert!(matches!(out, Cow::Borrowed(_)));
+}
+
 /// A template of `n` repetitions of a text and a slot.
 fn template(n: u8) -> Vec<Piece<'static, u8>> {
     (0..n)
