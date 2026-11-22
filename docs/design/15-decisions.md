@@ -131,9 +131,13 @@ abbreviation parts, elisions, month forms, atom exceptions) complete for ru and 
 `Typographer::new` and the builder, `Piece` and `Template`, ingest and protection, windows, lexer,
 classifier with labels, freezing, the phase engine, the recorders with `report` (changes, protected
 spans and diagnostics; its `Display` comes in stage 4), rendering for `Output::Unicode`, the
-thread-local and explicit scratch. Rules: `quotes.*`, `dash.*`, `range.*`, `ellipsis.*` for ru and
-en. The `nbsp.*` rules come in stage 3, so in this stage the set-level tables run with them removed
-from the sets (a test helper), and stage 3 switches the same tables to the full sets. Ready when:
+thread-local and explicit scratch; the generated tables `tests/reference/ru.rs` and
+`tests/reference/en_us.rs` with all 820 rows (case id, input and recorded output; groups and reason
+codes come in stage 5), the row type in `tests/common/mod.rs`, and `tests/negative.rs`, which reads
+their `neg.*` rows through `#[path]` (sections 13.3 and 14.6). Rules: `quotes.*`, `dash.*`,
+`range.*`, `ellipsis.*` for ru and en. The `nbsp.*` rules come in stage 3, so in this stage the
+set-level tables run with them removed from the sets (a test helper), and stage 3 switches the same
+tables to the full sets. Ready when:
 
 - `typeset` and `typeset_template` work for ru, en and COMMON with these rules;
 - the rule tables of these rules pass, alone and in both sets without the `nbsp.*` rules;
@@ -159,7 +163,8 @@ from the sets (a test helper), and stage 3 switches the same tables to the full 
 - the interaction strings of section 10.7 pass in both sets;
 - the slot participation table of section 2.6 passes row by row;
 - the data test matches the CLDR 49 extract, and the built-in tables pass validation;
-- the API contract tests of `tests/api.rs` pass (section 13.2);
+- the API contract tests of `tests/api.rs` pass (section 13.2), except the rows that need
+  `report_template` or `lint_template`, which pass in stage 4;
 - the output tables (with the check of section 11.2 against the WHATWG extract), the Cow property,
   the decoder properties and the safe-alphabet property pass for every output kind, nowrap styles
   included;
@@ -184,13 +189,15 @@ hard-coded messages, `report_template` with `Output::Escaped(EscapeStyle::RUST)`
   for `report_template` (property 10 of section 13.5);
 - every diagnostic has a table test, and `report` names the expected `TechKind` for every frozen row
   of section 10.5;
+- the remaining rows of `tests/api.rs` pass;
 - `cargo run --example fluent_generator` runs without error.
 
-**Stage 5: comparison, load, documentation, release preparation (no release).** The reference tables
-for all 820 cases; `benches/load.rs` and the linearity tests; rustdoc with an example on every
-public item; README (with the known limits of section 10.8) and CHANGELOG (a prepared `0.1.0`
-entry); `cargo package --list` reviewed; the name check on crates.io (section 15.5, item 3). Ready
-when:
+**Stage 5: comparison, load, documentation, release preparation (no release).** The
+`AGREE`/`DIVERGE` groups with reason codes of all 820 rows of `tests/reference/{ru,en_us}.rs`, and
+the target `tests/reference.rs` that compares them (section 13.4); `benches/load.rs` and the
+linearity tests; rustdoc with an example on every public item; README (with the known limits of
+section 10.8) and CHANGELOG (a prepared `0.1.0` entry); `cargo package --list` reviewed; the name
+check on crates.io (section 15.5, item 3). Ready when:
 
 - every reference case is `AGREE` or `DIVERGE` with a reason code, and the report prints the summary
   per code;

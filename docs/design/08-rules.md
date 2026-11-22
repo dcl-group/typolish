@@ -98,8 +98,8 @@ a city, not a year: `Школа №⍽5 г.⍽Москвы`.
   `PercentSpacing::Language` (ru) or `Spaced` (`100%` → `100⍽%`). Rules that remove spaces (each
   removes only a single U+0020): `dash.spaced-hyphen` and `dash.double-hyphen` with the `Closed`
   style, only between two plain words (section 8.4), and `nbsp.units` with
-  `PercentSpacing::Language` (en) or `Attached`. No other rule adds or removes a character, and none
-  of these cases changes what the rules read (invariant I2 of section 4.3).
+  `PercentSpacing::Language` (en) or `Attached`. No other rule adds or removes a character, and
+  these cases change what the rules read only as invariant I2 of section 4.3 lists.
 
 ### 8.3 Quotes
 
@@ -365,13 +365,15 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
 ### 8.9 Symbols
 
 - **`symbols.copyright`**: `(c)`, `(C)` and Cyrillic `(с)`, `(С)` → `©` only when a four-digit year
-  stands next to it, attached or one space away, or a range of years one space away: `(c) 2026` →
-  `© 2026`, `(c)2026` → `©2026`, `2020-2026 (c)` → `2020-2026 ©`. A mark attached to a range
-  (`2020-2026(c)`) is not a word (section 3.6) and stays. Otherwise `(c)` is a list item and stays
-  (`вариант (c)`, `f(c)`). `(tm)`, `(TM)`, `(r)`, `(R)` → `™`, `®` after a brand name: a capitalized
-  word of at least two letters, attached (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` →
-  `Brand ®`), and not followed by an operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a
-  function argument and stays: `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
+  follows it, attached or one space away, or stands one space before it, or a range of years stands
+  one space away: `(c) 2026` → `© 2026`, `(c)2026` → `©2026`, `2026 (c)` → `2026 ©`, `2020-2026 (c)`
+  → `2020-2026 ©`. A mark attached after a number or a range (`Section 1001(c)`, `2026(c)`,
+  `2020-2026(c)`) is not a word (section 3.6) and stays: after a number it is usually a subsection
+  label. Otherwise `(c)` is a list item and stays (`вариант (c)`, `f(c)`). `(tm)`, `(TM)`, `(r)`,
+  `(R)` → `™`, `®` after a brand name: a capitalized word of at least two letters, attached
+  (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` → `Brand ®`), and not followed by an
+  operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a function argument and stays:
+  `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
 - **`symbols.arrows`**: an operator fragment that is exactly `->`, `<-` or `<->`, with a space on
   each side → `→`, `←`, `↔`. `=>`, `-->`, `<-->`, `->>` are not in the table; `a->b` is frozen.
 - **`symbols.math`**: an operator fragment that is exactly `>=`, `<=` or `!=`, with a space on each

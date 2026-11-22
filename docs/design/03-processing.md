@@ -62,12 +62,12 @@ For `typeset_template` the prefilter scans the bytes of all `Text` pieces togeth
 contributes no byte, so every rule that can edit next to a slot needs its trigger byte in the text
 beside the slot (`{n}%` is caught by `%`, `№{n}` by `№`, `{n} МБ` by the space).
 
-The prefilter belongs to `typeset`, `typeset_with`, `typeset_into` and `typeset_template` only.
-`report`, `report_template`, `lint` and `lint_template` always run the whole pipeline: the
-diagnostics of the classifier and of protection (`MixedScript`, `SlotGlue`, `UnclosedDelimiter`) and
-the records of `protected()` do not come from a rule and need no trigger byte (`Мoсква`, `{a}{b}`,
-`{n}МБ`, ``don`t`` and `` `code` `` contain none). Their result still equals that of `typeset`
-(property 9 of section 13.5).
+The prefilter belongs to `typeset`, `typeset_with`, `typeset_into`, `typeset_template` and
+`typeset_template_with` only. `report`, `report_template`, `lint` and `lint_template` always run the
+whole pipeline: the diagnostics of the classifier and of protection (`MixedScript`, `SlotGlue`,
+`UnclosedDelimiter`) and the records of `protected()` do not come from a rule and need no trigger
+byte (`Мoсква`, `{a}{b}`, `{n}МБ`, ``don`t`` and `` `code` `` contain none). Their result still
+equals that of `typeset` (property 9 of section 13.5).
 
 ### 3.3 Windows
 
@@ -318,11 +318,11 @@ change how the checks read a core:
   `Sign`: it is not frozen and not technical, and no check of the table runs on it; `nbsp.signs`,
   `nbsp.short-words` and the `LABEL` rule below read it.
 - A core that is a single `LegalMark` token in either form, alone or with one `Number` token
-  attached before or after it (`(c)`, `©`, `(r)`, `(tm)`, `(c)2026`, `2026(c)`), has kind `Word`: it
-  is not frozen and not technical, and no check of the table runs on it. Whether `(c)`, `(r)` or
-  `(tm)` changes is decided by `symbols.copyright` from the context (section 8.9: `вариант (c)`
-  stays). A legal mark attached to a word is a `Word` by check 23 (`Brand(tm)`, `f(c)`); one
-  attached to anything else (`2020-2026(c)`) falls through to check 24.
+  attached after it (`(c)`, `©`, `(r)`, `(tm)`, `(c)2026`), has kind `Word`: it is not frozen and
+  not technical, and no check of the table runs on it. Whether `(c)`, `(r)` or `(tm)` changes is
+  decided by `symbols.copyright` from the context (section 8.9: `вариант (c)` stays). A legal mark
+  attached to a word is a `Word` by check 23 (`Brand(tm)`, `f(c)`); one attached after a number or
+  anything else (`2026(c)`, `1001(c)`, `2020-2026(c)`) falls through to check 24.
 - A `Number` slot inside a core counts as a number. A `Date` slot counts as a number only in check
   17 and only when both sides are `Date` slots (`{d1}-{d2}` is a `Range`); in every other position
   it counts as letters, so `{n}-{d}` and `5-{d}` are `Compound`. A `Number` slot and a literal

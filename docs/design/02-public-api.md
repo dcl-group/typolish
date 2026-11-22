@@ -530,20 +530,20 @@ Output contract:
 How a slot takes part in rules. A slot is one opaque, frozen token; for its neighbours it behaves as
 its kind says:
 
-| Context                                                                               | `Number`                                               | `Word`   | `Date`              | `Other`  |
-| ------------------------------------------------------------------------------------- | ------------------------------------------------------ | -------- | ------------------- | -------- |
-| quotes around it (`"{x}"`)                                                            | word                                                   | word     | word                | word     |
-| apostrophe after it (`{x}'s`)                                                         | yes                                                    | yes      | no                  | no       |
-| quote after it as a prime (`{n}"`, Prose)                                             | yes, if the quote is unpaired                          | no       | no                  | no       |
-| `range.placeholders` (`{a}-{b}`)                                                      | with another `Number`                                  | no       | with another `Date` | no       |
-| `nbsp.units` on its left (`{n} МБ`)                                                   | yes                                                    | no       | no                  | no       |
-| `nbsp.dates` (`{n} мая`, `{d} г.`)                                                    | day or year                                            | no       | year                | no       |
-| a `Next` abbreviation after it does not bind forward (`{n} ч. Потом`, `{d} г. Затем`) | yes                                                    | no       | yes                 | no       |
-| `number.times` (`{w}x{h}`, Prose)                                                     | yes                                                    | no       | no                  | no       |
-| glue before it (`в {x}`, `№ {x}`)                                                     | yes                                                    | yes      | yes                 | no       |
-| glue after it (`{x} же`)                                                              | yes                                                    | yes      | yes                 | no       |
-| operand of `dash.spaced-hyphen` (`{x} - слово`)                                       | yes; next to a number or a single-letter word: no dash | yes      | yes                 | yes      |
-| `SlotGlue` diagnostic                                                                 | `{n}МБ`, `{a}{b}`                                      | `{a}{b}` | `{a}{b}`            | `{a}{b}` |
+| Context                                                                               | `Number`                                                        | `Word`   | `Date`              | `Other`  |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------- | ------------------- | -------- |
+| quotes around it (`"{x}"`)                                                            | word                                                            | word     | word                | word     |
+| apostrophe after it (`{x}'s`)                                                         | yes                                                             | yes      | no                  | no       |
+| quote after it as a prime (`{n}"`, Prose)                                             | yes, if the quote is unpaired                                   | no       | no                  | no       |
+| `range.placeholders` (`{a}-{b}`)                                                      | with another `Number`                                           | no       | with another `Date` | no       |
+| `nbsp.units` on its left (`{n} МБ`)                                                   | yes                                                             | no       | no                  | no       |
+| `nbsp.dates` (`{n} мая`, `{d} г.`)                                                    | day or year                                                     | no       | year                | no       |
+| a `Next` abbreviation after it does not bind forward (`{n} ч. Потом`, `{d} г. Затем`) | yes                                                             | no       | yes                 | no       |
+| `number.times` (`{w}x{h}`, Prose)                                                     | yes                                                             | no       | no                  | no       |
+| glue before it (`в {x}`, `№ {x}`)                                                     | yes                                                             | yes      | yes                 | no       |
+| glue after it (`{x} же`)                                                              | yes                                                             | yes      | yes                 | no       |
+| operand of `dash.spaced-hyphen` (`{x} - слово`)                                       | yes; next to a number, a range or a single-letter word: no dash | yes      | yes                 | yes      |
+| `SlotGlue` diagnostic                                                                 | `{n}МБ`, `{a}{b}`                                               | `{a}{b}` | `{a}{b}`            | `{a}{b}` |
 
 No glue sticks to an `Other` slot: its value may be long, and a nowrap group around a long path
 breaks the layout. A `Number` slot after `№`, `§` or `¶` (`№ {n}`, `№{n}`) is a label number
@@ -1075,9 +1075,14 @@ run time the application formats `Number` arguments with `format_number` of the 
 value fit together: the compiler has already turned the literal body into Unicode, and a value
 escaped again would show its escapes (`1\u{a0}000` instead of `1⍽000`). Values are inserted as they
 are (section 11.1). A generator of a JS bundle writes its texts with `EscapeStyle::JSON` or
-`EscapeStyle::JS` the same way, and its run-time values are plain Unicode too. With `Output::Html`,
-the run-time code escapes `Word`, `Date` and `Other` values itself and formats numbers with the same
-`Output::Html`; the crate encodes only the texts (section 11.1).
+`EscapeStyle::JS` the same way, and its run-time values are plain Unicode too. With `Output::Html`
+the texts are HTML, not bodies of Rust literals: they may hold `\` (from a protected span such as
+`C:\temp`), raw line breaks and, with a nowrap style, the `"` of `<span class="nowrap">`. Such a
+generator writes each text as a complete Rust literal itself,
+`TemplatePart::Text(t) => code.push_str(&format!("s.push_str({t:?}); "))` (the `Debug` form of `str`
+is a valid Rust string literal), and its run-time code escapes `Word`, `Date` and `Other` values
+itself and formats numbers with the same `Output::Html`; the crate encodes only the texts (section
+11.1).
 
 ### 2.15 Per-request use
 

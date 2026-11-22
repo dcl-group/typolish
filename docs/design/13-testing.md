@@ -39,11 +39,11 @@ gives the output of the whole set.
 - classifier tables (unit tests of `engine/classify.rs`, stage 2): `Ph.D.` and `А.С.` are
   `Abbreviation`, `report().protected()` is empty; `№`, `§§` and `¶` alone are `Sign` fragments, not
   frozen, and `Документ № 5` has an empty `report().protected()`; `¶IV` and `№5` are `Word`
-  (check 23) with the `LABEL` flag, and so is `IV` in `¶ IV`; `(c)`, `©`, `(c)2026` and `2026(c)`
-  are `Word` cores, not frozen, and `(c) 2026` has an empty `report().protected()`; `XIX`, `IV` and
-  `MCMXCIV` are Roman numerals (`XIX-XX` is a `Range`, `IV` in `¶ IV` has `LABEL`), while `IIII`,
-  `IC`, `VV`, `xix`, `Mix` and `ХIХ` (Cyrillic `Х`) are not (`IIII-V` and `xix-xx` are `Compound`,
-  `VV` in `¶ VV` has no `LABEL`).
+  (check 23) with the `LABEL` flag, and so is `IV` in `¶ IV`; `(c)`, `©` and `(c)2026` are `Word`
+  cores, not frozen, and `(c) 2026` has an empty `report().protected()`, while `2026(c)` falls
+  through to check 24; `XIX`, `IV` and `MCMXCIV` are Roman numerals (`XIX-XX` is a `Range`, `IV` in
+  `¶ IV` has `LABEL`), while `IIII`, `IC`, `VV`, `xix`, `Mix` and `ХIХ` (Cyrillic `Х`) are not
+  (`IIII-V` and `xix-xx` are `Compound`, `VV` in `¶ VV` has no `LABEL`).
 - `tests/rules_quotes.rs`: ru `"?"` → `«?»`, `«»` unchanged, `report().protected()` empty; en
   `He is 5'10" tall.` (Prose) → `He is 5′10″ tall.`; en `the 90's` → `the 90’s`; en `1'000'000` →
   unchanged; en `He is 5’10 tall.` → unchanged; ru `Он сказал "" и ушёл.` → `Он сказал «» и ушёл.`;
@@ -94,11 +94,12 @@ gives the output of the whole set.
   unchanged, `report` lists `Technical(Unclassified)` for `×`; `10 X 5` → `10 × 5`; `10 Х 5` →
   `10 × 5`; `010 x 5` → unchanged.
 - `tests/rules_symbols.rs` (`symbols.copyright`): `(c) 2026` → `© 2026`, `(C) 2026` and `(с) 2026`
-  (Cyrillic `с`) → `© 2026`, `(c)2026` → `©2026`, `2020-2026 (c)` → `2020-2026 ©`, `Brand (r)` →
-  `Brand ®`, `Brand(tm)` → `Brand™`; `вариант (c)`, `f(c)`, `(R) знак`, `S(r) = πr²` → unchanged;
-  `2020-2026(c)` → unchanged, and `report().protected()` lists `Technical(Unclassified)` for it;
-  `Brand(Tm)` → unchanged; `symbols.arrows` and `symbols.math`: `x  ->  y`, `x\t>=\t5` → unchanged,
-  no diagnostic.
+  (Cyrillic `с`) → `© 2026`, `(c)2026` → `©2026`, `2026 (c)` → `2026 ©`, `2020-2026 (c)` →
+  `2020-2026 ©`, `Brand (r)` → `Brand ®`, `Brand(tm)` → `Brand™`; `вариант (c)`, `f(c)`, `(R) знак`,
+  `S(r) = πr²` → unchanged; `2020-2026(c)`, `2026(c)` and en `Section 1001(c) applies.` → unchanged,
+  and `report().protected()` lists `Technical(Unclassified)` for `2020-2026(c)`, `2026(c)` and
+  `1001(c)`; `Brand(Tm)` → unchanged; `symbols.arrows` and `symbols.math`: `x  ->  y`, `x\t>=\t5` →
+  unchanged, no diagnostic.
 - `tests/rules_nbsp.rs` (stage 3): ru `А.С. Пушкин` → `А.С.⍽Пушкин` (`nbsp.initials`); `и т.д...`
   with `ellipsis.dots` and `nbsp.abbreviations` → `и⍽т.⍽д…`; `и т. д…` → `и⍽т.⍽д…`; en `etc...` with
   `ellipsis.dots` and `nbsp.abbreviations` → `etc…` (`etc` with its stop is `Dictionary`);
@@ -152,8 +153,8 @@ gives the output of the whole set.
   there with that code point, U+202F and U+2011 have no name, and the test fails when
   `HtmlStyle::NAMED` writes a numeric reference for a character that has a name there; en with
   `quote_pairs` set to primary `« »` and nested `‹ ›` turns `"a "b" c"` into
-  `&laquo;a &lsaquo;b&rsaquo; c&raquo;` with `HtmlStyle::NAMED` and into `«a ‹b› c»` with
-  `EscapeStyle::JS`.
+  `&laquo;a &lsaquo;b&rsaquo; c&raquo;` with `HtmlStyle::NAMED` and into
+  `\u00ABa \u2039b\u203A c\u00BB` with `EscapeStyle::JS`.
 - `tests/parts.rs`: templates, including the walk-through of section 2.14, select variants, `Other`
   slots, nowrap groups starting and ending at slots, the slot participation table of section 2.6 row
   by row (with `{Date}-{Date}` → `{Date}–{Date}` and `{Number}-{Date}` unchanged), labels
@@ -169,7 +170,10 @@ gives the output of the whole set.
   `Output::Html`), as section 11.1 states; the flow of section 2.14 for `EscapeStyle::RUST` and
   `EscapeStyle::JSON`: ru `{n} руб.` with a `Number` slot, each text decoded by the test decoder of
   section 13.5 and joined with `format_number(1000, Output::Unicode)` gives `1⍽000⍽руб.` with a real
-  U+00A0, equal to `fill` of the `Output::Unicode` template, and contains no `\`.
+  U+00A0, equal to `fill` of the `Output::Unicode` template, and contains no `\`; the same flow for
+  `Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"))` with ``Цена - 5 руб. в `C:\temp` `` writes
+  each text with `{t:?}` (section 2.14), and the test decoder of `EscapeStyle::RUST` reads the body
+  of every such literal back to the text unchanged.
 - `tests/api.rs`: the API contracts of section 2 that are not output: builder validation and error
   choice, `FromStr` of `Rule`, `RuleSet` and `Language`, tag round trips, accessors of `Report`,
   `Change`, `ProtectedSpan` and `Diagnostic`. Rows: a builder with two violations (`RuleConflict`
@@ -193,10 +197,11 @@ gives the output of the whole set.
 - `tests/lint.rs`: every diagnostic kind of section 12.4 with a firing and a non-firing row;
   `TypographicChar` is absent inside `https://example.com/a–b`, inside backticks and in `Markup`,
   absent for `©` with `symbols.copyright` off, present for `©` in `© 2026` with `symbols.copyright`
-  on (a lone legal mark is not frozen, section 3.6), absent for a typed `–` with spaces (ru Prose:
-  `Москва – столица`, `10 – 20`, where `to_plain` returns the input), exactly one entry, on the
-  U+00A0, for ru Prose `Москва⍽– столица` and `10⍽– 20`, present for `—` between words with the dash
-  rules on; inputs without a trigger byte keep their diagnostics and protected spans through
+  on (a lone legal mark is not frozen, section 3.6), absent for `©` in `© Example Corp` with
+  `symbols.copyright` on (`to_plain` returns the input), absent for a typed `–` with spaces (ru
+  Prose: `Москва – столица`, `10 – 20`, where `to_plain` returns the input), exactly one entry, on
+  the U+00A0, for ru Prose `Москва⍽– столица` and `10⍽– 20`, present for `—` between words with the
+  dash rules on; inputs without a trigger byte keep their diagnostics and protected spans through
   `report` and `lint` (no prefilter, section 3.2): ru Interface `Мoсква` (Latin `o`) →
   `MixedScript`; `report_template([Slot(n, NUMBER), Text("МБ")])` → `SlotGlue` (warning);
   `[Slot(a), Slot(b)]` → `SlotGlue` (info); ``don`t`` → `UnclosedDelimiter`; `` `code` `` →
@@ -254,9 +259,11 @@ reference defaults). The 405 cases of the `neg.*` groups (section 13.3) are also
 and checked as section 13.3 says: the case's token byte for byte through `report`, glue of `nbsp.*`
 rules outside it allowed; whole-string equality with the input is not required, because Interface
 keeps `nbsp.short-words` (`Он вызвал ls на⍽сервере.`). Both sections read the same tables,
-`tests/reference/{ru,en_us}.rs`. A failure prints the input, our output, the recorded output and the
-`report` table (section 12.5). The stage 5 report prints a summary per reason code. The phrase used
-in tables and comments is "reference implementation".
+`tests/reference/{ru,en_us}.rs`. Stage 2 generates them with every row (case id, input and recorded
+output), which `tests/negative.rs` reads from then on; stage 5 adds to each row its group and reason
+code, and adds the target `tests/reference.rs` (section 15.4). A failure prints the input, our
+output, the recorded output and the `report` table (section 12.5). The stage 5 report prints a
+summary per reason code. The phrase used in tables and comments is "reference implementation".
 
 **Provenance and drift.** Each generated file (`tests/reference/ru.rs` and
 `tests/reference/en_us.rs`, which also hold the negative cases of section 13.3) starts with a
@@ -315,7 +322,8 @@ the no-panic test.
    there, with the generators of this section, not in `tests/properties.rs`; the generators live in
    `tests/common/strategies.rs`, which `tests/common/mod.rs` declares as `pub mod strategies;` and
    `src/engine/mod.rs` includes as
-   `#[cfg(test)] #[path = "../../tests/common/strategies.rs"] mod strategies;`, and `lib.rs` has
+   `#[cfg(test)] #[allow(dead_code)] #[path = "../../tests/common/strategies.rs"] mod strategies;`
+   (its unit test uses only some generators), and `lib.rs` has
    `#[cfg(test)] extern crate self as typolish;` so that the `typolish::` paths of that file resolve
    in both crates; so it adds nothing to the public API or to the features), which runs the whole
    pipeline without the prefilter, gives the same result as `typeset` and `typeset_template` on

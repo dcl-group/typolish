@@ -117,7 +117,10 @@ to each crate root) and an allow list: every `tests/*.rs` has
 `#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing, clippy::print_stdout, clippy::print_stderr, clippy::dbg_macro)]`,
 which also covers `tests/common/mod.rs` and `tests/common/strategies.rs` through `mod common;` (in
 `src/` that file is a `#[cfg(test)]` module, which `dev/clippy.toml` already covers);
-`benches/load.rs` and every `examples/*.rs` have
+`tests/common/mod.rs` also starts with `#![allow(dead_code)]`, because each target uses only part of
+it, and the `#[cfg(test)]` include of `strategies.rs` in `src/engine/mod.rs` carries
+`#[allow(dead_code)]` (`dead_code` is a rustc lint, not one of the clippy lints that `src/` has no
+`allow` of); `benches/load.rs` and every `examples/*.rs` have
 `#![allow(clippy::print_stdout, clippy::print_stderr, clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic)]`
 (`examples/fluent_generator.rs` fails loudly on an unknown `TemplatePart`, section 2.14). `src/`
 keeps the full deny set and has no `allow` of these lints.
@@ -200,9 +203,14 @@ dev/
 
 `tests/reference/ru.rs` and `tests/reference/en_us.rs` are data modules, not targets: Cargo builds
 only `tests/*.rs` (and `tests/*/main.rs`). `tests/reference.rs` (section 13.4) and
-`tests/negative.rs` (section 13.3) both include them with `#[path = "reference/ru.rs"] mod ru;` and
-`#[path = "reference/en_us.rs"] mod en_us;`; the row type is in `tests/common/mod.rs`, and each of
-the two targets reads every field of a row, so `dead_code` stays silent under the clippy gate.
+`tests/negative.rs` (section 13.3) include them with `#[path = "reference/ru.rs"] mod ru;` and
+`#[path = "reference/en_us.rs"] mod en_us;`. The data modules exist from stage 2, when only
+`tests/negative.rs` includes them; `tests/reference.rs` is added in stage 5 (section 15.4). The row
+type is in `tests/common/mod.rs`; since every target that declares `mod common;` includes that
+module but uses only part of it, `tests/common/mod.rs` starts with `#![allow(dead_code)]` (a shared
+helper module, as usual for integration tests), and `src/engine/mod.rs` includes the generators as
+`#[cfg(test)] #[allow(dead_code)] #[path = "../../tests/common/strategies.rs"] mod strategies;`
+(section 13.5, property 8).
 
 `AGENTS.md` follows the skeleton of zonewright and adds two hard rules: the name of the reference
 implementation never appears in the repository, and commits end with
