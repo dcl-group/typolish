@@ -23,10 +23,13 @@ fragment contains no straight quote. So `"host:8080"` → `«host:8080»` (the a
 while in `key="value"` both quotes belong to the technical notation and are left alone. When a
 frozen core ends in `=` and the start wrapper of its fragment holds no straight quote, the end
 wrapper holds no candidate either: `key=""` stays as written, like `key="value"`. This holds only
-for a frozen core. After a core that is not frozen, a wrapper such as `:""`, `,""` or `.""` is
-sentence punctuation followed by two closing quotes, as at the end of `"Он сказал "привет.""`; with
-no opener, `Значение:"" и "да"` does not converge (`UnmatchedQuote`, section 6.6). `Значение: ""`
-with a space gives `Значение: «»`. If the start wrapper holds a straight quote, the end wrapper is a
+for a frozen core that ends in `=`. After a core that is not frozen, a wrapper such as `:""`, `,""`
+or `.""` is sentence punctuation followed by two closing quotes, as at the end of
+`"Он сказал "привет.""`; with no opener, `Значение:"" и "да"` does not converge (`UnmatchedQuote`,
+section 6.6). The same happens after a frozen core that does not end in `=` and holds no straight
+quote: both quotes of `/etc/""` are candidates by the rule above and both close (L is of class
+`Word`, section 6.3), so `Путь /etc/"" и "да".` does not converge either. `Значение: ""` with a
+space gives `Значение: «»`. If the start wrapper holds a straight quote, the end wrapper is a
 candidate as usual: `"SGVsbG8="` → `«SGVsbG8=»`.
 
 ### 6.2 Step 1: certain apostrophes and primes
@@ -69,7 +72,8 @@ a protected span, a frozen core, a legal mark, a `Symbol`, and every other sign:
 A neighbour inside a frozen core is of class `Word`, whatever its own token: in `"/etc/"` the quote
 after `/etc/` has L = `Word`, not `OpenP`. Wrapper tokens and tokens of cores that are not frozen
 have the class of their token. Whether a closing quote is weak (section 6.5) still depends on the
-character before it.
+character before it, with `Format` and `Markup` tokens skipped: `27\u{AD}"` and
+`\u{2068}27\u{2069}"` are weak like `27"`, while the quote after `/etc/` is not weak.
 
 - opening: L ∈ {Space, OpenP, DashC}, and either R ∉ {Space, CloseP}, or R ∈ CloseP and the first
   token after the run of `CloseP` tokens, within the same fragment, is of class `Word` (`".env"`,
@@ -134,10 +138,10 @@ look-ahead.
 ### 6.5 Quotes after a number
 
 A closing straight quote (`"` or `'`) that directly follows a digit or a `Number` slot (no space
-between) may be a closing quote or an inch or second mark. Such a quote is **weak**; every other
-closing quote is **strong**. A typed closing glyph is always strong: after a digit it pairs in pass
-1 like any typed quote (`“Enter 5”`), and without an opener it is neutral with `UnmatchedQuote`
-(info), section 6.4.
+between; `Format` and `Markup` tokens are skipped, section 6.3) may be a closing quote or an inch or
+second mark. Such a quote is **weak**; every other closing quote is **strong**. A typed closing
+glyph is always strong: after a digit it pairs in pass 1 like any typed quote (`“Enter 5”`), and
+without an opener it is neutral with `UnmatchedQuote` (info), section 6.4.
 
 1. **Pass 1** matches with the stack of section 6.4 and ignores weak quotes.
 2. **Pass 2** runs only if pass 1 found no crossing. It walks the window again with the stack of
@@ -314,6 +318,7 @@ enabled.
 | ru         | `Он сказал:"привет" и ушёл.`                    | unchanged                            | frozen fragment (section 10.8)                                |
 | ru         | `Задайте key="" и нажмите "OK".`                | `Задайте key="" и нажмите «OK».`     | assignment: frozen                                            |
 | ru         | `Поле Значение:"" и "да".`                      | unchanged, `UnmatchedQuote`          | two closing quotes after `:`, no opener                       |
+| ru         | `Путь /etc/"" и "да".`                          | unchanged, `UnmatchedQuote`          | two closing quotes after a frozen core without `=`            |
 | en         | `"She said "no.""`                              | `“She said ‘no.’”`                   | two closers after `.`                                         |
 | ru         | `Токен "SGVsbG8gd29ybGQ=" и "имя".`             | `Токен «SGVsbG8gd29ybGQ=» и «имя».`  | a quoted frozen core ending in `=`                            |
 | en         | `‘Note: 'beta' builds of the developers' tools` | unchanged, `UnmatchedQuote` (info)   | no possessive after a neutral `‘`                             |
