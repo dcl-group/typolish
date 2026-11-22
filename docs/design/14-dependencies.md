@@ -221,8 +221,10 @@ holds the `Rule` and `RuleSet` tables of sections 2.3, 4.1 and 9.2; it is not on
 
 The tables of ingest, windows, the lexer and the classifier (stage 2) observe the engine through
 `report` and `report_template` and live in their own targets: `classifier.rs`, `protection.rs`,
-`pieces_report.rs`, `lexer.rs`, `negative_report.rs`, `engine_properties.rs` and `ingest_rules.rs`,
-with the helpers of `tests/common/probe.rs`, which these targets include through `#[path]`.
+`pieces_report.rs`, `lexer.rs`, `negative_report.rs` and `engine_properties.rs`, with the helpers of
+`tests/common/probe.rs`, which these targets include through `#[path]`. `ingest_rules.rs` reads the
+same decisions in the output of the stage 2 rules (`quotes.*`, `dash.*`, `range.*`, `ellipsis.*`)
+and is added in the same change as those rules, so that the gates stay green.
 
 `AGENTS.md` follows the skeleton of zonewright and adds two hard rules: the name of the reference
 implementation never appears in the repository, and commits end with

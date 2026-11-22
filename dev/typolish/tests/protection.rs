@@ -7,9 +7,9 @@
 //! here therefore compare the `Delimited` records only; the technical spans have their tables in
 //! `tests/classifier.rs`.
 //!
-//! The same behavior for pieces is in `tests/pieces_report.rs`, which needs `report_template`
-//! (design section 15.4: stage 4); the rules that read these decisions are in
-//! `tests/ingest_rules.rs`.
+//! The same behavior for pieces is in `tests/pieces_report.rs`, through `report_template`; the
+//! output of the rules that read these decisions is checked by `tests/ingest_rules.rs`, which
+//! comes with those rules.
 
 #![allow(
     clippy::unwrap_used,

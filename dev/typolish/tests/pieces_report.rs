@@ -2,8 +2,8 @@
 //! 10.1), observed through `report_template`.
 //!
 //! `report_template` came with `report` in stage 2 (design section 15.4). The string forms of the
-//! same rows are in `tests/protection.rs` and `tests/classifier.rs`, and the output of the rules
-//! that read these decisions is in `tests/ingest_rules.rs`.
+//! same rows are in `tests/protection.rs` and `tests/classifier.rs`; the output of the rules that
+//! read these decisions is checked by `tests/ingest_rules.rs`, which comes with those rules.
 
 #![allow(
     clippy::unwrap_used,
