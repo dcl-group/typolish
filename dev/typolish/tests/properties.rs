@@ -456,8 +456,10 @@ proptest! {
         }
     }
 
-    /// I2: the fragments that the classifier freezes in the output of a pass are those of its
-    /// input: the kinds of the protected spans of `f(x)` equal those of `x`.
+    /// I2 through the public API: the fragments that the classifier freezes in the output of a pass
+    /// are those of its input, so the kinds of the protected spans of `f(x)` equal those of `x`. The
+    /// full property, every fragment with its kind, flags and extent, is
+    /// `i2_and_i4_hold_on_the_classification_and_the_matches` in `src/engine/mod.rs`.
     #[test]
     fn i2_the_classification_is_stable(text in any_text(), lang in 0usize..3, set in stage2_set(), quotes in 0u8..3) {
         let t = typographer(lang, set, quotes, 0);
@@ -491,8 +493,10 @@ proptest! {
         prop_assert_eq!(a, b);
     }
 
-    /// I4: matching by class. On the output of a pass no rule has an edit left: the report of
-    /// `f(x)` holds no change.
+    /// I4 through the public API: on the output of a pass no rule has an edit left, so the report
+    /// of `f(x)` holds no change. The recurrence of every match of `x` on `f(x)`, with its rule and
+    /// `consume`, is checked by `i2_and_i4_hold_on_the_classification_and_the_matches` in
+    /// `src/engine/mod.rs`.
     #[test]
     fn i4_the_second_pass_has_no_edit(text in any_text(), lang in 0usize..3, set in stage2_set(), quotes in 0u8..3) {
         let t = typographer(lang, set, quotes, 0);

@@ -8,6 +8,7 @@
 
 use core::ops::Range;
 
+use super::classify::FragKind;
 use super::ingest::TextPiece;
 use crate::report::{Change, Diagnostic, ProtectedKind, ProtectedSpan, Records};
 use crate::{DiagnosticKind, Rule, Severity};
@@ -25,6 +26,20 @@ pub(crate) trait Recorder {
 
     /// A diagnostic, already reported at its first piece.
     fn diagnostic(&mut self, diagnostic: Diagnostic);
+
+    /// Whether the recorder also traces the classification and the matches of every window (the
+    /// invariant tests of design section 13.5, property 3); only a test recorder does.
+    const TRACE: bool = false;
+
+    /// One fragment of the classification of a window: its kind, its `LABEL` and `FROZEN` flags
+    /// and the byte range of its tokens in the call's text.
+    #[inline(always)]
+    fn fragment(&mut self, _kind: FragKind, _label: bool, _frozen: bool, _range: Range<u32>) {}
+
+    /// One match of a rule that the engine applied: the byte range from its anchor to its last
+    /// consumed token, its `consume`, and whether it has edits.
+    #[inline(always)]
+    fn matched(&mut self, _rule: Rule, _range: Range<u32>, _consume: u8, _edits: bool) {}
 }
 
 /// Records nothing: the path of `typeset`.

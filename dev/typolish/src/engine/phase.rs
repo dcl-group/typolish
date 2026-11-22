@@ -394,6 +394,13 @@ pub(crate) fn run_phase<R: Recorder>(
         };
         match found {
             Some((rule, m)) if edits_allowed(input, i, &m) => {
+                if R::TRACE {
+                    let end = input
+                        .get(i + m.consume as usize)
+                        .map_or(tok.src.end, |t| t.src.end);
+                    let edits = m.edits.iter().next().is_some();
+                    sink.rec.matched(rule, tok.src.start..end, m.consume, edits);
+                }
                 if let Some(at) = m.note
                     && let Some(t) = input.get(i + at as usize)
                 {

@@ -134,6 +134,20 @@ fn run_on<R: Recorder>(
         if R::ACTIVE {
             classify::record_protected(tokens, &classify.frags, &mut sink);
         }
+        if R::TRACE {
+            for f in &classify.frags {
+                let start = tokens.get(f.start as usize).map_or(0, |t| t.src.start);
+                let end = f
+                    .end
+                    .checked_sub(1)
+                    .and_then(|e| tokens.get(e as usize))
+                    .map_or(start, |t| t.src.end);
+                let frozen = tokens
+                    .get(f.start as usize..f.end as usize)
+                    .is_some_and(|ts| ts.iter().any(lex::Tok::is_frozen));
+                sink.rec.fragment(f.kind, f.label, frozen, start..end);
+            }
+        }
         // The phases (design section 3.8): each one pass over a snapshot of the tokens, with the
         // classification of the pass.
         removed.clear();
@@ -353,7 +367,7 @@ mod strategies;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{EscapeStyle, HtmlStyle, Language, Piece, RuleSet};
+    use crate::{EscapeStyle, HtmlStyle, Language, Piece, RuleSet, SingleQuotes};
     use proptest::prelude::*;
 
     const LANGUAGES: [Language; 3] = [Language::RU_RU, Language::EN_US, Language::COMMON];
@@ -416,6 +430,184 @@ mod tests {
                 let (texts, changed) = template_texts(&t, &scratch, &input, slots, changed);
                 prop_assert_eq!(filtered.texts(), texts.as_slice());
                 prop_assert_eq!(filtered.changed(), changed);
+            }
+        }
+    }
+
+    /// What a run records for the invariants I2 and I4 (design sections 4.3 and 13.5, property 3):
+    /// the fragments of the classification, the matches of the phases and the changes.
+    #[derive(Debug, Default)]
+    struct Trace {
+        /// Kind, `LABEL`, `FROZEN`, byte range.
+        frags: Vec<(classify::FragKind, bool, bool, u32, u32)>,
+        /// Rule, byte range from the anchor to the last consumed token, `consume`, edits.
+        matches: Vec<(Rule, u32, u32, u8, bool)>,
+        /// Byte range and length of the replacement.
+        changes: Vec<(u32, u32, usize)>,
+    }
+
+    impl Recorder for Trace {
+        const ACTIVE: bool = true;
+        const TRACE: bool = true;
+
+        fn change(&mut self, change: crate::report::Change) {
+            let range = change.range();
+            self.changes.push((
+                u32::try_from(range.start).unwrap_or(u32::MAX),
+                u32::try_from(range.end).unwrap_or(u32::MAX),
+                change.replacement().len(),
+            ));
+        }
+
+        fn protected(&mut self, _span: crate::report::ProtectedSpan) {}
+
+        fn diagnostic(&mut self, _diagnostic: crate::report::Diagnostic) {}
+
+        fn fragment(
+            &mut self,
+            kind: classify::FragKind,
+            label: bool,
+            frozen: bool,
+            range: core::ops::Range<u32>,
+        ) {
+            self.frags
+                .push((kind, label, frozen, range.start, range.end));
+        }
+
+        fn matched(&mut self, rule: Rule, range: core::ops::Range<u32>, consume: u8, edits: bool) {
+            self.matches
+                .push((rule, range.start, range.end, consume, edits));
+        }
+    }
+
+    /// Where a position of x lies in f(x): `end` maps the exclusive end of a range, so an
+    /// insertion there is after it.
+    fn map(changes: &[(u32, u32, usize)], p: u32, end: bool) -> i64 {
+        let shift: i64 = changes
+            .iter()
+            .filter(|&&(s, e, _)| e < p || (e == p && (!end || s < e)))
+            .map(|&(s, e, len)| len as i64 - i64::from(e - s))
+            .sum();
+        i64::from(p) + shift
+    }
+
+    /// A closed byte interval.
+    type Interval = (i64, i64);
+
+    /// The structural changes of I2 (an inserted or a removed space) as closed byte intervals of x
+    /// and of f(x).
+    fn structural(changes: &[(u32, u32, usize)]) -> (Vec<Interval>, Vec<Interval>) {
+        let mut sorted = changes.to_vec();
+        sorted.sort_unstable();
+        let (mut x, mut y) = (Vec::new(), Vec::new());
+        let mut shift = 0i64;
+        for (s, e, len) in sorted {
+            let ys = i64::from(s) + shift;
+            if s == e || len == 0 {
+                x.push((i64::from(s), i64::from(e)));
+                y.push((ys, ys + len as i64));
+            }
+            shift += len as i64 - i64::from(e - s);
+        }
+        (x, y)
+    }
+
+    fn touches(intervals: &[Interval], start: i64, end: i64) -> bool {
+        intervals.iter().any(|&(s, e)| start <= e && s <= end)
+    }
+
+    fn trace(t: &Typographer, scratch: &mut Scratch, text: &str) -> (Trace, String) {
+        let mut tr = Trace::default();
+        let changed = run(t, scratch, &[Input::Text(text)], &mut tr);
+        let out = if changed {
+            render::render_text(text, &scratch.edits, t.language().data()).into_owned()
+        } else {
+            text.to_owned()
+        };
+        (tr, out)
+    }
+
+    #[test]
+    fn the_trace_sees_fragments_matches_and_changes() {
+        // The I2 and I4 property reads what it compares: on `Москва - столица...` the dash and the
+        // ellipsis match with edits on the first pass and with empty edits on the second.
+        let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+        let mut scratch = Scratch::new();
+        let (tx, out) = trace(&t, &mut scratch, "Москва - столица...");
+        let (ty, _) = trace(&t, &mut scratch, &out);
+        assert!(tx.frags.len() >= 3, "{:?}", tx.frags);
+        assert_eq!(tx.frags.len(), ty.frags.len());
+        for rule in [Rule::DashSpacedHyphen, Rule::EllipsisDots] {
+            assert!(tx.matches.iter().any(|m| m.0 == rule && m.4), "{rule:?}");
+            assert!(ty.matches.iter().any(|m| m.0 == rule && !m.4), "{rule:?}");
+        }
+        assert!(!tx.changes.is_empty());
+        // A removed space is structural: `Moscow - the` merges into one `Joined` fragment.
+        let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+        let (tx, _) = trace(&t, &mut scratch, "Moscow - the capital");
+        let (sx, sy) = structural(&tx.changes);
+        assert_eq!(sx.len(), 2, "{:?}", tx.changes);
+        assert_eq!(sy.len(), 2);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(1024))]
+
+        /// I2 and I4 of design section 4.3 (section 13.5, property 3), with the stage 2 rules
+        /// (no `nbsp.*`). I2: outside the fragments that an inserted or a removed space split or
+        /// merged, the fragments of f(x) have the kinds, flags and extents of those of x. I4: no
+        /// match on f(x) has an edit, and every match on x outside those fragments recurs on f(x)
+        /// with the same rule (`dash.double-hyphen` as `dash.spaced-hyphen`) and `consume`; the
+        /// quote phase has its own proof (section 6.11) and is left out of the recurrence.
+        #[test]
+        fn i2_and_i4_hold_on_the_classification_and_the_matches(
+            text in strategies::any_text(), lang in 0usize..3, set in strategies::rule_set(),
+            mode in 0usize..3,
+        ) {
+            let set: RuleSet = set.iter().filter(|r| !r.id().starts_with("nbsp.")).collect();
+            let mode = [SingleQuotes::NestedOnly, SingleQuotes::Everywhere, SingleQuotes::Never][mode];
+            let t = Typographer::builder(LANGUAGES[lang].clone(), set)
+                .single_quotes(mode)
+                .build()
+                .unwrap();
+            let mut scratch = Scratch::new();
+            let (tx, out) = trace(&t, &mut scratch, &text);
+            let (ty, _) = trace(&t, &mut scratch, &out);
+            let (sx, sy) = structural(&tx.changes);
+
+            let before: Vec<_> = tx
+                .frags
+                .iter()
+                .filter(|f| !touches(&sx, i64::from(f.3), i64::from(f.4)))
+                .map(|f| (f.0, f.1, f.2, map(&tx.changes, f.3, false), map(&tx.changes, f.4, true)))
+                .collect();
+            let after: Vec<_> = ty
+                .frags
+                .iter()
+                .filter(|f| !touches(&sy, i64::from(f.3), i64::from(f.4)))
+                .map(|f| (f.0, f.1, f.2, i64::from(f.3), i64::from(f.4)))
+                .collect();
+            prop_assert_eq!(before, after, "I2: {:?} -> {:?}", text, out);
+
+            for m in &ty.matches {
+                prop_assert!(!m.4, "I4: {:?} has an edit on {:?} (from {:?})", m, out, text);
+            }
+            let quotes = [Rule::QuotesApostrophe, Rule::QuotesPairs, Rule::QuotesPrimes];
+            for m in tx
+                .matches
+                .iter()
+                .filter(|m| !quotes.contains(&m.0))
+                .filter(|m| !touches(&sx, i64::from(m.1), i64::from(m.2)))
+            {
+                let rule = if m.0 == Rule::DashDoubleHyphen { Rule::DashSpacedHyphen } else { m.0 };
+                let (s, e) = (map(&tx.changes, m.1, false), map(&tx.changes, m.2, true));
+                prop_assert!(
+                    ty.matches.iter().any(|n| (n.0 == m.0 || n.0 == rule)
+                        && i64::from(n.1) == s
+                        && i64::from(n.2) == e
+                        && n.3 == m.3),
+                    "I4: {:?} on {:?} does not recur on {:?}: {:?}", m, text, out, ty.matches
+                );
             }
         }
     }
