@@ -74,21 +74,24 @@ agree and that every rule appears once.
   Insertion and removal apply only to `Space` tokens (section 3.5).
 - **I2. Stable classification.** On the output of a pass, the classifier computes the kinds and
   flags (`FROZEN`, `LABEL`) that the rules of that pass relied on, except inside a fragment that a
-  removed space merged (third item). A space is inserted or removed only in the cases listed here,
-  and none of them changes what a rule reads, except that the parts of a merged `Joined` fragment
-  stop being whole cores (third item):
+  removed space merged (third item) or that an inserted space split (second item). A space is
+  inserted or removed only in the cases listed here, and none of them changes what a rule reads,
+  except that the parts of a merged `Joined` fragment stop being whole cores (third item):
   - checks accept plain and typographic forms alike: a range with `-` or `–`, dimensions with `x`,
     `х` or `×`, a signed number with `-` or `−`, `+-` or `±`, an abbreviation as `т.д.`, `т. д.` or
     `т.⍽д.`, its last full stop also as the first of `...` or as `…`, a joined form with `...` or
     `…`, a dash fragment in any form, a year and month with `-` or `–`, a punctuation-only fragment
     with `...` or `…`, a quote at a word start as `'` or `’`;
-  - an inserted space splits only a non-technical fragment, into non-technical parts that the rules
-    read as before: `т.е.` → `т.` and `е.` (abbreviation parts, read only by `nbsp.abbreviations`,
-    which matches both forms); `т.д…` → `т.` and `д…` (both abbreviation parts, the second through
-    its stop); `№5` → `№` and `5` (a label number in both forms, section 3.6, so no rule that reads
-    a quantity or a year starts to match; the sign alone is a `Sign` fragment); `¶IV` → `¶` and `IV`
-    (a Roman numeral after a sign is a label in both forms); `100%` → `100` and `%` with
-    `PercentSpacing::Language` (ru) or `Spaced` (a percentage in both forms, section 8.2);
+  - an inserted space splits only a non-technical fragment, into parts that the rules read as
+    before: `т.е.` → `т.` and `е.` (abbreviation parts, read only by `nbsp.abbreviations`, which
+    matches both forms); `т.д…` → `т.` and `д…` (both abbreviation parts, the second through its
+    stop); `№5` → `№` and `5` (a label number in both forms, section 3.6, so no rule that reads a
+    quantity or a year starts to match; the sign alone is a `Sign` fragment); `¶IV` → `¶` and `IV`
+    (a Roman numeral after a sign is a label in both forms); `100%` → `100` and `%`, `100‰` → `100`
+    and `‰` with `PercentSpacing::Language` (ru) or `Spaced` (a percentage in both forms, section
+    8.2; a lone `%` is an `OperatorRun` by check 7, a lone `‰` falls through to check 24 and is
+    frozen, but no rule edits the sign, and the space before it lies outside its fragment, section
+    3.7);
   - a removed space merges fragments only into a non-technical `Joined` fragment (the closed-style
     dash) or a percentage into a percentage (the percent setting). The closed-style dash removes its
     two spaces, each a single U+0020, only between two plain words (section 8.4), so `word`, `—`,
@@ -106,8 +109,8 @@ agree and that every rule appears once.
 
   Each case has a fixed seed in the idempotence property (section 13.5): `Школа №5 г. Москвы`,
   `§5 ч. 2`, `¶IV`, `т.е.`, `и т.д...`, `Moscow - the capital`,
-  `See https://example.com/docs - the guide`, `He said - "a cat"`, `100%` and `100 %` under every
-  `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed `word⍽- word`,
+  `See https://example.com/docs - the guide`, `He said - "a cat"`, `100%`, `100‰` and `100 %` under
+  every `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed `word⍽- word`,
   `Sign in - it's free`.
 
 - **I3. Products are not triggers.** A rule changes only plain forms: straight `"` and `'`, `-`,
@@ -141,13 +144,13 @@ Let f = P7 ∘ … ∘ P1, where Pk is phase k. The claim is f(f(x)) = f(x) for 
    the set depends only on token kinds, fragment kinds and flags, the texts of words and numbers and
    the length of plain sign runs, with every typographic form read as the plain form it stands for.
    By I1 and I2 these are the same in the input of Pk on the first pass and in f(x) on the second,
-   except inside fragments merged by I2 (step 2): everything that later phases change is the form of
-   signs and the glue of spaces. Spaces inserted by phase k are seen on the first pass by phases k+1
-   to 7, as on the second pass by all phases. Phases 1 to k−1, which first see those spaces on the
-   second pass, do not change them by I3: the space is there, the pattern "space missing" does not
-   match, only the pattern "already done" matches, and it gives an empty edit. Spaces inserted by
-   `nbsp.*` rules and removed by the closed-style dash or the percent setting are covered by the
-   second and third items of I2.
+   except inside fragments split or merged by I2 (step 2): everything that later phases change is
+   the form of signs and the glue of spaces. Spaces inserted by phase k are seen on the first pass
+   by phases k+1 to 7, as on the second pass by all phases. Phases 1 to k−1, which first see those
+   spaces on the second pass, do not change them by I3: the space is there, the pattern "space
+   missing" does not match, only the pattern "already done" matches, and it gives an empty edit.
+   Spaces inserted by `nbsp.*` rules and removed by the closed-style dash or the percent setting are
+   covered by the second and third items of I2.
 2. Hence on the second pass every match of the first pass recurs with the same `consume` and the
    same rule, except that a spaced dash produced by `dash.double-hyphen` is matched by
    `dash.spaced-hyphen` (section 8.4), and except on fragments split or merged by I2: the parts of a
