@@ -4,16 +4,7 @@
 //! guards against a forgotten `vis`, `show` prints invisible characters as markers on failure, and
 //! `parse_tmpl` reads the test-only `.tmpl` syntax.
 
-#![allow(
-    dead_code,
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::indexing_slicing,
-    clippy::print_stdout,
-    clippy::print_stderr,
-    clippy::dbg_macro
-)]
+#![allow(dead_code)]
 
 pub mod strategies;
 

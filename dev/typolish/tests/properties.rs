@@ -4,7 +4,15 @@
 //! `lint`, `to_plain`, the decoders of the output kinds or `LanguageBuilder` join when those parts
 //! exist.
 
-#![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::dbg_macro
+)]
 
 mod common;
 

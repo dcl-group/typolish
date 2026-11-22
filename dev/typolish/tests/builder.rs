@@ -1,7 +1,15 @@
 //! `TypographerBuilder` validation (design sections 2.4 and 2.11): which error comes first, which
 //! value is reported, which values are accepted.
 
-#![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::dbg_macro
+)]
 
 use typolish::{
     DashStyle, Error, Language, NarrowGlue, PercentSpacing, QuotePairs, Rule, RuleSet,

@@ -1,6 +1,14 @@
 //! `Rule` and `RuleSet` against the literal tables of design sections 2.3, 4.1 and 9.2.
 
-#![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::dbg_macro
+)]
 
 use typolish::{Error, Rule, RuleSet};
 

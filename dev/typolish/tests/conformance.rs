@@ -535,6 +535,50 @@ fn source_reads_no_environment_and_has_no_unsafe() {
     }
 }
 
+/// The lints that every test target allows (design section 14.5).
+const TEST_ALLOWS: [&str; 7] = [
+    "clippy::unwrap_used",
+    "clippy::expect_used",
+    "clippy::panic",
+    "clippy::indexing_slicing",
+    "clippy::print_stdout",
+    "clippy::print_stderr",
+    "clippy::dbg_macro",
+];
+
+/// The lints of the first `#![allow(...)]` of a file, in order.
+fn inner_allows(src: &str) -> Vec<String> {
+    let Some((_, rest)) = src.split_once("#![allow(") else {
+        return Vec::new();
+    };
+    let list = rest.split_once(")]").map_or("", |(list, _)| list);
+    list.split(',')
+        .map(str::trim)
+        .filter(|lint| !lint.is_empty())
+        .map(String::from)
+        .collect()
+}
+
+#[test]
+fn test_targets_allow_the_lints_of_section_14_5() {
+    let mut targets = 0;
+    for entry in fs::read_dir(crate_dir().join("tests")).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|e| e == "rs") {
+            targets += 1;
+            assert_eq!(
+                inner_allows(&read(&path)),
+                TEST_ALLOWS,
+                "{}",
+                path.display()
+            );
+        }
+    }
+    assert!(targets > 5);
+    let common = crate_dir().join("tests/common/mod.rs");
+    assert_eq!(inner_allows(&read(&common)), ["dead_code"]);
+}
+
 #[test]
 fn language_tables_hold_no_logic() {
     for file in ["ru_ru.rs", "en_us.rs", "common.rs"] {

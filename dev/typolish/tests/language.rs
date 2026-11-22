@@ -1,6 +1,14 @@
 //! `Language` and the activity of rules per language (design sections 2.2, 7.4 and 7.7).
 
-#![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::dbg_macro
+)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

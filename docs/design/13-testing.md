@@ -505,14 +505,15 @@ unique and of the documented form, `Rule::from_str(r.id()) == Ok(r)`;
 variant exists); the composition of Prose and Interface, and the rule lists in their rustdoc, match
 section 9.2 and the Prose and Interface columns of sections 4.1 and 8.1; the rustdoc of every
 builder setting names exactly the rules that list it in the settings column of section 8.1; `src/`
-contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; `src/lang/ru_ru.rs`,
-`src/lang/en_us.rs` and `src/lang/common.rs` contain no `fn`, `impl`, `match` or `if` (section 7.1);
-replacement tables produce no letter and no digit; every character the lexer reads as `Quote`
-(section 3.5) other than `"` and `'` is in the table of section 11.2, `′` and `″` in the primes row
-and the others in the quotes row; built-in languages × built-in sets build without error. A unit
-test next to the prefilter checks, for every built-in set and language, that the trigger set equals
-the union of the trigger constants of the active rules. Checks that read `docs/design/` skip when
-the file is absent (the published package has no design).
+contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; the first `#![allow(...)]`
+of every `tests/*.rs` lists exactly the lints of section 14.5, and that of `tests/common/mod.rs`
+only `dead_code`; `src/lang/ru_ru.rs`, `src/lang/en_us.rs` and `src/lang/common.rs` contain no `fn`,
+`impl`, `match` or `if` (section 7.1); replacement tables produce no letter and no digit; every
+character the lexer reads as `Quote` (section 3.5) other than `"` and `'` is in the table of section
+11.2, `′` and `″` in the primes row and the others in the quotes row; built-in languages × built-in
+sets build without error. A unit test next to the prefilter checks, for every built-in set and
+language, that the trigger set equals the union of the trigger constants of the active rules. Checks
+that read `docs/design/` skip when the file is absent (the published package has no design).
 
 `tests/data.rs` runs the validation of section 7.6 on every built-in table (so the order and
 duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,

@@ -2,7 +2,15 @@
 //! are implemented: no rule means no change, `Cow::Borrowed` exactly when nothing changed, slots
 //! on their places, `typeset_with`, `typeset_into` and the thread-local scratch.
 
-#![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::dbg_macro
+)]
 
 mod common;
 

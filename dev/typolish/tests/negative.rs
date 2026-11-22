@@ -7,7 +7,15 @@
 //! the 405 negative cases of the reference tables join with the stages that deliver them (design
 //! sections 13.3 and 15.4); rows 3 and 10 in Prose join with their rules.
 
-#![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::dbg_macro
+)]
 
 mod common;
 

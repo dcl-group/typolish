@@ -6,7 +6,15 @@
 //! the CLDR values against an extract of cldr-json and the validation rows of section 7.6 join in
 //! stage 3 (section 15.4).
 
-#![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::dbg_macro
+)]
 
 use std::collections::BTreeMap;
 

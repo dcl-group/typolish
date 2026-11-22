@@ -1,7 +1,15 @@
 //! The compile-time commitments of design section 2.13 and the auto traits of section 2.4:
 //! `Send + Sync`, `Copy`, `Clone`, `Debug`, `Eq`, `Hash` and `const` use.
 
-#![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::dbg_macro
+)]
 
 use std::fmt::Debug;
 use std::hash::Hash;
