@@ -368,8 +368,9 @@ the no-panic test.
    there, with the generators of this section, not in `tests/properties.rs`; the generators live in
    `tests/common/strategies.rs`, which `tests/common/mod.rs` declares as `pub mod strategies;` and
    `src/engine/mod.rs` includes as
-   `#[cfg(test)] #[allow(dead_code)] #[path = "../../tests/common/strategies.rs"] mod strategies;`
-   (its unit test uses only some generators), and `lib.rs` has
+   `#[cfg(test)] #[path = "../../tests/common/strategies.rs"] mod strategies;` (its unit test uses
+   only some generators; the file's own `#![allow(dead_code, ...)]` covers that, and a second
+   `#[allow(dead_code)]` on the module would be a duplicated attribute for Clippy), and `lib.rs` has
    `#[cfg(test)] extern crate self as typolish;` so that the `typolish::` paths of that file resolve
    in both crates; so it adds nothing to the public API or to the features), which runs the whole
    pipeline without the prefilter, gives the same result as `typeset` and `typeset_template` on

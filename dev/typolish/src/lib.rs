@@ -26,7 +26,13 @@ mod language;
 mod output;
 mod piece;
 mod rule;
+mod rules;
 mod typographer;
+
+// The generators of `tests/common/strategies.rs` name the crate `typolish` (design section 13.5,
+// property 8).
+#[cfg(test)]
+extern crate self as typolish;
 
 pub use engine::scratch::Scratch;
 pub use error::Error;

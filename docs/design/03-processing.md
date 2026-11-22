@@ -34,14 +34,17 @@ Files: `engine/mod.rs` (the pipeline entry points, section 13.5, property 8), `e
 ### 3.2 Prefilter
 
 When a typographer is built, the 256-bit trigger set is the union of the trigger bytes of its active
-rules; each rule declares its trigger bytes as a constant next to its code (`rules/*.rs`). In
-version 1 the set is: `"` `'` `-` `.` `(` `<` `>` `!` `+` `x` `X`, the digits, the lead bytes of
-every sign of the language's `signs` (`№`, `§`, `¶` in the built-in tables), the lead bytes of
-typographic characters that rules use as context, `%` and the lead byte of `‰` when `nbsp.units` is
-active and `PercentSpacing` is not `AsWritten`, and the space when a no-break rule is active. A call
-first scans the input bytes against that set and against the set of bytes that the output kind
-encodes. The second set is derived, once per output style, from the same constant table the encoder
-uses (section 11), so the two cannot drift apart:
+rules; each rule declares its trigger bytes as a constant next to its code (`rules/*.rs`).
+`TypographerBuilder::build` computes the set and the active rules once; `Typographer::new` is a
+`const fn` and cannot, so a typographer it made computes them on its first call and keeps them (a
+`OnceLock` in the typographer, which allocates nothing). In version 1 the set is: `"` `'` `-` `.`
+`(` `<` `>` `!` `+` `x` `X`, the digits, the lead bytes of every sign of the language's `signs`
+(`№`, `§`, `¶` in the built-in tables), the lead bytes of typographic characters that rules use as
+context, `%` and the lead byte of `‰` when `nbsp.units` is active and `PercentSpacing` is not
+`AsWritten`, and the space when a no-break rule is active. A call first scans the input bytes
+against that set and against the set of bytes that the output kind encodes. The second set is
+derived, once per output style, from the same constant table the encoder uses (section 11), so the
+two cannot drift apart:
 
 - `Unicode`: empty;
 - `Html`: `& < > " '`, and the lead bytes of the typographic set except with

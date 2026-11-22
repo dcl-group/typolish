@@ -2,11 +2,13 @@
 //! and 2.6).
 
 use std::borrow::Cow;
+use std::sync::OnceLock;
 
 use crate::engine::{self, Input, scratch::Scratch};
 use crate::lang::data::{
     DashData, DashStyle, QUOTE_GLYPHS, QuotePairs, fold_char, is_valid_group, is_valid_minus,
 };
+use crate::rules::{self, Triggers};
 use crate::{Error, Language, Output, Piece, Rule, RuleSet, Template};
 
 /// Whether straight single quotes become quotes outside double quotes (rule `quotes.pairs`,
@@ -185,6 +187,18 @@ pub struct Typographer {
     language: Language,
     rules: RuleSet,
     settings: Settings,
+    /// The active rules and the trigger set, computed once: by `build()`, or by the first call
+    /// for a typographer of the `const fn` `new` (design section 3.2).
+    compiled: OnceLock<Compiled>,
+}
+
+/// What a typographer computes once from its language, rules and settings.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Compiled {
+    /// The configured rules that the language supports (`active_rules`).
+    pub(crate) active: RuleSet,
+    /// The union of the trigger bytes of the active rules (design section 3.2).
+    pub(crate) triggers: Triggers,
 }
 
 impl Typographer {
@@ -203,6 +217,7 @@ impl Typographer {
             language,
             rules,
             settings: Settings::DEFAULT,
+            compiled: OnceLock::new(),
         }
     }
 
@@ -270,10 +285,26 @@ impl Typographer {
     /// ```
     #[must_use]
     pub fn active_rules(&self) -> RuleSet {
-        self.rules
+        self.compiled().active
+    }
+
+    /// The active rules and the trigger set, computed on first use.
+    pub(crate) fn compiled(&self) -> &Compiled {
+        self.compiled.get_or_init(|| self.compile())
+    }
+
+    fn compile(&self) -> Compiled {
+        let active: RuleSet = self
+            .rules
             .iter()
             .filter(|rule| self.supports(*rule))
-            .collect()
+            .collect();
+        let data = self.language.data();
+        let percent = self.settings.percent != PercentSpacing::AsWritten;
+        let triggers = active.iter().fold(Triggers::NONE, |set, rule| {
+            set.union(rules::triggers(rule, data, percent))
+        });
+        Compiled { active, triggers }
     }
 
     /// Whether the language, with the settings, has the data a rule needs.
@@ -693,10 +724,16 @@ impl TypographerBuilder {
                 format!("{digits} is above 4"),
             ));
         }
-        Ok(Typographer {
+        let typographer = Typographer {
             language,
             rules: base.union(enabled).difference(disabled),
             settings,
+            compiled: OnceLock::new(),
+        };
+        let compiled = typographer.compile();
+        Ok(Typographer {
+            compiled: OnceLock::from(compiled),
+            ..typographer
         })
     }
 }

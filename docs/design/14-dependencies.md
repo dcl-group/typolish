@@ -210,8 +210,8 @@ only `tests/*.rs` (and `tests/*/main.rs`). `tests/reference.rs` (section 13.4) a
 type is in `tests/common/mod.rs`; since every target that declares `mod common;` includes that
 module but uses only part of it, `tests/common/mod.rs` starts with `#![allow(dead_code)]` (a shared
 helper module, as usual for integration tests), and `src/engine/mod.rs` includes the generators as
-`#[cfg(test)] #[allow(dead_code)] #[path = "../../tests/common/strategies.rs"] mod strategies;`
-(section 13.5, property 8).
+`#[cfg(test)] #[path = "../../tests/common/strategies.rs"] mod strategies;` (section 13.5, property
+8).
 
 The six test files from `builder.rs` to `helpers.rs` were added in stage 2 to keep `tests/api.rs`
 and `tests/conformance.rs` readable; they hold rows that section 13.2 assigns to `tests/api.rs` and
