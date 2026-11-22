@@ -1,11 +1,14 @@
 //! The mandatory negative cases of design section 10.5 and the stress strings of section 10.7 at
 //! the level of `typeset`: in Interface without the `nbsp.*` rules every case comes back unchanged
 //! and borrowed, alone, in the two sentence frames of each language and as a `Piece::Text` next to
-//! slots; in Prose (again without `nbsp.*`) the rows that Prose leaves unchanged do the same.
+//! slots; in Prose (again without `nbsp.*`) the rows that Prose leaves unchanged do the same, and
+//! rows 3 and 10 give the output that section 10.5 names for Prose. The interaction strings of
+//! section 10.7, fenced blocks, Swiss grouping and the 405 negative cases of the reference tables
+//! (`tests/reference/{ru,en_us}.rs`, section 13.4) are checked here too, through `report`.
 //!
-//! The checks through `report` (tokens byte for byte, expected `TechKind`), the `nbsp.*` glue and
-//! the 405 negative cases of the reference tables join with the stages that deliver them (design
-//! sections 13.3 and 15.4); rows 3 and 10 in Prose join with their rules.
+//! Glue of the `nbsp.*` rules, row 24's `if a<b and c>d` with its glue and row 25 with short words
+//! join with stage 3 (design sections 13.3 and 15.4); the checks through `report` already allow
+//! glue outside the token.
 
 #![allow(
     clippy::unwrap_used,
@@ -18,11 +21,22 @@
 )]
 
 mod common;
+#[path = "reference/en_us.rs"]
+mod en_us;
+#[path = "common/probe.rs"]
+mod probe;
+#[path = "reference/ru.rs"]
+mod ru;
 
 use std::borrow::Cow;
+use std::ops::Range;
 
-use common::{show, without_nbsp};
-use typolish::{Language, Output, Piece, RuleSet, Slot};
+use common::{RefRow, check_in, check_unchanged, interface, prose, show, vis, without_nbsp};
+use probe::{diagnostics_of, spans_of};
+use typolish::{
+    DiagnosticKind, Language, Output, Piece, ProtectedKind, Rule, RuleSet, Slot, TechKind,
+    Typographer,
+};
 
 /// A case of section 10.5: the row number, the texts for both languages and whether Prose leaves
 /// it unchanged.
@@ -290,4 +304,543 @@ fn the_rows_are_complete() {
     let mut numbers: Vec<u8> = ROWS.iter().map(|r| r.no).chain([25]).collect();
     numbers.sort_unstable();
     assert_eq!(numbers, (1..=27).collect::<Vec<u8>>());
+}
+
+// Prose, rows 3 and 10 (section 10.5, last column); the glue of `nbsp.*` is stage 3.
+
+#[test]
+fn row_3_in_prose() {
+    // `--` alone stays; `Запустите -- сейчас.` becomes a dash; `git checkout -- file` stays in
+    // Russian (foreign words) and becomes a dash in English (section 10.8).
+    let ru = prose(Language::RU_RU);
+    let en = prose(Language::EN_US);
+    check_unchanged("ru", &ru, "--");
+    check_unchanged("en", &en, "--");
+    check_in("ru", &ru, ("Запустите -- сейчас.", "Запустите — сейчас."));
+    check_unchanged("ru", &ru, "Значение: --, затем далее.");
+    check_in("en", &en, ("Run -- now.", "Run—now."));
+    check_unchanged("en", &en, "Value: --, then more.");
+    check_unchanged("ru", &ru, "git checkout -- file");
+    check_unchanged("ru", &ru, "Запустите git checkout -- file сейчас.");
+    check_in("en", &en, ("git checkout -- file", "git checkout—file"));
+    check_in(
+        "en",
+        &en,
+        (
+            "Run git checkout -- file now.",
+            "Run git checkout—file now.",
+        ),
+    );
+    // `report` names the rule.
+    let r = ru.report("Запустите -- сейчас.", Output::Unicode);
+    assert!(
+        !r.changes().is_empty()
+            && r.changes()
+                .iter()
+                .all(|c| c.rule() == Rule::DashDoubleHyphen)
+    );
+    let r = en.report("git checkout -- file", Output::Unicode);
+    assert!(
+        !r.changes().is_empty()
+            && r.changes()
+                .iter()
+                .all(|c| c.rule() == Rule::DashDoubleHyphen)
+    );
+    // Interface leaves all of them.
+    for t in [interface(Language::RU_RU), interface(Language::EN_US)] {
+        for text in [
+            "--",
+            "Запустите -- сейчас.",
+            "git checkout -- file",
+            "Run -- now.",
+        ] {
+            check_unchanged("Interface", &t, text);
+        }
+    }
+}
+
+#[test]
+fn row_10_in_prose() {
+    // A port range is an en dash in Prose, deliberately (section 10.6) and never in Interface.
+    for (language, frames) in languages() {
+        let t = prose(language.clone());
+        check_in("Prose", &t, ("8000-8100", "8000–8100"));
+        check_in("Prose", &t, ("ports 8000-8100", "ports 8000–8100"));
+        for frame in frames {
+            let input = frame.replace('X', "8000-8100");
+            let output = frame.replace('X', "8000–8100");
+            check_in("Prose frame", &t, (&input, &output));
+        }
+        let r = t.report("8000-8100", Output::Unicode);
+        assert!(
+            !r.changes().is_empty() && r.changes().iter().all(|c| c.rule() == Rule::RangeDigits),
+            "{language}"
+        );
+        // Next to slots.
+        let out = t.typeset_template(
+            [
+                Piece::Slot("a", Slot::WORD),
+                Piece::Text(" 8000-8100 "),
+                Piece::Slot("b", Slot::WORD),
+            ],
+            Output::Unicode,
+        );
+        assert_eq!(out.texts(), ["", " 8000–8100 ", ""], "{language}");
+        assert!(out.changed());
+        let ui = interface(language);
+        check_unchanged("Interface", &ui, "8000-8100");
+        check_unchanged("Interface", &ui, "ports 8000-8100");
+    }
+}
+
+// The stress strings of section 10.7 in Prose, and the interaction strings of the same section.
+
+#[test]
+fn stress_strings_in_prose() {
+    // Prose changes the telephone fragments (a range, section 10.8) and, from stage 3, the
+    // arrows; every other string stays, borrowed.
+    let changed: &[(&str, &[&str])] = &[
+        ("+7 495 123-4567", &["+7 495 123–4567"]),
+        ("123-4567", &["123–4567"]),
+        // `symbols.arrows` is stage 3: unchanged until then.
+        ("x -> y; z => w", &["x -> y; z => w", "x → y; z => w"]),
+        ("a <-> b", &["a <-> b", "a ↔ b"]),
+    ];
+    for (language, _) in languages() {
+        let t = prose(language.clone());
+        for text in STRESS {
+            match changed.iter().find(|c| c.0 == *text) {
+                None => check_unchanged(&format!("{language} Prose"), &t, text),
+                Some((_, allowed)) => {
+                    let got = t.typeset(text, Output::Unicode);
+                    assert!(
+                        allowed.contains(&&*got),
+                        "{language} Prose: {} came back as {}",
+                        show(text),
+                        show(&got)
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn interaction_strings_of_section_10_7() {
+    // Exact output in both sets, ru and en unless a language is given; the glue of the `nbsp.*`
+    // rules is not in these outputs (stage 3). Rows: input, Interface, Prose.
+    type Table = &'static [(&'static str, &'static str, &'static str)];
+    let both: Table = &[
+        ("+7 495 123-4567", "+7 495 123-4567", "+7 495 123–4567"),
+        ("123-4567", "123-4567", "123–4567"),
+        (
+            "+1 300 200 100 50",
+            "+1 300 200 100 50",
+            "+1 300 200 100 50",
+        ),
+        ("2026-11", "2026-11", "2026-11"),
+        ("5 - x", "5 - x", "5 - x"),
+        ("x - 5", "x - 5", "x - 5"),
+    ];
+    let ru_only: Table = &[
+        ("2010-11 гг.", "2010-11 гг.", "2010–11 гг."),
+        ("2026-11 гг.", "2026-11 гг.", "2026-11 гг."),
+        (
+            "21.11.2026 г. Затем",
+            "21.11.2026 г. Затем",
+            "21.11.2026 г. Затем",
+        ),
+        (
+            "21.11.26 г. Затем",
+            "21.11.26 г. Затем",
+            "21.11.26 г. Затем",
+        ),
+        ("-- file", "-- file", "—⍽file"),
+        (
+            "Подождите...\nДальше",
+            "Подождите…\nДальше",
+            "Подождите…\nДальше",
+        ),
+        (
+            "Подождите...\tДальше",
+            "Подождите…\tДальше",
+            "Подождите…\tДальше",
+        ),
+        ("... слово", "… слово", "… слово"),
+        ("т.  е.", "т.  е.", "т.  е."),
+        ("№\t5", "№\t5", "№\t5"),
+    ];
+    let en_only: Table = &[
+        ("-- file", "-- file", "-- file"),
+        ("word  -  word", "word  -  word", "word  -  word"),
+        ("word\t-\tword", "word\t-\tword", "word\t-\tword"),
+        ("word⍽- word", "word⍽— word", "word⍽— word"),
+    ];
+    for (language, table) in [
+        (Language::RU_RU, [both, ru_only]),
+        (Language::EN_US, [both, en_only]),
+    ] {
+        let ui = interface(language.clone());
+        let pr = prose(language.clone());
+        for (input, interface_out, prose_out) in table.iter().flat_map(|t| t.iter()) {
+            check_in(
+                &format!("{language} Interface"),
+                &ui,
+                (input, interface_out),
+            );
+            check_in(&format!("{language} Prose"), &pr, (input, prose_out));
+        }
+    }
+    // `5 - x` and `x - 5` report `AmbiguousHyphen` in both sets.
+    for (language, _) in languages() {
+        for t in [interface(language.clone()), prose(language.clone())] {
+            for text in ["5 - x", "x - 5"] {
+                let kinds: Vec<_> = diagnostics_of(&t, text).into_iter().map(|d| d.0).collect();
+                assert_eq!(
+                    kinds,
+                    [DiagnosticKind::AmbiguousHyphen],
+                    "{language} {text}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn mentions_come_out_unchanged_in_interface_and_are_emails() {
+    for (language, _) in languages() {
+        let t = interface(language);
+        for text in ["@user", "@here"] {
+            check_unchanged("Interface", &t, text);
+            let spans = spans_of(&t, text);
+            assert_eq!(
+                spans.iter().map(|s| s.0).collect::<Vec<_>>(),
+                [ProtectedKind::Technical(TechKind::Email)],
+                "{text}"
+            );
+        }
+    }
+}
+
+#[test]
+fn fenced_blocks_are_protected_whole() {
+    // A fenced block indented by three spaces with an info string, with a quote and dots that no
+    // rule may touch; the text around it is typeset (section 10.1).
+    let input = "   ```rust\nlet s = \"a...\";\nx - y -- z\n   ```\n\nОн сказал \"да\" и ждал...";
+    let expected = "   ```rust\nlet s = \"a...\";\nx - y -- z\n   ```\n\nОн сказал «да» и ждал…";
+    for t in [prose(Language::RU_RU), interface(Language::RU_RU)] {
+        check_in("fenced", &t, (input, expected));
+        let r = t.report(input, Output::Unicode);
+        let block = r
+            .protected()
+            .iter()
+            .find(|s| s.kind() == ProtectedKind::Delimited)
+            .unwrap();
+        assert_eq!(block.piece(), 0);
+        assert_eq!(
+            &input[block.range()],
+            &input[..input.rfind("```").unwrap() + 3]
+        );
+    }
+}
+
+#[test]
+fn a_longer_closing_run_does_not_close() {
+    // The closing run is exactly as long as the opening one (section 10.1): the four-backtick line
+    // is content, the later three-backtick line closes.
+    let input = "```\nx \"a\" - y...\n````\nz -- w\n```\nОн сказал \"да\".";
+    let expected = "```\nx \"a\" - y...\n````\nz -- w\n```\nОн сказал «да».";
+    for t in [prose(Language::RU_RU), interface(Language::RU_RU)] {
+        check_in("fenced", &t, (input, expected));
+        let r = t.report(input, Output::Unicode);
+        let spans: Vec<_> = r
+            .protected()
+            .iter()
+            .filter(|s| s.kind() == ProtectedKind::Delimited)
+            .map(|s| &input[s.range()])
+            .collect();
+        assert_eq!(spans, ["```\nx \"a\" - y...\n````\nz -- w\n```"]);
+    }
+}
+
+#[test]
+fn swiss_grouping_is_frozen_in_both_sets() {
+    for (language, frames) in languages() {
+        for t in [prose(language.clone()), interface(language.clone())] {
+            check_unchanged("Swiss", &t, "1'000'000");
+            for frame in frames {
+                check_unchanged("Swiss in a frame", &t, &frame.replace('X', "1'000'000"));
+            }
+            let spans = spans_of(&t, "1'000'000");
+            assert_eq!(spans.len(), 1, "{language}");
+            assert!(matches!(spans[0].0, ProtectedKind::Technical(_)));
+        }
+    }
+}
+
+// The 405 negative cases of the reference tables (section 13.3).
+
+const GROUPS: [&str; 10] = [
+    "neg.flags",
+    "neg.net",
+    "neg.ver",
+    "neg.ids",
+    "neg.ident",
+    "neg.list",
+    "neg.html",
+    "neg.mixed",
+    "neg.shortlat",
+    "neg.lookalike",
+];
+
+fn is_negative(id: &str) -> bool {
+    GROUPS
+        .iter()
+        .any(|g| id.strip_prefix(g).is_some_and(|rest| rest.starts_with('.')))
+}
+
+/// The negative rows of a table.
+fn negative_rows(table: &'static [RefRow]) -> Vec<&'static RefRow> {
+    table.iter().filter(|r| is_negative(r.id)).collect()
+}
+
+/// The token of a case: the part between the words of its frame for a framed case, the whole
+/// input for a case without a space, none for a sentence or a command (design section 10.5).
+fn token_range(r: &RefRow, frames: &[&str; 2]) -> Option<Range<usize>> {
+    if r.id.contains(".ctx.") {
+        for frame in frames {
+            let (pre, post) = frame.split_once('X').unwrap();
+            if r.input.len() >= pre.len() + post.len()
+                && r.input.starts_with(pre)
+                && r.input.ends_with(post)
+            {
+                return Some(pre.len()..r.input.len() - post.len());
+            }
+        }
+        panic!("{}: no frame of the language fits {:?}", r.id, r.input);
+    }
+    (!r.input.contains(' ')).then_some(0..r.input.len())
+}
+
+/// The text with glued spaces written as ordinary spaces.
+fn unglued(text: &str) -> String {
+    text.replace(['\u{a0}', '\u{202f}'], " ")
+}
+
+/// The output that Prose gives for a case: unchanged, except where section 10.5 and section 10.7
+/// allow the token to change (a port range, the lone `--` between words, an arrow). Several
+/// entries mean that the output depends on whether the rule of a later stage exists yet.
+fn prose_options(r: &RefRow, ru: bool, token: &Option<Range<usize>>) -> Vec<String> {
+    let input = r.input;
+    let token_text = token.as_ref().map(|t| &input[t.clone()]);
+    let mut out = input.to_owned();
+    match token_text.unwrap_or(input) {
+        text if text == "8000-8100" || text == "ports 8000-8100" => {
+            out = input.replace("8000-8100", "8000–8100");
+        }
+        "--" if r.id.contains(".ctx.") => {
+            // The first frame has the dash between two words; the second has a comma after it.
+            let first = if ru {
+                "Запустите -- сейчас."
+            } else {
+                "Run -- now."
+            };
+            if input == first {
+                out = if ru {
+                    "Запустите — сейчас.".to_owned()
+                } else {
+                    "Run—now.".to_owned()
+                };
+            }
+        }
+        "x -> y; z => w" => {
+            return vec![input.to_owned(), input.replace("x -> y", "x → y")];
+        }
+        _ => {}
+    }
+    vec![out]
+}
+
+/// Checks a case through `report` with `t`: the result against the allowed ones, and every edit
+/// either a glue mark of an `nbsp.*` rule outside the token or an edit that the case names.
+#[track_caller]
+fn check_case(
+    what: &str,
+    t: &Typographer,
+    r: &RefRow,
+    frames: &[&str; 2],
+    allowed: &[String],
+    edits: &[Rule],
+) {
+    let report = t.report(r.input, Output::Unicode);
+    let token = token_range(r, frames);
+    let got = report.result().to_string();
+    assert!(
+        allowed.iter().any(|a| *a == unglued(&got)),
+        "{what}: {}: {}\nexpected one of {:?}\ngot      {}",
+        r.id,
+        show(r.input),
+        allowed,
+        show(&got)
+    );
+    assert_eq!(
+        matches!(report.result(), Cow::Borrowed(_)),
+        got == r.input,
+        "{what}: {}: Cow::Borrowed exactly when unchanged",
+        r.id
+    );
+    for change in report.changes() {
+        let range = change.range();
+        let glue = matches!(change.replacement(), "\u{a0}" | "\u{202f}")
+            && matches!(report.original(change), "" | " ");
+        if change.rule().id().starts_with("nbsp.") {
+            assert!(
+                glue,
+                "{what}: {}: an nbsp edit that is not glue: {change:?}",
+                r.id
+            );
+            if let Some(token) = &token {
+                assert!(
+                    range.end <= token.start || range.start >= token.end,
+                    "{what}: {}: glue inside the token {token:?}: {change:?}",
+                    r.id
+                );
+            }
+            assert!(
+                !r.input[range.end..].starts_with('-'),
+                "{what}: {}: glue before a hyphen: {change:?}",
+                r.id
+            );
+        } else {
+            assert!(
+                edits.contains(&change.rule()),
+                "{what}: {}: unexpected edit of {}: {change:?}",
+                r.id,
+                change.rule().id()
+            );
+        }
+    }
+    // The text that no edit covers stays: the frozen fragments appear in the output in order.
+    let mut at = 0;
+    for span in report.protected() {
+        if let ProtectedKind::Technical(_) = span.kind() {
+            let text = &r.input[span.range()];
+            match got[at..].find(text) {
+                Some(i) => at += i + text.len(),
+                None => panic!(
+                    "{what}: {}: the frozen {text:?} is not in {}",
+                    r.id,
+                    show(&got)
+                ),
+            }
+        }
+    }
+}
+
+#[test]
+fn the_reference_tables_hold_405_negative_cases() {
+    let ru = negative_rows(ru::ROWS);
+    let en = negative_rows(en_us::ROWS);
+    assert_eq!((ru.len(), en.len()), (207, 198));
+    assert_eq!(ru::ROWS.len() + en_us::ROWS.len(), 820);
+    for rows in [&ru, &en] {
+        for group in GROUPS {
+            let n = rows.iter().filter(|r| r.id.starts_with(group)).count();
+            assert!(n > 0, "{group}");
+        }
+        let mut ids: Vec<_> = rows.iter().map(|r| r.id).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), rows.len(), "ids are unique");
+    }
+    // Language of an id: `.ru.` and `.en-US.`.
+    assert!(ru.iter().all(|r| r.id.contains(".ru.")));
+    assert!(en.iter().all(|r| r.id.contains(".en-US.")));
+    // Host names are neutral.
+    for r in ru.iter().chain(en.iter()) {
+        for text in [r.input, r.recorded] {
+            assert!(!text.contains("alraz"), "{}", r.id);
+        }
+    }
+}
+
+#[test]
+fn corpus_cases_keep_their_token_in_interface() {
+    // Section 13.3: in Interface every case keeps its token byte for byte; the only other edits
+    // are glue marks of `nbsp.*` rules outside it. Without the `nbsp.*` rules (stage 2) that
+    // means no edit at all, and the output is the input, borrowed.
+    for (language, frames, rows) in [
+        (Language::RU_RU, FRAMES_RU, negative_rows(ru::ROWS)),
+        (Language::EN_US, FRAMES_EN, negative_rows(en_us::ROWS)),
+    ] {
+        let t = without_nbsp(language.clone(), RuleSet::INTERFACE);
+        for r in rows {
+            let allowed = [r.input.to_owned()];
+            check_case(
+                &format!("{language} Interface"),
+                &t,
+                r,
+                &frames,
+                &allowed,
+                &[],
+            );
+            let report = t.report(r.input, Output::Unicode);
+            assert!(
+                report.changes().is_empty(),
+                "{}: {:?}",
+                r.id,
+                report.changes()
+            );
+        }
+    }
+}
+
+#[test]
+fn corpus_cases_keep_their_token_in_prose() {
+    // In Prose the token may also change in the groups that section 10.5 allows (the lone `--`
+    // between words, literal ranges, arrows), and only as `prose_options` records.
+    for (language, frames, rows) in [
+        (Language::RU_RU, FRAMES_RU, negative_rows(ru::ROWS)),
+        (Language::EN_US, FRAMES_EN, negative_rows(en_us::ROWS)),
+    ] {
+        let ru = language == Language::RU_RU;
+        let t = without_nbsp(language.clone(), RuleSet::PROSE);
+        let edits = [
+            Rule::RangeDigits,
+            Rule::RangeContext,
+            Rule::DashDoubleHyphen,
+            Rule::DashSpacedHyphen,
+            Rule::SymbolsArrows,
+        ];
+        let mut changed = 0;
+        for r in rows {
+            let token = token_range(r, &frames);
+            let allowed = prose_options(r, ru, &token);
+            check_case(
+                &format!("{language} Prose"),
+                &t,
+                r,
+                &frames,
+                &allowed,
+                &edits,
+            );
+            changed += usize::from(allowed.len() == 1 && allowed[0] != r.input);
+        }
+        // `8000-8100` and `ports 8000-8100` with their frames, and the lone `--` in its first
+        // frame: 3 + 3 + 1 rows change (the arrow row is the one that waits for stage 3).
+        assert_eq!(changed, 7, "{language}");
+    }
+}
+
+#[test]
+fn corpus_cases_are_unchanged_when_no_rule_runs() {
+    // The tables are not trivially satisfied: with every rule off nothing changes either, and
+    // the tokens of the cases are found in the inputs.
+    let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY);
+    for r in negative_rows(ru::ROWS) {
+        assert!(vis(r.input) == r.input, "{}", r.id);
+        check_unchanged("no rules", &t, r.input);
+        let token = token_range(r, &FRAMES_RU).unwrap_or(0..r.input.len());
+        assert!(!r.input[token].is_empty(), "{}", r.id);
+    }
 }
