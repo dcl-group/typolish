@@ -144,10 +144,13 @@ the same `consume` when its context holds; it raises `AmbiguousHyphen` only on a
 
 **`dash.double-hyphen`** (Prose). The same for a lone `--` or `---`, with the same refusals:
 `npm test -- --watch` stays. A typed `—` or `–` is matched by `dash.spaced-hyphen` (with an empty
-edit), never by this rule, so on the output of this rule its match moves to `dash.spaced-hyphen`
-with the same `consume`. A lone `--` or `---` without an operand on each side (a line that is just
-`--`) is not changed by this rule. At the start of a line, `-- word` is taken by `dash.dialogue`
-where the language has it (ru, Prose): `-- file` → `—⍽file`; in English, and in Interface, it stays.
+edit), never by this rule, so on the output of this rule a dash that keeps its spaces (`Spaced`,
+`SpacedGlued`, and `Closed` where it keeps the author's spaces) is matched by `dash.spaced-hyphen`
+with the same `consume`, while a dash that `Closed` joined to its words (`word—word`) stands inside
+a `Joined` fragment and is matched by no dash rule (invariant I2). A lone `--` or `---` without an
+operand on each side (a line that is just `--`) is not changed by this rule. At the start of a line,
+`-- word` is taken by `dash.dialogue` where the language has it (ru, Prose): `-- file` → `—⍽file`;
+in English, and in Interface, it stays.
 
 **`dash.dialogue`** (Prose, languages with `dialogue`). At the start of the text or of a line, after
 optional indentation: `-` or `--`, one space, then a word or an opening quote → `—`, and the space

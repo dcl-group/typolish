@@ -262,7 +262,7 @@ the no-panic test.
    only of spaces), I2 (fragment kinds of `f(x)` match those of `x`, modulo the splits and merges of
    section 4.3), I3 (no output character of a rule triggers a rule), I4 (every match computed on
    `f(x)` has an empty edit, and every match on `x` outside the fragments merged or split by I2
-   recurs on `f(x)` with the same rule and `consume`, except that a dash produced by
+   recurs on `f(x)` with the same rule and `consume`, except that a spaced dash produced by
    `dash.double-hyphen` is matched by `dash.spaced-hyphen`, section 8.4), I5 (in a non-converging
    window no straight quote changed).
 4. **Slots and protected spans**: number, order, kinds and payloads of slots are kept;

@@ -428,7 +428,8 @@ This is a sketch: real code has no panicking indexing. Properties of a phase:
    target form. If it is, the rule returns a `Match` with no edits and the same `consume`, and so it
    does on a typed typographic sign that it must not change (a typed dash, a typed `…`). For example
    `т.⍽д.` matches `nbsp.abbreviations` like `т.д.` and `т. д.` do. So the partition into taken
-   ranges is the same on a second pass (section 4.4).
+   ranges is the same on a second pass, except on fragments that a removed space merged (section
+   4.3, I2; section 4.4).
 4. **Bounded context.** A rule looks no further than a fixed number of tokens around its anchor (the
    longest is `nbsp.phone`, at most 24 tokens for its 10 to 15 digits in at most six fragments;
    abbreviations and units take up to eight). The exception is the quote phase: it has a linear

@@ -90,11 +90,16 @@ agree and that every rule appears once.
   - a removed space merges fragments only into a kind that the rules read as before. The
     closed-style dash removes its two spaces, each a single U+0020, only between two plain words
     (section 8.4), so `word`, `—`, `word` become one `Joined` fragment (check 22), never a technical
-    one: a rule that matched the three fragments matches the merged fragment in its "already done"
-    form with no edits (I4), the glue it set stays, and no rule that did not match before matches
-    now (the only rules that look inside a `Joined` fragment are `ellipsis.inner` and
-    `dash.spaced-hyphen` in its "already done" form). `100 %` → `100%` with
-    `PercentSpacing::Attached` or `Language` (en) merges a percentage into a percentage.
+    one. On the next pass no rule matches across the removed spaces: `dash.spaced-hyphen` and
+    `dash.double-hyphen` need a dash fragment with a space on each side (section 8.4), and a trigger
+    word of a no-break rule must be a whole core (section 8.2), so `the` in `Moscow—the` triggers
+    nothing. The edits of the first pass stay, because no rule changes a typographic form or a glued
+    space (I3): the dash stays `—`, and so does the glue that `nbsp.short-words` set after `the` in
+    the same pass from the classification of its input (section 3.6; `Moscow - the capital` →
+    `Moscow—the⍽capital`). No rule that did not match before matches now: the only rule that looks
+    inside a `Joined` fragment is `ellipsis.inner`, which reads only the two words around its `...`
+    or `…`, and the merge does not change them. `100 %` → `100%` with `PercentSpacing::Attached` or
+    `Language` (en) merges a percentage into a percentage.
 
   Each case has a fixed seed in the idempotence property (section 13.5): `Школа №5 г. Москвы`,
   `§5 ч. 2`, `¶IV`, `т.е.`, `и т.д...`, `Moscow - the capital`,
@@ -118,9 +123,9 @@ agree and that every rule appears once.
   same `consume` when the pattern is already in target form, and also when it carries a typed
   typographic sign that the rule must not change (section 8.4: typed dashes and the spaces around
   them; section 8.6: a typed `…`). The only exceptions are the structural changes of I2: where a
-  removed space merged fragments, the rule matches the merged fragment in its "already done" form
-  with an empty edit; where an inserted space split a fragment, the rules that read the parts match
-  them with empty edits. So on f(x) no rule matches with a non-empty edit.
+  removed space merged fragments, a rule whose match covered a removed space does not match the
+  merged fragment, and its edits stay (I2, I3); where an inserted space split a fragment, the rules
+  that read the parts match them with empty edits. So on f(x) no rule matches with a non-empty edit.
 - **I5. Quotes are all or nothing per window** (section 6.6).
 
 ### 4.4 Proof sketch
@@ -138,11 +143,12 @@ Let f = P7 ∘ … ∘ P1, where Pk is phase k. The claim is f(f(x)) = f(x) for 
    matches, and it gives an empty edit. Spaces inserted by `nbsp.*` rules and removed by the
    closed-style dash or the percent setting are covered by the second and third items of I2.
 2. Hence on the second pass every match of the first pass recurs with the same `consume` and the
-   same rule (a dash produced by `dash.double-hyphen` is matched by `dash.spaced-hyphen`, section
-   8.4), except on fragments merged or split by I2, which are matched in their "already done" form;
-   no match has a non-empty edit, and the edits of each match lead signs to the target form that
-   f(x) already has: the same phase put it there on the first pass, and later phases did not change
-   it (I3). Every edit is empty.
+   same rule, except that a spaced dash produced by `dash.double-hyphen` is matched by
+   `dash.spaced-hyphen` (section 8.4), and except on fragments split or merged by I2: the parts of a
+   split fragment are matched in their "already done" form, and a merged fragment is matched by no
+   rule whose match covered a removed space (I2, I4); no match has a non-empty edit, and the edits
+   of each match lead signs to the target form that f(x) already has: the same phase put it there on
+   the first pass, and later phases did not change it (I3). Every edit is empty.
 3. Matches that the engine refused on the first pass because they touched a frozen token are refused
    again: freezing comes from the classifier, which by I2 yields the same kinds.
 4. The quote phase is proved separately (section 6.11).
