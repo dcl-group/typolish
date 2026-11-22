@@ -116,7 +116,13 @@ impl LanguageBuilder {
     pub fn dash_style(self, style: DashStyle) -> Self;            // as `with_dash_style`
     pub fn short_words<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     pub fn units<I>(self, units: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
-    // ... one method per field
+    /// Each entry is its parts as printed and its binding: `(&["т.", "е."][..], Bind::Inner)`.
+    pub fn abbreviations<I, P>(self, entries: I) -> Self
+        where I: IntoIterator<Item = (P, Bind)>, P: IntoIterator, P::Item: AsRef<str>;
+    // ... one method per field, named as the field: the other lists as `short_words`, `signs`
+    // taking `char`s, and `cldr_version`, `script`, `dash` (`Option<DashData>`), `ellipsis`,
+    // `short_word_length`, `month_position`, `numbers`, `decade_apostrophe` and
+    // `trailing_possessive` taking the value of the field
     /// Normalizes (lowercases the word lists of section 7.6, not `months`, `abbreviations`,
     /// `units` or `ambiguous_units`; sorts; removes duplicates), validates (section 7.6) and returns a `Language` that
     /// holds the data in an `Arc`.
@@ -125,7 +131,9 @@ impl LanguageBuilder {
 ```
 
 Inside the engine both kinds of language are read through one private view, so rules do not know
-where the data came from.
+where the data came from. A list method replaces the whole list of the language it started from, and
+`build()` validates the result rather than repairing it: a builder that replaces `units` of en-US
+must also replace `ambiguous_units`, whose `in` would otherwise not be a unit (section 7.6).
 
 Lookups: lists are sorted (by the author for `const` tables, validated; by `LanguageBuilder` for
 run-time languages) and searched by binary search without allocation. Word lists (section 7.6) are

@@ -14,7 +14,7 @@ use super::Input;
 use super::ingest::TextPiece;
 use super::lex::{EllipsisForm, Flags, Kind, NO_PIECE, Repl, Tok};
 use super::phase::{ellipsis_tail, glue_char};
-use crate::lang::data::LanguageData;
+use crate::lang::data::Table;
 
 /// The new text of an edit.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -75,7 +75,7 @@ pub(crate) fn collect(tokens: &[Tok], removed: &[(u32, u32)], out: &mut Vec<REdi
     }
 }
 
-fn write(out: &mut String, text: RText, data: &LanguageData) {
+fn write(out: &mut String, text: RText, data: &Table<'_>) {
     match text {
         RText::Empty => {}
         RText::Char(c) => out.push(c),
@@ -84,7 +84,7 @@ fn write(out: &mut String, text: RText, data: &LanguageData) {
 }
 
 /// The result for string input: borrowed when there is no edit.
-pub(crate) fn render_text<'a>(text: &'a str, edits: &[REdit], data: &LanguageData) -> Cow<'a, str> {
+pub(crate) fn render_text<'a>(text: &'a str, edits: &[REdit], data: &Table<'_>) -> Cow<'a, str> {
     if edits.is_empty() {
         return Cow::Borrowed(text);
     }
@@ -95,7 +95,7 @@ pub(crate) fn render_text<'a>(text: &'a str, edits: &[REdit], data: &LanguageDat
 
 /// Appends `text` with its edits to `out`, without a string of its own (`typeset_into`, design
 /// section 2.12).
-pub(crate) fn render_text_into(text: &str, edits: &[REdit], data: &LanguageData, out: &mut String) {
+pub(crate) fn render_text_into(text: &str, edits: &[REdit], data: &Table<'_>, out: &mut String) {
     let mut pos = 0usize;
     for e in edits {
         let (start, end) = (e.start as usize, e.end as usize);
@@ -133,7 +133,7 @@ fn edits_of<'e>(edits: &'e [REdit], p: &'e TextPiece) -> impl Iterator<Item = &'
 
 /// Appends the text of one piece with its edits; an edit that starts in an earlier piece only
 /// deletes its part here (design section 3.11).
-fn write_piece(out: &mut String, text: &str, p: &TextPiece, edits: &[REdit], data: &LanguageData) {
+fn write_piece(out: &mut String, text: &str, p: &TextPiece, edits: &[REdit], data: &Table<'_>) {
     let mut pos = p.start;
     for e in edits_of(edits, p) {
         let start = e.start.max(p.start);
@@ -157,7 +157,7 @@ pub(crate) fn render_template<'t>(
     pieces: &[TextPiece],
     edits: &[REdit],
     slot_count: usize,
-    data: &LanguageData,
+    data: &Table<'_>,
 ) -> (Vec<Cow<'t, str>>, bool) {
     let mut texts = Vec::with_capacity(slot_count.saturating_add(1));
     let mut changed = false;

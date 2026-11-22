@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 use crate::engine::{self, Input, scratch::Scratch};
 use crate::lang::data::{
-    DashData, DashStyle, QUOTE_GLYPHS, QuotePairs, fold_char, is_valid_group, is_valid_minus,
+    DashData, DashStyle, List, QUOTE_GLYPHS, QuotePairs, fold_char, is_valid_group, is_valid_minus,
 };
 use crate::report::Report;
 use crate::rules::{self, Triggers};
@@ -118,7 +118,7 @@ impl ListEdit {
 
     /// Whether the edited list has any entry. `removed` is sorted: `build()` sorts it, and
     /// `NONE` is empty.
-    fn non_empty(&self, base: &[&str]) -> bool {
+    fn non_empty(&self, base: List<'_>) -> bool {
         !self.added.is_empty()
             || base.iter().any(|entry| {
                 self.removed
@@ -316,7 +316,7 @@ impl Typographer {
         let data = self.language.data();
         let percent = self.settings.percent != PercentSpacing::AsWritten;
         let triggers = active.iter().fold(Triggers::NONE, |set, rule| {
-            set.union(rules::triggers(rule, data, percent))
+            set.union(rules::triggers(rule, &data, percent))
         });
         Compiled { active, triggers }
     }
@@ -326,11 +326,9 @@ impl Typographer {
     pub(crate) fn has_unit(&self, text: &str) -> bool {
         let units = &self.settings.units;
         let found = |list: &[String]| list.binary_search_by(|u| u.as_str().cmp(text)).is_ok();
-        found(&units.added)
-            || (self.language.data().units.binary_search(&text).is_ok() && !found(&units.removed))
+        found(&units.added) || (self.language.data().units.contains(text) && !found(&units.removed))
     }
 
-    /// Whether backticks protect (design section 10.1).
     /// The quote pairs in effect: the setting, or the language's.
     pub(crate) fn quote_pairs(&self) -> Option<QuotePairs> {
         self.settings.quote_pairs.or(self.language.data().quotes)
@@ -350,6 +348,7 @@ impl Typographer {
         }
     }
 
+    /// Whether backticks protect (design section 10.1).
     pub(crate) fn protects_backticks(&self) -> bool {
         self.settings.protect_backticks
     }
@@ -1055,7 +1054,11 @@ mod tests {
             .remove_units(LanguageData::RU_RU.units.iter().rev())
             .build()
             .unwrap();
-        assert!(!all.settings.units.non_empty(LanguageData::RU_RU.units));
+        assert!(
+            !all.settings
+                .units
+                .non_empty(LanguageData::RU_RU.table().units)
+        );
         assert!(!all.active_rules().contains(Rule::NbspUnits));
         let some = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
             .remove_units(LanguageData::RU_RU.units.iter().skip(1))

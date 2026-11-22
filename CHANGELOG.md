@@ -22,7 +22,9 @@ Nothing released yet. Version 0.1.0 is in development.
   (`ellipsis.dots`, `ellipsis.inner`). The `symbols.*`, `number.*` and `nbsp.*` rules are accepted
   in rule sets but change nothing yet.
 - `LanguageBuilder` builds a language at run time from an existing language or from
-  `LanguageData::new` under a new tag; so far it sets the quote pairs and the dash style.
+  `LanguageData::new` under a new tag, with one method per field of `LanguageData` (`abbreviations`
+  takes the parts and the binding of each entry); `build` lowercases the word lists, sorts and
+  deduplicates every list, and validates the table as `Language::from_data` does.
 
 - Known limitation of the development state: `Output::Html` and `Output::Escaped` are accepted but
   written as Unicode, without encoding, until their encoders are added; do not use them for

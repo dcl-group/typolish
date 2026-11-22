@@ -583,12 +583,347 @@ impl LanguageData {
         if !is_canonical_tag(self.tag) {
             return Err("tag: not a canonical tag of the form ll, ll-RR, ll-DDD or und");
         }
+        self.table().validate()
+    }
+
+    /// The view of the table that the engine reads (design section 7.1).
+    pub(crate) const fn table(&self) -> Table<'static> {
+        Table {
+            cldr_version: self.cldr_version,
+            script: self.script,
+            quotes: self.quotes,
+            elisions: List::Static(self.elisions),
+            decade_apostrophe: self.decade_apostrophe,
+            trailing_possessive: self.trailing_possessive,
+            dash: self.dash,
+            ellipsis: self.ellipsis,
+            short_words: List::Static(self.short_words),
+            short_word_length: self.short_word_length,
+            particles: List::Static(self.particles),
+            abbreviations: Abbreviations::Static(self.abbreviations),
+            atom_exceptions: List::Static(self.atom_exceptions),
+            units: List::Static(self.units),
+            ambiguous_units: List::Static(self.ambiguous_units),
+            months: List::Static(self.months),
+            month_position: self.month_position,
+            year_words: List::Static(self.year_words),
+            century_words: List::Static(self.century_words),
+            range_lead_words: List::Static(self.range_lead_words),
+            signs: self.signs,
+            numbers: self.numbers,
+        }
+    }
+}
+
+/// A list of language data: a list of a `const` table, or an owned list of a language built at
+/// run time (`LanguageBuilder`). The engine reads both through this view and does not know where
+/// the data came from (design section 7.1). Equality compares the entries.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum List<'a> {
+    Static(&'static [&'static str]),
+    Owned(&'a [Box<str>]),
+}
+
+impl<'a> List<'a> {
+    /// The number of entries.
+    pub(crate) fn len(self) -> usize {
+        match self {
+            List::Static(list) => list.len(),
+            List::Owned(list) => list.len(),
+        }
+    }
+
+    /// Whether the list has no entry.
+    pub(crate) fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    /// The entry at `i`.
+    pub(crate) fn get(self, i: usize) -> Option<&'a str> {
+        match self {
+            List::Static(list) => list.get(i).copied(),
+            List::Owned(list) => list.get(i).map(|entry| &**entry),
+        }
+    }
+
+    /// The entries in order.
+    pub(crate) fn iter(self) -> impl Iterator<Item = &'a str> + Clone {
+        (0..self.len()).filter_map(move |i| self.get(i))
+    }
+
+    /// Binary search with a comparator of entries, as `slice::binary_search_by`.
+    pub(crate) fn binary_search_by(
+        self,
+        mut f: impl FnMut(&str) -> core::cmp::Ordering,
+    ) -> Result<usize, usize> {
+        match self {
+            List::Static(list) => list.binary_search_by(|entry| f(entry)),
+            List::Owned(list) => list.binary_search_by(|entry| f(entry)),
+        }
+    }
+
+    /// Whether the list holds `key`, compared with case (the list is sorted by code point).
+    pub(crate) fn contains(self, key: &str) -> bool {
+        self.binary_search_by(|entry| entry.cmp(key)).is_ok()
+    }
+}
+
+impl PartialEq for List<'_> {
+    fn eq(&self, other: &List<'_>) -> bool {
+        self.len() == other.len() && self.iter().eq(other.iter())
+    }
+}
+
+impl Eq for List<'_> {}
+
+/// An abbreviation of a language built at run time: its owned parts and its binding.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct OwnedAbbreviation {
+    pub(crate) parts: Vec<Box<str>>,
+    pub(crate) bind: BindKey,
+}
+
+/// `Bind` with an order, so that owned abbreviations sort and deduplicate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct BindKey(u8);
+
+impl BindKey {
+    pub(crate) const fn of(bind: Bind) -> BindKey {
+        BindKey(match bind {
+            Bind::Inner => 0,
+            Bind::Next => 1,
+            Bind::NextCapitalized => 2,
+        })
+    }
+
+    pub(crate) const fn bind(self) -> Bind {
+        match self.0 {
+            0 => Bind::Inner,
+            1 => Bind::Next,
+            _ => Bind::NextCapitalized,
+        }
+    }
+}
+
+/// The abbreviations of a table, static or owned, as `List` is for strings.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Abbreviations<'a> {
+    Static(&'static [Abbreviation]),
+    Owned(&'a [OwnedAbbreviation]),
+}
+
+impl<'a> Abbreviations<'a> {
+    /// The number of entries.
+    pub(crate) fn len(self) -> usize {
+        match self {
+            Abbreviations::Static(list) => list.len(),
+            Abbreviations::Owned(list) => list.len(),
+        }
+    }
+
+    /// Whether the list has no entry.
+    pub(crate) fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    /// The entry at `i`: its parts and its binding.
+    pub(crate) fn get(self, i: usize) -> Option<(List<'a>, Bind)> {
+        match self {
+            Abbreviations::Static(list) => list.get(i).map(|a| (List::Static(a.parts), a.bind)),
+            Abbreviations::Owned(list) => {
+                list.get(i).map(|a| (List::Owned(&a.parts), a.bind.bind()))
+            }
+        }
+    }
+
+    /// The entries in order.
+    pub(crate) fn iter(self) -> impl Iterator<Item = (List<'a>, Bind)> + Clone {
+        (0..self.len()).filter_map(move |i| self.get(i))
+    }
+}
+
+impl PartialEq for Abbreviations<'_> {
+    fn eq(&self, other: &Abbreviations<'_>) -> bool {
+        self.len() == other.len() && self.iter().eq(other.iter())
+    }
+}
+
+impl Eq for Abbreviations<'_> {}
+
+/// The view of a language's data that the engine and the validation read: the fields of
+/// `LanguageData` other than the tag, with lists that may be static or owned (design section
+/// 7.1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Table<'a> {
+    pub(crate) cldr_version: &'a str,
+    pub(crate) script: Script,
+    pub(crate) quotes: Option<QuotePairs>,
+    pub(crate) elisions: List<'a>,
+    pub(crate) decade_apostrophe: bool,
+    pub(crate) trailing_possessive: bool,
+    pub(crate) dash: Option<DashData>,
+    pub(crate) ellipsis: EllipsisForms,
+    pub(crate) short_words: List<'a>,
+    pub(crate) short_word_length: u8,
+    pub(crate) particles: List<'a>,
+    pub(crate) abbreviations: Abbreviations<'a>,
+    pub(crate) atom_exceptions: List<'a>,
+    pub(crate) units: List<'a>,
+    pub(crate) ambiguous_units: List<'a>,
+    pub(crate) months: List<'a>,
+    pub(crate) month_position: MonthPosition,
+    pub(crate) year_words: List<'a>,
+    pub(crate) century_words: List<'a>,
+    pub(crate) range_lead_words: List<'a>,
+    pub(crate) signs: &'a [char],
+    pub(crate) numbers: NumberData,
+}
+
+/// The data of a language built at run time: every list owned (design section 7.1).
+#[derive(Clone, Debug)]
+pub(crate) struct OwnedTable {
+    pub(crate) cldr_version: String,
+    pub(crate) script: Script,
+    pub(crate) quotes: Option<QuotePairs>,
+    pub(crate) elisions: Vec<Box<str>>,
+    pub(crate) decade_apostrophe: bool,
+    pub(crate) trailing_possessive: bool,
+    pub(crate) dash: Option<DashData>,
+    pub(crate) ellipsis: EllipsisForms,
+    pub(crate) short_words: Vec<Box<str>>,
+    pub(crate) short_word_length: u8,
+    pub(crate) particles: Vec<Box<str>>,
+    pub(crate) abbreviations: Vec<OwnedAbbreviation>,
+    pub(crate) atom_exceptions: Vec<Box<str>>,
+    pub(crate) units: Vec<Box<str>>,
+    pub(crate) ambiguous_units: Vec<Box<str>>,
+    pub(crate) months: Vec<Box<str>>,
+    pub(crate) month_position: MonthPosition,
+    pub(crate) year_words: Vec<Box<str>>,
+    pub(crate) century_words: Vec<Box<str>>,
+    pub(crate) range_lead_words: Vec<Box<str>>,
+    pub(crate) signs: Vec<char>,
+    pub(crate) numbers: NumberData,
+}
+
+/// The entries of a list as owned strings.
+fn owned(list: List<'_>) -> Vec<Box<str>> {
+    list.iter().map(Box::from).collect()
+}
+
+impl OwnedTable {
+    /// An owned copy of a table.
+    pub(crate) fn of(t: Table<'_>) -> OwnedTable {
+        OwnedTable {
+            cldr_version: t.cldr_version.to_owned(),
+            script: t.script,
+            quotes: t.quotes,
+            elisions: owned(t.elisions),
+            decade_apostrophe: t.decade_apostrophe,
+            trailing_possessive: t.trailing_possessive,
+            dash: t.dash,
+            ellipsis: t.ellipsis,
+            short_words: owned(t.short_words),
+            short_word_length: t.short_word_length,
+            particles: owned(t.particles),
+            abbreviations: t
+                .abbreviations
+                .iter()
+                .map(|(parts, bind)| OwnedAbbreviation {
+                    parts: owned(parts),
+                    bind: BindKey::of(bind),
+                })
+                .collect(),
+            atom_exceptions: owned(t.atom_exceptions),
+            units: owned(t.units),
+            ambiguous_units: owned(t.ambiguous_units),
+            months: owned(t.months),
+            month_position: t.month_position,
+            year_words: owned(t.year_words),
+            century_words: owned(t.century_words),
+            range_lead_words: owned(t.range_lead_words),
+            signs: t.signs.to_vec(),
+            numbers: t.numbers,
+        }
+    }
+
+    /// The view of the owned data.
+    pub(crate) fn table(&self) -> Table<'_> {
+        Table {
+            cldr_version: &self.cldr_version,
+            script: self.script,
+            quotes: self.quotes,
+            elisions: List::Owned(&self.elisions),
+            decade_apostrophe: self.decade_apostrophe,
+            trailing_possessive: self.trailing_possessive,
+            dash: self.dash,
+            ellipsis: self.ellipsis,
+            short_words: List::Owned(&self.short_words),
+            short_word_length: self.short_word_length,
+            particles: List::Owned(&self.particles),
+            abbreviations: Abbreviations::Owned(&self.abbreviations),
+            atom_exceptions: List::Owned(&self.atom_exceptions),
+            units: List::Owned(&self.units),
+            ambiguous_units: List::Owned(&self.ambiguous_units),
+            months: List::Owned(&self.months),
+            month_position: self.month_position,
+            year_words: List::Owned(&self.year_words),
+            century_words: List::Owned(&self.century_words),
+            range_lead_words: List::Owned(&self.range_lead_words),
+            signs: &self.signs,
+            numbers: self.numbers,
+        }
+    }
+
+    /// The normalization of `LanguageBuilder::build` (design section 7.1): the word lists of
+    /// section 7.6 lowercased; every list sorted by code point and free of duplicates.
+    pub(crate) fn normalize(&mut self) {
+        for list in [
+            &mut self.elisions,
+            &mut self.short_words,
+            &mut self.particles,
+            &mut self.atom_exceptions,
+            &mut self.year_words,
+            &mut self.century_words,
+            &mut self.range_lead_words,
+        ] {
+            for entry in list.iter_mut() {
+                if !is_lowercase(entry) {
+                    *entry = entry.chars().map(fold_char).collect::<String>().into();
+                }
+            }
+        }
+        for list in [
+            &mut self.elisions,
+            &mut self.short_words,
+            &mut self.particles,
+            &mut self.atom_exceptions,
+            &mut self.year_words,
+            &mut self.century_words,
+            &mut self.range_lead_words,
+            &mut self.units,
+            &mut self.ambiguous_units,
+            &mut self.months,
+        ] {
+            list.sort_unstable();
+            list.dedup();
+        }
+        self.abbreviations.sort();
+        self.abbreviations.dedup();
+        self.signs.sort_unstable();
+        self.signs.dedup();
+    }
+}
+
+impl Table<'_> {
+    /// The checks of design section 7.6 other than the tag; the error names the field.
+    pub(crate) fn validate(&self) -> Result<(), &'static str> {
         if let Some(quotes) = self.quotes {
             check_quote_pairs(quotes).map_err(
                 |_| "quotes: the four glyphs must be distinct quote characters other than \" ' ′ ″",
             )?;
         }
-        let word_lists: [(&[&str], &'static str); 7] = [
+        let word_lists: [(List<'_>, &'static str); 7] = [
             (
                 self.elisions,
                 "elisions: entries must be non-empty, without whitespace, lowercase, sorted and unique",
@@ -619,11 +954,11 @@ impl LanguageData {
             ),
         ];
         for (list, reason) in word_lists {
-            if !is_sorted_list(list) || !list.iter().all(|word| is_lowercase(word)) {
+            if !is_sorted_list(list) || !list.iter().all(is_lowercase) {
                 return Err(reason);
             }
         }
-        let cased_lists: [(&[&str], &'static str); 3] = [
+        let cased_lists: [(List<'_>, &'static str); 3] = [
             (
                 self.months,
                 "months: entries must be non-empty, without whitespace, sorted and unique",
@@ -642,12 +977,12 @@ impl LanguageData {
                 return Err(reason);
             }
         }
-        if !self.abbreviations.iter().all(|a| is_valid_parts(a.parts))
-            || !self
-                .abbreviations
-                .windows(2)
-                .all(|pair| matches!(pair, [a, b] if a.parts < b.parts))
-        {
+        let abbreviations = self.abbreviations;
+        let sorted = abbreviations
+            .iter()
+            .zip(abbreviations.iter().skip(1))
+            .all(|((a, _), (b, _))| a.iter().lt(b.iter()));
+        if !abbreviations.iter().all(|(parts, _)| is_valid_parts(parts)) || !sorted {
             return Err(
                 "abbreviations: parts must be non-empty, without whitespace, sorted by parts and unique",
             );
@@ -662,14 +997,13 @@ impl LanguageData {
         if !self
             .ambiguous_units
             .iter()
-            .all(|unit| self.units.binary_search(unit).is_ok())
+            .all(|unit| self.units.contains(unit))
         {
             return Err("ambiguous_units: every ambiguous unit must also be in units");
         }
         let unlisted = self.units.iter().any(|unit| {
-            (self.short_words.binary_search(unit).is_ok()
-                || self.particles.binary_search(unit).is_ok())
-                && self.ambiguous_units.binary_search(unit).is_err()
+            (self.short_words.contains(unit) || self.particles.contains(unit))
+                && !self.ambiguous_units.contains(unit)
         });
         if unlisted {
             return Err(
@@ -746,17 +1080,16 @@ pub(crate) fn is_canonical_tag(tag: &str) -> bool {
 }
 
 /// Non-empty entries without whitespace, strictly sorted by code point.
-fn is_sorted_list(list: &[&str]) -> bool {
-    list.iter().all(|entry| is_valid_entry(entry))
-        && list.windows(2).all(|pair| matches!(pair, [a, b] if a < b))
+fn is_sorted_list(list: List<'_>) -> bool {
+    list.iter().all(is_valid_entry) && list.iter().zip(list.iter().skip(1)).all(|(a, b)| a < b)
 }
 
 fn is_valid_entry(entry: &str) -> bool {
     !entry.is_empty() && !entry.chars().any(char::is_whitespace)
 }
 
-fn is_valid_parts(parts: &[&str]) -> bool {
-    !parts.is_empty() && parts.iter().all(|part| is_valid_entry(part))
+fn is_valid_parts(parts: List<'_>) -> bool {
+    !parts.is_empty() && parts.iter().all(is_valid_entry)
 }
 
 /// The case folding of word lists (design section 7.1): the first character of

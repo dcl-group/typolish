@@ -15,7 +15,7 @@ use crate::Rule;
 pub(crate) use crate::engine::classify::{Frag, FragKind};
 use crate::engine::lex::{Kind, script_bit};
 use crate::engine::phase::{Cx, Match};
-use crate::lang::data::{LanguageData, Script, fold_char};
+use crate::lang::data::{List, Script, Table, fold_char};
 
 /// A rule: reads the input of its phase at an anchor token and proposes a match (design section
 /// 3.8).
@@ -108,7 +108,7 @@ fn scripts(cx: &Cx<'_>, f: &Frag) -> u8 {
 }
 
 /// The bit of the language's script; `None` for `Script::Other`.
-fn language_script(data: &LanguageData) -> Option<u8> {
+fn language_script(data: &Table<'_>) -> Option<u8> {
     match data.script {
         Script::Cyrillic => Some(1),
         Script::Latin => Some(2),
@@ -131,12 +131,12 @@ pub(crate) fn foreign(cx: &Cx<'_>, f: &Frag) -> bool {
                 .core(f)
                 .any(|i| matches!(cx.kind(i), Some(Kind::Word(_))));
     }
-    language_script(cx.data).is_some_and(|bit| mask & bit == 0)
+    language_script(&cx.data).is_some_and(|bit| mask & bit == 0)
 }
 
 /// Whether a lowercase word list holds the characters of `key`, compared without case (design
 /// section 7.1).
-pub(crate) fn folded_in(list: &[&str], key: impl Iterator<Item = char> + Clone) -> bool {
+pub(crate) fn folded_in(list: List<'_>, key: impl Iterator<Item = char> + Clone) -> bool {
     list.binary_search_by(|entry| entry.chars().cmp(key.clone().map(fold_char)))
         .is_ok()
 }
@@ -240,7 +240,7 @@ impl Triggers {
 }
 
 /// The trigger bytes of a rule for a language and the percent setting (design section 3.2).
-pub(crate) fn triggers(rule: Rule, data: &LanguageData, percent_edits: bool) -> Triggers {
+pub(crate) fn triggers(rule: Rule, data: &Table<'_>, percent_edits: bool) -> Triggers {
     match rule {
         Rule::SymbolsCopyright => symbols::COPYRIGHT,
         Rule::SymbolsArrows => symbols::ARROWS,

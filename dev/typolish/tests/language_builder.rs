@@ -374,9 +374,11 @@ fn the_builder_is_clone_and_debug() {
 
 #[test]
 fn a_custom_language_with_a_month_position_and_units_glues_by_its_data() {
+    // The ambiguous units of en-US (`in`) must stay units, or be replaced too (section 7.6).
     let lang = LanguageBuilder::from_language(&Language::EN_US, "en-XB")
         .month_position(MonthPosition::BeforeDay)
         .units(["zz"])
+        .ambiguous_units(Vec::<&str>::new())
         .build()
         .unwrap();
     let t = Typographer::new(

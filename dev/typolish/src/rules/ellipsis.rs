@@ -49,7 +49,7 @@ pub(crate) fn dots(cx: &Cx<'_>, i: usize) -> Option<Match> {
     let next = cx.next(i);
     let form = form_after(cx, prev);
     let three = cx.is(i, "...");
-    let typed = cx.is(i, "…") || form.is_some_and(|f| cx.is(i, ellipsis_tail(cx.data, f)));
+    let typed = cx.is(i, "…") || form.is_some_and(|f| cx.is(i, ellipsis_tail(&cx.data, f)));
     if !three && !typed {
         return None;
     }

@@ -11,7 +11,7 @@
 use super::Recorder;
 use super::lex::{Flags, Kind, Mark, NO_PIECE, Op, Tok, WordScript, is_format_char, is_joiner};
 use super::record::{Loc, Sink};
-use crate::lang::data::{LanguageData, fold_char};
+use crate::lang::data::{Table, fold_char};
 use crate::report::{ProtectedKind, TechKind};
 use crate::{DiagnosticKind, Severity, SlotKind, Typographer};
 
@@ -201,7 +201,7 @@ pub(crate) fn classify<R: Recorder>(
         let (Ok(s), Ok(e)) = (u32::try_from(start), u32::try_from(i)) else {
             return;
         };
-        let frag = classify_fragment(t, data, text, tokens, s, e, cs, sink);
+        let frag = classify_fragment(t, &data, text, tokens, s, e, cs, sink);
         cs.frags.push(frag);
     }
     lone_times(text, tokens, &mut cs.frags);
@@ -257,7 +257,7 @@ fn first_char(text: &str, tok: &Tok) -> Option<char> {
 #[expect(clippy::too_many_arguments, reason = "the parts of one classification")]
 fn classify_fragment<R: Recorder>(
     t: &Typographer,
-    data: &LanguageData,
+    data: &Table<'_>,
     text: &str,
     tokens: &mut [Tok],
     start: u32,
@@ -454,7 +454,7 @@ fn build_units(text: &str, core: &[Tok], offset: u32, out: &mut Vec<Unit>) {
 
 /// The four special cases decided before the table (design section 3.6), the lone `x` aside,
 /// which needs its neighbors (`lone_times`).
-fn special_case(data: &LanguageData, core: &[Tok], units: &[Unit]) -> Option<FragKind> {
+fn special_case(data: &Table<'_>, core: &[Tok], units: &[Unit]) -> Option<FragKind> {
     let mut substantive = core.iter().filter(|t| !t.kind.is_transparent());
     if let (Some(only), None) = (substantive.next(), substantive.next())
         && only.kind == Kind::Dash
@@ -482,7 +482,7 @@ fn special_case(data: &LanguageData, core: &[Tok], units: &[Unit]) -> Option<Fra
 /// `.` (`т.е.`, `нояб.`). The stop adds matches; it never hides an entry without one (`км/ч.`).
 fn dictionary(
     t: &Typographer,
-    data: &LanguageData,
+    data: &Table<'_>,
     text: &str,
     tokens: &[Tok],
     frag: &Frag,
@@ -514,7 +514,7 @@ fn dictionary(
 }
 
 /// Whether `cs.key` equals an entry of check 0, compared as design section 7.1 says.
-fn entry(t: &Typographer, data: &LanguageData, apostrophe: bool, cs: &mut ClassifyScratch) -> bool {
+fn entry(t: &Typographer, data: &Table<'_>, apostrophe: bool, cs: &mut ClassifyScratch) -> bool {
     let key = cs.key.as_str();
     // Entries compared with case, an entry that starts with a lowercase letter also matching the
     // text with that letter in uppercase, except a single letter with a full stop (section 7.1).
@@ -534,11 +534,11 @@ fn entry(t: &Typographer, data: &LanguageData, apostrophe: bool, cs: &mut Classi
         return true;
     }
     for k in cased {
-        if data.months.binary_search(k).is_ok() {
+        if data.months.contains(k) {
             return true;
         }
-        for abbreviation in data.abbreviations {
-            if parts_match(abbreviation.parts, k) {
+        for (parts, _) in data.abbreviations.iter() {
+            if parts_match(parts, k) {
                 return true;
             }
         }
@@ -556,7 +556,7 @@ fn entry(t: &Typographer, data: &LanguageData, apostrophe: bool, cs: &mut Classi
 
 /// Whether `key` is one part of an abbreviation, or several consecutive parts that all end in a
 /// full stop, written together (`т.е.` for `т.` `е.`).
-fn parts_match(parts: &[&str], key: &str) -> bool {
+fn parts_match(parts: crate::lang::data::List<'_>, key: &str) -> bool {
     for i in 0..parts.len() {
         let mut rest = key;
         for (n, part) in parts.iter().enumerate().skip(i) {
@@ -575,13 +575,13 @@ fn parts_match(parts: &[&str], key: &str) -> bool {
 }
 
 /// Whether a lowercase word list holds `key`, compared without case (design section 7.1).
-fn folded_in(list: &[&str], key: &str) -> bool {
+fn folded_in(list: crate::lang::data::List<'_>, key: &str) -> bool {
     list.binary_search_by(|entry| entry.chars().cmp(key.chars().map(fold_char)))
         .is_ok()
 }
 
 /// The checks 1 to 24 of design section 3.6, in order.
-fn checks(data: &LanguageData, text: &str, u: &[Unit], stop: bool) -> (FragKind, Freeze) {
+fn checks(data: &Table<'_>, text: &str, u: &[Unit], stop: bool) -> (FragKind, Freeze) {
     let whole = |kind| (kind, Freeze::Nothing);
     if is_url(text, u) {
         return whole(FragKind::Url);
@@ -1088,7 +1088,7 @@ fn is_roman(text: &str, unit: &Unit) -> bool {
 
 /// One side of check 17 at `u`: an unsigned integer, a decimal with the language's separator, a
 /// Roman numeral or a `Number` slot.
-fn range_side(data: &LanguageData, text: &str, u: &[Unit]) -> bool {
+fn range_side(data: &Table<'_>, text: &str, u: &[Unit]) -> bool {
     let separator = |unit: &Unit| match data.numbers.decimal {
         '.' => unit.u == U::Dots(1),
         c => unit.u == U::Punct(c),
@@ -1101,7 +1101,7 @@ fn range_side(data: &LanguageData, text: &str, u: &[Unit]) -> bool {
 }
 
 /// Check 17: `N-N` or `N–N`, or two `Date` slots joined by `-` or `–`.
-fn is_range(data: &LanguageData, text: &str, u: &[Unit]) -> bool {
+fn is_range(data: &Table<'_>, text: &str, u: &[Unit]) -> bool {
     let sep = |unit: &Unit| matches!(unit.u, U::Hy(1) | U::Dash('–'));
     if let [a, s, b] = u
         && a.u == U::SlotDate
@@ -1158,7 +1158,7 @@ fn is_compound(u: &[Unit]) -> bool {
 
 /// Check 22: two or more parts joined by single `—`, `–` or `…`, or by `...`, each a word by
 /// check 23 or a number by check 15.
-fn is_joined(data: &LanguageData, text: &str, u: &[Unit]) -> bool {
+fn is_joined(data: &Table<'_>, text: &str, u: &[Unit]) -> bool {
     let joint = |unit: &Unit| matches!(unit.u, U::Dash('—' | '–') | U::Ell | U::Dots(3));
     if !u.iter().any(joint) {
         return false;
@@ -1169,7 +1169,7 @@ fn is_joined(data: &LanguageData, text: &str, u: &[Unit]) -> bool {
 
 /// Check 23: letters with their marks and digits, with the quotes, signs and legal marks it
 /// allows.
-fn is_word(data: &LanguageData, text: &str, u: &[Unit]) -> bool {
+fn is_word(data: &Table<'_>, text: &str, u: &[Unit]) -> bool {
     if sign_with_numeral(data, text, u) {
         return true;
     }
@@ -1219,7 +1219,7 @@ fn is_word(data: &LanguageData, text: &str, u: &[Unit]) -> bool {
 
 /// A sign of the language, single or doubled, with a number or a Roman numeral (`№5`, `¶IV`,
 /// `№{n}`): a form of check 23 and a label.
-fn sign_with_numeral(data: &LanguageData, text: &str, u: &[Unit]) -> bool {
+fn sign_with_numeral(data: &Table<'_>, text: &str, u: &[Unit]) -> bool {
     let sign = |unit: &Unit| matches!(unit.u, U::Punct(c) if data.signs.contains(&c));
     let numeral = |unit: &Unit| matches!(unit.u, U::Num | U::SlotNum) || is_roman(text, unit);
     match u {

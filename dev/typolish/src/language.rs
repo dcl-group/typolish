@@ -5,7 +5,10 @@ use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 use std::sync::Arc;
 
-use crate::lang::data::{DashStyle, LanguageData, QuotePairs, Script, is_canonical_tag};
+use crate::lang::data::{
+    Bind, BindKey, DashData, DashStyle, EllipsisForms, LanguageData, MonthPosition, NumberData,
+    OwnedAbbreviation, OwnedTable, QuotePairs, Script, Table, is_canonical_tag,
+};
 use crate::lang::{BUILTIN, common, en_us, ru_ru};
 use crate::{Error, Rule};
 
@@ -42,19 +45,16 @@ enum Repr {
     Owned(Arc<Owned>),
 }
 
-/// The data of a language built at run time: the owned tag, and the table, whose own `tag` field
-/// is `und` and is not read.
+/// The data of a language built at run time: the owned tag and the owned table.
 #[derive(Debug)]
 struct Owned {
     tag: String,
-    data: LanguageData,
+    data: OwnedTable,
 }
 
 impl PartialEq for Repr {
     fn eq(&self, other: &Repr) -> bool {
-        // The tag fields of the tables are compared through `tag()`.
-        let untagged = |data: &LanguageData| data.clone().with_tag("und");
-        self.tag() == other.tag() && untagged(self.data()) == untagged(other.data())
+        self.tag() == other.tag() && self.data() == other.data()
     }
 }
 
@@ -67,10 +67,10 @@ impl Hash for Repr {
 }
 
 impl Repr {
-    fn data(&self) -> &LanguageData {
+    fn data(&self) -> Table<'_> {
         match self {
-            Repr::Static(data) => data,
-            Repr::Owned(owned) => &owned.data,
+            Repr::Static(data) => data.table(),
+            Repr::Owned(owned) => owned.data.table(),
         }
     }
 
@@ -232,13 +232,13 @@ impl Language {
     }
 
     /// The data table.
-    pub(crate) fn data(&self) -> &LanguageData {
+    pub(crate) fn data(&self) -> Table<'_> {
         self.repr.data()
     }
 }
 
 /// The data each rule needs (design section 7.4).
-fn supports(data: &LanguageData, rule: Rule) -> bool {
+fn supports(data: Table<'_>, rule: Rule) -> bool {
     match rule {
         Rule::SymbolsCopyright
         | Rule::SymbolsArrows
@@ -279,29 +279,42 @@ fn supports(data: &LanguageData, rule: Rule) -> bool {
 
 /// A language built at run time (design section 7.1): it starts from an existing language or from
 /// the values of [`LanguageData::new`] under a new tag, changes fields, and
-/// [`build`](LanguageBuilder::build) normalizes the case of the tag, validates the table (design
-/// section 7.6) and returns a [`Language`] that holds its data in an `Arc`.
+/// [`build`](LanguageBuilder::build) normalizes the lists and the case of the tag, validates the
+/// table (design section 7.6) and returns a [`Language`] that holds its data in an `Arc`.
 ///
-/// The crate is in development: so far the quote pairs and the dash style can be changed; the
-/// methods for the other fields and their lists come with the complete language data (design
-/// section 15.4, stage 3).
+/// There is one method per field of [`LanguageData`]. A list method replaces the whole list; the
+/// lists are owned, so they can come from a caller's configuration file.
 ///
 /// ```
 /// use typolish::{Language, LanguageBuilder, Output, QuotePairs, Rule, RuleSet, Typographer};
 ///
 /// let de = LanguageBuilder::from_language(&Language::EN_US, "de-DE")
 ///     .quotes(Some(QuotePairs::new(('„', '“'), ('‚', '‘'))))
+///     .short_words(["und", "in", "zu"])
 ///     .build()?;
 /// assert_eq!(de.tag(), "de-DE");
+/// assert!(de.supports(Rule::NbspShortWords));
 /// let t = Typographer::new(de, RuleSet::EMPTY.with(Rule::QuotesPairs));
-/// assert_eq!(t.typeset("\"a 'b' c\"", Output::Unicode), "„a ‚b‘ c“");
+/// assert_eq!(t.typeset("\"a 'b' und c\"", Output::Unicode), "„a ‚b‘ und c“");
 /// # Ok::<(), typolish::Error>(())
 /// ```
 #[derive(Clone, Debug)]
 #[must_use]
 pub struct LanguageBuilder {
     tag: String,
-    data: LanguageData,
+    data: OwnedTable,
+}
+
+/// The entries of a list argument as owned strings.
+fn owned_list<I>(items: I) -> Vec<Box<str>>
+where
+    I: IntoIterator,
+    I::Item: AsRef<str>,
+{
+    items
+        .into_iter()
+        .map(|item| Box::from(item.as_ref()))
+        .collect()
 }
 
 impl LanguageBuilder {
@@ -318,7 +331,7 @@ impl LanguageBuilder {
     pub fn from_language(base: &Language, tag: &str) -> LanguageBuilder {
         LanguageBuilder {
             tag: tag.to_owned(),
-            data: base.data().clone(),
+            data: OwnedTable::of(base.data()),
         }
     }
 
@@ -333,8 +346,20 @@ impl LanguageBuilder {
     pub fn new(tag: &str) -> LanguageBuilder {
         LanguageBuilder {
             tag: tag.to_owned(),
-            data: LanguageData::new("und"),
+            data: OwnedTable::of(LanguageData::new("und").table()),
         }
+    }
+
+    /// Sets the CLDR version the values were checked against.
+    pub fn cldr_version(mut self, version: &str) -> Self {
+        version.clone_into(&mut self.data.cldr_version);
+        self
+    }
+
+    /// Sets the script of the language's words.
+    pub fn script(mut self, script: Script) -> Self {
+        self.data.script = script;
+        self
     }
 
     /// Sets the quote pairs; `None` makes `quotes.pairs` inert.
@@ -347,7 +372,35 @@ impl LanguageBuilder {
     /// # Ok::<(), typolish::Error>(())
     /// ```
     pub fn quotes(mut self, quotes: Option<QuotePairs>) -> Self {
-        self.data = self.data.with_quotes(quotes);
+        self.data.quotes = quotes;
+        self
+    }
+
+    /// Sets the elisions (`'cause`); `build` lowercases and sorts them.
+    pub fn elisions<I>(mut self, elisions: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        self.data.elisions = owned_list(elisions);
+        self
+    }
+
+    /// Sets whether `'90s` takes an apostrophe.
+    pub fn decade_apostrophe(mut self, on: bool) -> Self {
+        self.data.decade_apostrophe = on;
+        self
+    }
+
+    /// Sets whether a trailing possessive (`dogs'`) takes an apostrophe.
+    pub fn trailing_possessive(mut self, on: bool) -> Self {
+        self.data.trailing_possessive = on;
+        self
+    }
+
+    /// Sets the dash data; `None` makes the `dash.*` rules and `nbsp.dash` inert.
+    pub fn dash(mut self, dash: Option<DashData>) -> Self {
+        self.data.dash = dash;
         self
     }
 
@@ -364,12 +417,181 @@ impl LanguageBuilder {
     /// # Ok::<(), typolish::Error>(())
     /// ```
     pub fn dash_style(mut self, style: DashStyle) -> Self {
-        self.data = self.data.with_dash_style(style);
+        self.data.dash = Some(DashData::new(
+            style,
+            self.data.dash.is_some_and(|dash| dash.dialogue),
+        ));
         self
     }
 
-    /// Normalizes the case of the tag (language subtag lowercase, region uppercase), validates the
-    /// table (design section 7.6) and returns the language.
+    /// Sets the ellipsis forms after `?` and `!`.
+    pub fn ellipsis(mut self, ellipsis: EllipsisForms) -> Self {
+        self.data.ellipsis = ellipsis;
+        self
+    }
+
+    /// Sets the short words (rule `nbsp.short-words`); `build` lowercases and sorts them.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder};
+    ///
+    /// let lang = LanguageBuilder::from_language(&Language::RU_RU, "ru-KZ")
+    ///     .short_words(["а", "в", "и", "к", "о", "с", "у"])
+    ///     .build()?;
+    /// # let _ = lang;
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
+    pub fn short_words<I>(mut self, words: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        self.data.short_words = owned_list(words);
+        self
+    }
+
+    /// Sets the length up to which any word of the language's script is short; 0 makes
+    /// `nbsp.short-length` inert.
+    pub fn short_word_length(mut self, max_chars: u8) -> Self {
+        self.data.short_word_length = max_chars;
+        self
+    }
+
+    /// Sets the particles (rule `nbsp.particles`); `build` lowercases and sorts them.
+    pub fn particles<I>(mut self, particles: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        self.data.particles = owned_list(particles);
+        self
+    }
+
+    /// Sets the abbreviations: each entry is its parts as printed and its binding (rule
+    /// `nbsp.abbreviations`); `build` sorts them by their parts.
+    ///
+    /// ```
+    /// use typolish::{Bind, Language, LanguageBuilder, Rule};
+    ///
+    /// let lang = LanguageBuilder::from_language(&Language::RU_RU, "ru-KZ")
+    ///     .abbreviations([(&["ул."][..], Bind::Next), (&["т.", "е."][..], Bind::Inner)])
+    ///     .build()?;
+    /// assert!(lang.supports(Rule::NbspAbbreviations));
+    /// let none = LanguageBuilder::new("kk").build()?;
+    /// assert!(!none.supports(Rule::NbspAbbreviations));
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
+    pub fn abbreviations<I, P>(mut self, entries: I) -> Self
+    where
+        I: IntoIterator<Item = (P, Bind)>,
+        P: IntoIterator,
+        P::Item: AsRef<str>,
+    {
+        self.data.abbreviations = entries
+            .into_iter()
+            .map(|(parts, bind)| OwnedAbbreviation {
+                parts: owned_list(parts),
+                bind: BindKey::of(bind),
+            })
+            .collect();
+        self
+    }
+
+    /// Sets the dotted words that are not technical (`e.g.`); `build` lowercases and sorts them.
+    pub fn atom_exceptions<I>(mut self, words: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        self.data.atom_exceptions = owned_list(words);
+        self
+    }
+
+    /// Sets the units, compared with case (rules `nbsp.units` and `range.context`); `build`
+    /// sorts them and keeps their case.
+    pub fn units<I>(mut self, units: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        self.data.units = owned_list(units);
+        self
+    }
+
+    /// Sets the units that are also words; each must also be a unit.
+    pub fn ambiguous_units<I>(mut self, units: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        self.data.ambiguous_units = owned_list(units);
+        self
+    }
+
+    /// Sets the month forms used next to a day number, as printed (rule `nbsp.dates`).
+    pub fn months<I>(mut self, months: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        self.data.months = owned_list(months);
+        self
+    }
+
+    /// Sets where a month name stands relative to the day number.
+    pub fn month_position(mut self, position: MonthPosition) -> Self {
+        self.data.month_position = position;
+        self
+    }
+
+    /// Sets the words after a year; `build` lowercases and sorts them.
+    pub fn year_words<I>(mut self, words: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        self.data.year_words = owned_list(words);
+        self
+    }
+
+    /// Sets the words after a century; `build` lowercases and sorts them.
+    pub fn century_words<I>(mut self, words: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        self.data.century_words = owned_list(words);
+        self
+    }
+
+    /// Sets the words before a range (`стр.`, `pp.`); `build` lowercases and sorts them.
+    pub fn range_lead_words<I>(mut self, words: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        self.data.range_lead_words = owned_list(words);
+        self
+    }
+
+    /// Sets the signs that name a number (`№`, `§`, `¶`); `build` sorts them.
+    pub fn signs<I>(mut self, signs: I) -> Self
+    where
+        I: IntoIterator<Item = char>,
+    {
+        self.data.signs = signs.into_iter().collect();
+        self
+    }
+
+    /// Sets the number symbols and patterns.
+    pub fn numbers(mut self, numbers: NumberData) -> Self {
+        self.data.numbers = numbers;
+        self
+    }
+
+    /// Normalizes the lists (the word lists of design section 7.6 lowercased; every list sorted
+    /// by code point and free of duplicates) and the case of the tag (language subtag lowercase,
+    /// region uppercase), validates the table (design section 7.6) and returns the language.
     ///
     /// # Errors
     ///
@@ -385,7 +607,7 @@ impl LanguageBuilder {
     /// assert!(matches!(bad, Err(Error::InvalidLanguageData { .. })));
     /// assert!(LanguageBuilder::new("russian").build().is_err());
     /// ```
-    pub fn build(self) -> Result<Language, Error> {
+    pub fn build(mut self) -> Result<Language, Error> {
         let tag = normalize_tag(&self.tag);
         let invalid = |reason| Error::InvalidLanguageData {
             tag: tag.clone(),
@@ -396,10 +618,13 @@ impl LanguageBuilder {
                 "tag: not a canonical tag of the form ll, ll-RR, ll-DDD or und",
             ));
         }
-        let data = self.data.with_tag("und");
-        data.validate().map_err(invalid)?;
+        self.data.normalize();
+        self.data.table().validate().map_err(invalid)?;
         Ok(Language {
-            repr: Repr::Owned(Arc::new(Owned { tag, data })),
+            repr: Repr::Owned(Arc::new(Owned {
+                tag,
+                data: self.data,
+            })),
         })
     }
 }

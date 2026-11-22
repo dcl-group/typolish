@@ -265,7 +265,7 @@ fn context_after(cx: &Cx<'_>, last: usize) -> bool {
         .or_else(|| (f.stop && with_key(chars.clone(), true, unit)).then_some(true));
     if let Some(with_stop) = found_unit {
         let ambiguous = with_key(chars.clone(), with_stop, |key| {
-            data.ambiguous_units.binary_search(&key).is_ok()
+            data.ambiguous_units.contains(key)
         });
         if !ambiguous {
             return true;
@@ -277,7 +277,7 @@ fn context_after(cx: &Cx<'_>, last: usize) -> bool {
         let end = after.is_none_or(|j| cx.kind(j) == Some(Kind::Newline));
         return wrapped || end;
     }
-    let words = |list: &[&str]| {
+    let words = |list: crate::lang::data::List<'_>| {
         folded_in(list, chars.clone()) || (f.stop && folded_in(list, chars.clone().chain(['.'])))
     };
     words(data.year_words) || words(data.century_words)

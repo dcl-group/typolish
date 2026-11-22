@@ -260,7 +260,7 @@ pub(crate) fn typeset_into(
     ) && run(typographer, scratch, &[Input::Text(text)], &mut NoRecord);
     if changed {
         // `Html` and `Escaped` are written as Unicode until the encoders of stage 3.
-        render::render_text_into(text, &scratch.edits, typographer.language().data(), buf);
+        render::render_text_into(text, &scratch.edits, &typographer.language().data(), buf);
     } else {
         buf.push_str(text);
     }
@@ -277,7 +277,7 @@ fn typeset_unfiltered<'a>(
         return Cow::Borrowed(text);
     }
     // `Html` and `Escaped` are written as Unicode until the encoders of stage 3.
-    render::render_text(text, &scratch.edits, typographer.language().data())
+    render::render_text(text, &scratch.edits, &typographer.language().data())
 }
 
 /// `Typographer::typeset_template_with`: returns the texts in the n + 1 form and whether any of
@@ -324,7 +324,7 @@ fn template_texts<'t>(
         &scratch.pieces,
         edits,
         slot_count,
-        typographer.language().data(),
+        &typographer.language().data(),
     )
 }
 
@@ -338,7 +338,7 @@ pub(crate) fn report<'a>(
 ) -> (Cow<'a, str>, Records) {
     let mut journal = Journal::default();
     let result = if run(typographer, scratch, &[Input::Text(text)], &mut journal) {
-        render::render_text(text, &scratch.edits, typographer.language().data())
+        render::render_text(text, &scratch.edits, &typographer.language().data())
     } else {
         Cow::Borrowed(text)
     };
@@ -520,7 +520,7 @@ mod tests {
         let mut tr = Trace::default();
         let changed = run(t, scratch, &[Input::Text(text)], &mut tr);
         let out = if changed {
-            render::render_text(text, &scratch.edits, t.language().data()).into_owned()
+            render::render_text(text, &scratch.edits, &t.language().data()).into_owned()
         } else {
             text.to_owned()
         };
@@ -681,7 +681,7 @@ mod tests {
             ] {
                 let t = Typographer::new(language.clone(), set);
                 let expected = t.active_rules().iter().fold(Triggers::NONE, |acc, rule| {
-                    acc.union(crate::rules::triggers(rule, language.data(), false))
+                    acc.union(crate::rules::triggers(rule, &language.data(), false))
                 });
                 assert_eq!(t.compiled().triggers, expected, "{language} {set}");
             }

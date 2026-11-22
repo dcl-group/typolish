@@ -9,7 +9,7 @@
 use super::classify::{Frag, FragKind};
 use super::lex::{EllipsisForm, Flags, Glue, Kind, NO_FRAG, NO_PIECE, Repl, Tok};
 use super::record::{Loc, Recorder, Sink};
-use crate::lang::data::{DashData, LanguageData, QuotePairs};
+use crate::lang::data::{DashData, QuotePairs, Table};
 use crate::rule::{ORDER, Phase};
 use crate::rules::RULES;
 use crate::{DiagnosticKind, Rule, Severity, SingleQuotes, Typographer};
@@ -139,7 +139,7 @@ pub(crate) fn edits_allowed(tokens: &[Tok], anchor: usize, m: &Match) -> bool {
 /// their kinds and flags, the language data and the settings.
 pub(crate) struct Cx<'a> {
     pub(crate) t: &'a Typographer,
-    pub(crate) data: &'a LanguageData,
+    pub(crate) data: Table<'a>,
     /// The call's text (design section 3.4).
     pub(crate) text: &'a str,
     pub(crate) toks: &'a [Tok],
@@ -169,7 +169,7 @@ impl<'a> Cx<'a> {
         match self.toks.get(i)?.repl {
             Repl::Source => self.src(i).chars().next(),
             Repl::Char(c) => Some(c),
-            Repl::Ellipsis(form) => ellipsis_tail(self.data, form).chars().next(),
+            Repl::Ellipsis(form) => ellipsis_tail(&self.data, form).chars().next(),
         }
     }
 
@@ -181,7 +181,7 @@ impl<'a> Cx<'a> {
                 let mut chars = s.chars();
                 chars.next() == Some(c) && chars.next().is_none()
             }
-            Some(Repl::Ellipsis(form)) => ellipsis_tail(self.data, form) == s,
+            Some(Repl::Ellipsis(form)) => ellipsis_tail(&self.data, form) == s,
             None => false,
         }
     }
@@ -312,7 +312,7 @@ impl<'a> Cx<'a> {
 
 /// The text a form of the language's ellipsis data puts in place of the dots: the form without
 /// its leading `?` and `!`, which stay in their own tokens (`?..` gives `..`).
-pub(crate) fn ellipsis_tail(data: &LanguageData, form: EllipsisForm) -> &str {
+pub(crate) fn ellipsis_tail(data: &Table<'_>, form: EllipsisForm) -> &'static str {
     let forms = &data.ellipsis;
     let whole = match form {
         EllipsisForm::Question => forms.question,
@@ -494,7 +494,7 @@ fn emit<R: Recorder>(
                     let text: &str = match repl {
                         Repl::Source => cx.src(anchor + k as usize),
                         Repl::Char(c) => c.encode_utf8(&mut buf),
-                        Repl::Ellipsis(form) => ellipsis_tail(cx.data, form),
+                        Repl::Ellipsis(form) => ellipsis_tail(&cx.data, form),
                     };
                     sink.change(rule, tok.src.start, tok.src.end, true, text);
                     outcome.changed = true;
