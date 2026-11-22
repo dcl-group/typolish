@@ -220,13 +220,10 @@ fn empty_markup_and_protected_pieces_are_atoms() {
     // its text is empty; only empty `Text` pieces are skipped.
     let t = interface();
     for piece in [Piece::Markup(""), Piece::Protected("")] {
-        let got = report_records(
-            &t,
-            vec![Piece::Text("`a\n"), piece.clone(), Piece::Text("\nb`")],
-        );
+        let got = report_records(&t, vec![Piece::Text("`a\n"), piece, Piece::Text("\nb`")]);
         assert_eq!(of_kind(&got, D), [(0, 0..3), (2, 0..3)], "{piece:?}");
         let report = t.report_template(
-            vec![Piece::Text("`a\n"), piece.clone(), Piece::Text("\nb`")],
+            vec![Piece::Text("`a\n"), piece, Piece::Text("\nb`")],
             Output::Unicode,
         );
         assert!(report.diagnostics().is_empty(), "{piece:?}");
