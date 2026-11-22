@@ -124,14 +124,15 @@ part) and `months` are compared with case, except that an entry that starts with
 also matches the same text with that letter in uppercase, unless the entry is a single letter with a
 full stop (`д.`, `п.`, `ч.`, `г.`, en `p.`), which matches only as written: `см.` matches `См.`,
 `ноября` matches `Ноября`, while `д.` does not match `Д.` (a capital letter with a full stop is read
-as an initial or a one-letter label, which only `nbsp.initials` glues, section 8.7:
-`вариант Д. После` gets its glue from that rule and stays unchanged with `nbsp.abbreviations` alone;
-the cost is that a one-letter abbreviation capitalized at a sentence start, `П. 5 устава`, gets no
-forward glue from `nbsp.abbreviations`), `No.` does not match `no.` and `May` does not match `may`.
-The lookup tries the text as written and then, if it starts with an uppercase letter and is not a
-single letter with a full stop, once more with that letter lowercased. A part of `abbreviations` is
-found by scanning the list, which is short. The typographer builder keeps caller additions and
-removals in small sorted vectors next to the language's lists.
+as an initial or a one-letter label, which `nbsp.initials` glues, section 8.7 (after a number,
+`nbsp.dates` reads `Г.` as a year word instead, since `year_words` is a word list: `2026⍽Г.`):
+`вариант Д. После` gets its glue from `nbsp.initials` and stays unchanged with `nbsp.abbreviations`
+alone; the cost is that a one-letter abbreviation capitalized at a sentence start, `П. 5 устава`,
+gets no forward glue from `nbsp.abbreviations`), `No.` does not match `no.` and `May` does not match
+`may`. The lookup tries the text as written and then, if it starts with an uppercase letter and is
+not a single letter with a full stop, once more with that letter lowercased. A part of
+`abbreviations` is found by scanning the list, which is short. The typographer builder keeps caller
+additions and removals in small sorted vectors next to the language's lists.
 
 ### 7.2 ru-RU
 
