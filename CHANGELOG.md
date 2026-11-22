@@ -19,8 +19,8 @@ Nothing released yet. Version 0.1.0 is in development.
   `quotes.pairs`, `quotes.primes`, with `UnmatchedQuote`, `CrossingQuotes` and `AmbiguousQuote`),
   dashes (`dash.dialogue`, `dash.double-hyphen`, `dash.spaced-hyphen`, with `AmbiguousHyphen`),
   ranges (`range.placeholders`, `range.digits`, `range.context`, `range.time`) and ellipses
-  (`ellipsis.dots`, `ellipsis.inner`). The `symbols.*`, `number.*` and `nbsp.*` rules are accepted
-  in rule sets but change nothing yet.
+  (`ellipsis.dots`, `ellipsis.inner`) and the multiplication sign (`number.times`). The `symbols.*`
+  and `nbsp.*` rules and `number.minus` are accepted in rule sets but change nothing yet.
 - `LanguageBuilder` builds a language at run time from an existing language or from
   `LanguageData::new` under a new tag, with one method per field of `LanguageData` (`abbreviations`
   takes the parts and the binding of each entry); `build` lowercases the word lists, sorts and
