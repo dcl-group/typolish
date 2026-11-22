@@ -70,8 +70,9 @@ year, century or page word next to it), in Interface neither, because the task a
 numeric ranges and ranges of years, and technical text is protected by Interface and by backticks.
 Rejected: (b) only the context rule, as the reference implementation does for Russian; (c) never in
 text, only `range.placeholders` and `format_range`. Known cost in Prose: a port range `8000-8100`
-written as plain text and a telephone fragment `123-4567` get an en dash (section 10.5, row 10);
-Interface and backticks keep them (sections 9.2, 10.6).
+written as plain text and a telephone fragment `123-4567` get an en dash (section 10.5, row 10, for
+the port range; sections 10.7 and 10.8 for the telephone fragment); Interface and backticks keep
+them (sections 9.2, 10.6).
 
 **8.** **Scope of an unpaired quote.** Settled 2026-11-22: (a) all or nothing per paragraph: an
 unpaired or crossing straight quote leaves every straight quote of its paragraph (of its template,
