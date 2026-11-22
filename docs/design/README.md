@@ -20,9 +20,9 @@ Conventions used below:
   the repository and enters the tests only as plain tables of input and output (section 13.4).
 - Section numbers run through all files and do not change when a file is renamed. Code refers to a
   place as "design section 6.5".
-- Facts about dependencies, CLDR and HTML entities were checked on 2026-11-21; the checks and their
-  results are listed in section 14.8. Statements that rest on secondary sources say so where they
-  are made.
+- Facts about dependencies, CLDR and HTML entities were checked on 2026-11-21, unless section 14.8
+  gives a check another date; the checks and their results are listed in section 14.8. Statements
+  that rest on secondary sources say so where they are made.
 
 ## Where each section is
 
