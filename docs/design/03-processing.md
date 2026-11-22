@@ -446,11 +446,14 @@ pub(crate) enum Edit {
 ```
 
 The engine applies a proposal only if no affected token is `FROZEN` and no insertion falls inside a
-frozen fragment; otherwise the whole proposal is dropped. The engine does not call rules at all when
-the anchor is frozen. This check sits in one place of the engine, so protection does not depend on
-the care of each rule. Edits next to a frozen fragment are allowed: the space between `в` and
-`10.0.0.0/8` is not part of the fragment, so `в⍽10.0.0.0/8` is fine, while the fragment itself is
-byte for byte intact.
+frozen fragment; otherwise the whole proposal is dropped. An insertion falls inside a frozen
+fragment when a token next to it is a frozen token of the call's text (a frozen core, the hyphen of
+a compound word, a frozen space); next to a slot or protected text, which are frozen but opaque, it
+falls outside them (`№{n}` → `№⍽{n}`). Every edit also lies within the tokens the proposal takes.
+The engine does not call rules at all when the anchor is frozen. This check sits in one place of the
+engine, so protection does not depend on the care of each rule. Edits next to a frozen fragment are
+allowed: the space between `в` and `10.0.0.0/8` is not part of the fragment, so `в⍽10.0.0.0/8` is
+fine, while the fragment itself is byte for byte intact.
 
 ### 3.8 Phases
 

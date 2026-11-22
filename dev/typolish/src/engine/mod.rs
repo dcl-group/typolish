@@ -8,6 +8,7 @@
 pub(crate) mod classify;
 mod ingest;
 mod lex;
+pub(crate) mod phase;
 pub(crate) mod record;
 pub(crate) mod scratch;
 mod window;
