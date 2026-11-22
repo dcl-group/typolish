@@ -15,7 +15,7 @@ use crate::Rule;
 pub(crate) use crate::engine::classify::{Frag, FragKind};
 use crate::engine::lex::{Kind, script_bit};
 use crate::engine::phase::{Cx, Match};
-use crate::lang::data::{LanguageData, Script};
+use crate::lang::data::{LanguageData, Script, fold_char};
 
 /// A rule: reads the input of its phase at an anchor token and proposes a match (design section
 /// 3.8).
@@ -36,10 +36,10 @@ pub(crate) const RULES: [RuleFn; 27] = [
     dash::dialogue,
     dash::double_hyphen,
     dash::spaced_hyphen,
-    later,
-    later,
-    later,
-    later,
+    range::placeholders,
+    range::digits,
+    range::context,
+    range::time,
     later,
     later,
     quotes::apostrophe,
@@ -132,6 +132,35 @@ pub(crate) fn foreign(cx: &Cx<'_>, f: &Frag) -> bool {
                 .any(|i| matches!(cx.kind(i), Some(Kind::Word(_))));
     }
     language_script(cx.data).is_some_and(|bit| mask & bit == 0)
+}
+
+/// Whether a lowercase word list holds the characters of `key`, compared without case (design
+/// section 7.1).
+pub(crate) fn folded_in(list: &[&str], key: impl Iterator<Item = char> + Clone) -> bool {
+    list.binary_search_by(|entry| entry.chars().cmp(key.clone().map(fold_char)))
+        .is_ok()
+}
+
+/// Calls `f` with the visible text of a core, followed by a full stop when `stop` is set, without
+/// allocation; a core longer than any list entry gives `false`.
+pub(crate) fn with_key(
+    chars: impl Iterator<Item = char>,
+    stop: bool,
+    f: impl FnOnce(&str) -> bool,
+) -> bool {
+    let mut buf = [0u8; 96];
+    let mut len = 0;
+    for c in chars.chain(stop.then_some('.')) {
+        let Some(slot) = buf.get_mut(len..len + c.len_utf8()) else {
+            return false;
+        };
+        c.encode_utf8(slot);
+        len += c.len_utf8();
+    }
+    match buf.get(..len).map(core::str::from_utf8) {
+        Some(Ok(key)) => f(key),
+        _ => false,
+    }
 }
 
 /// A set of bytes: the trigger bytes of rules and the bytes an output kind encodes (design

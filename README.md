@@ -9,7 +9,7 @@ numbers. The built-in languages are `ru-RU` and `en-US`; other languages are add
 
 In development; nothing is released. The design is in
 [`docs/design/`](https://github.com/dcl-group/typolish/tree/main/docs/design). The engine recognizes
-protected and technical fragments and applies the rules of quotes, dashes and ellipses;
+protected and technical fragments and applies the rules of quotes, dashes, ranges and ellipses;
 `Typographer::report` lists every edit, protected span and diagnostic. The other rules (no-break
 spaces, numbers, symbols) change nothing yet.
 

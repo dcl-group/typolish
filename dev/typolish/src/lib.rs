@@ -7,7 +7,7 @@
 //! call. Its design is in `docs/design/` of the repository.
 //!
 //! The crate is in development: the engine recognizes protected and technical fragments and
-//! applies the rules of quotes, dashes and ellipses; [`Typographer::report`] lists every edit,
+//! applies the rules of quotes, dashes, ranges and ellipses; [`Typographer::report`] lists every edit,
 //! protected span and diagnostic. The other rules (no-break spaces, numbers, symbols) change
 //! nothing yet.
 //!

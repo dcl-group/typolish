@@ -17,9 +17,10 @@ Nothing released yet. Version 0.1.0 is in development.
 - The phase engine applies the rules to strings and templates for `ru-RU`, `en-US` and
   `Language::COMMON`: quotes by nesting level, apostrophes and primes (`quotes.apostrophe`,
   `quotes.pairs`, `quotes.primes`, with `UnmatchedQuote`, `CrossingQuotes` and `AmbiguousQuote`),
-  dashes (`dash.dialogue`, `dash.double-hyphen`, `dash.spaced-hyphen`, with `AmbiguousHyphen`) and
-  ellipses (`ellipsis.dots`, `ellipsis.inner`). The `symbols.*`, `number.*` and `nbsp.*` rules are
-  accepted in rule sets but change nothing yet.
+  dashes (`dash.dialogue`, `dash.double-hyphen`, `dash.spaced-hyphen`, with `AmbiguousHyphen`),
+  ranges (`range.placeholders`, `range.digits`, `range.context`, `range.time`) and ellipses
+  (`ellipsis.dots`, `ellipsis.inner`). The `symbols.*`, `number.*` and `nbsp.*` rules are accepted
+  in rule sets but change nothing yet.
 
 - Known limitation of the development state: `Output::Html` and `Output::Escaped` are accepted but
   written as Unicode, without encoding, until their encoders are added; do not use them for

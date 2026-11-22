@@ -144,6 +144,7 @@ fn run_on<R: Recorder>(
             }
             let frags = &mut classify.frags;
             let mut cx = Cx {
+                t: typographer,
                 data,
                 text,
                 toks: tokens,

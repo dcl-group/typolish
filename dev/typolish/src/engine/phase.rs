@@ -12,7 +12,7 @@ use super::record::{Loc, Recorder, Sink};
 use crate::lang::data::{DashData, LanguageData, QuotePairs};
 use crate::rule::{ORDER, Phase};
 use crate::rules::RULES;
-use crate::{DiagnosticKind, Rule, Severity, SingleQuotes};
+use crate::{DiagnosticKind, Rule, Severity, SingleQuotes, Typographer};
 
 /// The most edits one proposal holds; `nbsp.phone` glues up to five spaces.
 pub(crate) const MAX_EDITS: usize = 6;
@@ -138,6 +138,7 @@ pub(crate) fn edits_allowed(tokens: &[Tok], anchor: usize, m: &Match) -> bool {
 /// current text, neighbors without `Format` and `Markup` tokens, the fragments of the pass with
 /// their kinds and flags, the language data and the settings.
 pub(crate) struct Cx<'a> {
+    pub(crate) t: &'a Typographer,
     pub(crate) data: &'a LanguageData,
     /// The call's text (design section 3.4).
     pub(crate) text: &'a str,
@@ -250,6 +251,14 @@ impl<'a> Cx<'a> {
             .unwrap_or("")
             .chars()
             .filter(|c| !super::lex::is_joiner(*c) && !super::lex::is_format_char(*c))
+    }
+
+    /// The visible characters of a core.
+    pub(crate) fn core_chars(&self, frag: &Frag) -> impl Iterator<Item = char> + Clone + 'a {
+        if frag.core_start >= frag.core_end {
+            return self.visible(1, 0);
+        }
+        self.visible(frag.core_start as usize, frag.core_end as usize - 1)
     }
 
     /// A pattern space (design section 8.2): a `Space` token of exactly one character, U+0020 or a
