@@ -425,7 +425,9 @@ impl Typographer {
     /// assert_eq!(buf, "> plain");
     /// ```
     pub fn typeset_into(&self, text: &str, output: Output, buf: &mut String) {
-        buf.push_str(&self.typeset(text, output));
+        engine::scratch::with_thread_scratch(|scratch| {
+            engine::typeset_into(self, scratch, text, output, buf);
+        });
     }
 
     /// Typesets the pieces of a message template; slots come out in input order, untouched, in

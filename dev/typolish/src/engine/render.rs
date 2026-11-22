@@ -89,15 +89,21 @@ pub(crate) fn render_text<'a>(text: &'a str, edits: &[REdit], data: &LanguageDat
         return Cow::Borrowed(text);
     }
     let mut out = String::with_capacity(text.len() + text.len() / 8);
+    render_text_into(text, edits, data, &mut out);
+    Cow::Owned(out)
+}
+
+/// Appends `text` with its edits to `out`, without a string of its own (`typeset_into`, design
+/// section 2.12).
+pub(crate) fn render_text_into(text: &str, edits: &[REdit], data: &LanguageData, out: &mut String) {
     let mut pos = 0usize;
     for e in edits {
         let (start, end) = (e.start as usize, e.end as usize);
         out.push_str(text.get(pos..start).unwrap_or(""));
-        write(&mut out, e.text, data);
+        write(out, e.text, data);
         pos = end.max(pos);
     }
     out.push_str(text.get(pos..).unwrap_or(""));
-    Cow::Owned(out)
 }
 
 /// Whether an edit belongs to a piece: a range that overlaps it, or an insertion at a position

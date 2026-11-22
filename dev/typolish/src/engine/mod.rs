@@ -229,6 +229,29 @@ pub(crate) fn typeset<'a>(
     typeset_unfiltered(typographer, scratch, text, output)
 }
 
+/// `Typographer::typeset_into`: appends the result to `buf` with no allocation of its own once
+/// the scratch memory is warm (design section 2.12).
+pub(crate) fn typeset_into(
+    typographer: &Typographer,
+    scratch: &mut Scratch,
+    text: &str,
+    output: Output,
+    buf: &mut String,
+) {
+    let changed = wanted(
+        typographer,
+        output,
+        core::iter::once(text),
+        core::iter::empty(),
+    ) && run(typographer, scratch, &[Input::Text(text)], &mut NoRecord);
+    if changed {
+        // `Html` and `Escaped` are written as Unicode until the encoders of stage 3.
+        render::render_text_into(text, &scratch.edits, typographer.language().data(), buf);
+    } else {
+        buf.push_str(text);
+    }
+}
+
 /// The whole pipeline without the prefilter (design section 13.5, property 8).
 fn typeset_unfiltered<'a>(
     typographer: &Typographer,
@@ -359,6 +382,10 @@ mod tests {
                 let filtered = typeset(&t, &mut scratch, &text, output);
                 let unfiltered = typeset_unfiltered(&t, &mut scratch, &text, output);
                 prop_assert_eq!(&filtered, &unfiltered);
+                // `typeset_into` writes the same result after what `buf` holds.
+                let mut buf = String::from("> ");
+                typeset_into(&t, &mut scratch, &text, output, &mut buf);
+                prop_assert_eq!(buf.strip_prefix("> "), Some(filtered.as_ref()));
                 prop_assert_eq!(
                     matches!(filtered, Cow::Borrowed(_)),
                     matches!(unfiltered, Cow::Borrowed(_))

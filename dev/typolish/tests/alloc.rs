@@ -135,6 +135,33 @@ fn an_unchanged_string_through_the_whole_pipeline_does_not_allocate_after_warm_u
     assert!(matches!(out, Cow::Borrowed(_)));
 }
 
+#[test]
+fn typeset_into_a_buffer_with_room_does_not_allocate() {
+    // Section 2.12: `typeset_into` makes no allocation when `buf` has room, for an unchanged and
+    // for a changed string; `typeset` makes one for a changed string (section 13.8).
+    const CHANGED: &str = "Он сказал \"привет\" и ушёл...";
+    const UNCHANGED: &str = "Сохранить";
+    let prose = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    for t in [&RU_UI, &prose] {
+        let expected = t.typeset(CHANGED, Output::Unicode).into_owned();
+        assert!(expected.starts_with("Он сказал «привет» и") && expected.ends_with("ушёл…"));
+        let mut buf = String::with_capacity(1024);
+        t.typeset_into(CHANGED, Output::Unicode, &mut buf);
+        t.typeset_into(UNCHANGED, Output::Unicode, &mut buf);
+        for (text, out) in [(CHANGED, expected.as_str()), (UNCHANGED, UNCHANGED)] {
+            buf.clear();
+            buf.push_str("> ");
+            let (allocs, reallocs, ()) = count(|| t.typeset_into(text, Output::Unicode, &mut buf));
+            assert_eq!((allocs, reallocs), (0, 0), "{text}");
+            assert_eq!(buf, format!("> {out}"));
+        }
+        let _ = t.typeset(CHANGED, Output::Unicode);
+        let (allocs, reallocs, out) = count(|| t.typeset(CHANGED, Output::Unicode));
+        assert_eq!((allocs, reallocs), (1, 0));
+        assert!(matches!(out, Cow::Owned(_)));
+    }
+}
+
 /// A template of `n` repetitions of a text and a slot.
 fn template(n: u8) -> Vec<Piece<'static, u8>> {
     (0..n)
