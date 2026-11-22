@@ -78,9 +78,11 @@ any trigger word. Its script is the script of its `Word` tokens (section 5.2): `
 are Cyrillic words, `tls-server`, `agent-ca`, `db-01` and `mother-in-law` Latin words; a compound
 word with `Word` tokens of two scripts (`IT-отдел`) is a word of each of them, so it is not a word
 outside the language's script in Russian or in English text; one without a `Word` token
-(`123-45-67`, `{n}-{d}`) has no script and is never a word outside the language's script. A compound
-word is never a single-letter word, and it is not a plain word of the closed dash style (section
-8.4).
+(`123-45-67`, `{n}-{d}`) has no script and counts as a word outside the language's script in every
+language, so the refusal of section 8.4 keeps `123-45-67 - 123-45-68` and ru `cat - 123-45-67`
+unchanged (`AmbiguousHyphen`), while ru `123-45-67 - звоните` gets the dash (`123-45-67⍽— звоните`).
+A compound word is never a single-letter word, and it is not a plain word of the closed dash style
+(section 8.4).
 
 Conditions that hold for every rule:
 
@@ -147,7 +149,8 @@ bracket on the right → em dash. It does not fire, and reports `AmbiguousHyphen
   here, in every language; a technical fragment on one side and a word of the language on the other
   (`Сервис слушает host:8080 - проверьте`) gets the dash. A compound word counts by the script of
   its letters, as any word (section 8.2): in Russian text `кто-то - что-то` gets the dash, while
-  `tls-server - agent-ca` (Latin compound words) does not, as `cat - file` does not.
+  `tls-server - agent-ca` (Latin compound words) does not, as `cat - file` does not; a compound word
+  without letters (`123-45-67`) counts as a foreign word in every language.
 
 Spacing by `DashStyle`: `SpacedGlued` (ru) and `Spaced` keep the author's spaces (`nbsp.dash` glues
 the one before the dash under `SpacedGlued`). `Closed` (en) removes both spaces (`word—word`) only

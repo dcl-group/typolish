@@ -204,12 +204,12 @@ expectation):
 
 ### 10.8 Known limits
 
-- A lone `-` between two plain words of the language is a dash in both sets. In English text
-  `cat - file` becomes `cat—file`, and `tls-server - agent-ca` becomes `tls-server — agent-ca`
-  (compound words are words of their script, section 8.2); in Russian text both stay (foreign words
-  on both sides). Next to a flag a `-` is never a dash, even where one was meant
-  (`флаг -v - он включает вывод`). Commands with spaces must be protected with backticks or passed
-  as `Piece::Protected`; the crate README says so (section 13.10).
+- A lone `-` between two words of the language is a dash in both sets. In English text `cat - file`
+  becomes `cat—file`, and `tls-server - agent-ca` becomes `tls-server — agent-ca` (compound words
+  are words of their script, section 8.2); in Russian text both stay (foreign words on both sides).
+  Next to a flag a `-` is never a dash, even where one was meant (`флаг -v - он включает вывод`).
+  Commands with spaces must be protected with backticks or passed as `Piece::Protected`; the crate
+  README says so (section 13.10).
 - With the closed style (en) the dash keeps the author's spaces next to anything but a plain word
   (`Hello, — he said`, `Chapter — 5`, `See https://example.com — the guide`,
   `mother-in-law — father-in-law`); only two plain words are joined (`word—word`).

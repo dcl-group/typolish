@@ -93,7 +93,11 @@ gives the output of the whole set.
   foreign words); en `tls-server - agent-ca` → `tls-server — agent-ca`; en Closed
   `mother-in-law - father-in-law` in Prose and Interface → `mother-in-law — father-in-law` (no merge
   next to a compound word, section 8.4), and `mother-in-law — father-in-law` → unchanged,
-  `Cow::Borrowed`.
+  `Cow::Borrowed`; ru and en `123-45-67 - 123-45-68` in both sets → unchanged, `AmbiguousHyphen` (a
+  compound word without letters counts as a foreign word, section 8.2); ru `cat - 123-45-67` →
+  unchanged, `AmbiguousHyphen`; ru `123-45-67 - звоните` → `123-45-67⍽— звоните`; ru
+  `IT-отдел - что-то` in both sets → `IT-отдел⍽— что-то` (a compound word of two scripts is a word
+  of each, section 8.2).
 - `tests/rules_range.rs`: `1941-1945 гг.` → the `Change` record of the dash names `range.digits`;
   `10-10` → unchanged, no diagnostic; `XIX-XX вв.` → `XIX–XX вв.`; `XX-XIX вв.`, `xix-xx вв.` and
   `ХIХ-ХХ вв.` (Cyrillic `Х`) → unchanged, the last with `MixedScript`.
