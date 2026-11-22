@@ -24,15 +24,17 @@ The two sets differ only in their rule lists; settings and language data are the
 ### 9.2 Composition
 
 `PROSE` holds all 27 rules of version 1. It equals `ALL` in 0.1.0 only: a rule added in a later
-release joins `ALL` but not the built-in sets (section 15.1).
+release joins `ALL` but not the built-in sets; the sets change only in a release that raises the
+breaking number (section 15.1).
 
 `INTERFACE = PROSE − {symbols.copyright, symbols.arrows, symbols.math, ellipsis.inner, dash.dialogue, dash.double-hyphen, range.digits, range.context, range.time, number.minus, number.times, quotes.primes, nbsp.phone, nbsp.short-length}`
 (13 rules): `ellipsis.dots`, `dash.spaced-hyphen`, `range.placeholders`, `quotes.apostrophe`,
 `quotes.pairs`, `nbsp.abbreviations`, `nbsp.initials`, `nbsp.dates`, `nbsp.units`, `nbsp.signs`,
 `nbsp.short-words`, `nbsp.particles`, `nbsp.dash`.
 
-The sets are `const RuleSet` values in `src/rule.rs`. The rustdoc of each lists its rules, and a
-test compares the rustdoc, the constants and the table of section 8.1.
+The sets are `const RuleSet` values in `src/rule.rs`. The rustdoc of each lists its rules, and
+`tests/conformance.rs` (section 13.9) compares the constants and the rule lists of their rustdoc
+with this section and with the Prose and Interface columns of the tables of sections 4.1 and 8.1.
 
 ### 9.3 What Interface leaves out and why
 

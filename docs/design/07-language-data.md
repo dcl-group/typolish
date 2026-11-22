@@ -6,11 +6,14 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 
 ### 7.1 Format
 
-A language is one value of `LanguageData`: a table of fixed structure with no logic. Built-in tables
-live in `src/lang/ru_ru.rs`, `src/lang/en_us.rs` and `src/lang/common.rs` as `const` struct
-literals, and are public as `LanguageData::RU_RU`, `LanguageData::EN_US` and `LanguageData::COMMON`.
-A conformance test checks that these files contain no `fn`, `impl`, `match` or `if`: rules cannot
-leak into data.
+A language is one value of `LanguageData`: a table of fixed structure with no logic. `LanguageData`
+and its part types are declared in `src/lang/data.rs` with fields of visibility `pub(crate)`: the
+files of `src/lang/` write tables as struct literals and the engine reads them, while downstream
+crates see private fields and use the `const fn` constructors and setters. Built-in tables live in
+`src/lang/ru_ru.rs`, `src/lang/en_us.rs` and `src/lang/common.rs` as `const` struct literals, and
+are public as `LanguageData::RU_RU`, `LanguageData::EN_US` and `LanguageData::COMMON`.
+`tests/conformance.rs` (section 13.9) checks that `ru_ru.rs`, `en_us.rs` and `common.rs` contain no
+`fn`, `impl`, `match` or `if`: rules cannot leak into data.
 
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -31,7 +34,7 @@ pub struct LanguageData {                       // fields private; const fn sett
     atom_exceptions: &'static [&'static str],   // dotted words that are not technical: "e.g."
     units: &'static [&'static str],             // sorted by code point, case-sensitive
     ambiguous_units: &'static [&'static str],   // units that are also words: glued only before punctuation or the end
-    months: &'static [&'static str],            // sorted by code point, as printed: wide and abbreviated forms used next to a day number, one list (lookups: section 7.1)
+    months: &'static [&'static str],            // sorted by code point, as printed: wide and abbreviated forms used next to a day number, in one list (lookups: the paragraph "Lookups" below)
     month_position: MonthPosition,              // AfterDay | BeforeDay | Both
     year_words: &'static [&'static str],        // after a year; entries ending in '.' also serve nbsp.dates
     century_words: &'static [&'static str],     // after a century
@@ -41,10 +44,16 @@ pub struct LanguageData {                       // fields private; const fn sett
 }
 
 // The parts below: #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)], private fields (section 2.13).
-pub struct QuotePairs { primary: (char, char), nested: (char, char) }   // QuotePairs::new is const
+// Constructors: `const fn new` taking the fields in declaration order, for example
+// `QuotePairs::new(('«', '»'), ('„', '“'))` (no validation there; `build()` and `from_data` validate),
+// `DashData::new(style, dialogue)`, `EllipsisForms::new(question, exclamation, both)`,
+// `Abbreviation::new(parts, bind)`; `NumberData::new()` holds the values of COMMON (section 7.4)
+// and has one `const fn with_*` setter per field. A field added later gets a default and a setter,
+// so no `new` changes its signature.
+pub struct QuotePairs { primary: (char, char), nested: (char, char) }   // each an (open, close) pair
 pub struct DashData { style: DashStyle, dialogue: bool }               // DashStyle: Closed | Spaced | SpacedGlued
 pub struct EllipsisForms { question: &'static str, exclamation: &'static str, both: &'static str }
-pub struct Abbreviation { parts: &'static [&'static str], bind: Bind } // Bind: Inner | Next | NextCapitalized
+pub struct Abbreviation { parts: &'static [&'static str], bind: Bind } // Bind: Inner | Next | NextCapitalized (meaning: section 8.7, `nbsp.abbreviations`)
 pub struct NumberData {
     decimal: char,
     group: char,
@@ -68,6 +77,8 @@ impl LanguageData {
     /// The tag must be canonical (section 7.6).
     pub const fn with_tag(self, tag: &'static str) -> LanguageData;
     pub const fn with_quotes(self, quotes: Option<QuotePairs>) -> LanguageData;
+    /// Sets the dash style; on a table whose `dash` is `None` it makes `dash`
+    /// `Some(DashData::new(style, false))`.
     pub const fn with_dash_style(self, style: DashStyle) -> LanguageData;
     pub const fn with_short_words(self, words: &'static [&'static str]) -> LanguageData;
     pub const fn with_units(self, units: &'static [&'static str]) -> LanguageData;
@@ -102,12 +113,12 @@ impl LanguageBuilder {
     /// Starts from the values of `LanguageData::new` under a tag.
     pub fn new(tag: &str) -> LanguageBuilder;
     pub fn quotes(self, quotes: Option<QuotePairs>) -> Self;
-    pub fn dash_style(self, style: DashStyle) -> Self;
+    pub fn dash_style(self, style: DashStyle) -> Self;            // as `with_dash_style`
     pub fn short_words<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     pub fn units<I>(self, units: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     // ... one method per field
-    /// Normalizes (lowercases the word lists of section 7.6, not `months`, `abbreviations` or
-    /// units; sorts; removes duplicates), validates (section 7.6) and returns a `Language` that
+    /// Normalizes (lowercases the word lists of section 7.6, not `months`, `abbreviations`,
+    /// `units` or `ambiguous_units`; sorts; removes duplicates), validates (section 7.6) and returns a `Language` that
     /// holds the data in an `Arc`.
     pub fn build(self) -> Result<Language, Error>;
 }
@@ -118,21 +129,26 @@ where the data came from.
 
 Lookups: lists are sorted (by the author for `const` tables, validated; by `LanguageBuilder` for
 run-time languages) and searched by binary search without allocation. Word lists (section 7.6) are
-compared without case (per-character simple lowercase mapping of std). `units` and `ambiguous_units`
-are compared with case (`В` is a volt, `в.` a century; `MB` is not `mb`). `abbreviations` (each
-part) and `months` are compared with case, except that an entry that starts with a lowercase letter
-also matches the same text with that letter in uppercase, unless the entry is a single letter with a
-full stop (`д.`, `п.`, `ч.`, `г.`, en `p.`), which matches only as written: `см.` matches `См.`,
-`ноября` matches `Ноября`, while `д.` does not match `Д.` (a capital letter with a full stop is read
-as an initial or a one-letter label, which `nbsp.initials` glues, section 8.7 (after a number,
-`nbsp.dates` reads `Г.` as a year word instead, since `year_words` is a word list: `2026⍽Г.`):
-`вариант Д. После` gets its glue from `nbsp.initials` and stays unchanged with `nbsp.abbreviations`
-alone; the cost is that a one-letter abbreviation capitalized at a sentence start, `П. 5 устава`,
-gets no forward glue from `nbsp.abbreviations`), `No.` does not match `no.` and `May` does not match
-`may`. The lookup tries the text as written and then, if it starts with an uppercase letter and is
-not a single letter with a full stop, once more with that letter lowercased. A part of
-`abbreviations` is found by scanning the list, which is short. The typographer builder keeps caller
-additions and removals in small sorted vectors next to the language's lists.
+compared without case: both sides are mapped character by character to the first character of
+`char::to_lowercase` (`İ` gives `i`), and an entry is lowercase when each of its characters equals
+this mapping of itself. `units` and `ambiguous_units` are compared with case (`В` is a volt, `в.` a
+century; `MB` is not `mb`).
+
+`abbreviations` (each part) and `months` are compared with case, with one relaxation: an entry that
+starts with a lowercase letter also matches the same text with that letter in uppercase (`см.`
+matches `См.`, `ноября` matches `Ноября`). The relaxation does not apply to an entry that is a
+single letter with a full stop (`д.`, `п.`, `ч.`, `г.`, en `p.`): it matches only as written, so
+`д.` does not match `Д.`. A capital letter with a full stop is read as an initial or a one-letter
+label, which `nbsp.initials` glues (section 8.7): `вариант Д. После` gets its glue from
+`nbsp.initials` and stays unchanged with `nbsp.abbreviations` alone. After a number, `nbsp.dates`
+reads `Г.` as a year word instead, because `year_words` is a word list (`2026⍽Г.`). The cost: a
+one-letter abbreviation capitalized at a sentence start (`П. 5 устава`) gets no forward glue from
+`nbsp.abbreviations`. An entry that starts with an uppercase letter matches only as written: `No.`
+does not match `no.`, `May` does not match `may`. The lookup tries the text as written and then, if
+it starts with an uppercase letter and is not a single letter with a full stop, once more with that
+letter lowercased. A part of `abbreviations` is found by scanning the list, which is short. The
+typographer builder keeps caller additions and removals in small sorted vectors next to the
+language's lists.
 
 ### 7.2 ru-RU
 
@@ -144,11 +160,11 @@ Russian Wikipedia articles on the dash and on the no-break space); Art. Lebedev 
 
 The lists in the tables of sections 7.2 to 7.4 are written for reading (units split by source,
 months in calendar order). In `src/lang/*.rs` each list is stored merged from all rows of its field
-and in the order section 7.6 requires; the data test checks the stored order.
+and in the order section 7.6 requires; `tests/data.rs` (section 13.9) checks the stored order.
 
 | Field                                      | Value                                                                                                                                                                                     | Source                                                                                                                        |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `tag`, `script`                            | `ru-RU`, Cyrillic; bare `ru` resolves here                                                                                                                                                |                                                                                                                               |
+| `tag`, `cldr_version`, `script`            | `ru-RU`, `49`, Cyrillic; bare `ru` resolves here                                                                                                                                          |                                                                                                                               |
 | `quotes`                                   | primary `«` U+00AB `»` U+00BB; nested `„` U+201E `“` U+201C                                                                                                                               | CLDR 49 `delimiters` (agrees with the task)                                                                                   |
 | `elisions`                                 | none                                                                                                                                                                                      |                                                                                                                               |
 | `decade_apostrophe`, `trailing_possessive` | false, false                                                                                                                                                                              |                                                                                                                               |
@@ -189,12 +205,12 @@ handles them (section 8.7) and they are not in `units`.
 ### 7.3 en-US
 
 CLDR 49 has no separate `en-US` file; `en-US` inherits `en`, and the values below are those of `en`
-(checked: no file, `availableLocales` lists only `en`, `en-GB`, `ru` among these, and
+(checked: no file, `availableLocales` lists `en`, `en-GB` and `ru` but not `en-US`, and
 `parentLocales` has no entry for `en-US`; section 14.8).
 
 | Field                                      | Value                                                                                                                                                                                  | Source                                                                 |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `tag`, `script`                            | `en-US`, Latin; bare `en` resolves here                                                                                                                                                |                                                                        |
+| `tag`, `cldr_version`, `script`            | `en-US`, `49`, Latin; bare `en` resolves here                                                                                                                                          |                                                                        |
 | `quotes`                                   | primary `“` U+201C `”` U+201D; nested `‘` U+2018 `’` U+2019                                                                                                                            | CLDR 49 `en` `delimiters`                                              |
 | `elisions`                                 | 'bout 'cause 'em 'nother 'round 'til 'tis 'twas (not `'n'`, which also quotes a letter: section 6.2)                                                                                   | project                                                                |
 | `decade_apostrophe`, `trailing_possessive` | true, true                                                                                                                                                                             | project                                                                |
@@ -262,8 +278,8 @@ Active with COMMON: `symbols.*`, `ellipsis.*`, `range.placeholders`, `range.digi
 | ellipsis after `?` and `!`, ru        | no pattern                    | `?..`, `!..`                                                | Russian norm from a secondary source                                           |
 | dotted month abbreviations, en        | `Jan`, `Feb` without a period | both forms                                                  | running text writes `Jan. 5`                                                   |
 
-`en-GB` in CLDR 49 has the same quotes and number symbols as `en` (checked during scouting); its
-differences are house style (dash spacing, punctuation with quotes), not CLDR data.
+`en-GB` in CLDR 49 has the same quotes and number symbols as `en` (section 14.8); its differences
+are house style (dash spacing, punctuation with quotes), not CLDR data.
 
 ### 7.6 Validation
 
@@ -293,11 +309,13 @@ cannot reach a user.
 
 ### 7.7 Adding a language
 
-1. A file `src/lang/<tag>.rs` with a `LanguageData` literal. CLDR values (quotes, number symbols,
-   months, units) come from cldr-json of a stated version, recorded in `cldr_version` and in a
-   comment at each field; every deviation from CLDR carries a comment with its reason.
+1. A file `src/lang/<ll_rr>.rs` (the tag in lowercase with `_` instead of `-`: `ru-RU` is
+   `ru_ru.rs`) with a `LanguageData` literal. CLDR values (quotes, number symbols, months, units)
+   come from cldr-json of a stated version, recorded in `cldr_version` and in a comment at each
+   field; every deviation from CLDR carries a comment with its reason.
 2. A line in the registry `src/lang/mod.rs` and a constant `Language::<TAG>`.
-3. Test tables for the language (section 13.2), a line in the data test, a corpus file.
+3. Test tables for the language in `tests/rules_<group>.rs` (section 13.2), a line in
+   `tests/data.rs` (section 13.9) and corpus files in `tests/corpus/` (section 13.7).
 4. Behavior that the format cannot express becomes a new field first (default: off) and at most one
    generic rule that reads it. No rule ever checks a language tag. A new rule is inert for languages
    without the field set.
@@ -322,5 +340,6 @@ of the downstream crate checks `Language::from_data(&EN_GB_DATA).is_ok()` once (
 
 The same language can be built at run time with
 `LanguageBuilder::from_language(&Language::EN_US, "en-GB").dash_style(DashStyle::Spaced).build()`.
-Inside the crate the table becomes `src/lang/en_gb.rs` once the maintainer settles its style (single
-outer quotes, en dash or em dash); that is outside version 1.
+Version 1 has no built-in en-GB: its house style (dash spacing, outer quote marks) is not part of
+this design. A later release may add it as `src/lang/en_gb.rs` by the steps above (section 15.1: a
+new built-in language arrives only in a release that raises the breaking number).

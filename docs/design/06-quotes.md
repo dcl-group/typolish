@@ -44,7 +44,7 @@ the same tokens (invariant I4): `’` stays an apostrophe, and `′` is never a 
 | a `Word` or `Number` slot on the left, a letter on the right (`{name}'s`)                                                                                   | `’`        | `quotes.apostrophe` |
 | a digit on the left, a letter on the right (`90's`)                                                                                                         | `’`        | `quotes.apostrophe` |
 | word start and an elision of the language's list (`'tis`, `'em`, `'cause`)                                                                                  | `’`        | `quotes.apostrophe` |
-| word start, two digits, then `s`, if the language has the decade flag (`'90s`)                                                                              | `’`        | `quotes.apostrophe` |
+| word start, two digits, then `s`, if the language has the decade flag (`decade_apostrophe`, section 7.1; `'90s`)                                            | `’`        | `quotes.apostrophe` |
 | a number of one to three digits on the left and one or two digits ending the core on the right (`5'10`; a straight `'` only: `5’10` is frozen, section 3.6) | `′` U+2032 | `quotes.primes`     |
 
 The apostrophe is U+2019 for every language, as the Unicode Standard (chapter 6) recommends for
@@ -171,24 +171,26 @@ paired or a prime. Then:
 - weak quotes resolved as primes get `″` or `′` (if `quotes.primes` is enabled);
 - a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
   section 6.8, are in a pair and stay straight) directly after the letter `s` and before a
-  non-letter becomes `’` if the language has the trailing-possessive flag (`dogs'`, `the Joneses'`),
-  unless a typed opener whose closer is `’` (English `‘`) that stayed neutral (left on the stack at
-  the end of the window, section 6.4) stands before it anywhere in the window; then it stays
-  straight (a second pass would let that `’` close the opener);
+  non-letter or the end of the window becomes `’` if the language has the trailing-possessive flag
+  (`trailing_possessive`, section 7.1; `dogs'`, `the Joneses'`), unless a typed opener whose closer
+  is `’` (English `‘`) that stayed neutral (left on the stack at the end of the window, section 6.4)
+  stands before it anywhere in the window; then it stays straight (a second pass would let that `’`
+  close the opener);
 - a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
   section 6.8, are in a pair and stay straight) at a word start before exactly two digits and then a
-  character that is neither a letter nor a digit becomes `’` if the language has the decade flag
-  (`the class of '26`).
+  character that is neither a letter nor a digit, or the end of the window, becomes `’` if the
+  language has the decade flag (`the class of '26`).
 
 If the window does **not** converge, no straight quote of the window changes; the edits of step 1
 (section 6.2) are kept. The caller gets a diagnostic at the position of the first cause.
 
 Why not "set what paired and leave the rest": with an unpaired `"` in a paragraph, it is unknown
-which of the other quotes are pairs. `"a" b "c` reads as `«a» b "c` or as `"a «b» c`; the task says
-not to guess. Partial placement is also not idempotent: there are inputs where a second pass pairs
-what the first left alone (`"x 'y" z'` with single quotes converted everywhere, `"x 'y «z" w'`). The
-cost of this choice: one typo leaves its whole paragraph, or a whole template, with straight quotes,
-with an exact diagnostic. Settled in section 15.5, item 8.
+which of the other quotes are pairs. `"a" b "c` reads as `«a» b "c` or as `"a «b» c`; the design
+reports and does not guess (section 1.4, principle 5). Partial placement is also not idempotent:
+there are inputs where a second pass pairs what the first left alone (`"x 'y" z'` with single quotes
+converted everywhere, `"x 'y «z" w'`). The cost of this choice: one typo leaves its whole paragraph,
+or a whole template, with straight quotes, with an exact diagnostic. Settled in section 15.5,
+item 8.
 
 ### 6.7 Levels
 
@@ -215,8 +217,10 @@ rejected: Russian has no single-quote pair to map `'` to.
   straight `'` in plain text is more often an apostrophe or code than a quote.
 - `Everywhere`: pairs of `'` get glyphs by level like pairs of `"` (`'hi'` → `“hi”` in English).
 - `Never`: straight `'` never pairs; only step 1, the trailing possessive and the decade apostrophe
-  of section 6.6 apply (every `'` is unpaired, so `'42'` becomes `’42'`: the caller said that `'` is
-  never a quote).
+  of section 6.6 and the primes of section 6.5 apply. Every `'` is unpaired (the caller said that
+  `'` is never a quote), so in `'42'` the first `'` is a decade apostrophe and the last one, a weak
+  quote that pairs with nothing, is a prime: `’42′` with `quotes.primes` enabled (Prose), `’42'`
+  without it (Interface).
 
 Settled in section 15.5, item 9.
 
@@ -239,9 +243,10 @@ This is a known limit of version 1 (section 1.5).
 
 ### 6.11 Idempotence of the phase
 
-Roles on a second pass are those of the first: a role comes from the neighbours of a series, every
-`Quote` token is in its series (section 6.3), and neighbours do not change (I1). Step 1 removes the
-same tokens (I4). The first pass either converged or did not.
+Roles on a second pass are those of the first: a role comes from the classes of the neighbours of a
+series, every `Quote` token is in its series (section 6.3), and the class of a neighbour does not
+change, because an edit never changes the kind of a token (I1). Step 1 removes the same tokens (I4).
+The first pass either converged or did not.
 
 (a) **Converged.** Every straight `"` became a glyph of a pair or a prime; the new pairs nest
 properly (section 6.5, item 2), and the family of each new glyph is the primary or the nested pair
@@ -266,7 +271,8 @@ pass with passes repeated until nothing changes.
 
 Outputs show the edits of the three quote rules only; in the full sets the no-break rules add glue
 as well (`и⍽«ручка»`, `to⍽confirm`). "(Prose)" and "(Interface)" mark whether `quotes.primes` is
-enabled.
+enabled; "(`Never`)" marks `SingleQuotes::Never`. A row without a mark holds in both sets, with
+`SingleQuotes::NestedOnly`.
 
 | Language   | Input                                           | Output                               | Note                                                          |
 | ---------- | ----------------------------------------------- | ------------------------------------ | ------------------------------------------------------------- |

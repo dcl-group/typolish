@@ -68,29 +68,31 @@ space that `nbsp.signs` or the percent setting inserts or removes changes nothin
 (invariant I2). `nbsp.signs` itself glues a label to its sign. So `Школа №5 г. Москвы` reads `г.` as
 a city, not a year: `Школа №⍽5 г.⍽Москвы`.
 
+Conditions that hold for every rule:
+
 - A fragment of kind `Dictionary` (check 0 of section 3.6) whose core is one `Word` token (`in`,
   `min`, `А`, `с`, `May`) counts as a fragment of kind `Word` wherever a rule reads a fragment kind
   (`Closed`, section 8.4); only the rules that look its core up in a list (`nbsp.units`,
   `nbsp.abbreviations`, `nbsp.dates`, `range.context`) read it as a dictionary entry.
 - No rule changes letters or digits inside `Word` and `Number` tokens. The letter-like replacements
-  are `(c)`, `(r)`, `(tm)` and the Cyrillic `(с)` (kind `LegalMark`) and `x`, `х` between numbers
-  (kind `Times`).
+  are `(c)`, `(r)`, `(tm)` in either case and the Cyrillic `(с)`, `(С)` (kind `LegalMark`) and `x`,
+  `X`, `х`, `Х` between numbers (kind `Times`).
 - A no-break rule glues only a single U+0020 between two fragments on one line. Tabs, runs of
   spaces, line breaks and spaces at a window boundary are never glued.
 - A **pattern space** is a `Space` token of exactly one character: U+0020, or a glued U+00A0 or
   U+202F (read as already done, invariants I3 and I4). A tab, a run of spaces, U+2009 and a frozen
   `Space` are not pattern spaces. Wherever a pattern says "a space", "one space", "single spaces" or
-  "one space away" (`dash.*`, `symbols.*`, `number.minus`, `nbsp.*`), it needs a pattern space; at
-  any other `Space` token the pattern does not match, so the rule does not fire and reports no
-  diagnostic. The boundaries of `ellipsis.*` (section 8.6) are not patterns of this kind: there a
-  space is any `Space` token, a tab or a run of spaces included, since those rules change no space.
-  The indentation before `dash.dialogue` may be any horizontal whitespace; between the dash and the
-  word stands one pattern space.
+  "one space away" (`dash.*`, `symbols.*`, `range.context`, `number.minus`, `nbsp.*`), it needs a
+  pattern space; at any other `Space` token the pattern does not match, so the rule does not fire
+  and reports no diagnostic. The boundaries of `ellipsis.*` (section 8.6) are not patterns of this
+  kind: there a space is any `Space` token, a tab or a run of spaces included, since those rules
+  change no space. The indentation before `dash.dialogue` may be any horizontal whitespace; between
+  the dash and the word stands one pattern space.
 - A space is glued only if the next fragment starts with a letter, a digit, a slot (not `Other`), a
   protected span, an opening quote or an opening bracket, except where a rule names the next token
   (`nbsp.dash` before a dash, `nbsp.units` before a unit, `nbsp.short-words` before a sign of
   `signs`). Never before a fragment that starts with `-` (`ls -la` stays intact whatever the lists
-  say).
+  say), and never next to an `Other` slot, on either side (section 2.6).
 - A trigger word is a whole core, compared as section 7.1 (Lookups) says for its list. The wrapper
   does not hide it: `(в 2026)` → `(в⍽2026)`. A word followed by closing punctuation (`и,`) triggers
   nothing.
@@ -147,14 +149,14 @@ right), `Closed` keeps the author's spaces, as `Spaced` does:
 always gives a `Joined` fragment (invariant I2), a URL or a flag never swallows the next word
 (autolinkers that cut a link at the next space would take `—the` into it), and `to_plain` can
 restore the spaces. Typed `—` and `–` are never changed, and no space around them is removed. On
-such a typed dash the rule matches with an empty edit and the same `consume` when its context holds;
-it raises `AmbiguousHyphen` only on a plain `-`. A `Joined` or a `Dimensions` core is not an operand
-(section 8.2): a dash whose neighbour on one side is such a core, with no wrapper between them, is
-matched by no dash rule and gets no glue from `nbsp.dash`, and no diagnostic is raised
-(`Moscow—the - capital`, `5 - x—Moscow` and ru `1920x1080 — монитор` stay). Were a `Joined` core an
-operand, a `-` refused next to a single letter would fire on the next pass once a merge had made
-that letter part of a `Joined` core (`5 - x - Moscow` → `5 - x—Moscow` → `5 — x—Moscow`), against
-invariant I2.
+such a typed dash the rule matches with an empty edit and the same `consume` (the tokens a match
+closes to the other rules of its phase, section 3.7) when its context holds; it raises
+`AmbiguousHyphen` only on a plain `-`. A `Joined` or a `Dimensions` core is not an operand (section
+8.2): a dash whose neighbour on one side is such a core, with no wrapper between them, is matched by
+no dash rule and gets no glue from `nbsp.dash`, and no diagnostic is raised (`Moscow—the - capital`,
+`5 - x—Moscow` and ru `1920x1080 — монитор` stay). Were a `Joined` core an operand, a `-` refused
+next to a single letter would fire on the next pass once a merge had made that letter part of a
+`Joined` core (`5 - x - Moscow` → `5 - x—Moscow` → `5 — x—Moscow`), against invariant I2.
 
 **`dash.double-hyphen`** (Prose). The same for a lone `--` or `---`, with the same refusals:
 `npm test -- --watch` stays. A typed `—` or `–` is matched by `dash.spaced-hyphen` (with an empty
@@ -212,19 +214,20 @@ and the classifier freezes the hyphens of compounds (check 21 of section 3.6).
 - **`range.context`** (Prose): `N-N` where N is an unsigned integer, a decimal with the language's
   separator or a Roman numeral, left smaller than right where both sides are numbers or both are
   Roman numerals (by value, section 3.6), or `YYYY-YY` with the tail greater than the last two
-  digits of the year, with a context: a unit, a year word or a century word directly after it, or a
-  range lead word directly before it. `1941-45 гг.` → `1941–45⍽гг.`, `XIX-XX вв.` → `XIX–XX⍽вв.`,
-  `1,5-2,5 кг` → `1,5–2,5⍽кг`, `стр. 9-12` → `стр.⍽9–12`. A `YearMonth` core (check 12) is read as
-  `YYYY-YY` here: `в 2010-11 гг.` → `в⍽2010–11⍽гг.`, `сезон 2011-12 годов` → `сезон 2011–12 годов`,
-  while `2026-11 гг.` (tail not greater) and `2010-11` without a year word stay. Leading zeros still
-  refuse (`стр. 010-020` stays). This path also catches the shapes that `range.digits` refuses on
-  purpose (Roman numerals, decimals, two-digit year tails); where both rules match (`1941-1945 гг.`)
-  the edits are equal and the report names `range.digits`, the earlier rule. An ambiguous unit
-  counts as context only where `nbsp.units` would glue it (before punctuation, a line break or the
-  end), so `Порты 8000-8100 с балансировкой` has no context for this rule (`range.digits` still
-  gives `8000–8100` in Prose, section 10.6). A label range takes no context (`§§ 5-7 г.`, section
-  8.2).
-- **`range.time`** (Prose): `HH:MM[:SS]-HH:MM[:SS]` (check 5) → `HH:MM–HH:MM`.
+  digits of the year, with a context: a unit, a year word or a century word as the next fragment, or
+  a range lead word as the previous one, one pattern space between them (section 8.2). `1941-45 гг.`
+  → `1941–45⍽гг.`, `XIX-XX вв.` → `XIX–XX⍽вв.`, `1,5-2,5 кг` → `1,5–2,5⍽кг`, `стр. 9-12` →
+  `стр.⍽9–12`. A `YearMonth` core (check 12) is read as `YYYY-YY` here: `в 2010-11 гг.` →
+  `в⍽2010–11⍽гг.`, `сезон 2011-12 годов` → `сезон 2011–12 годов`, while `2026-11 гг.` (tail not
+  greater) and `2010-11` without a year word stay. Leading zeros still refuse (`стр. 010-020`
+  stays). This path also catches the shapes that `range.digits` refuses on purpose (Roman numerals,
+  decimals, two-digit year tails); where both rules match (`1941-1945 гг.`) the edits are equal and
+  the report names `range.digits`, the earlier rule. An ambiguous unit counts as context only where
+  `nbsp.units` would glue it (before punctuation, a line break or the end), so
+  `Порты 8000-8100 с балансировкой` has no context for this rule (`range.digits` still gives
+  `8000–8100` in Prose, section 10.6). A label range takes no context (`§§ 5-7 г.`, section 8.2).
+- **`range.time`** (Prose): `HH:MM[:SS]-HH:MM[:SS]` (check 5) → the same two times with `–` in place
+  of the hyphen (`10:00-12:30` → `10:00–12:30`, `10:00:15-12:30:45` → `10:00:15–12:30:45`).
 
 The dash comes from `NumberData::range_dash` of the language, the same field `format_range` uses.
 The rule for port ranges such as `8000-8100` is section 10.6.
@@ -247,8 +250,8 @@ The rule for port ranges such as `8000-8100` is section 10.6.
 Examples: `Подождите...` → `Подождите…`; `Подождите...\tДальше` → `Подождите…\tДальше` and
 `Подождите...  Дальше` → `Подождите…  Дальше` (any `Space` token is a boundary, section 8.2);
 `... и тогда` → `… и тогда`; ru `Что?...` → `Что?..`; en `What?...` → `What?…`; `Что?…` unchanged.
-`и т.д...` → `и т.д…`: the run keeps the full stop of the abbreviation, and `nbsp.abbreviations`
-still reads it (section 8.7).
+`и т.д...` → `и т.д…`: the run is replaced as a whole, its first full stop included, and
+`nbsp.abbreviations` reads the `…` as the full stop of the abbreviation (section 8.7).
 
 ### 8.7 No-break spaces
 
@@ -303,10 +306,10 @@ still reads it (section 8.7).
   fragment). Doubled signs (`№№ 5`, `§§ 3`) count as one.
 - **`nbsp.phone`** (Prose). A run of fragments separated by single spaces that starts with a country
   code `+D` (one to three digits) or with an area code in brackets `(DDD)` (optionally after a
-  one-digit trunk prefix: `8 (800)`), followed by one to four groups of two to four digits,
-  bracketed codes or digit groups joined by hyphens, as a `Compound` or a `Range` fragment
-  (`123-45-67`, `123-4567`), with 10 to 15 digits in total. Every space inside is glued:
-  `+7 495 123-45-67` → `+7⍽495⍽123-45-67`, rendered in nowrap output as
+  one-digit trunk prefix: `8 (800)`), followed by one to four further fragments, each a group of two
+  to four digits, a bracketed code `(DDD)` or a hyphenated group (`123-45-67`, `123-4567`; a
+  `Compound` or a `Range` fragment, counted as one), with 10 to 15 digits in total. Every space
+  inside is glued: `+7 495 123-45-67` → `+7⍽495⍽123-45-67`, rendered in nowrap output as
   `<span class="nowrap">+7 495 123-45-67</span>`. This rule changes no hyphen; in Prose
   `range.digits` has already turned the hyphen of a two-group fragment into an en dash
   (`+7 495 123-4567` → `+7⍽495⍽123–4567`, section 10.8), and the pattern reads both forms (invariant
@@ -319,14 +322,21 @@ still reads it (section 8.7).
 - **`nbsp.short-length`** (Prose, ru). The same for any word of the language's script of at most
   `short_word_length` letters (`Он⍽пошёл`, `Мы⍽и⍽они`). Latin `ls`, `go`, `db` in Russian text do
   not count.
-- **`nbsp.particles`.** A word or a slot (not `Other`), one space, then a particle of the list
-  followed by a boundary → glue: `сказал⍽бы`, `Знаешь⍽ли`, `{name}⍽же`.
+- **`nbsp.particles`.** A word or a slot (not `Other`), one space, then a particle of the list (a
+  whole core, section 8.2) → glue: `сказал⍽бы`, `Знаешь⍽ли`, `{name}⍽же`.
 - **`nbsp.dash`.** The space before a dash fragment that stands for a spaced dash (a produced or
-  typed `—`, or a typed `–`, section 8.4) between operands is glued when the style is `SpacedGlued`:
+  typed `—`, or a typed `–`, section 8.4) in the context of `dash.spaced-hyphen` (an operand or
+  closing punctuation on the left, an operand, an opening quote or an opening bracket on the right,
+  a pattern space on each side, section 8.4) is glued when the style is `SpacedGlued`:
   `Москва — столица` → `Москва⍽— столица`, `Москва – столица` → `Москва⍽– столица`. The refusals of
   `dash.spaced-hyphen` do not apply here: a typed dash gets the glue between any operands, numbers
   included (`10 – 20` → `10⍽– 20`), while a plain `-` that `dash.spaced-hyphen` refused is not a
   dash and gets none.
+
+In the tables and examples of sections 8.5 to 8.9 an output shows the edits of the rules named with
+it, as in section 8.4; a row marked Prose or Interface shows the output of the whole set. In the
+full sets other rules add their glue and ranges too (Prose gives `Об⍽этом сказал А.⍽Петров.` for the
+row on initials after any word).
 
 | Language | Input                                 | Output                            | Rule                                                |
 | -------- | ------------------------------------- | --------------------------------- | --------------------------------------------------- |
@@ -373,23 +383,25 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
 
 ### 8.9 Symbols
 
-- **`symbols.copyright`**: `(c)`, `(C)` and Cyrillic `(с)`, `(С)` → `©` only when a four-digit year
-  follows it, attached or one space away, or stands one space before it, or a range of years stands
-  one space away: `(c) 2026` → `© 2026`, `(c)2026` → `©2026`, `2026 (c)` → `2026 ©`, `2020-2026 (c)`
-  → `2020-2026 ©`, `(c) 2020-2026` → `© 2020-2026`. A mark attached after a number or a range
-  (`Section 1001(c)`, `2026(c)`, `2020-2026(c)`), or with a range attached after it
-  (`(c)2020-2026`), is not a word (section 3.6) and stays: after a number it is usually a subsection
-  label. A mark attached to a word (`f(c)`, a `Word` by check 23 of section 3.6) is not a copyright
-  sign even when a year follows it: `f(c) 2026` stays. Otherwise `(c)` is a list item and stays
-  (`вариант (c)`). `(tm)`, `(TM)`, `(r)`, `(R)` → `™`, `®` after a brand name: a capitalized word of
-  at least two letters, attached (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` →
+- **`symbols.copyright`**: `(c)`, `(C)` and Cyrillic `(с)`, `(С)` → `©` only with a year next to the
+  mark: a four-digit year after the mark, attached or one space away (`(c)2026`, `(c) 2026`), or one
+  space before the mark (`2026 (c)`); a range of years only one space away, on either side
+  (`(c) 2020-2026`, `2020-2026 (c)`). So `(c) 2026` → `© 2026`, `(c)2026` → `©2026`, `2026 (c)` →
+  `2026 ©`, `2020-2026 (c)` → `2020-2026 ©`, `(c) 2020-2026` → `© 2020-2026`. A mark attached after
+  a number or a range (`Section 1001(c)`, `2026(c)`, `2020-2026(c)`), or with a range attached after
+  it (`(c)2020-2026`), is not a word (section 3.6) and stays: after a number it is usually a
+  subsection label. A mark attached to a word (`f(c)`, a `Word` by check 23 of section 3.6) is not a
+  copyright sign even when a year follows it: `f(c) 2026` stays. Otherwise `(c)` is a list item and
+  stays (`вариант (c)`). `(tm)`, `(TM)`, `(r)`, `(R)` → `™`, `®` after a brand name: a capitalized
+  word of at least two letters, attached (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` →
   `Brand ®`), and not followed by an operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a
   function argument and stays: `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
 - **`symbols.arrows`**: an operator fragment that is exactly `->`, `<-` or `<->`, with a space on
   each side → `→`, `←`, `↔`. `=>`, `-->`, `<-->`, `->>` are not in the table; `a->b` is frozen.
 - **`symbols.math`**: an operator fragment that is exactly `>=`, `<=` or `!=`, with a space on each
-  side → `≥`, `≤`, `≠`; `+-` alone or as the sign of a number → `±` (`+-5` → `±5`). `>>`, `<<`,
-  `==`, `>>=` are not in the table; `a>>b` is frozen.
+  side → `≥`, `≤`, `≠`; `+-` as such an operator fragment, with a space on each side, or as the sign
+  of a number (a `Number` core with the sign `+-`, check 15) → `±` (`a +- b` → `a ± b`, `+-5` →
+  `±5`). `>>`, `<<`, `==`, `>>=` are not in the table; `a>>b` is frozen.
 
 Examples: `x -> y` → `x → y`; `a <-> b` → `a ↔ b`; `x >= 5` → `x ≥ 5`; `a->b`, `-->`, `=>`, `a>>b`,
 `x == y` unchanged.
@@ -433,28 +445,28 @@ each other in ranges (check 17); `Word` and `Other` slots count as words; no glu
 Recorded from its behavior on the scouting corpus of 820 cases with default settings. In stage 5
 they become the table of expected differences, each with a reason code (section 13.4).
 
-| Code                | Input                                         | Reference implementation           | typolish (Prose)                        | Reason                                                                   |
-| ------------------- | --------------------------------------------- | ---------------------------------- | --------------------------------------- | ------------------------------------------------------------------------ |
-| `NoGuess`           | `Он сказал "привет.`, `"Один "два три"`       | `«привет.`, `«Один „два три“`      | unchanged, `UnmatchedQuote`             | the task: do not guess                                                   |
-| `LookAlike`         | `Мoсква`, `Cервер`, `xлеб`                    | letters replaced                   | unchanged, `MixedScript`                | the task: never replace look-alike letters                               |
-| `NoSpaceEdit`       | `host:8080`, `::1`, `a,b,c`, `x,y;z`          | `host: 8080`, `: 1`, `a, b,c`      | unchanged                               | technical fragments; no space rules                                      |
-| `NoDateRewrite`     | `2026-11-21` (ru)                             | `21.11.2026`                       | unchanged                               | negative case                                                            |
-| `AmbiguousHyphen`   | `10 - 20 штук`, `5 - 3 = 2`                   | `10⍽— 20`                          | unchanged, `AmbiguousHyphen`            | range or minus is unknown                                                |
-| `PercentAsWritten`  | `Скидка 100 %.`                               | `100%`                             | `100⍽%`                                 | the task: by setting; never removes a space by default                   |
-| `Technical`         | `a>>b`, `0x1F`, `1/2/2026`, `a <-> b`         | `a≫b`, `0×1F`, `½/2026`, `a <→ b`  | unchanged; `a ↔ b`                      | frozen fragments, whole operators, no fractions                          |
-| `AuthorPunctuation` | `А если..`, `Конец....`, `Да!!`, `Да!?`       | `А⍽если.`, `Конец…`, `Да!`, `Да?!` | unchanged (glue aside)                  | the author's punctuation                                                 |
-| `DashStyleEn`       | `Moscow - the capital` (en)                   | `Moscow⍽— the`                     | `Moscow—the`                            | CMOS closed dash; settled, 15.5 item 6                                   |
-| `RangeLiteral`      | `1941-1945` (en), `Страницы 10-20.`           | unchanged                          | `1941–1945`, `10–20`                    | the task: en dash in numeric ranges                                      |
-| `NoLastShortWord`   | `Run X now.`, `He went to the shop`           | `X⍽now.`, `He⍽went to⍽the⍽shop`    | `Run X now.`, `He went to⍽the⍽shop`     | no glue before the last word; no length rule in en                       |
-| `Slots`             | `{n} дн.`, `{a}-{b}`, `"{name}"`              | unchanged                          | `{n}⍽дн.`, `{a}–{b}`, `«{name}»`        | slots are typed elements (pieces input)                                  |
-| `NoSpelling`        | `кто то`, `из за`, `25-ый этаж`               | `кто-то`, `из-за`, `25-й`          | unchanged (glue aside: `из⍽за`)         | spelling is not typography                                               |
-| `Apostrophe`        | `'90s`, `dogs'`, `rock'n'roll`, `don't` in ru | unchanged                          | `’90s`, `dogs’`, `rock’n’roll`, `don’t` | Unicode apostrophe in every script                                       |
-| `EnNbsp`            | `Mr. Smith`, `J. R. R. Tolkien`, `5 MB`       | unchanged                          | `Mr.⍽Smith`, `J.⍽R.⍽R.⍽Tolkien`, `5⍽MB` | the task's no-break rules apply to en too                                |
-| `LegalMarkContext`  | `Вариант (c)`, `(R) знак`                     | `Вариант ©`, `® знак`              | unchanged                               | `(c)` without a year is a list item; `(r)` only after a brand name       |
-| `Primes`            | `5'10"`, `Угол 30° 15' 20"`                   | `5'10″`, `15' 20″`                 | `5′10″`, `15′ 20″`                      | primes for both quote characters                                         |
-| `WideGlue`          | `Документ № 5`                                | `№⎵5` (U+202F)                     | `№⍽5` (U+00A0)                          | one glue character by default; settled, 15.5 item 10                     |
-| `NoDigitChange`     | `5 м2`, `20C`, `$100`                         | `5⍽м²`, `20⏐°C`, (off)             | `5⍽м2`, `20C`, `$100`                   | letters and digits never change; `м2` is a listed unit, so it is glued   |
-| `AlreadyTypeset`    | `Что?…` (ru)                                  | `Что?..`                           | unchanged                               | typographic characters are never rewritten                               |
-| `NoTrim`            | trailing spaces, tabs, repeated blank lines   | removed or replaced                | unchanged                               | whitespace is the caller's                                               |
-| `KeepSpaces`        | `Размер 10 x 5.`                              | `10×5`                             | `10 × 5`                                | the author's spaces are kept                                             |
-| `EllipsisDigits`    | `-5...5`                                      | `-5…5`                             | unchanged                               | dots between digits are not an ellipsis; the core is not a signed number |
+| Code                | Input                                             | Reference implementation           | typolish (Prose)                        | Reason                                                                   |
+| ------------------- | ------------------------------------------------- | ---------------------------------- | --------------------------------------- | ------------------------------------------------------------------------ |
+| `NoGuess`           | `Он сказал "привет.`, `"Один "два три"`           | `«привет.`, `«Один „два три“`      | unchanged, `UnmatchedQuote`             | the task: do not guess                                                   |
+| `LookAlike`         | `Мoсква`, `Cервер`, `xлеб`                        | letters replaced                   | unchanged, `MixedScript`                | the task: never replace look-alike letters                               |
+| `NoSpaceEdit`       | `host:8080`, `::1`, `a,b,c`, `x,y;z`              | `host: 8080`, `: 1`, `a, b,c`      | unchanged                               | technical fragments; no space rules                                      |
+| `NoDateRewrite`     | `2026-11-21` (ru)                                 | `21.11.2026`                       | unchanged                               | negative case                                                            |
+| `AmbiguousHyphen`   | `10 - 20 штук`, `5 - 3 = 2`                       | `10⍽— 20`                          | unchanged, `AmbiguousHyphen`            | range or minus is unknown                                                |
+| `PercentAsWritten`  | `Скидка 100 %.`                                   | `100%`                             | `100⍽%`                                 | the task: by setting; never removes a space by default                   |
+| `Technical`         | `a>>b`, `0x1F`, `1/2/2026`, `a <-> b`             | `a≫b`, `0×1F`, `½/2026`, `a <→ b`  | unchanged; `a ↔ b`                      | frozen fragments, whole operators, no fractions                          |
+| `AuthorPunctuation` | `А если..`, `Конец....`, `Да!!`, `Да!?`           | `А⍽если.`, `Конец…`, `Да!`, `Да?!` | unchanged (glue aside)                  | the author's punctuation                                                 |
+| `DashStyleEn`       | `Moscow - the capital` (en)                       | `Moscow⍽— the`                     | `Moscow—the`                            | CMOS closed dash; settled, 15.5 item 6                                   |
+| `RangeLiteral`      | `1941-1945` (en), `Страницы 10-20.`               | unchanged                          | `1941–1945`, `10–20`                    | the task: en dash in numeric ranges                                      |
+| `NoLastShortWord`   | `Run X now.`, `He went to the shop`               | `X⍽now.`, `He⍽went to⍽the⍽shop`    | `Run X now.`, `He went to⍽the⍽shop`     | no glue before a short last word (section 1.5); no length rule in en     |
+| `Slots`             | `{n} дн.`, `{a}-{b}`, `"{name}"`                  | unchanged                          | `{n}⍽дн.`, `{a}–{b}`, `«{name}»`        | slots are typed elements (pieces input)                                  |
+| `NoSpelling`        | `кто то`, `из за`, `25-ый этаж`                   | `кто-то`, `из-за`, `25-й`          | unchanged (glue aside: `из⍽за`)         | spelling is not typography                                               |
+| `Apostrophe`        | `'90s`, `dogs'` (en), `rock'n'roll`, `don't` (ru) | unchanged                          | `’90s`, `dogs’`, `rock’n’roll`, `don’t` | Unicode apostrophe in every script                                       |
+| `EnNbsp`            | `Mr. Smith`, `J. R. R. Tolkien`, `5 MB`           | unchanged                          | `Mr.⍽Smith`, `J.⍽R.⍽R.⍽Tolkien`, `5⍽MB` | the task's no-break rules apply to en too                                |
+| `LegalMarkContext`  | `Вариант (c)`, `(R) знак`                         | `Вариант ©`, `® знак`              | unchanged                               | `(c)` without a year is a list item; `(r)` only after a brand name       |
+| `Primes`            | `5'10"`, `Угол 30° 15' 20"`                       | `5'10″`, `15' 20″`                 | `5′10″`, `15′ 20″`                      | primes for both quote characters                                         |
+| `WideGlue`          | `Документ № 5`                                    | `№⎵5` (U+202F)                     | `№⍽5` (U+00A0)                          | one glue character by default; settled, 15.5 item 10                     |
+| `NoDigitChange`     | `5 м2`, `20C`, `$100`                             | `5⍽м²`, `20` U+2009 `°C`, (off)    | `5⍽м2`, `20C`, `$100`                   | letters and digits never change; `м2` is a listed unit, so it is glued   |
+| `AlreadyTypeset`    | `Что?…` (ru)                                      | `Что?..`                           | unchanged                               | typographic characters are never rewritten                               |
+| `NoTrim`            | trailing spaces, tabs, repeated blank lines       | removed or replaced                | unchanged                               | whitespace is the caller's                                               |
+| `KeepSpaces`        | `Размер 10 x 5.`                                  | `10×5`                             | `10 × 5`                                | the author's spaces are kept                                             |
+| `EllipsisDigits`    | `-5...5`                                          | `-5…5`                             | unchanged                               | dots between digits are not an ellipsis; the core is not a signed number |
