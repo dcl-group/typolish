@@ -19,7 +19,6 @@ pub struct LanguageData {                       // fields private; const fn sett
     cldr_version: &'static str,                 // "49": where quotes, numbers, months were checked
     script: Script,                             // Cyrillic | Latin | Greek | Other: filter for word lists
     quotes: Option<QuotePairs>,                 // None: quotes.pairs inert
-    apostrophe: char,                           // U+2019
     elisions: &'static [&'static str],          // sorted, lowercase: "'cause", "'em", "'tis"
     decade_apostrophe: bool,                    // '90s; '26 only when unpaired (section 6.6)
     trailing_possessive: bool,                  // dogs'
@@ -124,12 +123,15 @@ are compared with case (`В` is a volt, `в.` a century; `MB` is not `mb`). `abb
 part) and `months` are compared with case, except that an entry that starts with a lowercase letter
 also matches the same text with that letter in uppercase, unless the entry is a single letter with a
 full stop (`д.`, `п.`, `ч.`, `г.`, en `p.`), which matches only as written: `см.` matches `См.`,
-`ноября` matches `Ноября`, while `д.` does not match `Д.` (a one-letter label at a sentence end,
-section 8.7), `No.` does not match `no.` and `May` does not match `may`. The lookup tries the text
-as written and then, if it starts with an uppercase letter and is not a single letter with a full
-stop, once more with that letter lowercased. A part of `abbreviations` is found by scanning the
-list, which is short. The typographer builder keeps caller additions and removals in small sorted
-vectors next to the language's lists.
+`ноября` matches `Ноября`, while `д.` does not match `Д.` (a capital letter with a full stop is read
+as an initial or a one-letter label, which only `nbsp.initials` glues, section 8.7:
+`вариант Д. После` gets its glue from that rule and stays unchanged with `nbsp.abbreviations` alone;
+the cost is that a one-letter abbreviation capitalized at a sentence start, `П. 5 устава`, gets no
+forward glue from `nbsp.abbreviations`), `No.` does not match `no.` and `May` does not match `may`.
+The lookup tries the text as written and then, if it starts with an uppercase letter and is not a
+single letter with a full stop, once more with that letter lowercased. A part of `abbreviations` is
+found by scanning the list, which is short. The typographer builder keeps caller additions and
+removals in small sorted vectors next to the language's lists.
 
 ### 7.2 ru-RU
 
@@ -147,7 +149,6 @@ and in the order section 7.6 requires; the data test checks the stored order.
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `tag`, `script`                            | `ru-RU`, Cyrillic; bare `ru` resolves here                                                                                                                                                |                                                                                                                               |
 | `quotes`                                   | primary `«` U+00AB `»` U+00BB; nested `„` U+201E `“` U+201C                                                                                                                               | CLDR 49 `delimiters` (agrees with the task)                                                                                   |
-| `apostrophe`                               | `’` U+2019                                                                                                                                                                                | Unicode Standard ch. 6                                                                                                        |
 | `elisions`                                 | none                                                                                                                                                                                      |                                                                                                                               |
 | `decade_apostrophe`, `trailing_possessive` | false, false                                                                                                                                                                              |                                                                                                                               |
 | `dash`                                     | `SpacedGlued` (`слово⍽— слово`), `dialogue: true` (`—⍽Реплика`)                                                                                                                           | secondary; Kovodstvo §97 for the dash itself                                                                                  |
@@ -194,7 +195,6 @@ CLDR 49 has no separate `en-US` file; `en-US` inherits `en`, and the values belo
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | `tag`, `script`                            | `en-US`, Latin; bare `en` resolves here                                                                                                                                                |                                                                        |
 | `quotes`                                   | primary `“` U+201C `”` U+201D; nested `‘` U+2018 `’` U+2019                                                                                                                            | CLDR 49 `en` `delimiters`                                              |
-| `apostrophe`                               | `’` U+2019                                                                                                                                                                             | Unicode Standard ch. 6                                                 |
 | `elisions`                                 | 'bout 'cause 'em 'nother 'round 'til 'tis 'twas (not `'n'`, which also quotes a letter: section 6.2)                                                                                   | project                                                                |
 | `decade_apostrophe`, `trailing_possessive` | true, true                                                                                                                                                                             | project                                                                |
 | `dash`                                     | `Closed` (`word—word`), `dialogue: false`                                                                                                                                              | secondary (CMOS through Wikipedia); settled, 15.5 item 6               |
@@ -228,7 +228,6 @@ rules only. Its values:
 | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
 | `tag`, `cldr_version`, `script`                                                | `und`, `49`, Other                                                                                                                                  |                                     |
 | `quotes`                                                                       | None                                                                                                                                                |                                     |
-| `apostrophe`                                                                   | `’` U+2019                                                                                                                                          |                                     |
 | `elisions`, `short_words`, `particles`, `abbreviations`, `atom_exceptions`     | empty                                                                                                                                               |                                     |
 | `months`, `year_words`, `century_words`, `range_lead_words`, `ambiguous_units` | empty                                                                                                                                               |                                     |
 | `decade_apostrophe`, `trailing_possessive`                                     | false, false                                                                                                                                        |                                     |
@@ -278,8 +277,7 @@ cannot reach a user.
   `LanguageBuilder::build` normalizes the case first.
 - The four glyphs of `QuotePairs` are pairwise distinct; each is a character the lexer reads as
   `Quote` (section 3.5) other than `"`, `'`, `′` and `″` (so output never becomes input again, and
-  the wrapper of section 3.6 strips it). The `apostrophe` is such a character too (so not U+02BC,
-  which is a letter); it may equal one of the glyphs (`’` in English).
+  the wrapper of section 3.6 strips it).
 - List entries are non-empty and contain no whitespace. Every list is strictly sorted by code point
   and free of duplicates; `abbreviations` are sorted by their parts (first part, then the next), and
   no two have the same parts. The word lists (`elisions`, `short_words`, `particles`,

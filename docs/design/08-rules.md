@@ -259,9 +259,10 @@ abbreviation, and `nbsp.abbreviations` still reads it (section 8.7).
   `А.⍽С.⍽Пушкин`, `J. R. R. Tolkien` → `J.⍽R.⍽R.⍽Tolkien`. A compact `А.С.` gets no inserted space;
   only the space before the surname is glued. Two or more initials, the reversed form and a single
   initial before a surname are glued wherever they stand (`от⍽И.⍽Петрова`, `Автор: А.⍽Пушкин`,
-  `сказал А.⍽Петров`). A capital letter at a sentence end (a one-letter label, en `I`) before a
-  capitalized word gets the same glue (`вариант А.⍽После`), which only forbids a line break there
-  (section 10.8).
+  `сказал А.⍽Петров`). A capital letter with a full stop that ends a sentence (a one-letter label,
+  en `I`) before a capitalized word gets the same glue (`вариант А.⍽После`): the rule does not look
+  for sentence ends (section 15.2, item 11), and the glue only forbids a line break there (section
+  10.8).
 - **`nbsp.dates`.** By `month_position`: `AfterDay` (ru) glues a day number 1 to 31 (or a `Number`
   slot) before a month form (`21⍽ноября`); `BeforeDay` glues a month form before a day number;
   `Both` (en) glues both orders (`November⍽21`, `21⍽November`). With year and century words (only in

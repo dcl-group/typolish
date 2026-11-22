@@ -45,7 +45,8 @@ the same tokens (invariant I4): `’` stays an apostrophe, and `′` is never a 
 | a number of one to three digits on the left and one or two digits ending the core on the right (`5'10`; a straight `'` only: `5’10` is frozen, section 3.6) | `′` U+2032 | `quotes.primes`     |
 
 The apostrophe is U+2019 for every language, as the Unicode Standard (chapter 6) recommends for
-typeset text. A straight `"` has no step 1: after a digit it is decided in section 6.5.
+typeset text; it is a constant of the crate, not a field of `LanguageData` (section 7.1). A straight
+`"` has no step 1: after a digit it is decided in section 6.5.
 
 Step 1 holds only contexts in which a quote cannot be meant. Two look alike but can open a quoted
 value, so they wait for pairing: a decade without `s` (`'26`) becomes an apostrophe only if it stays

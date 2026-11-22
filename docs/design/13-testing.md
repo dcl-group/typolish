@@ -111,9 +111,10 @@ gives the output of the whole set.
   `Выберите вариант А.⍽После этого`, en `I chose plan B. Then I left.` →
   `I chose plan B.⍽Then I left.`, en `Neither did I. Then we left.` → `Neither did I.⍽Then we left.`
   (a single initial is glued after any word, section 10.8); ru `Выберите вариант Д. После этого` and
-  en `I chose plan P. Then I left.` with `nbsp.abbreviations` alone → unchanged (a single letter
-  with a full stop matches an abbreviation only as written, section 7.1), and with `nbsp.initials` →
-  `Выберите вариант Д.⍽После этого`, `I chose plan P.⍽Then I left.`.
+  en `I chose plan P. Then I left.` with `nbsp.abbreviations` alone → unchanged, and ru
+  `П. 5 устава` with `nbsp.abbreviations` alone → unchanged while `п. 5 устава` → `п.⍽5 устава` (a
+  single letter with a full stop matches an abbreviation only as written, section 7.1), and with
+  `nbsp.initials` → `Выберите вариант Д.⍽После этого`, `I chose plan P.⍽Then I left.`.
 - `tests/numbers.rs`: `format_number` and `format_range` for ru and en on integers, negatives,
   ranges with negative ends (`−5–−1`) and equal ends (ru `8⍽000–8⍽000`, en `8,000–8,000`), decimals
   (`Number::decimal` keeps precision), `f32` values (`0.1f32` → `0,1`, `1.1f32` → `1.1`,
@@ -427,8 +428,7 @@ so a CLDR update is a visible change. It compares `LanguageData::COMMON` with th
 7.4 and checks `LanguageData::new("xx")` field by field. It also checks that a table whose
 `QuotePairs` holds `「」` is rejected with `Error::InvalidLanguageData`; that `LanguageBuilder` with
 the pairs `(«, »)` and `(«, „)` gives `Error::InvalidLanguageData` and the typographer builder with
-the same pairs `Error::InvalidSetting`; that `LanguageBuilder` with `apostrophe('ʼ')` gives
-`Error::InvalidLanguageData`; that `Language::from_data` with the tag `EN-gb` gives
+the same pairs `Error::InvalidSetting`; that `Language::from_data` with the tag `EN-gb` gives
 `Error::InvalidLanguageData`; and that `LanguageBuilder::new("EN-gb").build()` gives a language with
 `tag() == "en-GB"`.
 
