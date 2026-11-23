@@ -1,0 +1,21 @@
+# Known losses of the round trip (design section 12.2). Columns, separated by tabs: language,
+# settings, input, typeset, to_plain and code. Invisible characters are written with the markers of
+# `vis`: the no-break space as U+237D and the narrow no-break space as U+23B5. `default` is
+# RuleSet::PROSE with the settings of the language; a named setting changes only that one.
+# The typeset column is the exact output of the set, glue included.
+language	settings	input	typeset	to_plain	code
+ru-RU	default	Москва -- столица	Москва⍽— столица	Москва - столица	DoubleHyphen
+ru-RU	default	т.д.	т.⍽д.	т. д.	CompactAbbr
+ru-RU	default	№5	№⍽5	№ 5	AttachedSign
+ru-RU	default	Что?...	Что?..	Что?..	TerminalEllipsis
+en-US	SingleQuotes::Everywhere	'x'	“x”	"x"	SingleQuote
+en-US	default	"a 'b' c"	“a⍽‘b’ c”	"a "b" c"	NestedSingle
+ru-RU	default	1920х1080	1920×1080	1920x1080	CyrillicTimes
+ru-RU	PercentSpacing::Language	100%	100⍽%	100 %	PercentInserted
+en-US	PercentSpacing::Attached	100 %	100%	100%	PercentRemoved
+ru-RU	default	(C) 2026	© 2026	(c) 2026	LegalMarkSpelling
+ru-RU	default	(с) 2026	© 2026	(c) 2026	LegalMarkSpelling
+ru-RU	default	Brand(TM)	Brand™	Brand(tm)	LegalMarkSpelling
+ru-RU	default	1920X1080	1920×1080	1920x1080	TimesSpelling
+ru-RU	default	5⍽МБ	5⍽МБ	5 МБ	AuthorGlue
+en-US	default	"a "the dogs' bowls" b"	“a⍽‘the⍽dogs’ bowls’ b”	"a "the dogs" bowls' b"	NestedPossessive

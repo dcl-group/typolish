@@ -1,0 +1,108 @@
+Run `systemctl restart tls-server` and check the status of the service.
+The configuration file is in /etc/example/server.conf with permissions 0640.
+The service listens on host:8080 and accepts connections from the internal network only.
+To check it, run curl http://localhost:8080/health and wait for the answer.
+The database address is db.example.internal, port 5432.
+Connection string: postgres://app@db.example.internal:5432/main with a 10 s timeout.
+Never use `rm -rf /` under any circumstances.
+The --force flag disables the check, and -v enables verbose output.
+The command `ls -la /var/log` lists all files, including hidden ones.
+The build version is 0.2.27, the previous one is v1.2.3-rc.1.
+The release of 2026-11-21 is tagged v2.0.0.
+Request id: 550e8400-e29b-41d4-a716-446655440000.
+Checksum: d41d8cd98f00b204e9800998ecf8427e.
+The token "SGVsbG8gd29ybGQ=" is valid for 1 hr.
+The host example.com answers on 10.0.0.1 and ::1.
+The network 10.0.0.0/8 is reserved for internal use.
+Ports 22,80,443 are open to the outside.
+The range 8000-8100 is reserved for service use.
+The environment variable LOG_LEVEL accepts debug, info and warn.
+The kv_lang parameter selects the language of messages.
+The names tls-server and agent-ca refer to internal services.
+Send mail to admin@example.com and a copy to ops@example.com.
+The log is written to /var/log/example/app.log and rotated daily.
+Log line: 2026-11-21T10:15:30Z INFO service start completed.
+Log line: 2026-11-21T10:15:31Z WARN disk is 91% full.
+Log line: 2026-11-21T10:15:32Z ERROR could not open /data/queue.
+If you see the error "connection refused", check the port.
+If you see the error `connection refused`, check the port.
+The timeout=30 parameter sets the wait time in seconds.
+The key="value" form is written without spaces around the equals sign.
+The entry PATH=/usr/local/bin:/usr/bin:/bin is added to the profile.
+The command `git log --oneline -n 5` shows the last five commits.
+The command `npm test -- --watch` runs the tests in watch mode.
+Piping through `tar -cf - -C dir | gzip` needs no temporary files.
+The script `deploy.sh` accepts the arguments --env and --dry-run.
+For debugging, set `RUST_LOG=debug` before starting.
+Dependency versions: serde 1.0.200, tokio 1.40.0, clap 4.5.1.
+The minimum compiler version is 1.100, checked in the build.
+The image example/app:1.4.2 was built from the main branch.
+The container uses 512 MB of memory and 2 processor cores.
+The request size limit is 16 MB, the field count limit is 100.
+The connection timeout is 5 s, with at most 3 retries.
+The load was 1200 requests per second with 40 connections.
+Latency at the 99th percentile is 120 ms, at the median 15 ms.
+A 200 response means success, 404 - not found, 500 - server error.
+The Content-Type: application/json header is required for all requests.
+The address https://example.com/docs/guide.html leads to the guide.
+The page https://example.com/a?b=c&d=e holds query parameters.
+The schema is in /srv/example/schema.sql and is versioned.
+For migrations, use `migrate up` from the directory /srv/example.
+After the migration the users table has 12 columns.
+The index users_email_idx speeds up lookups by email.
+The query SELECT id, name FROM users WHERE id = 5 returns one row.
+The query with the condition id >= 10 returns all rows from the tenth on.
+If a != b, the records are considered different.
+The output of `echo $HOME` depends on the user.
+The directory ~/.config/example/ holds user settings.
+The file ~/.env must have permissions 0600 and stay out of the repository.
+Secrets are not stored in code - only in the environment.
+A backup is made with the command `pg_dump main > backup.sql`.
+Restore with `psql main < backup.sql`, then check the tables.
+The backup is about 3.5 GB, and it takes 20 min. to create.
+Encryption is on by default, with a key length of 256 bits.
+The certificate for example.com is valid until 2027-01-15.
+Certificate fingerprint: ab:cd:ef:01:23:45:67:89.
+Port 443 is open to everyone, port 22 only to 10.0.0.0/8.
+Firewall rule: allow tcp from 10.0.0.0/8 to any port 22.
+The dns service answers queries on udp/53 and tcp/53.
+Check: dig example.com +short must return an address.
+The response time is given in milliseconds, for example 250 ms.
+Service status: active (running) since 10:15.
+Load: processor 45%, memory 62%, disk 91%.
+The load peaks at 9:00-11:00 on workdays.
+Backups run at 3:00-4:00.
+The metric http_requests_total grows with every request.
+The metric db_pool_size shows the size of the connection pool.
+Alerts go to the channel ops-alerts, and the person on duty is responsible.
+The test `cargo test --all` passes in 40 s.
+A build takes about 5 min. on a clean machine.
+The build cache lives in ~/.cache/example-targets/main and is not backed up.
+The file Cargo.toml describes the package, and Cargo.lock pins the versions.
+The license MIT OR Apache-2.0 is stated in Cargo.toml.
+Error E0425 means that the name is not found in this scope.
+The warning unused_variables can be switched off with an attribute.
+The expression 1 + 2 * 3 equals 7, and (1 + 2) * 3 equals 9.
+The condition x > 5 && y < 10 holds for x = 6 and y = 9.
+Regular expressions are not used here at all.
+Date format: YYYY-MM-DD, for example 2026-11-21.
+Time format: HH:MM:SS, for example 10:15:30.
+The user id is a number from 1 to 65535.
+A user name consists of Latin letters, digits and the _ sign.
+A password is at least 12 characters long and differs from the name.
+To sign in, use the login user_01 and a one-time password.
+A session lives for 30 min. and is extended with every request.
+The cookie is named session_id and is sent over https only.
+The header Authorization: Bearer <token> passes the access token.
+The template <name> is replaced with the user name on sending.
+The password hash is stored as $2b$12$abcdefghijklmnopqrstuv.
+A link like example.com/a-b-c is not changed by processing.
+The address ftp://files.example.com/pub/ is readable.
+The file archive.tar.gz weighs 1.2 GB and lies in /srv/files.
+Unpack it with `tar -xzf archive.tar.gz` into an empty directory.
+The directory build/ and the file .env stay out of the repository.
+The exclusion list is in .gitignore next to README.md.
+The configuration is made of 3 files: base.toml, dev.toml, prod.toml.
+The last file has priority, and the others are overridden.
+Program output: "ok" - all good, "fail" - there are errors.
+Return code 0 means success, any other - an error.
