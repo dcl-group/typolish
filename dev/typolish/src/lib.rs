@@ -6,12 +6,14 @@
 //! [`Language`] and a [`RuleSet`] and then only applied; the [`Output`] kind is given with every
 //! call. Its design is in `docs/design/` of the repository.
 //!
-//! The crate is in development: the engine recognizes protected and technical fragments and
-//! applies all 27 rules; [`Typographer::report`] lists every edit, protected span and diagnostic;
-//! [`Typographer::to_plain`] maps typeset text back to the plain form;
-//! [`Typographer::format_number`] and [`Typographer::format_range`] format values by the language;
-//! every [`Output`] kind is encoded (HTML with entities or nowrap elements, escaped string bodies
-//! for JavaScript, JSON, Rust and CSS).
+//! The three inputs are a whole string ([`Typographer::typeset`]), a message template of
+//! [`Piece`]s whose slots keep their place ([`Typographer::typeset_template`]), and a number
+//! ([`Typographer::format_number`], [`Typographer::format_range`]). [`Typographer::report`] lists
+//! every edit, protected span and diagnostic, [`Typographer::lint`] checks a plain source, and
+//! [`Typographer::to_plain`] maps typeset text back to the plain form. Every [`Output`] kind is
+//! encoded: Unicode, HTML with entities or nowrap elements, and escaped string bodies for
+//! JavaScript, JSON, Rust and CSS. Commands and code are protected with backticks, delimiters of
+//! the caller's own or [`Piece::Protected`]; the README lists the known limits.
 //!
 //! ```
 //! use typolish::{Language, Output, RuleSet, Typographer};
@@ -44,6 +46,11 @@ mod typographer;
 // property 8).
 #[cfg(test)]
 extern crate self as typolish;
+
+// The examples of the README run as doctests (design section 13.10).
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
 
 pub use engine::scratch::Scratch;
 pub use error::Error;
