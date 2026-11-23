@@ -638,8 +638,8 @@ fn glue_set_by_a_rule_is_reported_where_the_rule_is_on() {
     assert_eq!(found(&none, &text), []);
     // Prose: the units rule and the short-word rule both set glue.
     let text = vis("5⍽МБ в⍽доме");
-    let got = found(&prose(RU), &text);
-    assert!(got.contains(&'\u{a0}'), "{got:?}");
+    let entries = chars(&prose(RU).lint(&text));
+    assert_eq!(entries, [(0, 1..3, '\u{a0}'), (0, 10..12, '\u{a0}')]);
 }
 
 #[test]

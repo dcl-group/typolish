@@ -490,19 +490,15 @@ fn min_grouping_digits_moves_the_threshold() {
         &u128::MAX.to_string(),
     );
     // 1..=4: group from 3 + n digits (CLDR 49 meaning).
-    for (digits, ungrouped, grouped) in [
-        (1u8, 999i64, 1000i64),
-        (2, 9999, 10000),
-        (3, 99999, 100000),
-        (4, 999999, 1000000),
+    for (digits, ungrouped, grouped, expected) in [
+        (1u8, 999i64, 1000i64, "1⍽000"),
+        (2, 9999, 10000, "10⍽000"),
+        (3, 99999, 100000, "100⍽000"),
+        (4, 999999, 1000000, "1⍽000⍽000"),
     ] {
         let t = grouping(Language::RU_RU, digits);
         assert_eq!(num(&t, ungrouped), ungrouped.to_string(), "{digits}");
-        assert!(
-            num(&t, grouped).contains('\u{a0}'),
-            "{digits}: {}",
-            num(&t, grouped)
-        );
+        same(&format!("{digits}"), num(&t, grouped), expected);
     }
     let four = grouping(Language::RU_RU, 4);
     same("4: 123456", num(&four, 123456), "123456");

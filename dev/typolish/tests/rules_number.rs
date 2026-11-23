@@ -439,15 +439,50 @@ fn times_after_a_percentage_after_spaces() {
         check_unchanged("alone", &t, "(10) % x 5");
         check_unchanged("alone", &t, "10 (% x 5");
     }
+    // The exact output of each source; the percent setting removes only a single U+0020 and
+    // inserts glue only for a single U+0020 (design section 8.7).
+    const SOURCES: [&str; 3] = ["10 % x 5", "10⍽% x 5", "10 %  x 5"];
     let rows = [
-        (Language::RU_RU, PercentSpacing::AsWritten, "10⍽% × 5"),
-        (Language::RU_RU, PercentSpacing::Language, "10⍽% × 5"),
-        (Language::RU_RU, PercentSpacing::Attached, "10% × 5"),
-        (Language::RU_RU, PercentSpacing::Spaced, "10⍽% × 5"),
-        (Language::EN_US, PercentSpacing::AsWritten, "10⍽% × 5"),
-        (Language::EN_US, PercentSpacing::Language, "10% × 5"),
-        (Language::EN_US, PercentSpacing::Attached, "10% × 5"),
-        (Language::EN_US, PercentSpacing::Spaced, "10⍽% × 5"),
+        (
+            Language::RU_RU,
+            PercentSpacing::AsWritten,
+            ["10⍽% × 5", "10⍽% × 5", "10⍽%  × 5"],
+        ),
+        (
+            Language::RU_RU,
+            PercentSpacing::Language,
+            ["10⍽% × 5", "10⍽% × 5", "10⍽%  × 5"],
+        ),
+        (
+            Language::RU_RU,
+            PercentSpacing::Attached,
+            ["10% × 5", "10⍽% × 5", "10%  × 5"],
+        ),
+        (
+            Language::RU_RU,
+            PercentSpacing::Spaced,
+            ["10⍽% × 5", "10⍽% × 5", "10⍽%  × 5"],
+        ),
+        (
+            Language::EN_US,
+            PercentSpacing::AsWritten,
+            ["10⍽% × 5", "10⍽% × 5", "10⍽%  × 5"],
+        ),
+        (
+            Language::EN_US,
+            PercentSpacing::Language,
+            ["10% × 5", "10⍽% × 5", "10%  × 5"],
+        ),
+        (
+            Language::EN_US,
+            PercentSpacing::Attached,
+            ["10% × 5", "10⍽% × 5", "10%  × 5"],
+        ),
+        (
+            Language::EN_US,
+            PercentSpacing::Spaced,
+            ["10⍽% × 5", "10⍽% × 5", "10⍽%  × 5"],
+        ),
     ];
     for (language, mode, expected) in rows {
         let t = Typographer::builder(language.clone(), RuleSet::PROSE)
@@ -455,14 +490,10 @@ fn times_after_a_percentage_after_spaces() {
             .build()
             .unwrap();
         let what = format!("{language:?} Prose, {mode:?}");
-        for source in ["10 % x 5", "10⍽% x 5", "10 %  x 5"] {
-            let once = t.typeset(&vis(source), Output::Unicode).into_owned();
-            assert!(once.contains('\u{d7}'), "{what}: {source:?} -> {once:?}");
-            let twice = t.typeset(&once, Output::Unicode).into_owned();
-            assert_eq!(twice, once, "{what}: second pass of {source:?}");
+        for (source, expected) in SOURCES.into_iter().zip(expected) {
+            check_exact(&what, &t, (source, expected));
+            check_exact(&format!("{what}: second pass"), &t, (expected, expected));
         }
-        check_exact(&what, &t, ("10 % x 5", expected));
-        check_exact(&what, &t, (expected, expected));
     }
 }
 

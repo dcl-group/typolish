@@ -761,7 +761,7 @@ fn a_change_holds_unicode_whatever_the_output_kind() {
         assert_eq!(r.result().as_ref(), UI.typeset(input, output).as_ref());
     }
     let named = UI.report(input, Output::Html(HtmlStyle::NAMED));
-    assert!(named.result().contains("&mdash;"), "{}", named.result());
+    assert_eq!(named.result(), "Цена&nbsp;&mdash; 5&nbsp;руб.");
     assert!(
         named
             .changes()

@@ -636,8 +636,7 @@ fn common_has_no_pairs() {
     let off = common::without_nbsp(Language::COMMON, RuleSet::ALL);
     for t in [&t, &off] {
         let got = t.typeset("He said \"hi\" at 5'10\"", Output::Unicode);
-        assert!(got.contains("\"hi\""), "{got}");
-        assert!(got.contains("5′10″"), "{got}");
+        assert_eq!(got, "He said \"hi\" at 5′10″");
     }
 }
 
