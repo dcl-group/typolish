@@ -174,20 +174,6 @@ fn last_visible(cx: &Cx<'_>, f: &Frag) -> Option<usize> {
         .find(|&j| !cx.kind(j).is_some_and(Kind::is_transparent))
 }
 
-/// The tokens of a fragment without `Format` and `Markup` tokens, at most eight.
-fn visible_tokens(cx: &Cx<'_>, f: &Frag) -> Option<([usize; 8], usize)> {
-    let mut out = [0usize; 8];
-    let mut len = 0;
-    for j in f.start as usize..f.end as usize {
-        if cx.kind(j).is_some_and(Kind::is_transparent) {
-            continue;
-        }
-        *out.get_mut(len)? = j;
-        len += 1;
-    }
-    Some((out, len))
-}
-
 /// Whether two tokens belong to one fragment.
 fn same_frag(cx: &Cx<'_>, a: usize, b: usize) -> bool {
     match (cx.tok(a), cx.tok(b)) {
@@ -304,16 +290,30 @@ fn core_tokens(cx: &Cx<'_>, f: &Frag) -> Option<([usize; 8], usize)> {
     Some((out, len))
 }
 
-/// The value of a `Number` token of at most two digits.
-fn small_value(cx: &Cx<'_>, j: usize) -> Option<u32> {
-    if cx.kind(j) != Some(Kind::Number) {
+/// The tokens of a fragment without `Format` and `Markup` tokens, as units (`Cx::fold_runs`): a
+/// number run split by those tokens is one unit (design section 3.6); at most eight.
+fn visible_units(cx: &Cx<'_>, f: &Frag) -> Option<([(usize, usize); 8], usize)> {
+    cx.fold_runs(
+        (f.start as usize..f.end as usize)
+            .filter(|&j| !cx.kind(j).is_some_and(Kind::is_transparent)),
+    )
+}
+
+/// The value of a number run of at most two digits.
+fn small_value(cx: &Cx<'_>, (first, last): (usize, usize)) -> Option<u32> {
+    if cx.kind(first) != Some(Kind::Number) {
         return None;
     }
-    let text = cx.src(j);
-    if text.is_empty() || text.len() > 2 {
-        return None;
+    let mut value = 0;
+    let mut count = 0;
+    for c in cx.visible(first, last) {
+        count += 1;
+        if count > 2 {
+            return None;
+        }
+        value = value * 10 + c.to_digit(10)?;
     }
-    text.parse().ok()
+    (count > 0).then_some(value)
 }
 
 /// A date core (design section 8.2): a `Version` core `D.M.YYYY` or `D.M.YY`, day 1 to 31, month 1
@@ -322,13 +322,13 @@ fn date_core(cx: &Cx<'_>, f: &Frag) -> bool {
     if f.kind != FragKind::Version {
         return false;
     }
-    let Some(([d, s1, m, s2, y, ..], 5)) = core_tokens(cx, f) else {
+    let Some(([d, s1, m, s2, y, ..], 5)) = cx.core_units::<8>(f) else {
         return false;
     };
     let dot = |j: usize| cx.kind(j) == Some(Kind::Dots) && cx.is(j, ".");
-    let year = cx.kind(y) == Some(Kind::Number) && matches!(cx.src(y).len(), 2 | 4);
-    dot(s1)
-        && dot(s2)
+    let year = cx.kind(y.0) == Some(Kind::Number) && matches!(cx.digits_len(y.0, y.1), 2 | 4);
+    dot(s1.0)
+        && dot(s2.0)
         && year
         && small_value(cx, d).is_some_and(|v| (1..=31).contains(&v))
         && small_value(cx, m).is_some_and(|v| (1..=12).contains(&v))
@@ -709,9 +709,9 @@ fn day(cx: &Cx<'_>, f: &Frag) -> bool {
     if f.kind != FragKind::Number || f.label {
         return false;
     }
-    match core_tokens(cx, f) {
+    match cx.core_units::<8>(f) {
         Some(([j, ..], 1)) => {
-            cx.kind(j) == Some(Kind::Slot(SlotKind::Number))
+            cx.kind(j.0) == Some(Kind::Slot(SlotKind::Number))
                 || small_value(cx, j).is_some_and(|v| (1..=31).contains(&v))
         }
         _ => false,
@@ -953,36 +953,36 @@ pub(crate) fn signs(cx: &Cx<'_>, i: usize) -> Option<Match> {
 // nbsp.phone
 // ---------------------------------------------------------------------------------------------
 
-/// The digits of the `Number` tokens of a fragment.
-fn digit_count(cx: &Cx<'_>, tokens: &[usize]) -> usize {
-    tokens
+/// The digits of the number runs among units of a fragment.
+fn digit_count(cx: &Cx<'_>, units: &[(usize, usize)]) -> usize {
+    units
         .iter()
-        .filter(|&&j| cx.kind(j) == Some(Kind::Number))
-        .map(|&j| cx.src(j).len())
+        .filter(|&&(j, _)| cx.kind(j) == Some(Kind::Number))
+        .map(|&(first, last)| cx.digits_len(first, last))
         .sum()
 }
 
-/// A bracketed code `(DDD)`, the whole fragment or its start.
-fn bracketed(cx: &Cx<'_>, tokens: &[usize]) -> bool {
-    matches!(tokens, [o, n, c, ..]
-        if cx.kind(*o) == Some(Kind::Open('('))
-            && cx.kind(*n) == Some(Kind::Number)
-            && cx.src(*n).len() == 3
-            && cx.kind(*c) == Some(Kind::Close(')')))
+/// A bracketed code `(DDD)`, the whole fragment or its start, given as units.
+fn bracketed(cx: &Cx<'_>, units: &[(usize, usize)]) -> bool {
+    matches!(units, [o, n, c, ..]
+        if cx.kind(o.0) == Some(Kind::Open('('))
+            && cx.kind(n.0) == Some(Kind::Number)
+            && cx.digits_len(n.0, n.1) == 3
+            && cx.kind(c.0) == Some(Kind::Close(')')))
 }
 
 /// A further group of a telephone number: two to four digits, a bracketed code, or a hyphenated
 /// group (a `Compound` or `Range` of numbers). Returns its digits and whether closing punctuation
 /// follows it, which ends the run.
 fn phone_group(cx: &Cx<'_>, f: &Frag) -> Option<(usize, bool)> {
-    let (tokens, len) = visible_tokens(cx, f)?;
-    let tokens = tokens.get(..len)?;
-    if bracketed(cx, tokens) {
+    let (units, len) = visible_units(cx, f)?;
+    let units = units.get(..len)?;
+    if bracketed(cx, units) {
         return Some((3, len > 3));
     }
-    let (core, n) = core_tokens(cx, f)?;
+    let (core, n) = cx.core_units::<8>(f)?;
     let core = core.get(..n)?;
-    if first_visible(cx, f) != core.first().copied() {
+    if first_visible(cx, f) != core.first().map(|u| u.0) {
         return None;
     }
     // A percentage is not a group, in both of its forms (design section 8.2): `100 %` and `100⍽%`
@@ -992,10 +992,10 @@ fn phone_group(cx: &Cx<'_>, f: &Frag) -> Option<(usize, bool)> {
     }
     let digits = digit_count(cx, core);
     let ok = match core {
-        [one] => cx.kind(*one) == Some(Kind::Number) && (2..=4).contains(&digits),
+        [one] => cx.kind(one.0) == Some(Kind::Number) && (2..=4).contains(&digits),
         _ => {
             matches!(f.kind, FragKind::Compound | FragKind::Range)
-                && core.iter().enumerate().all(|(k, &j)| {
+                && core.iter().enumerate().all(|(k, &(j, _))| {
                     if k % 2 == 0 {
                         cx.kind(j) == Some(Kind::Number)
                     } else {
@@ -1014,24 +1014,24 @@ fn phone_group(cx: &Cx<'_>, f: &Frag) -> Option<(usize, bool)> {
 pub(crate) fn phone(cx: &Cx<'_>, s: usize) -> Option<Match> {
     let (l, r) = sides(cx, s)?;
     let fl = cx.frag_of(l)?;
-    let (tokens, len) = visible_tokens(cx, fl)?;
-    let tokens = tokens.get(..len)?;
+    let (units, len) = visible_units(cx, fl)?;
+    let units = units.get(..len)?;
     let mut g = Glues::new(s);
     let mut digits;
     let mut space = s;
     let mut right = r;
-    match tokens {
-        [plus, n] if cx.kind(*plus) == Some(Kind::Punct('+')) => {
+    match units {
+        [plus, n] if cx.kind(plus.0) == Some(Kind::Punct('+')) => {
             digits = digit_count(cx, &[*n]);
-            if cx.kind(*n) != Some(Kind::Number) || !(1..=3).contains(&digits) {
+            if cx.kind(n.0) != Some(Kind::Number) || !(1..=3).contains(&digits) {
                 return None;
             }
         }
-        [_, _, _] if bracketed(cx, tokens) => digits = 3,
-        [n] if cx.kind(*n) == Some(Kind::Number) && cx.src(*n).len() == 1 => {
+        [_, _, _] if bracketed(cx, units) => digits = 3,
+        [n] if cx.kind(n.0) == Some(Kind::Number) && cx.digits_len(n.0, n.1) == 1 => {
             // A trunk prefix before a bracketed code: `8 (800)`.
             let fr = cx.frag_of(r)?;
-            let (code, k) = visible_tokens(cx, fr)?;
+            let (code, k) = visible_units(cx, fr)?;
             if k != 3 || !bracketed(cx, code.get(..k)?) {
                 return None;
             }

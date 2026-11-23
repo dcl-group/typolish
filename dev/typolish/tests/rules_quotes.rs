@@ -23,7 +23,10 @@ mod common;
 #[path = "common/probe.rs"]
 mod probe;
 
-use common::{assert_changed_by, check_in, check_unchanged, configs, interface, only, prose, show};
+use common::{
+    assert_changed_by, check_exact, check_in, check_unchanged, configs, interface, only, prose,
+    show,
+};
 use probe::diagnostics_of;
 use typolish::{
     DiagnosticKind, Language, Output, Piece, QuotePairs, Rule, RuleSet, Severity, SingleQuotes,
@@ -634,6 +637,18 @@ fn primes_follow_a_number() {
     check_unchanged("primes", &t, "\"Enter 5\"");
     check_in("primes", &t, ("Enter 5\" now", "Enter 5″ now"));
     check_in("primes", &t, ("Enter 5' now", "Enter 5′ now"));
+}
+
+#[test]
+fn a_number_split_by_a_format_token_is_one_number() {
+    // Design section 3.6: a decade and the digits around a prime read through a soft hyphen.
+    let t = prose(Language::EN_US);
+    check_exact("en Prose", &t, ("in the '9\u{AD}0s", "in⍽the ’9\u{AD}0s"));
+    check_exact(
+        "en Prose",
+        &t,
+        ("He is 5'1\u{AD}0 tall", "He is 5′1\u{AD}0 tall"),
+    );
 }
 
 #[test]

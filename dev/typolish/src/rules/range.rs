@@ -52,30 +52,34 @@ pub(crate) fn placeholders(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
 }
 
-/// The core tokens of the fragment of the dash at `i`, `Format` and `Markup` tokens skipped, when
-/// it is a `Range` or `YearMonth` core and `i` is in it; at most eight.
-fn range_core(cx: &Cx<'_>, i: usize, kinds: &[FragKind]) -> Option<([usize; 8], usize)> {
+/// A unit of a core: its first and its last token (`Cx::fold_runs`).
+type Unit = (usize, usize);
+
+/// The core units of the fragment of the dash at `i`, `Format` and `Markup` tokens skipped and
+/// each number run one unit (design section 3.6), when it is a `Range` or `YearMonth` core and
+/// `i` is in it; at most eight.
+fn range_core(cx: &Cx<'_>, i: usize, kinds: &[FragKind]) -> Option<([Unit; 8], usize)> {
     let f = cx.frag_of(i)?;
     if !kinds.contains(&f.kind) || !cx.in_core(i) {
         return None;
     }
-    let mut out = [0usize; 8];
-    let mut len = 0;
-    for j in cx.core(f) {
-        *out.get_mut(len)? = j;
-        len += 1;
-    }
-    Some((out, len))
+    cx.core_units(f)
 }
 
 /// Digits without a leading zero.
-fn no_leading_zero(s: &str) -> bool {
-    !(s.len() > 1 && s.starts_with('0'))
+fn no_leading_zero(mut digits: impl Iterator<Item = char> + Clone) -> bool {
+    !(digits.clone().count() > 1 && digits.next() == Some('0'))
 }
 
 /// Compares two digit strings without leading zeros by value.
-fn cmp_digits(a: &str, b: &str) -> Ordering {
-    a.len().cmp(&b.len()).then_with(|| a.cmp(b))
+fn cmp_digits(
+    a: impl Iterator<Item = char> + Clone,
+    b: impl Iterator<Item = char> + Clone,
+) -> Ordering {
+    a.clone()
+        .count()
+        .cmp(&b.clone().count())
+        .then_with(|| a.cmp(b))
 }
 
 /// `range.digits` (Prose): a core `D+-D+` with exactly two numbers, both without leading zeros,
@@ -86,14 +90,17 @@ pub(crate) fn digits(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
     let (core, len) = range_core(cx, i, &[FragKind::Range])?;
     let [a, d, b, ..] = core;
-    if len != 3 || d != i {
+    if len != 3 || d.0 != i {
         return None;
     }
-    if cx.kind(a) != Some(Kind::Number) || cx.kind(b) != Some(Kind::Number) {
+    if cx.kind(a.0) != Some(Kind::Number) || cx.kind(b.0) != Some(Kind::Number) {
         return None;
     }
-    let (sa, sb) = (cx.src(a), cx.src(b));
-    if !no_leading_zero(sa) || !no_leading_zero(sb) || cmp_digits(sa, sb) != Ordering::Less {
+    let (sa, sb) = (cx.visible(a.0, a.1), cx.visible(b.0, b.1));
+    if !no_leading_zero(sa.clone())
+        || !no_leading_zero(sb.clone())
+        || cmp_digits(sa, sb) != Ordering::Less
+    {
         return None;
     }
     dash_edit(cx, i)
@@ -101,41 +108,48 @@ pub(crate) fn digits(cx: &Cx<'_>, i: usize) -> Option<Match> {
 
 /// One side of `range.context`.
 #[derive(Clone, Copy, Debug)]
-enum Side<'a> {
-    /// An unsigned integer or a decimal: the integer digits and the fraction digits.
-    Number(&'a str, &'a str),
+enum Side {
+    /// An unsigned integer or a decimal: the number runs of the integer and of the fraction.
+    Number(Unit, Option<Unit>),
     Roman(u32),
 }
 
-/// Reads one side of a context range from its core tokens.
-fn side<'a>(cx: &Cx<'a>, tokens: &[usize]) -> Option<Side<'a>> {
-    match *tokens {
-        [n] if cx.kind(n) == Some(Kind::Number) => Some(Side::Number(cx.src(n), "")),
+/// Reads one side of a context range from its core units.
+fn side(cx: &Cx<'_>, units: &[Unit]) -> Option<Side> {
+    match *units {
+        [n] if cx.kind(n.0) == Some(Kind::Number) => Some(Side::Number(n, None)),
         // A Roman numeral, also split by `Format` and `Markup` tokens (design section 3.6).
         [w, .., last] | [w @ last]
-            if tokens
+            if units
                 .iter()
-                .all(|&t| matches!(cx.kind(t), Some(Kind::Word(_)))) =>
+                .all(|&(t, _)| matches!(cx.kind(t), Some(Kind::Word(_)))) =>
         {
-            roman_value(cx.visible(w, last)).map(Side::Roman)
+            roman_value(cx.visible(w.0, last.1)).map(Side::Roman)
         }
-        [a, sep, b] if cx.kind(a) == Some(Kind::Number) && cx.kind(b) == Some(Kind::Number) => {
+        [a, sep, b] if cx.kind(a.0) == Some(Kind::Number) && cx.kind(b.0) == Some(Kind::Number) => {
             let decimal = cx.data.numbers.decimal;
             let ok = match decimal {
-                '.' => cx.kind(sep) == Some(Kind::Dots) && cx.is(sep, "."),
-                c => cx.kind(sep) == Some(Kind::Punct(c)),
+                '.' => cx.kind(sep.0) == Some(Kind::Dots) && cx.is(sep.0, "."),
+                c => cx.kind(sep.0) == Some(Kind::Punct(c)),
             };
-            ok.then(|| Side::Number(cx.src(a), cx.src(b)))
+            ok.then_some(Side::Number(a, Some(b)))
         }
         _ => None,
     }
 }
 
-/// Compares two decimals given as integer and fraction digits, without leading zeros.
-fn cmp_decimal(a: (&str, &str), b: (&str, &str)) -> Ordering {
-    cmp_digits(a.0, b.0).then_with(|| {
-        let mut fa = a.1.chars();
-        let mut fb = b.1.chars();
+/// The visible digits of a number run, none for no run.
+fn run_digits<'a>(cx: &Cx<'a>, run: Option<Unit>) -> impl Iterator<Item = char> + Clone + 'a {
+    run.map(|(first, last)| cx.visible(first, last))
+        .into_iter()
+        .flatten()
+}
+
+/// Compares two decimals given as integer and fraction runs, without leading zeros.
+fn cmp_decimal(cx: &Cx<'_>, a: (Unit, Option<Unit>), b: (Unit, Option<Unit>)) -> Ordering {
+    cmp_digits(run_digits(cx, Some(a.0)), run_digits(cx, Some(b.0))).then_with(|| {
+        let mut fa = run_digits(cx, a.1);
+        let mut fb = run_digits(cx, b.1);
         loop {
             match (fa.next(), fb.next()) {
                 (None, None) => return Ordering::Equal,
@@ -200,18 +214,22 @@ pub(crate) fn roman_value(chars: impl Iterator<Item = char>) -> Option<u32> {
 
 /// Whether the shape of a context range holds: left smaller than right for two numbers or two
 /// Roman numerals, or `YYYY-YY` with the tail greater than the last two digits of the year.
-fn ordered(a: Side<'_>, b: Side<'_>) -> bool {
+fn ordered(cx: &Cx<'_>, a: Side, b: Side) -> bool {
     match (a, b) {
         (Side::Roman(x), Side::Roman(y)) => x < y,
         (Side::Number(ai, af), Side::Number(bi, bf)) => {
-            if !no_leading_zero(ai) {
+            let (int_a, int_b) = (run_digits(cx, Some(ai)), run_digits(cx, Some(bi)));
+            if !no_leading_zero(int_a.clone()) {
                 return false;
             }
-            if af.is_empty() && bf.is_empty() && ai.len() == 4 && bi.len() == 2 {
-                let tail = ai.get(2..).unwrap_or("");
-                return bi > tail;
+            if af.is_none()
+                && bf.is_none()
+                && int_a.clone().count() == 4
+                && int_b.clone().count() == 2
+            {
+                return int_b.cmp(int_a.skip(2)) == Ordering::Greater;
             }
-            no_leading_zero(bi) && cmp_decimal((ai, af), (bi, bf)) == Ordering::Less
+            no_leading_zero(int_b) && cmp_decimal(cx, (ai, af), (bi, bf)) == Ordering::Less
         }
         _ => false,
     }
@@ -229,14 +247,14 @@ pub(crate) fn context(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
     let (core, len) = range_core(cx, i, &[FragKind::Range, FragKind::YearMonth])?;
     let core = core.get(..len)?;
-    let at = core.iter().position(|&j| j == i)?;
+    let at = core.iter().position(|&(j, _)| j == i)?;
     let a = side(cx, core.get(..at)?)?;
     let b = side(cx, core.get(at + 1..)?)?;
-    if !ordered(a, b) {
+    if !ordered(cx, a, b) {
         return None;
     }
-    let first = *core.first()?;
-    let last = *core.last()?;
+    let first = core.first()?.0;
+    let last = core.last()?.1;
     let after = context_after(cx, last);
     let before = || context_before(cx, first);
     if !(after || before()) {

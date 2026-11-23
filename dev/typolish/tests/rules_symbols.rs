@@ -56,6 +56,8 @@ const COPYRIGHT_ROWS: &[(&str, &str)] = &[
     ("Бренд(tm)", "Бренд™"),
     ("Бренд (r)", "Бренд ®"),
     ("(c) 2026 Example Corp", "© 2026 Example Corp"),
+    // A year split by a `Format` token is one number (design section 3.6).
+    ("(c) 20\u{AD}26", "© 20\u{AD}26"),
     // A word of design section 8.2 whatever its number of tokens, and a compound word in the
     // spaced form (design section 15.2, item 16).
     ("McDonald’s(tm)", "McDonald’s™"),
@@ -119,6 +121,19 @@ fn copyright() {
                 assert!(span_texts(t, text).is_empty(), "{what}: {text}");
             }
         }
+        // A range of years split by a `Format` token (design section 3.6); Prose also writes
+        // the range dash.
+        let alone = Typographer::new(language.clone(), RuleSet::EMPTY.with(COPYRIGHT));
+        check_exact(
+            "alone",
+            &alone,
+            ("(c) 2025-20\u{AD}26", "© 2025-20\u{AD}26"),
+        );
+        check_exact(
+            "Prose",
+            &prose(language.clone()),
+            ("(c) 2025-20\u{AD}26", "© 2025–20\u{AD}26"),
+        );
     }
 }
 

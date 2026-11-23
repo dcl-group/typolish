@@ -767,11 +767,14 @@ pub(crate) fn analyze<R: Recorder>(
             })
             && !next.is_some_and(|n| matches!(cx.kind(n), Some(Kind::Word(_))))
             && (neutral_apostrophe_opener == NONE || neutral_apostrophe_opener > q.tok);
+        // A number run split by `Format` or `Markup` tokens is one number (design section 3.6).
         let decade = data.decade_apostrophe
             && word_start(cx, i)
-            && next.is_some_and(|n| cx.kind(n) == Some(Kind::Number) && cx.src(n).len() == 2)
+            && next.is_some_and(|n| {
+                cx.kind(n) == Some(Kind::Number) && cx.digits_len(n, cx.number_end(n)) == 2
+            })
             && !next
-                .and_then(|n| cx.next(n))
+                .and_then(|n| cx.next(cx.number_end(n)))
                 .is_some_and(|a| matches!(cx.kind(a), Some(Kind::Word(_) | Kind::Number)));
         if (possessive || decade)
             && let Some(m) = marks.get_mut(i)
@@ -983,18 +986,19 @@ fn step1(cx: &Cx<'_>, i: usize, glyph: char) -> Option<Mark> {
         Some(Kind::Number) if letter_right => return Some(Mark::Apostrophe),
         _ => {}
     }
-    // A prime between a number of one to three digits and one or two digits ending the core.
+    // A prime between a number of one to three digits and one or two digits ending the core; a
+    // number run split by `Format` or `Markup` tokens is one number (design section 3.6).
     if glyph == '\''
         && let (Some(p), Some(n)) = (prev, next)
         && pk == Some(Kind::Number)
         && nk == Some(Kind::Number)
-        && (1..=3).contains(&cx.src(p).len())
-        && (1..=2).contains(&cx.src(n).len())
+        && (1..=3).contains(&cx.digits_len(cx.number_start(p), p))
+        && (1..=2).contains(&cx.digits_len(n, cx.number_end(n)))
         && cx.in_core(n)
         && cx
             .frag_of(n)
             .and_then(|f| cx.core(f).last())
-            .is_some_and(|last| last == n)
+            .is_some_and(|last| last == cx.number_end(n))
     {
         return Some(Mark::Prime('′'));
     }
@@ -1025,8 +1029,8 @@ fn step1(cx: &Cx<'_>, i: usize, glyph: char) -> Option<Mark> {
     // A decade: two digits, then `s` (`'90s`).
     if data.decade_apostrophe
         && nk == Some(Kind::Number)
-        && cx.src(n).len() == 2
-        && let Some(s) = cx.next(n)
+        && cx.digits_len(n, cx.number_end(n)) == 2
+        && let Some(s) = cx.next(cx.number_end(n))
         && cx.src(s) == "s"
         && matches!(cx.kind(s), Some(Kind::Word(_)))
         && !cx

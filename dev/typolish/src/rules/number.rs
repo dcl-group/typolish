@@ -30,30 +30,26 @@ pub(crate) fn minus(cx: &Cx<'_>, i: usize) -> Option<Match> {
         return None;
     }
     // The shape of the core: the sign, digits, an optional separator and digits, and an optional
-    // percent sign.
-    let mut core = cx.core(f).peekable();
-    if core.next() != Some(i) {
-        return None;
-    }
-    let digits = |j: Option<usize>| j.is_some_and(|j| cx.kind(j) == Some(Kind::Number));
-    if !digits(core.next()) {
-        return None;
-    }
-    let percent = |j: usize| matches!(cx.kind(j), Some(Kind::Punct('%' | '‰')));
-    if let Some(&sep) = core.peek()
-        && !percent(sep)
-    {
-        let separator = cx.kind(sep) == Some(Kind::Punct(','))
-            || (cx.kind(sep) == Some(Kind::Dots) && cx.is(sep, "."));
-        core.next();
-        if !separator || !digits(core.next()) {
-            return None;
+    // percent sign; a number run split by `Format` or `Markup` tokens is one number (design
+    // section 3.6).
+    let (core, len) = cx.core_units::<6>(f)?;
+    let digits = |u: &(usize, usize)| cx.kind(u.0) == Some(Kind::Number);
+    let percent = |u: &(usize, usize)| matches!(cx.kind(u.0), Some(Kind::Punct('%' | '‰')));
+    let separator = |u: &(usize, usize)| {
+        cx.kind(u.0) == Some(Kind::Punct(','))
+            || (cx.kind(u.0) == Some(Kind::Dots) && cx.is(u.0, "."))
+    };
+    let shape = match core.get(..len)? {
+        [sign, n] => sign.0 == i && digits(n),
+        [sign, n, p] => sign.0 == i && digits(n) && percent(p),
+        [sign, n, sep, m] => sign.0 == i && digits(n) && separator(sep) && digits(m),
+        [sign, n, sep, m, p] => {
+            sign.0 == i && digits(n) && separator(sep) && digits(m) && percent(p)
         }
-    }
-    match (core.next(), core.next()) {
-        (None, _) => {}
-        (Some(sign), None) if percent(sign) => {}
-        _ => return None,
+        _ => false,
+    };
+    if !shape {
+        return None;
     }
     // The fragment starts after a pattern space or a line start, with `(` or nothing before the
     // sign.
@@ -118,7 +114,7 @@ pub(crate) fn times(cx: &Cx<'_>, i: usize) -> Option<Match> {
                     Some(Kind::Number | Kind::Slot(crate::SlotKind::Number))
                 )
             })?;
-            let digits = cx.visible(first, first);
+            let digits = cx.visible(first, cx.number_end(first));
             if cx.kind(first) == Some(Kind::Number)
                 && digits.clone().next() == Some('0')
                 && digits.count() > 1

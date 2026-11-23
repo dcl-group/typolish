@@ -10,7 +10,7 @@
     clippy::dbg_macro
 )]
 
-use typolish::{Error, Rule, RuleSet};
+use typolish::{Error, Language, Output, Rule, RuleSet, Typographer};
 
 /// The ids of design section 4.1 in execution order.
 const IDS: [&str; 27] = [
@@ -306,4 +306,63 @@ fn whitespace_is_read_as_str_trim_does() {
         "\tprose\u{a0}, -nbsp.dash \n".parse::<RuleSet>(),
         Ok(RuleSet::PROSE.without(Rule::NbspDash))
     );
+}
+
+/// `text` with `mark` after the first digit of every number of two digits or more.
+fn split_numbers(text: &str, mark: char) -> String {
+    let mut out = String::new();
+    let mut run = 0;
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        out.push(c);
+        if c.is_ascii_digit() {
+            run += 1;
+            if run == 1 && chars.peek().is_some_and(char::is_ascii_digit) {
+                out.push(mark);
+            }
+        } else {
+            run = 0;
+        }
+    }
+    out
+}
+
+#[test]
+fn a_number_split_by_a_format_token_reads_as_one_number() {
+    // Design section 3.6: `Format` tokens inside a fragment are skipped by every check, so a
+    // number with a soft hyphen or a zero-width space inside is typeset as the number without it.
+    // Each control row, with the mark after the first digit of every number of two or more
+    // digits, gives the output of the control once the marks are taken out again (`05 x 3` is
+    // the control that stays: a leading zero is no factor of `number.times`).
+    let rows = [
+        (Language::RU_RU, "10-20"),
+        (Language::RU_RU, "1941-45 гг."),
+        (Language::RU_RU, "1941-1945 гг."),
+        (Language::RU_RU, "21.11.2026 г. Затем"),
+        (Language::RU_RU, "21 ноября"),
+        (Language::RU_RU, "Минус -10"),
+        (Language::RU_RU, "+7 (800) 123-45-67"),
+        (Language::RU_RU, "+7 800 123-45-67"),
+        (Language::RU_RU, "+38 044 123-45-67"),
+        (Language::RU_RU, "10-20% - норма"),
+        (Language::RU_RU, "Рост - 10–20%"),
+        (Language::RU_RU, "5–10% - норма"),
+        (Language::EN_US, "10-20"),
+        (Language::EN_US, "(c) 2026"),
+        (Language::EN_US, "(c) 2025-2026"),
+        (Language::EN_US, "05 x 3"),
+        (Language::EN_US, "10 x 5"),
+        (Language::EN_US, "in the '90s"),
+        (Language::EN_US, "He is 5'10 tall"),
+    ];
+    for mark in ['\u{ad}', '\u{200b}'] {
+        for (language, control) in &rows {
+            let t = Typographer::new(language.clone(), RuleSet::PROSE);
+            let expected = t.typeset(control, Output::Unicode);
+            let split = split_numbers(control, mark);
+            assert_ne!(split, *control, "{control:?}: no number was split");
+            let got = t.typeset(&split, Output::Unicode).replace(mark, "");
+            assert_eq!(got, expected, "{language} {split:?}");
+        }
+    }
 }

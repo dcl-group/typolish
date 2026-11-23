@@ -637,6 +637,10 @@ const RU_DATES: &[(&str, &str)] = &[
     // Design section 5.4: a soft hyphen or a ZWNJ inside the month word is skipped by the lookup.
     ("21 ноя\u{AD}бря", "21⍽ноя\u{AD}бря"),
     ("21 ноя\u{200C}бря", "21⍽ноя\u{200C}бря"),
+    // Design section 3.6: a number split by a `Format` token is one number.
+    ("2\u{AD}1 ноября", "2\u{AD}1⍽ноября"),
+    ("2\u{AD}1.11.2026 г. Затем", "2\u{AD}1.11.2026⍽г. Затем"),
+    ("21.11.20\u{AD}26 г. Затем", "21.11.20\u{AD}26⍽г. Затем"),
 ];
 
 #[test]
@@ -1360,6 +1364,10 @@ const PHONE_ROWS: &[(&str, &str)] = &[
     ("+7 495 123-45-67 100%", "+7⍽495⍽123-45-67 100%"),
     ("+7 495 123-45-67 100 %", "+7⍽495⍽123-45-67 100 %"),
     ("+7 495 123-45-67 100⍽%", "+7⍽495⍽123-45-67 100⍽%"),
+    // A number split by a `Format` token is one number (design section 3.6).
+    ("+7 (80\u{AD}0) 123-45-67", "+7⍽(80\u{AD}0)⍽123-45-67"),
+    ("+7 800 12\u{AD}3-45-67", "+7⍽800⍽12\u{AD}3-45-67"),
+    ("+3\u{AD}8 044 123-45-67", "+3\u{AD}8⍽044⍽123-45-67"),
 ];
 
 #[test]

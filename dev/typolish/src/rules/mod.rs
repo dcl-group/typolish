@@ -189,16 +189,11 @@ pub(crate) fn percent_range(cx: &Cx<'_>, f: &Frag) -> bool {
 /// section 8.2), so that the space the percent setting removes changes nothing for them
 /// (invariant I2).
 fn percent_shape(cx: &Cx<'_>, f: &Frag, joint: &str) -> bool {
-    let mut core = [0usize; 8];
-    let mut len = 0;
-    for j in cx.core(f) {
-        let Some(slot) = core.get_mut(len) else {
-            return false;
-        };
-        *slot = j;
-        len += 1;
-    }
-    let Some((&sign, rest)) = core.get(..len).and_then(<[usize]>::split_last) else {
+    // A number run split by `Format` or `Markup` tokens is one number (design section 3.6).
+    let Some((core, len)) = cx.core_units::<8>(f) else {
+        return false;
+    };
+    let Some((&(sign, _), rest)) = core.get(..len).and_then(<[(usize, usize)]>::split_last) else {
         return false;
     };
     if !matches!(cx.kind(sign), Some(Kind::Punct('%' | '‰'))) {
@@ -206,21 +201,21 @@ fn percent_shape(cx: &Cx<'_>, f: &Frag, joint: &str) -> bool {
     }
     let Some(at) = rest
         .iter()
-        .position(|&j| cx.kind(j) == Some(Kind::Dash) && cx.is(j, joint))
+        .position(|&(j, _)| cx.kind(j) == Some(Kind::Dash) && cx.is(j, joint))
     else {
         return false;
     };
-    let side = |part: &[usize]| match part {
+    let side = |part: &[(usize, usize)]| match part {
         [one] => matches!(
-            cx.kind(*one),
+            cx.kind(one.0),
             Some(Kind::Number | Kind::Slot(crate::SlotKind::Number))
         ),
         [a, sep, b] => {
             let separator = match cx.data.numbers.decimal {
-                '.' => cx.kind(*sep) == Some(Kind::Dots) && cx.is(*sep, "."),
-                c => cx.kind(*sep) == Some(Kind::Punct(c)),
+                '.' => cx.kind(sep.0) == Some(Kind::Dots) && cx.is(sep.0, "."),
+                c => cx.kind(sep.0) == Some(Kind::Punct(c)),
             };
-            cx.kind(*a) == Some(Kind::Number) && separator && cx.kind(*b) == Some(Kind::Number)
+            cx.kind(a.0) == Some(Kind::Number) && separator && cx.kind(b.0) == Some(Kind::Number)
         }
         _ => false,
     };

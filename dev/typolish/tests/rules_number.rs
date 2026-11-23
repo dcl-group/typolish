@@ -53,6 +53,8 @@ const MINUS_ROWS: &[(&str, &str)] = &[
     ("see -5 now", "see −5 now"),
     ("5 -3", "5 −3"),
     ("-007", "−007"),
+    // A number split by a `Format` token is one number (design section 3.6).
+    ("Минус -1\u{AD}0", "Минус −1\u{AD}0"),
     // Not firing at each boundary of the pattern: no space, a hyphen between two numbers, a
     // second sign, a flag, a space after the sign, an operator, a typed minus or plus.
     ("5-3", "5-3"),
@@ -351,6 +353,8 @@ fn times() {
                 ("10 х\u{200D} 5", "10 × 5"),
                 ("1920x\u{200D}1080", "1920×1080"),
                 ("1920x\u{200C}1080", "1920×1080"),
+                // The left factor split by a `Format` token is one number, with its leading zero.
+                ("0\u{AD}5 x 3", "0\u{AD}5 x 3"),
             ],
         );
         for (what, t) in &all {

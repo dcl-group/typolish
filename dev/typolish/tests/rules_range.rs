@@ -49,6 +49,8 @@ const DIGITS_ROWS: &[(&str, &str)] = &[
     ("Pages 10-20.", "Pages 10–20."),
     ("(5-10)", "(5–10)"),
     ("5-10, 12-15", "5–10, 12–15"),
+    // A number split by a `Format` token is one number (design section 3.6).
+    ("1\u{AD}0-2\u{AD}0", "1\u{AD}0–2\u{AD}0"),
     // Not firing at each boundary of the pattern: equal, descending, a leading zero, a third
     // number, a year and month, a spaced or half-spaced hyphen. None of them reports anything.
     ("10-10", "10-10"),
@@ -172,6 +174,9 @@ const RU_CONTEXT: &[(&str, &str)] = &[
     ("IV-VI вв.", "IV–VI вв."),
     // A `Format` token inside a Roman numeral is skipped (design section 3.6).
     ("XI\u{AD}X-XX века", "XI\u{AD}X–XX века"),
+    // So is a number split by one (design section 3.6).
+    ("19\u{AD}41-45 гг.", "19\u{AD}41–45 гг."),
+    ("1941-4\u{AD}5 гг.", "1941–4\u{AD}5 гг."),
     ("1,5-2,5 кг", "1,5–2,5 кг"),
     ("5-10 кг", "5–10 кг"),
     ("стр. 9-12", "стр. 9–12"),

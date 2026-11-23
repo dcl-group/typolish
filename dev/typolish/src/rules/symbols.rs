@@ -29,21 +29,16 @@ fn replace(cx: &Cx<'_>, i: usize, sign: char) -> Match {
     )
 }
 
-/// The tokens of a core, `Format` and `Markup` tokens skipped, at most `N` of them; `None` when
-/// the core is longer.
-fn core_of<const N: usize>(cx: &Cx<'_>, f: &Frag) -> Option<([usize; N], usize)> {
-    let mut out = [0usize; N];
-    let mut len = 0;
-    for j in cx.core(f) {
-        *out.get_mut(len)? = j;
-        len += 1;
-    }
-    Some((out, len))
+/// The units of a core (`Cx::core_units`: `Format` and `Markup` tokens skipped, a number run
+/// split by them one unit, design section 3.6), at most `N` of them; `None` when the core is
+/// longer.
+fn core_of<const N: usize>(cx: &Cx<'_>, f: &Frag) -> Option<([(usize, usize); N], usize)> {
+    cx.core_units(f)
 }
 
-/// Whether a token is a run of exactly four ASCII digits.
-fn four_digits(cx: &Cx<'_>, j: usize) -> bool {
-    cx.kind(j) == Some(Kind::Number) && cx.src(j).len() == 4
+/// Whether a unit is a number run of exactly four ASCII digits.
+fn four_digits(cx: &Cx<'_>, (first, last): (usize, usize)) -> bool {
+    cx.kind(first) == Some(Kind::Number) && cx.digits_len(first, last) == 4
 }
 
 /// A year or a range of years (design section 8.9): a `Number` core of four digits, or a `Range`
@@ -63,8 +58,8 @@ fn years(cx: &Cx<'_>, f: &Frag, range: bool) -> bool {
         (FragKind::Range, Some(&[a, dash, b])) if range => {
             four_digits(cx, a)
                 && four_digits(cx, b)
-                && cx.kind(dash) == Some(Kind::Dash)
-                && (cx.is(dash, "-") || cx.is(dash, "\u{2013}"))
+                && cx.kind(dash.0) == Some(Kind::Dash)
+                && (cx.is(dash.0, "-") || cx.is(dash.0, "\u{2013}"))
         }
         _ => false,
     }
@@ -153,14 +148,14 @@ pub(crate) fn copyright(cx: &Cx<'_>, i: usize) -> Option<Match> {
             let fits = match *core {
                 // `(c)2026`: a year attached after the mark.
                 [m, year] => {
-                    m == i
+                    m.0 == i
                         && f.kind == FragKind::Word
                         && four_digits(cx, year)
                         && !percent_follows(cx, f)
                 }
                 // `(c) 2026`, `2026 (c)`, `(c) 2020-2026`, `2020-2026 (c)`.
                 [m] => {
-                    m == i
+                    m.0 == i
                         && (after(cx, f).is_some_and(|g| years(cx, g, true))
                             || before(cx, f).is_some_and(|g| years(cx, g, true)))
                 }

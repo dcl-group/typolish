@@ -253,6 +253,87 @@ impl<'a> Cx<'a> {
             .filter(|&i| self.toks.get(i).is_some_and(|t| !t.kind.is_transparent()))
     }
 
+    /// Whether `b` is the token after `a`, `Format` and `Markup` tokens skipped, and both are
+    /// `Number` tokens of one fragment: one number run.
+    fn run_continues(&self, a: usize, b: usize) -> bool {
+        match (self.toks.get(a), self.toks.get(b)) {
+            (Some(x), Some(y)) => {
+                x.kind == Kind::Number
+                    && y.kind == Kind::Number
+                    && x.frag != NO_FRAG
+                    && x.frag == y.frag
+                    && self.next(a) == Some(b)
+            }
+            _ => false,
+        }
+    }
+
+    /// The last token of the number run of a `Number` token: the `Number` tokens of its fragment
+    /// with only `Format` and `Markup` tokens between them. For any other token, the token itself.
+    /// A `Number` run split by `Format` or `Markup` tokens reads as one number (design section
+    /// 3.6).
+    pub(crate) fn number_end(&self, j: usize) -> usize {
+        let mut last = j;
+        while let Some(n) = self.next(last)
+            && self.run_continues(last, n)
+        {
+            last = n;
+        }
+        last
+    }
+
+    /// The first token of the number run of a `Number` token; for any other token, the token
+    /// itself. A `Number` run split by `Format` or `Markup` tokens reads as one number (design
+    /// section 3.6).
+    pub(crate) fn number_start(&self, j: usize) -> usize {
+        let mut first = j;
+        while let Some(p) = self.prev(first)
+            && self.run_continues(p, first)
+        {
+            first = p;
+        }
+        first
+    }
+
+    /// Tokens in order, `Format` and `Markup` tokens skipped, as units of the first and the last
+    /// token: a number run is one unit, any other token a unit of its own; at most `N` units,
+    /// `None` when there are more. A `Number` run split by `Format` or `Markup` tokens reads as
+    /// one number (design section 3.6).
+    pub(crate) fn fold_runs<const N: usize>(
+        &self,
+        tokens: impl IntoIterator<Item = usize>,
+    ) -> Option<([(usize, usize); N], usize)> {
+        let mut out = [(0usize, 0usize); N];
+        let mut len = 0usize;
+        for j in tokens {
+            if let Some(unit) = len.checked_sub(1).and_then(|k| out.get_mut(k))
+                && self.run_continues(unit.1, j)
+            {
+                unit.1 = j;
+                continue;
+            }
+            *out.get_mut(len)? = (j, j);
+            len += 1;
+        }
+        Some((out, len))
+    }
+
+    /// The units of a core (`fold_runs`), at most `N`. A `Number` run split by `Format` or
+    /// `Markup` tokens reads as one number (design section 3.6).
+    pub(crate) fn core_units<const N: usize>(
+        &self,
+        frag: &Frag,
+    ) -> Option<([(usize, usize); N], usize)> {
+        self.fold_runs(self.core(frag))
+    }
+
+    /// The number of visible characters of a range of tokens, the digits of a number run. A
+    /// `Number` run split by `Format` or `Markup` tokens reads as one number (design section
+    /// 3.6).
+    pub(crate) fn digits_len(&self, first: usize, last: usize) -> usize {
+        self.visible(first, last).count()
+    }
+
     /// The visible characters of a range of tokens: their source text without format characters,
     /// ZWNJ and ZWJ (design section 3.6).
     pub(crate) fn visible(
