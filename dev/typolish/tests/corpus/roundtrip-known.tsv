@@ -8,6 +8,8 @@ ru-RU	default	Москва -- столица	Москва⍽— столица	�
 ru-RU	default	т.д.	т.⍽д.	т. д.	CompactAbbr
 ru-RU	default	№5	№⍽5	№ 5	AttachedSign
 ru-RU	default	Что?...	Что?..	Что?..	TerminalEllipsis
+ru-RU	default	Что!...	Что!..	Что!..	TerminalEllipsis
+ru-RU	default	Что?!...	Что?!..	Что?!..	TerminalEllipsis
 en-US	SingleQuotes::Everywhere	'x'	“x”	"x"	SingleQuote
 en-US	default	"a 'b' c"	“a⍽‘b’ c”	"a "b" c"	NestedSingle
 ru-RU	default	1920х1080	1920×1080	1920x1080	CyrillicTimes

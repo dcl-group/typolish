@@ -1070,17 +1070,14 @@ fn the_table_of_known_losses_holds() {
         if plain == row.input {
             problems.push("the loss vanished: to_plain(typeset(input)) == input".to_owned());
         }
-        // P2 holds for every row but the author's glue (section 12.2: only that one is a loss of
-        // P2; the glue the author typed becomes a space and is not set again).
-        if row.code != "AuthorGlue" {
-            let again = t.typeset(&row.plain, Output::Unicode);
-            if again != row.typeset {
-                problems.push(format!(
-                    "P2: typeset(to_plain) is {}, not {}",
-                    show(&again),
-                    show(&row.typeset)
-                ));
-            }
+        // P2 holds for every row (section 12.2).
+        let again = t.typeset(&row.plain, Output::Unicode);
+        if again != row.typeset {
+            problems.push(format!(
+                "P2: typeset(to_plain) is {}, not {}",
+                show(&again),
+                show(&row.typeset)
+            ));
         }
         if !problems.is_empty() {
             failures.push(format!(
