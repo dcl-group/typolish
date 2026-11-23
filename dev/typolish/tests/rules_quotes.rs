@@ -142,6 +142,12 @@ const RU_ROWS: &[(&str, &str)] = &[
     ("\"a\n\n\"b\" c", "\"a\n\n«b» c"),
     // Section 6.6: an unpaired straight single quote stays.
     ("Он сказал 'привет", "Он сказал 'привет"),
+    // Design section 5.1: an emoji is a `Symbol` token that neighboring quotes treat as a word.
+    ("\"🙂\"", "«🙂»"),
+    ("Ответ: \"🙂\".", "Ответ: «🙂»."),
+    // Design section 6.12: apostrophes in any script, look-through past `...`.
+    ("Это rock'n'roll и don't.", "Это rock’n’roll и don’t."),
+    ("Он писал: \"...и всё\".", "Он писал: «...и всё»."),
 ];
 
 #[test]
