@@ -577,13 +577,15 @@ contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; the `#![
 attributes of every `tests/*.rs` list exactly the lints of section 14.5 (`tests/alloc.rs` also
 `unsafe_code`, first), and that of `tests/common/mod.rs` only `dead_code`; `src/lang/ru_ru.rs`,
 `src/lang/en_us.rs` and `src/lang/common.rs` contain no `fn`, `impl`, `match` or `if` (section 7.1);
-the characters that rules write (the typographic set of section 11.2) and the strings of language
-data (section 7.6) contain no letter and no digit; every character the lexer reads as `Quote`
-(section 3.5) other than `"` and `'` is in the table of section 11.2, `′` and `″` in the primes row
-and the others in the quotes row; built-in languages × built-in sets build without error. A unit
-test next to the prefilter checks, for every built-in set and language, that the trigger set equals
-the union of the trigger constants of the active rules. Checks that read `docs/design/` skip when
-the file is absent (the published package has no design).
+the characters that rules write in every built-in language with `RuleSet::ALL` (the typographic set
+of section 11.2 and the sign fields of language data that rules copy into the text, section 7.6:
+quote glyphs, dashes, ellipsis forms, minus and group signs) contain no letter and no digit; every
+character the lexer reads as `Quote` (section 3.5) other than `"` and `'` is in the table of section
+11.2, `′` and `″` in the primes row and the others in the quotes row; built-in languages × built-in
+sets build without error. A unit test next to the prefilter checks, for every built-in set and
+language, that the trigger set equals the union of the trigger constants of the active rules. Checks
+that read `docs/design/` skip when the directory is absent (the published package has no design); a
+missing file or heading inside the repository fails.
 
 `tests/package.rs` checks the package (stage 5, section 15.4): the manifests and `dev/deny.toml`
 against section 14.5, the tree of `Cargo.lock` against section 14.1, the layout of section 14.6, the
