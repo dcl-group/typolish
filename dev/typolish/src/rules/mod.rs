@@ -57,9 +57,74 @@ pub(crate) const RULES: [RuleFn; 27] = [
     nbsp::dash,
 ];
 
-/// A word (design section 8.2): a `Word` core, a one-word `Dictionary` core or a compound word.
+/// A word (design section 8.2): a `Word` core, a one-word `Dictionary` core, a compact
+/// abbreviation or a compound word.
 pub(crate) fn is_word(cx: &Cx<'_>, f: &Frag) -> bool {
-    matches!(cx.kind_of(f), FragKind::Word | FragKind::Compound)
+    matches!(cx.kind_of(f), FragKind::Word | FragKind::Compound) || compact_abbreviation(cx, f)
+}
+
+/// A compact abbreviation (design section 8.2): a `Dictionary` core of two or more consecutive
+/// parts of an abbreviation of the language that all end in a full stop, written together
+/// (`т.е.`, `т.д.`, `Т.е.`). `nbsp.abbreviations` splits it into its parts, each a one-word
+/// `Dictionary` core, so it reads as a word in both forms (invariant I2 of section 4.3).
+pub(crate) fn compact_abbreviation(cx: &Cx<'_>, f: &Frag) -> bool {
+    if f.kind != FragKind::Dictionary || !f.stop {
+        return false;
+    }
+    // The shape: a word, then a single full stop and a word, once or more.
+    let mut words = 0;
+    let mut last = None;
+    for (n, j) in cx.core(f).enumerate() {
+        let ok = if n % 2 == 0 {
+            matches!(cx.kind(j), Some(Kind::Word(_)))
+        } else {
+            cx.kind(j) == Some(Kind::Dots) && cx.is(j, ".")
+        };
+        if !ok {
+            return false;
+        }
+        words += usize::from(n % 2 == 0);
+        last = Some(n);
+    }
+    if words < 2 || last.is_none_or(|n| n % 2 != 0) {
+        return false;
+    }
+    let chars = cx.core_chars(f);
+    let mut rest = chars.clone();
+    let lowered = rest
+        .next()
+        .filter(|c| c.is_uppercase())
+        .map(|c| core::iter::once(fold_char(c)).chain(rest));
+    let dotted = |key: &str| {
+        cx.data
+            .abbreviations
+            .iter()
+            .any(|(parts, _)| dotted_parts(parts, key))
+    };
+    with_key(chars, true, dotted) || lowered.is_some_and(|key| with_key(key, true, dotted))
+}
+
+/// Whether `key` is two or more consecutive parts of an abbreviation that all end in a full stop,
+/// written together.
+fn dotted_parts(parts: List<'_>, key: &str) -> bool {
+    (0..parts.len()).any(|start| {
+        let mut rest = key;
+        let mut count = 0;
+        for part in parts.iter().skip(start) {
+            if !part.ends_with('.') {
+                return false;
+            }
+            let Some(r) = rest.strip_prefix(part) else {
+                return false;
+            };
+            count += 1;
+            rest = r;
+            if rest.is_empty() {
+                return count >= 2;
+            }
+        }
+        false
+    })
 }
 
 /// A number: a `Number` fragment or a `Number` slot (labels and percentages included).
@@ -165,8 +230,18 @@ pub(crate) fn is_operand(cx: &Cx<'_>, f: &Frag) -> bool {
     is_word(cx, f) || is_number(f) || is_range(cx, f) || is_technical(f)
 }
 
-/// A word of one letter (`a`, `x`); a slot or a compound word is not one.
-pub(crate) fn single_letter(cx: &Cx<'_>, f: &Frag) -> bool {
+/// A word of one letter (`a`, `x`); a slot or a compound word is not one. A compact abbreviation
+/// reads as the part next to the other side: its last part on the left of a dash, its first part
+/// on the right (`т.е.` as `е.` or `т.`, the parts it is split into).
+pub(crate) fn single_letter(cx: &Cx<'_>, f: &Frag, left: bool) -> bool {
+    if compact_abbreviation(cx, f) {
+        let part = if left {
+            cx.core(f).last()
+        } else {
+            cx.core(f).next()
+        };
+        return part.is_some_and(|i| cx.visible(i, i).count() == 1);
+    }
     if cx.kind_of(f) != FragKind::Word {
         return false;
     }

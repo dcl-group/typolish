@@ -119,8 +119,8 @@ pub(crate) fn closing_punct(cx: &Cx<'_>, l: usize) -> bool {
 }
 
 /// A number, a range or a single-letter word: one side of the first refusal.
-fn small(cx: &Cx<'_>, f: &Frag) -> bool {
-    is_number(f) || is_range(cx, f) || single_letter(cx, f)
+fn small(cx: &Cx<'_>, f: &Frag, left: bool) -> bool {
+    is_number(f) || is_range(cx, f) || single_letter(cx, f, left)
 }
 
 /// A flag or another fragment that starts with `-`.
@@ -199,7 +199,7 @@ fn between(cx: &Cx<'_>, i: usize, double: bool) -> Option<Match> {
         return Some(Match::done(os2));
     }
     let foreign_or_technical = |f: &Frag| foreign(cx, f) || is_technical(f);
-    let refused = (small(cx, fl) && small(cx, fr))
+    let refused = (small(cx, fl, true) && small(cx, fr, false))
         || flag_like(cx, fl)
         || flag_like(cx, fr)
         || (foreign_or_technical(fl) && foreign_or_technical(fr));

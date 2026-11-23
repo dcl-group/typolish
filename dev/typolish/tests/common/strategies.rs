@@ -60,6 +60,10 @@ pub const RISKY: &[&str] = &[
     "12 дн.",
     "т. е.",
     "т.е.",
+    // A compact abbreviation after a spaced dash (sections 4.3, I2, and 8.2).
+    " - т.е.",
+    " – т.д.",
+    " -- т.е.",
     "и т.д.",
     "А.С. Пушкин",
     "21 ноября",

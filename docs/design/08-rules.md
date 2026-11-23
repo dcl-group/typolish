@@ -46,15 +46,15 @@ Prose: 27 rules (every rule of version 1). Interface: 13 rules.
 
 Terms: a **word** is a fragment whose core has kind `Word`, whatever its number of tokens (`word`,
 `it's`, `don't`, `90's`, `5'10`, `Brand(tm)`; check 23 and the special cases of section 3.6), and a
-one-word `Dictionary` core and a compound word count as one (below); a **number** is a `Number`
-fragment or a `Number` slot; an **operand** is a word, a number, a range (a `Range` or `YearMonth`
-core), a slot, a protected span or a technical fragment (section 3.6). A **Roman numeral** is
-defined in section 3.6 (Latin capitals in the standard form, value 1 to 3999). A `Punctuation`
-fragment (wrapper tokens only, such as a lone `...`, section 3.6) is not an operand. A **date core**
-is a `Version` core (check 13 of section 3.6) of three numbers in the shape `D.M.YYYY` or `D.M.YY`,
-with the day 1 to 31 and the month 1 to 12, leading zeros allowed (`21.11.2026`, `21.11.26`,
-`01.02.26`); the shape decides, so `1.2.27` is one and `0.2.27` is not. Two kinds of number name or
-measure something other than a quantity:
+one-word `Dictionary` core, a compact abbreviation and a compound word count as one (below); a
+**number** is a `Number` fragment or a `Number` slot; an **operand** is a word, a number, a range (a
+`Range` or `YearMonth` core), a slot, a protected span or a technical fragment (section 3.6). A
+**Roman numeral** is defined in section 3.6 (Latin capitals in the standard form, value 1 to 3999).
+A `Punctuation` fragment (wrapper tokens only, such as a lone `...`, section 3.6) is not an operand.
+A **date core** is a `Version` core (check 13 of section 3.6) of three numbers in the shape
+`D.M.YYYY` or `D.M.YY`, with the day 1 to 31 and the month 1 to 12, leading zeros allowed
+(`21.11.2026`, `21.11.26`, `01.02.26`); the shape decides, so `1.2.27` is one and `0.2.27` is not.
+Two kinds of number name or measure something other than a quantity:
 
 - A **label number** follows a sign (`№5`, `№ 5`, `§⍽12`, `№ {n}`, and a Roman numeral such as `¶IV`
   or `¶ IV`; flag `LABEL`, section 3.6).
@@ -95,6 +95,13 @@ Conditions that hold for every rule:
   `min`, `А`, `с`, `May`) counts as a fragment of kind `Word` wherever a rule reads a fragment kind
   (`Closed`, section 8.4); only the rules that look its core up in a list (`nbsp.units`,
   `nbsp.abbreviations`, `nbsp.dates`, `range.context`) read it as a dictionary entry.
+- A **compact abbreviation** is a `Dictionary` core of two or more consecutive parts of an
+  abbreviation of the language that all end in a full stop, written together (`т.е.`, `т.д.`, `Т.е.`
+  by the relaxation of section 7.1). It counts as a word, as the one-word parts that
+  `nbsp.abbreviations` splits it into do (`т.е.` → `т.⍽е.`), so the dash rules read it alike in both
+  forms (`Слово - т.е.` → `Слово⍽— т.⍽е.` in one pass, invariant I2 of section 4.3). Where a rule
+  asks whether a word has one letter it reads the part next to the other side: the last part on the
+  left of a dash, the first part on the right (`5 - т.е.` is refused as `5 - т. е.` is).
 - No rule changes letters or digits inside `Word` and `Number` tokens. The letter-like replacements
   are `(c)`, `(r)`, `(tm)` in either case and the Cyrillic `(с)`, `(С)` (kind `LegalMark`) and `x`,
   `X`, `х`, `Х` between numbers (kind `Times`).

@@ -319,6 +319,49 @@ fn abbreviations_inside_both_sets() {
 }
 
 #[test]
+fn compact_abbreviations_next_to_a_dash() {
+    // A compact abbreviation reads as a word, as the parts it is split into do (section 8.2,
+    // invariant I2 of section 4.3), so the dash rules match on the first pass and a second pass
+    // returns the output.
+    set_rows(
+        ru(),
+        &[
+            (
+                "Он пришёл - т.е. опоздал",
+                "Он⍽пришёл⍽— т.⍽е. опоздал",
+                "Он пришёл⍽— т.⍽е. опоздал",
+            ),
+            ("Слово - т.е.", "Слово⍽— т.⍽е.", "Слово⍽— т.⍽е."),
+            (
+                "Москва – т.е. столица",
+                "Москва⍽– т.⍽е. столица",
+                "Москва⍽– т.⍽е. столица",
+            ),
+            // `--` is a dash only in Prose.
+            ("Слово -- т.д. ", "Слово⍽— т.⍽д. ", "Слово -- т.⍽д. "),
+            // A single-letter part next to a number is refused in both forms.
+            ("5 - т.е.", "5 - т.⍽е.", "5 - т.⍽е."),
+            ("т.е. - 5", "т.⍽е. - 5", "т.⍽е. - 5"),
+            ("т.е. - слово", "т.⍽е.⍽— слово", "т.⍽е.⍽— слово"),
+        ],
+    );
+    for t in [set(ru(), RuleSet::PROSE), set(ru(), RuleSet::INTERFACE)] {
+        for input in [
+            "Он пришёл - т.е. опоздал",
+            "Слово - т.е.",
+            "Москва – т.е. столица",
+            "Слово -- т.д. ",
+            "5 - т.е.",
+            "т.е. - 5",
+            "т.е. - слово",
+        ] {
+            let once = t.typeset(input, Output::Unicode).into_owned();
+            check_unchanged("second pass", &t, &show(&once));
+        }
+    }
+}
+
+#[test]
 fn abbreviations_are_off_when_disabled() {
     for base in [RuleSet::PROSE, RuleSet::INTERFACE] {
         let t = set(ru(), base.without(ABBR));

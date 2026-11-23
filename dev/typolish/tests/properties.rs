@@ -72,6 +72,13 @@ const SEEDS: &[&str] = &[
     "§5 ч. 2",
     "т.е.",
     "и т.д...",
+    // A compact abbreviation next to a dash reads as a word in both forms (section 8.2).
+    "Он пришёл - т.е. опоздал",
+    "Слово - т.е.",
+    "Москва – т.е. столица",
+    "Слово -- т.д.",
+    "5 - т.е.",
+    "т.е. - 5",
     "Moscow - the capital",
     "See https://example.com/docs - the guide",
     "He said - \"a cat\"",
