@@ -2,8 +2,10 @@
 //! 13.8).
 //!
 //! Only the current thread is counted, so tests running in parallel do not disturb each other.
-//! The rows that need the rules, the encoders and `format_number` join with them (design section
-//! 15.4, stage 3).
+//! Stage 3 (design section 15.4) adds the rows of the encoders and of `format_number`: zero
+//! allocations for numbers written into a buffer with room, for an unchanged string in every output
+//! kind after warm-up, for `typeset_into` in every kind; one for a changed string and one more per
+//! changed text of a template; and the first short call after an input larger than 64 KiB.
 
 // The counting allocator needs `unsafe impl GlobalAlloc`; this is the only `unsafe` code of the
 // package (design section 14.5).
@@ -22,7 +24,9 @@ use std::alloc::{GlobalAlloc, Layout, System};
 use std::borrow::Cow;
 use std::cell::Cell;
 
-use typolish::{Language, Output, Piece, RuleSet, Scratch, Slot, Typographer};
+use typolish::{
+    EscapeStyle, HtmlStyle, Language, Number, Output, Piece, RuleSet, Scratch, Slot, Typographer,
+};
 
 /// Delegates to `System` and counts allocations and reallocations of the current thread while
 /// counting is on.
@@ -262,4 +266,286 @@ fn a_changed_template_text_is_one_allocation_however_much_it_grows() {
         assert_eq!(t.texts(), texts);
         assert_eq!((allocs, reallocs), (3 + changed, 0), "{texts:?}");
     }
+}
+
+/// Every output kind of section 2.8, the nowrap styles and both scopes included.
+fn outputs() -> Vec<Output> {
+    vec![
+        Output::Unicode,
+        Output::Html(HtmlStyle::NAMED),
+        Output::Html(HtmlStyle::DECIMAL),
+        Output::Html(HtmlStyle::HEX),
+        Output::Html(HtmlStyle::CHARACTERS),
+        Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap")),
+        Output::Html(HtmlStyle::HEX.nowrap_style()),
+        Output::Escaped(EscapeStyle::JS),
+        Output::Escaped(EscapeStyle::JS_HEX),
+        Output::Escaped(EscapeStyle::JS_CODE_POINT),
+        Output::Escaped(EscapeStyle::JSON),
+        Output::Escaped(EscapeStyle::RUST),
+        Output::Escaped(EscapeStyle::CSS),
+        Output::Escaped(EscapeStyle::JS.non_ascii()),
+        Output::Escaped(EscapeStyle::CSS.non_ascii()),
+    ]
+}
+
+/// Values of every variant of `Number`, the widest of each and the symbols included.
+fn values() -> Vec<Number<'static>> {
+    vec![
+        Number::from(0),
+        Number::from(-12345),
+        Number::from(i128::MIN),
+        Number::from(u128::MAX),
+        Number::from(1234567.5),
+        Number::from(-12345.678f32),
+        Number::from(f64::MAX),
+        Number::from(f64::MIN_POSITIVE),
+        Number::from(5e-324),
+        Number::from(f32::MAX),
+        Number::from(0.1f32),
+        Number::from(f64::NAN),
+        Number::from(f64::NEG_INFINITY),
+        Number::from(-0.0),
+        Number::fixed(1234.5678, 2),
+        Number::fixed(-0.001, 1),
+        Number::fixed(1e300, 3),
+    ]
+}
+
+#[test]
+fn numbers_written_into_a_buffer_with_room_do_not_allocate() {
+    use std::fmt::Write;
+    let ru = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    let en = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    let common = Typographer::new(Language::COMMON, RuleSet::EMPTY);
+    let narrow = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+        .group_separator('\u{202f}')
+        .min_grouping_digits(0)
+        .build()
+        .unwrap();
+    // The longest `f64` in `{}` is 327 bytes; every group separator of a 309-digit number is a
+    // six-byte escape in the widest syntax, and the buffer has room for all of it.
+    let mut buf = String::with_capacity(16 * 1024);
+    for t in [&ru, &en, &common, &narrow] {
+        for output in outputs() {
+            for n in values() {
+                buf.clear();
+                let (allocs, reallocs, ()) = count(|| {
+                    write!(buf, "{}", t.format_number(n, output)).unwrap();
+                });
+                assert_eq!((allocs, reallocs), (0, 0), "{n:?} {output:?}");
+                assert!(!buf.is_empty());
+            }
+            buf.clear();
+            let (allocs, reallocs, ()) = count(|| {
+                write!(buf, "{}", t.format_range(-12345, 1234567.5, output)).unwrap();
+                write!(buf, "{}", t.format_range(f64::MAX, f64::MIN, output)).unwrap();
+            });
+            assert_eq!((allocs, reallocs), (0, 0), "range {output:?}");
+        }
+    }
+}
+
+#[test]
+fn a_decimal_string_and_a_float_cost_nothing() {
+    use std::fmt::Write;
+    let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    let mut buf = String::with_capacity(4096);
+    let (allocs, reallocs, ()) = count(|| {
+        let n = Number::decimal("-0012345678.5000").unwrap();
+        write!(buf, "{}", t.format_number(n, Output::Unicode)).unwrap();
+        let n = Number::decimal("+7").unwrap();
+        write!(
+            buf,
+            "{}",
+            t.format_number(n, Output::Escaped(EscapeStyle::RUST))
+        )
+        .unwrap();
+        write!(
+            buf,
+            "{}",
+            t.format_number(Number::fixed(2.5, 3), Output::Unicode)
+        )
+        .unwrap();
+    });
+    assert_eq!((allocs, reallocs), (0, 0));
+    assert!(buf.contains("0\u{a0}012"), "{buf}");
+    // Only a rejected string allocates, for the text of its error.
+    let (allocs, _, err) = count(|| Number::decimal("1e3"));
+    assert!(err.is_err());
+    assert!(allocs >= 1);
+}
+
+#[test]
+fn an_unchanged_string_does_not_allocate_in_any_output_kind() {
+    // Section 2.12: with `Html` and `Escaped` only if nothing needs encoding. No rule changes the
+    // texts, and none of their bytes is encoded by any kind below.
+    const SHORT: &str = "Сохранить";
+    const PIPELINE: &str = "Адрес host:8080, версия v1.2.3, id 0x1F, путь /usr/bin";
+    let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    let mut scratch = Scratch::new();
+    for output in outputs() {
+        for input in [SHORT, PIPELINE] {
+            let _ = t.typeset(input, output);
+            let (allocs, reallocs, out) = count(|| t.typeset(input, output));
+            let non_ascii = matches!(output, Output::Escaped(s) if s == EscapeStyle::JS.non_ascii() || s == EscapeStyle::CSS.non_ascii());
+            if non_ascii {
+                // The Cyrillic is encoded by `non_ascii()`: one allocation, never borrowed.
+                assert!(matches!(out, Cow::Owned(_)), "{input} {output:?}");
+                assert!(allocs >= 1, "{input} {output:?}");
+            } else {
+                assert_eq!((allocs, reallocs), (0, 0), "{input} {output:?}");
+                assert!(matches!(out, Cow::Borrowed(_)), "{input} {output:?}");
+            }
+            let _ = t.typeset_with(&mut scratch, input, output);
+            let (allocs, reallocs, _) = count(|| t.typeset_with(&mut scratch, input, output));
+            if !non_ascii {
+                assert_eq!((allocs, reallocs), (0, 0), "with {input} {output:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn typeset_into_a_buffer_with_room_does_not_allocate_in_any_output_kind() {
+    const INPUT: &str = "Он сказал \"привет\" - и ушёл... \\ <b> & `x` \n5 МБ";
+    let ui = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    let prose = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    for t in [&ui, &prose] {
+        for output in outputs() {
+            let expected = t.typeset(INPUT, output).into_owned();
+            let mut buf = String::with_capacity(4096);
+            t.typeset_into(INPUT, output, &mut buf);
+            buf.clear();
+            buf.push_str("> ");
+            let (allocs, reallocs, ()) = count(|| t.typeset_into(INPUT, output, &mut buf));
+            assert_eq!((allocs, reallocs), (0, 0), "{output:?}");
+            assert_eq!(buf, format!("> {expected}"), "{output:?}");
+        }
+    }
+}
+
+#[test]
+fn a_text_that_needs_encoding_is_one_allocation() {
+    // Section 2.12: one allocation, the output string with the capacity `len + len / 8`; a second
+    // only if it grows past that. One `<` in a long text grows it by at most five bytes. No rule
+    // runs, so only the encoding changes the text.
+    const LONG: &str = "Сохранить изменения в файле перед закрытием окна <выйти> из программы и вернуться к списку";
+    let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY);
+    let growth = |text: &str, output: Output| t.typeset(text, output).len() - text.len();
+    for output in outputs() {
+        let first = t.typeset(LONG, output);
+        if matches!(first, Cow::Borrowed(_)) {
+            continue;
+        }
+        drop(first);
+        let grows = growth(LONG, output);
+        let (allocs, reallocs, out) = count(|| t.typeset(LONG, output));
+        assert!(matches!(out, Cow::Owned(_)), "{output:?}");
+        assert_eq!(allocs, 1, "{output:?}");
+        if grows <= LONG.len() / 8 {
+            assert_eq!(reallocs, 0, "{output:?} grows by {grows}");
+        }
+    }
+    // The same through `typeset_with`.
+    let mut scratch = Scratch::new();
+    let _ = t.typeset_with(&mut scratch, LONG, Output::Html(HtmlStyle::NAMED));
+    let (allocs, reallocs, _) =
+        count(|| t.typeset_with(&mut scratch, LONG, Output::Html(HtmlStyle::NAMED)));
+    assert_eq!((allocs, reallocs), (1, 0));
+}
+
+#[test]
+fn a_template_text_that_needs_encoding_is_one_allocation_however_much_it_grows() {
+    // Section 2.12: at most 3 plus one per text that is changed; the encoding is a change.
+    let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY);
+    let wide = [
+        Output::Html(HtmlStyle::NAMED),
+        Output::Html(HtmlStyle::HEX),
+        Output::Escaped(EscapeStyle::JS),
+        Output::Escaped(EscapeStyle::JSON),
+        Output::Escaped(EscapeStyle::CSS),
+        Output::Escaped(EscapeStyle::JS.non_ascii()),
+    ];
+    for output in wide {
+        let pieces = || {
+            vec![
+                Piece::Text("<<<<<<<<"),
+                Piece::Slot(0u8, Slot::WORD),
+                Piece::Text("&&&&"),
+                Piece::Slot(1, Slot::NUMBER),
+                Piece::Text("слово"),
+            ]
+        };
+        let _ = t.typeset_template(pieces(), output);
+        let input = pieces();
+        let (allocs, reallocs, out) = count(|| t.typeset_template(input, output));
+        assert!(out.changed(), "{output:?}");
+        // The first text is encoded by every kind and the second by all but CSS, which leaves `&`
+        // alone; `слово` is changed only with `non_ascii()`.
+        let changed = out
+            .texts()
+            .iter()
+            .filter(|text| matches!(text, Cow::Owned(_)))
+            .count();
+        assert!((1..=3).contains(&changed), "{output:?}: {changed}");
+        assert_eq!((allocs, reallocs), (3 + changed, 0), "{output:?}");
+    }
+    // A text that needs no encoding adds nothing.
+    for output in outputs() {
+        let pieces = || vec![Piece::Text("слово "), Piece::Slot(0u8, Slot::WORD)];
+        let non_ascii = matches!(output, Output::Escaped(s) if s == EscapeStyle::JS.non_ascii() || s == EscapeStyle::CSS.non_ascii());
+        let _ = t.typeset_template(pieces(), output);
+        let input = pieces();
+        let (allocs, reallocs, out) = count(|| t.typeset_template(input, output));
+        assert_eq!(out.changed(), non_ascii, "{output:?}");
+        assert_eq!(
+            (allocs, reallocs),
+            (3 + usize::from(non_ascii), 0),
+            "{output:?}"
+        );
+    }
+}
+
+#[test]
+fn after_an_input_larger_than_64_kib_the_first_short_call_allocates_and_the_second_does_not() {
+    // Section 2.12: when the capacity of the thread-local scratch grew past 64 KiB, it is replaced
+    // by `Scratch::new()` after the call, so the next call allocates as a first call does; a
+    // caller's `Scratch` is never shrunk.
+    const SHORT: &str = "Адрес host:8080, версия v1.2.3, id 0x1F";
+    let big = "слово - слово... \"да\" 5 МБ. ".repeat(4000);
+    assert!(big.len() > 64 * 1024);
+    let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+
+    let _ = t.typeset(SHORT, Output::Unicode);
+    let (allocs, _, _) = count(|| t.typeset(SHORT, Output::Unicode));
+    assert_eq!(allocs, 0, "warm");
+    let out = t.typeset(&big, Output::Unicode);
+    assert!(matches!(out, Cow::Owned(_)));
+    drop(out);
+    let (first, _, out) = count(|| t.typeset(SHORT, Output::Unicode));
+    assert!(matches!(out, Cow::Borrowed(_)));
+    assert!(
+        first > 0,
+        "the first short call after a large input allocates"
+    );
+    let (second, reallocs, _) = count(|| t.typeset(SHORT, Output::Unicode));
+    assert_eq!((second, reallocs), (0, 0), "the second does not");
+
+    // The same for a changed short string: one allocation for the output once the scratch is warm.
+    let _ = t.typeset(&big, Output::Html(HtmlStyle::NAMED));
+    let _ = t.typeset("Он сказал \"да\"", Output::Unicode);
+    let (allocs, _, out) = count(|| t.typeset("Он сказал \"да\"", Output::Unicode));
+    assert!(matches!(out, Cow::Owned(_)));
+    assert_eq!(allocs, 1);
+
+    // A caller's scratch keeps its capacity: warmed by both inputs, it needs nothing more for the
+    // short one after the large one.
+    let mut scratch = Scratch::new();
+    let _ = t.typeset_with(&mut scratch, SHORT, Output::Unicode);
+    let out = t.typeset_with(&mut scratch, &big, Output::Unicode);
+    drop(out);
+    let (allocs, reallocs, out) = count(|| t.typeset_with(&mut scratch, SHORT, Output::Unicode));
+    assert_eq!((allocs, reallocs), (0, 0));
+    assert!(matches!(out, Cow::Borrowed(_)));
 }
