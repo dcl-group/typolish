@@ -7,9 +7,12 @@
 //! call. Its design is in `docs/design/` of the repository.
 //!
 //! The crate is in development: the engine recognizes protected and technical fragments and
-//! applies the rules of quotes, dashes, ranges, ellipses, no-break spaces and `number.times`;
-//! [`Typographer::report`] lists every edit, protected span and diagnostic. The rules `symbols.*`
-//! and `number.minus` change nothing yet.
+//! applies the rules of quotes, dashes, ranges, ellipses, no-break spaces and `number.times` (the
+//! rules `symbols.*` and `number.minus` change nothing yet); [`Typographer::report`] lists every
+//! edit, protected span and diagnostic;
+//! [`Typographer::format_number`] and [`Typographer::format_range`] format values by the language;
+//! every [`Output`] kind is encoded (HTML with entities or nowrap elements, escaped string bodies
+//! for JavaScript, JSON, Rust and CSS).
 //!
 //! ```
 //! use typolish::{Language, Output, RuleSet, Typographer};
@@ -21,6 +24,7 @@
 //!     RU_UI.typeset("Он сказал \"привет\" - и ушёл...", Output::Unicode),
 //!     "Он сказал «привет»\u{a0}— и\u{a0}ушёл…"
 //! );
+//! assert_eq!(RU_UI.format_number(-12345, Output::Unicode).to_string(), "\u{2212}12\u{a0}345");
 //! ```
 
 #![forbid(unsafe_code)]
@@ -29,6 +33,7 @@ mod engine;
 mod error;
 mod lang;
 mod language;
+mod number;
 mod output;
 mod piece;
 mod report;
@@ -48,6 +53,7 @@ pub use lang::data::{
     NumberData, QuotePairs, Script,
 };
 pub use language::{Language, LanguageBuilder};
+pub use number::{Number, NumberDisplay, RangeDisplay};
 pub use output::{EscapeStyle, HtmlStyle, Output};
 pub use piece::{Piece, Slot, SlotKind, Template, TemplatePart};
 pub use report::{

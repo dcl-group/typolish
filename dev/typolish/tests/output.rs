@@ -1127,12 +1127,15 @@ fn a_template_text_is_changed_when_the_encoding_changed_it() {
     let out = t.typeset_template::<()>([Piece::Text("a & b")], NAMED);
     assert!(out.changed());
     assert_eq!(out.texts(), ["a &amp; b"]);
-    // Nothing to encode: borrowed with the input lifetime, not changed.
+    // Nothing to encode: borrowed with the input lifetime, not changed. With `non_ascii()` the
+    // Cyrillic is encoded (section 11.6), so the text is changed and owned.
     for output in all_outputs() {
         let out = t.typeset_template::<()>([Piece::Text("Сохранить")], output);
-        assert!(!out.changed(), "{output:?}");
-        assert!(
+        let non_ascii = matches!(output, Output::Escaped(s) if s == s.non_ascii());
+        assert_eq!(out.changed(), non_ascii, "{output:?}");
+        assert_eq!(
             matches!(out.texts()[0], Cow::Borrowed("Сохранить")),
+            !non_ascii,
             "{output:?}"
         );
     }

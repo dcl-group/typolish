@@ -186,13 +186,9 @@ fn run_on<R: Recorder>(
     !edits.is_empty()
 }
 
-/// The bytes that the output kind encodes (design section 3.2). Only `Output::Unicode` is
-/// rendered so far, and `Html` and `Escaped` are written as Unicode until stage 3, so no output
-/// kind encodes a byte yet.
+/// The bytes that the output kind encodes (design sections 3.2 and 11.6).
 fn encoded(output: Output) -> Triggers {
-    match output {
-        Output::Unicode | Output::Html(_) | Output::Escaped(_) => Triggers::NONE,
-    }
+    crate::output::encoded_bytes(output)
 }
 
 /// The prefilter (design section 3.2): whether any byte of the texts can make a rule or the
@@ -252,18 +248,63 @@ pub(crate) fn typeset_into(
     output: Output,
     buf: &mut String,
 ) {
-    let changed = wanted(
+    if !wanted(
         typographer,
         output,
         core::iter::once(text),
         core::iter::empty(),
-    ) && run(typographer, scratch, &[Input::Text(text)], &mut NoRecord);
-    if changed {
-        // `Html` and `Escaped` are written as Unicode until the encoders of stage 3.
-        render::render_text_into(text, &scratch.edits, &typographer.language().data(), buf);
-    } else {
+    ) {
         buf.push_str(text);
+        return;
     }
+    let changed = run(typographer, scratch, &[Input::Text(text)], &mut NoRecord);
+    let data = typographer.language().data();
+    if output == Output::Unicode {
+        if changed {
+            render::render_text_into(text, &scratch.edits, &data, buf);
+        } else {
+            buf.push_str(text);
+        }
+        return;
+    }
+    let input = [Input::Text(text)];
+    let view = view(scratch, &input, &data);
+    render::render_into_encoded(&view, output, buf);
+}
+
+/// What the encoded renderer reads after a run.
+fn view<'v, 't>(
+    scratch: &'v Scratch,
+    input: &'v [Input<'t>],
+    data: &'v crate::lang::data::Table<'v>,
+) -> render::View<'v, 't> {
+    render::View {
+        input,
+        pieces: &scratch.pieces,
+        atoms: &scratch.atoms,
+        edits: &scratch.edits,
+        data,
+    }
+}
+
+/// The result for string input after `run`, in the output kind.
+fn text_result<'a>(
+    typographer: &Typographer,
+    scratch: &Scratch,
+    text: &'a str,
+    changed: bool,
+    output: Output,
+) -> Cow<'a, str> {
+    let data = typographer.language().data();
+    if output == Output::Unicode {
+        if !changed {
+            return Cow::Borrowed(text);
+        }
+        return render::render_text(text, &scratch.edits, &data);
+    }
+    let input = [Input::Text(text)];
+    let view = view(scratch, &input, &data);
+    render::render_text_encoded(text, &view, output)
 }
 
 /// The whole pipeline without the prefilter (design section 13.5, property 8).
@@ -271,13 +312,10 @@ fn typeset_unfiltered<'a>(
     typographer: &Typographer,
     scratch: &mut Scratch,
     text: &'a str,
-    _output: Output,
+    output: Output,
 ) -> Cow<'a, str> {
-    if !run(typographer, scratch, &[Input::Text(text)], &mut NoRecord) {
-        return Cow::Borrowed(text);
-    }
-    // `Html` and `Escaped` are written as Unicode until the encoders of stage 3.
-    render::render_text(text, &scratch.edits, &typographer.language().data())
+    let changed = run(typographer, scratch, &[Input::Text(text)], &mut NoRecord);
+    text_result(typographer, scratch, text, changed, output)
 }
 
 /// `Typographer::typeset_template_with`: returns the texts in the n + 1 form and whether any of
@@ -305,27 +343,48 @@ pub(crate) fn typeset_template<'t>(
         Input::Markup(text) if escaped => Some(*text),
         _ => None,
     });
-    let changed = wanted(typographer, output, texts, encoded_only)
-        && run(typographer, scratch, input, &mut NoRecord);
-    template_texts(typographer, scratch, input, slot_count, changed)
+    if !wanted(typographer, output, texts, encoded_only) {
+        // No byte that a rule reads or the output kind encodes: every text is its merge.
+        return template_texts(
+            typographer,
+            scratch,
+            input,
+            slot_count,
+            false,
+            Output::Unicode,
+            &mut NoRecord,
+        );
+    }
+    let changed = run(typographer, scratch, input, &mut NoRecord);
+    template_texts(
+        typographer,
+        scratch,
+        input,
+        slot_count,
+        changed,
+        output,
+        &mut NoRecord,
+    )
 }
 
-/// The texts of a template in the n + 1 form after `run`, and whether any of them changed.
-fn template_texts<'t>(
+/// The texts of a template in the n + 1 form after `run`, in the output kind, and whether any of
+/// them changed.
+fn template_texts<'t, R: Recorder>(
     typographer: &Typographer,
     scratch: &Scratch,
     input: &[Input<'t>],
     slot_count: usize,
     changed: bool,
+    output: Output,
+    rec: &mut R,
 ) -> (Vec<Cow<'t, str>>, bool) {
-    let edits = if changed { &scratch.edits[..] } else { &[] };
-    render::render_template(
-        input,
-        &scratch.pieces,
-        edits,
-        slot_count,
-        &typographer.language().data(),
-    )
+    let data = typographer.language().data();
+    if output == Output::Unicode {
+        let edits = if changed { &scratch.edits[..] } else { &[] };
+        return render::render_template(input, &scratch.pieces, edits, slot_count, &data);
+    }
+    let view = view(scratch, input, &data);
+    render::render_template_encoded(&view, output, slot_count, rec)
 }
 
 /// `Typographer::report`: the whole pipeline with the journal, without the prefilter (design
@@ -334,14 +393,11 @@ pub(crate) fn report<'a>(
     typographer: &Typographer,
     scratch: &mut Scratch,
     text: &'a str,
-    _output: Output,
+    output: Output,
 ) -> (Cow<'a, str>, Records) {
     let mut journal = Journal::default();
-    let result = if run(typographer, scratch, &[Input::Text(text)], &mut journal) {
-        render::render_text(text, &scratch.edits, &typographer.language().data())
-    } else {
-        Cow::Borrowed(text)
-    };
+    let changed = run(typographer, scratch, &[Input::Text(text)], &mut journal);
+    let result = text_result(typographer, scratch, text, changed, output);
     (result, journal.finish())
 }
 
@@ -351,11 +407,19 @@ pub(crate) fn report_template<'t>(
     scratch: &mut Scratch,
     input: &[Input<'t>],
     slot_count: usize,
-    _output: Output,
+    output: Output,
 ) -> (Vec<Cow<'t, str>>, bool, Records) {
     let mut journal = Journal::default();
     let changed = run(typographer, scratch, input, &mut journal);
-    let (texts, changed) = template_texts(typographer, scratch, input, slot_count, changed);
+    let (texts, changed) = template_texts(
+        typographer,
+        scratch,
+        input,
+        slot_count,
+        changed,
+        output,
+        &mut journal,
+    );
     (texts, changed, journal.finish())
 }
 
@@ -372,13 +436,18 @@ mod tests {
 
     const LANGUAGES: [Language; 3] = [Language::RU_RU, Language::EN_US, Language::COMMON];
 
-    fn outputs() -> [Output; 5] {
+    fn outputs() -> [Output; 10] {
         [
             Output::Unicode,
             Output::Html(HtmlStyle::NAMED),
             Output::Html(HtmlStyle::CHARACTERS),
+            Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap")),
+            Output::Html(HtmlStyle::CHARACTERS.nowrap_style()),
             Output::Escaped(EscapeStyle::JS),
+            Output::Escaped(EscapeStyle::JS_HEX),
+            Output::Escaped(EscapeStyle::JSON),
             Output::Escaped(EscapeStyle::RUST),
+            Output::Escaped(EscapeStyle::CSS.non_ascii()),
         ]
     }
 
@@ -427,7 +496,8 @@ mod tests {
                 let slots = input.iter().filter(|i| matches!(i, Input::Slot(_))).count();
                 let mut scratch = Scratch::new();
                 let changed = run(&t, &mut scratch, &input, &mut NoRecord);
-                let (texts, changed) = template_texts(&t, &scratch, &input, slots, changed);
+                let (texts, changed) =
+                    template_texts(&t, &scratch, &input, slots, changed, output, &mut NoRecord);
                 prop_assert_eq!(filtered.texts(), texts.as_slice());
                 prop_assert_eq!(filtered.changed(), changed);
             }

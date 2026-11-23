@@ -683,12 +683,13 @@ Formatting rules:
 - Minus: U+2212 for both languages by default, as the task requires; a deviation from CLDR 49, where
   the minus sign is U+002D (section 7.5). Setting `minus_sign`.
 - Range: the language's CLDR range pattern, `{0}–{1}` (U+2013, no spaces) for both languages, for
-  every pair of values. Negative ends are written as they are (`−5–−1`), and equal ends are not
-  collapsed (ru `8⍽000–8⍽000`): the pattern applies to every pair, and the caller decides what is a
-  range. Rejected: the CLDR `approximately` pattern for equal ends (`≈8⍽000`), which changes the
-  meaning of a range. A group separator that is a space is glue (only U+00A0 and U+202F are allowed,
-  section 2.11), so `{n}⍽МБ` and `12⍽345` never break apart; a separator that is not a space (`,` in
-  English) needs no glue.
+  every pair of values. A language whose pattern has spaces (`range_spaced`, none of the built-in
+  ones) gets U+00A0 on both sides of its dash, so the range stays one unbreakable unit. Negative
+  ends are written as they are (`−5–−1`), and equal ends are not collapsed (ru `8⍽000–8⍽000`): the
+  pattern applies to every pair, and the caller decides what is a range. Rejected: the CLDR
+  `approximately` pattern for equal ends (`≈8⍽000`), which changes the meaning of a range. A group
+  separator that is a space is glue (only U+00A0 and U+202F are allowed, section 2.11), so `{n}⍽МБ`
+  and `12⍽345` never break apart; a separator that is not a space (`,` in English) needs no glue.
 - No allocation: for `f32` and `f64` the `Display` makes two passes (a counting `fmt::Write` to
   learn the length of the integer part, then the real write), because grouping is counted from the
   right. The longest `f64` in `{}` is 327 bytes with its sign (`-5e-324` written out), so a stack

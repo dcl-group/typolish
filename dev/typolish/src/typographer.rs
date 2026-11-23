@@ -420,6 +420,23 @@ impl Typographer {
         self.settings.percent
     }
 
+    /// The number data in effect: the language's, with the group separator, the minus sign and
+    /// the minimum grouping digits of the settings (design section 2.7).
+    pub(crate) fn number_data(&self) -> crate::NumberData {
+        let s = &self.settings;
+        let mut data = self.language.data().numbers;
+        if let Some(group) = s.group_separator {
+            data = data.with_group(group);
+        }
+        if let Some(minus) = s.minus_sign {
+            data = data.with_minus(minus);
+        }
+        if let Some(digits) = s.min_grouping_digits {
+            data = data.with_min_grouping_digits(digits);
+        }
+        data
+    }
+
     /// The quote pairs in effect: the setting, or the language's.
     pub(crate) fn quote_pairs(&self) -> Option<QuotePairs> {
         self.settings.quote_pairs.or(self.language.data().quotes)

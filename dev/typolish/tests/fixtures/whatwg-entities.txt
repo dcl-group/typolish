@@ -12,8 +12,9 @@
 # package (`exclude` in Cargo.toml).
 #
 # Source and license: the WHATWG HTML Living Standard,
-# Copyright (c) WHATWG (Apple, Google, Mozilla, Microsoft). This work is licensed under a Creative
-# Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/).
+# Copyright (c) WHATWG (Apple, Google, Mozilla, Microsoft). This work is licensed under a
+# Creative Commons Attribution 4.0 International License
+# (https://creativecommons.org/licenses/by/4.0/).
 # Attribution: "Data from the HTML Living Standard, https://html.spec.whatwg.org/, by WHATWG
 # (Apple, Google, Mozilla, Microsoft), CC BY 4.0."
 #

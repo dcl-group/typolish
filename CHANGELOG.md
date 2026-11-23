@@ -25,11 +25,20 @@ Nothing released yet. Version 0.1.0 is in development.
   `add_units`, `add_short_words`, `add_particles`, `short_word_length` and `short_words_any_script`
   settings), and the multiplication sign (`number.times`). The `symbols.*` rules and `number.minus`
   are accepted in rule sets but change nothing yet.
+- `Typographer::format_number` and `Typographer::format_range` format a `Number` (every integer
+  type, `f32`, `f64`, `Number::decimal` for digits as written, `Number::fixed` for a float rounded
+  to a number of fraction digits) by the language: decimal separator, grouping from
+  `min_grouping_digits`, group separator and minus sign of the settings, the range pattern of the
+  language, and the symbols of `NaN` and infinity. They return the lazy displays `NumberDisplay` and
+  `RangeDisplay`, which allocate nothing.
+- `Output::Html` escapes `& < > " '` and writes the typographic set as named, decimal or hexadecimal
+  references or as characters (`HtmlStyle`), with no-break groups as entities or as nowrap elements
+  (`nowrap_class`, `nowrap_style`); a group split at a `Markup` piece gives `NowrapFallback`.
+  `Output::Escaped` writes the body of a string literal for JavaScript (`JS`, `JS_HEX`,
+  `JS_CODE_POINT`), JSON, Rust and CSS, with the container escaped completely and the typographic
+  set, or with `non_ascii()` every non-ASCII character, as escapes. A result is borrowed exactly
+  when its encoded form equals the input.
 - `LanguageBuilder` builds a language at run time from an existing language or from
   `LanguageData::new` under a new tag, with one method per field of `LanguageData` (`abbreviations`
   takes the parts and the binding of each entry); `build` lowercases the word lists, sorts and
   deduplicates every list, and validates the table as `Language::from_data` does.
-
-- Known limitation of the development state: `Output::Html` and `Output::Escaped` are accepted but
-  written as Unicode, without encoding, until their encoders are added; do not use them for
-  untrusted text.

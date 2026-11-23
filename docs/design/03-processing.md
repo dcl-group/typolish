@@ -48,7 +48,8 @@ two cannot drift apart:
 
 - `Unicode`: empty;
 - `Html`: `& < > " '`, and the lead bytes of the typographic set except with
-  `HtmlStyle::CHARACTERS`;
+  `HtmlStyle::CHARACTERS`; with `CHARACTERS` and a nowrap style, the lead bytes of U+00A0, U+202F
+  and U+2011 (0xC2, 0xE2), which a nowrap element changes or makes joints;
 - `Escaped`: `\`, `"`, controls (0x00 to 0x1F, 0x7F), the lead bytes of U+2028, U+2029 and of the
   typographic set; in addition `'`, the backtick, `< > &` and `$` for `JS`, `JS_HEX` and
   `JS_CODE_POINT`, `< > &` for `JSON`, and `'` and `<` for `CSS`; with `non_ascii()`, every byte
