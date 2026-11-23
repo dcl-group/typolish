@@ -517,7 +517,7 @@ fn a_spaced_placeholder_pair_stays() {
             .iter()
             .filter(|d| d.kind() == &DiagnosticKind::AmbiguousHyphen)
             .count();
-        let expected = usize::from(!what.contains("alone"));
+        let expected = usize::from(t.rules().contains(Rule::DashSpacedHyphen));
         assert_eq!(ambiguous, expected, "{what}");
     }
 }

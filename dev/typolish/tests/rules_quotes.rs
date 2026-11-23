@@ -661,7 +661,7 @@ fn slots_next_to_quotes() {
             Output::Unicode,
         );
         // In the sets `не` is a short word (`nbsp.short-words`).
-        let glued = what.contains("Prose") || what.contains("Interface");
+        let glued = t.rules().contains(Rule::NbspShortWords);
         let expected = if glued {
             ["Файл «", "» не\u{a0}найден"]
         } else {
@@ -690,13 +690,20 @@ fn slots_next_to_quotes() {
 
 #[test]
 fn rule_tables_run_with_the_configurations_of_section_13_2() {
-    // The helper `configs` gives the rule alone and each built-in set that holds it.
+    // The helper `configs` gives the rule alone and each built-in set that holds it: Prose holds
+    // every rule, Interface the rules of design section 9.2.
     for rule in QUOTES {
-        let names: Vec<_> = configs(&Language::EN_US, rule)
+        let names: Vec<String> = configs(&Language::EN_US, rule)
             .into_iter()
             .map(|(name, _)| name)
             .collect();
-        let expected = if rule == Rule::QuotesPrimes { 2 } else { 3 };
-        assert_eq!(names.len(), expected, "{rule}: {names:?}");
+        let mut expected = vec![
+            format!("en-US {} alone", rule.id()),
+            "en-US Prose".to_owned(),
+        ];
+        if RuleSet::INTERFACE.contains(rule) {
+            expected.push("en-US Interface".to_owned());
+        }
+        assert_eq!(names, expected, "{rule}");
     }
 }
