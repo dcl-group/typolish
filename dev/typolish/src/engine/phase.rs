@@ -587,7 +587,9 @@ pub(crate) fn remap(tokens: &[Tok], frags: &mut [Frag]) {
     let mut cur: Option<usize> = None;
     let mut seen_core = false;
     for (j, tok) in tokens.iter().enumerate() {
-        let Ok(j) = u32::try_from(j) else {
+        // `j + 1` below must not overflow: a window of 2^32 tokens stops here (design section
+        // 3.4 bounds bytes and pieces, not tokens).
+        let Some(j) = u32::try_from(j).ok().filter(|j| *j < u32::MAX) else {
             return;
         };
         if tok.frag == NO_FRAG {
@@ -604,8 +606,8 @@ pub(crate) fn remap(tokens: &[Tok], frags: &mut [Frag]) {
             let offset = frag.core_start.saturating_sub(frag.start);
             frag.start = j;
             if empty_core {
-                frag.core_start = j + offset;
-                frag.core_end = j + offset;
+                frag.core_start = j.saturating_add(offset);
+                frag.core_end = j.saturating_add(offset);
             }
         }
         frag.end = j + 1;
