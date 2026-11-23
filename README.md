@@ -12,7 +12,8 @@ numbers. The built-in languages are `ru-RU` and `en-US`; other languages are add
 - 27 rules with stable ids, two ready sets (`PROSE` and `INTERFACE`), and sets of your own.
 - Protection of commands, paths and code: backticks, delimiters of your own, protected pieces, and
   technical fragments the crate recognizes by itself.
-- Idempotent and deterministic; an unchanged string is returned borrowed, without allocation.
+- Idempotent and deterministic; an unchanged string is returned borrowed and, after the first call
+  on a thread, without allocation.
 - Explanation of every edit, a check of plain sources, and the reverse transformation.
 - No `unsafe`, no regular expressions, no panics, and nothing read from the environment.
 
