@@ -133,8 +133,8 @@ Decided by the maintainer on 2026-11-23; not reopened here:
     (split into parts, never whole) stays there, and `main` is never force-pushed (item 3, section
     14.7).
 33. Code and tests refer to this design as "design section N.M" everywhere, never as a bare "section
-    N.M". The references of `src/` and `tests/` that still lack the word are being brought to this
-    form, and a test of `tests/documentation.rs` will keep it so once they are.
+    N.M". `design_references_say_design` in `tests/documentation.rs` checks the comments of every
+    Rust file of the crate (section 13.10).
 34. Publishing on crates.io waits for the maintainer's command; until then only the GitHub
     repository is pushed (items 1 and 15). The tag `v0.1.0` is set and pushed only on that command
     too (section 14.7).

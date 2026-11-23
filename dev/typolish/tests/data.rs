@@ -1015,7 +1015,9 @@ fn rejected(data: LanguageData, field: &str) {
             );
         }
         Err(other) => panic!("{tag}: expected InvalidLanguageData, got {other:?}"),
-        Ok(_) => panic!("{tag}: a table that breaks section 7.6 was accepted (field {field})"),
+        Ok(_) => {
+            panic!("{tag}: a table that breaks design section 7.6 was accepted (field {field})")
+        }
     }
 }
 

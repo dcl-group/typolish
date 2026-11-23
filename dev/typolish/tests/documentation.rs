@@ -400,7 +400,7 @@ fn readme_states_what_section_13_10_requires() {
     assert!(limits.lines().filter(|l| l.starts_with("- ")).count() >= 8);
     assert!(
         limits.contains("10.8"),
-        "the limits do not point at section 10.8 of the design"
+        "the limits do not point at design section 10.8"
     );
     let protect = section(&text, "## Protecting commands and code");
     for word in [
@@ -1064,7 +1064,7 @@ fn readme_limits_cover_every_limit_of_the_design() {
             .unwrap_or_else(|| panic!("a limit without an example: {bullet}"));
         assert!(
             readme_limits.contains(&format!("`{first}`")),
-            "the README limits lack the first example {first:?} of a limit of section 10.8"
+            "the README limits lack the first example {first:?} of a limit of design section 10.8"
         );
     }
     assert!(bullets >= 10);

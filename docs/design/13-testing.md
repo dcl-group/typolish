@@ -637,7 +637,9 @@ The README states the known limits of section 10.8 and how to protect commands; 
 as doctests through a `#[cfg(doctest)]` item of `lib.rs` that includes it. `tests/documentation.rs`
 also checks that every README block is a `rust` block, that the numbers the README states (rules,
 version, MSRV) are those of the code, that its links point at files of the repository, that its
-known limits are those of section 10.8 and are what the crate does, and that the CHANGELOG has the
-prepared `0.1.0` entry naming every rule. It reads the README through the crate's `README.md`, which
-the package holds; the checks that need the CHANGELOG, the design or the targets of links skip
-outside the repository, as in `tests/package.rs` (section 13.9).
+known limits are those of section 10.8 and are what the crate does, that the CHANGELOG has the
+prepared `0.1.0` entry naming every rule, and that every comment of the crate's Rust files that
+refers to this design says "design section N.M", never a bare "section N.M" (section 15.2, item 33).
+It reads the README through the crate's `README.md`, which the package holds; the checks that need
+the CHANGELOG, the design or the targets of links skip outside the repository, as in
+`tests/package.rs` (section 13.9).
