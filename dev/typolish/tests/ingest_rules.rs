@@ -339,21 +339,21 @@ fn a_frozen_fragment_is_never_edited_inside() {
             "a>>b",
             "1'000'000",
         ] {
-            let input = format!("Run {core} now.");
-            let got = t.typeset(&input, Output::Unicode);
-            assert!(
-                got.contains(core),
-                "{} came back as {}",
-                show(&input),
-                show(&got)
-            );
-            let input = format!("Run \"{core}\"...");
-            let got = t.typeset(&input, Output::Unicode);
-            assert!(
-                got.contains(core),
-                "{} came back as {}",
-                show(&input),
-                show(&got)
+            // The sentence around the core: the first line has nothing to edit, the second gets
+            // the quotes of the language and `…`. A core that holds a straight quote keeps the
+            // wrapper quotes straight (design section 6.1).
+            check(&t, &format!("Run {core} now."), &format!("Run {core} now."));
+            let (open, close) = if core.contains('\'') {
+                ("\"", "\"")
+            } else if t.language() == &Language::RU_RU {
+                ("«", "»")
+            } else {
+                ("“", "”")
+            };
+            check(
+                &t,
+                &format!("Run \"{core}\"..."),
+                &format!("Run {open}{core}{close}…"),
             );
         }
     }
