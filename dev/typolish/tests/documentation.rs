@@ -564,6 +564,10 @@ fn changelog_names_every_rule_and_its_counts() {
         "LanguageBuilder",
         "RuleSet::PROSE",
         "RuleSet::INTERFACE",
+        "RuleSet::ALL",
+        "RuleSet::EMPTY",
+        "Language::from_data",
+        "Language::from_static",
     ] {
         assert!(
             entry.contains(name),

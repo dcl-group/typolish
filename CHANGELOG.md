@@ -37,8 +37,9 @@ supported Rust version: 1.100.
   - numbers in text (`number.minus`, `number.times`);
   - symbols (`symbols.copyright`, `symbols.arrows`, `symbols.math`).
 - Rule sets `RuleSet::PROSE` (all 27 rules) and `RuleSet::INTERFACE` (13 rules that cannot alter a
-  technical token), sets of one's own, and parsing of rule sets and rule ids from strings
-  (`"interface,-nbsp.short-words,+symbols.copyright"`).
+  technical token), `RuleSet::ALL` (every rule of the running version, so its output, unlike that of
+  the two sets, may change with `cargo update`), `RuleSet::EMPTY`, sets of one's own, and parsing of
+  rule sets and rule ids from strings (`"interface,-nbsp.short-words,+symbols.copyright"`).
 - Settings of the builder: quote pairs, single quotes (`SingleQuotes`), dash style, percent spacing
   (`PercentSpacing`), units, short words and particles added or removed, short word length, short
   words of any script, narrow glue (`NarrowGlue`), minimum grouping digits, group separator, minus
@@ -46,10 +47,11 @@ supported Rust version: 1.100.
 - Languages as data: `Language::RU_RU` and `Language::EN_US` (checked against CLDR 49),
   `Language::COMMON` for the rules that need no language data, `Language::from_tag` with an explicit
   error for a language without data, `LanguageData` with `const fn` setters for a language declared
-  as a `const`, and `LanguageBuilder` for a language built at run time; validation also requires the
-  range dash to be `–` or `—`, the decimal separator to be a visible character of its own that is
-  not a letter, a digit, whitespace, a quote character or a character with the Unicode `Dash`
-  property, and signs to be punctuation characters.
+  as a `const`, accepted by `Language::from_data` (validated) and `Language::from_static` (for a
+  `static` typographer), and `LanguageBuilder` for a language built at run time; validation also
+  requires the range dash to be `–` or `—`, the decimal separator to be a visible character of its
+  own that is not a letter, a digit, whitespace, a quote character or a character with the Unicode
+  `Dash` property, and signs to be punctuation characters.
 - Protection: backtick spans and fenced blocks, delimiters of one's own, `Piece::Protected`, and the
   technical fragments that the classifier recognizes by their shape (URLs, e-mail addresses and
   mentions, flags, paths, `host:port`, operators, UUIDs, hex numbers, ISO dates, versions, dotted
