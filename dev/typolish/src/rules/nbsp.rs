@@ -871,7 +871,8 @@ pub(crate) fn signs(cx: &Cx<'_>, i: usize) -> Option<Match> {
                         && (matches!(fr.kind, FragKind::Number | FragKind::Range) || roman(cx, fr))
                 }),
             };
-            if !target {
+            // Never before a fragment that starts with `-` (section 8.2): `№ -5` stays.
+            if !target || !glueable(cx, r, false) {
                 return None;
             }
             g.glue(cx, next, glue)?;

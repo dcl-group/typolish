@@ -982,6 +982,9 @@ const SIGN_ROWS: &[(&str, &str)] = &[
     ("№\n5", "№\n5"),
     ("№⍽5", "№⍽5"),
     ("№⎵5", "№⎵5"),
+    // Never before a fragment that starts with `-` (section 8.2).
+    ("№ -5", "№ -5"),
+    ("§ -1", "§ -1"),
 ];
 
 #[test]
@@ -1035,6 +1038,8 @@ fn signs_inside_both_sets() {
             ("Документ № 5", "Документ №⍽5"),
             ("№5", "№⍽5"),
             ("№\t5", "№\t5"),
+            ("№ -5", "№ -5"),
+            ("§ -1", "§ -1"),
         ],
     );
     // A short word before a sign (section 8.7, `nbsp.short-words`): the sign is a next token.
