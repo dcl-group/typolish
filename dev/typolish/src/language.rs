@@ -459,7 +459,29 @@ impl LanguageBuilder {
         self
     }
 
-    /// Sets the particles (rule `nbsp.particles`); `build` lowercases and sorts them.
+    /// Sets the particles; `build` lowercases and sorts them.
+    ///
+    /// The rule `nbsp.particles` glues a particle to the word or slot before it, and a particle
+    /// so placed is never the trigger word of `nbsp.short-words` or `nbsp.short-length`, which
+    /// glue nothing after it (design section 8.7).
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder, Output, RuleSet, Typographer};
+    ///
+    /// let ru = |particles: &[&str]| -> Result<Typographer, typolish::Error> {
+    ///     let lang = LanguageBuilder::from_language(&Language::RU_RU, "ru-KZ")
+    ///         .particles(particles)
+    ///         .short_word_length(2)
+    ///         .build()?;
+    ///     Ok(Typographer::new(lang, RuleSet::PROSE))
+    /// };
+    /// let t = ru(&["ли"])?;
+    /// assert_eq!(t.typeset("Знаешь ли ты", Output::Unicode), "Знаешь\u{a0}ли ты");
+    /// // Without the particle, `ли` is an ordinary short word.
+    /// let t = ru(&[])?;
+    /// assert_eq!(t.typeset("Знаешь ли ты", Output::Unicode), "Знаешь ли\u{a0}ты");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn particles<I>(mut self, particles: I) -> Self
     where
         I: IntoIterator,
