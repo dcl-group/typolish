@@ -502,15 +502,31 @@ U+00A0 and must not be normalized.
   separately for each pathological input. No absolute thresholds: the machine is shared. Indicative
   targets, measured in stage 5 and not promised: at least 20 MB/s on the corpus in Unicode output, a
   median below 10 µs for one interface string. Measured on 2026-11-23 (release, one shared machine,
-  Rust 1.100): the corpus runs at 1.8 to 3.6 MB/s in every output kind (about 280 to 550 ns per
-  byte); the interface strings of the bench take 13 to 15 µs at the median and 29 to 31 µs at p99
-  for 42 to 44 bytes of en-US, and 31 to 33 µs at the median and 49 to 54 µs at p99 for 71 to 83
-  bytes of ru-RU; a one-word string that the prefilter rejects takes 29 to 48 ns. One paragraph of
-  10^5 ZWJ emoji clusters raises the peak memory by about 13 MB (about 130 bytes per cluster, 128 to
-  163 bytes from 10^4 to 10^6 clusters, so linear); the result is borrowed, so this is engine memory
-  only, about 1.6 times the estimate of section 3.12. Both indicative targets are missed by an order
-  of magnitude; the cost is linear (the 16 MiB to 64 KiB ratio of every pathological input is
-  between 0.9 and 1.7), so this is a constant-factor matter, not a defect of section 3.12.
+  Rust 1.100), first at the end of stage 5: the corpus ran at 1.8 to 3.6 MB/s in every output kind
+  (about 280 to 550 ns per byte), the interface strings of the bench took 13 to 15 µs at the median
+  for 42 to 44 bytes of en-US and 31 to 33 µs for 71 to 83 bytes of ru-RU, and one paragraph of 10^5
+  ZWJ emoji clusters raised the peak memory by about 13 MB. The time went to linear scans of word
+  lists for every word (check 0 and `nbsp.abbreviations`), to Unicode tables for Cyrillic text (the
+  segmenter, `char::is_alphabetic`, `char::to_lowercase`), to every rule being called at every token
+  and every phase copying every token, and to the per-call setup; sections 3.5, 3.6, 3.8 and 3.12
+  describe what replaced them, without a change of any output. Measured again after that work: the
+  corpus runs at 6.8 to 14.6 MB/s in Unicode output (about 70 to 150 ns per byte; ru-RU 10.6 to
+  14.6, en-US 6.8 to 11.0, the templates of `ui.tmpl` the slowest) and at 4.5 to 11.3 MB/s in the
+  other output kinds; time per byte of joined corpus is 65 to 100 ns from 1 KiB to 16 MiB; the
+  interface strings take 3.2 to 5.6 µs at the median and 6.4 to 12.4 µs at p99 for en-US, 3.1 to 6.3
+  µs at the median and 5.9 to 14.3 µs at p99 for ru-RU; a one-word string that the prefilter rejects
+  takes 28 to 47 ns. One paragraph of 10^5 ZWJ emoji clusters raises the peak memory by about 7 MB
+  (about 70 bytes per cluster, 68 to 113 bytes from 10^4 to 10^6 clusters, so linear); the result is
+  borrowed, so this is engine memory only (section 3.12). The latency target is met; the throughput
+  target is missed by a factor of 1.4 to 3. What remains is spread over the passes the design
+  prescribes rather than concentrated in one place: per fragment the classifier reads the wrapper,
+  the units, the signature of check 0, the table and the labels (about 150 to 250 ns per fragment);
+  per space every active no-break rule re-reads its context and its lists (the no-break phase is
+  about 35 to 40 ns per byte); and the lexer classes every character. The cost is linear: in
+  `load_is_linear` the 16 MiB to 64 KiB ratio of every pathological input is between 1.0 and 1.8 (up
+  to 1.9 in the bench, which starts each input with a new scratch); the step between 64 KiB and 1
+  MiB, where the token buffers of one window leave the caches, is most of it. The faster the passes,
+  the larger that memory-bound share, so the margin to the bound of 2 is smaller than it was.
 - `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` (the only file with
   `#![allow(unsafe_code)]`, section 14.5; the allocator counts and delegates to
   `std::alloc::System`) checks the table of section 2.12: zero allocations for an unchanged string

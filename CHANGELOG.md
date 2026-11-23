@@ -62,3 +62,7 @@ Nothing released yet. Version 0.1.0 is in development.
   `LanguageData::new` under a new tag, with one method per field of `LanguageData` (`abbreviations`
   takes the parts and the binding of each entry); `build` lowercases the word lists, sorts and
   deduplicates every list, and validates the table as `Language::from_data` does.
+- The forward pass (`typeset*`, `report*`) is about three (en-US) to six (ru-RU) times faster on the
+  corpus, with unchanged results: about 7 to 15 MB/s in Unicode output and 3 to 6 µs for an
+  interface string of 40 to 80 bytes on the development machine (design section 13.8). A typographer
+  of `Typographer::new` still computes its tables on its first call, without allocation.
