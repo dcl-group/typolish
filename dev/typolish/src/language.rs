@@ -67,6 +67,7 @@ impl Hash for Repr {
 }
 
 impl Repr {
+    #[inline]
     fn data(&self) -> Table<'_> {
         match self {
             Repr::Static(data) => data.table(),
@@ -232,6 +233,7 @@ impl Language {
     }
 
     /// The data table.
+    #[inline]
     pub(crate) fn data(&self) -> Table<'_> {
         self.repr.data()
     }

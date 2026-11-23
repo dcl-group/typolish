@@ -132,6 +132,31 @@ impl ListEdit {
     /// addition, or an entry of `base` that is not removed. `added` and `removed` are folded and
     /// sorted by `build()`.
     fn holds(&self, base: List<'_>, key: impl Iterator<Item = char> + Clone) -> bool {
+        // The folded key is compared as UTF-8 bytes, which keep the order of the characters; it is
+        // written to a buffer on the stack once, unless it is longer than any word of a list.
+        let mut buf = [0u8; 32];
+        let mut len = 0;
+        for c in key.clone().map(fold_char) {
+            let Some(slot) = buf.get_mut(len..len + c.len_utf8()) else {
+                return self.holds_chars(base, key);
+            };
+            c.encode_utf8(slot);
+            len += c.len_utf8();
+        }
+        let bytes = buf.get(..len).unwrap_or_default();
+        let found = |list: &[String]| {
+            list.binary_search_by(|entry| entry.as_bytes().cmp(bytes))
+                .is_ok()
+        };
+        found(&self.added)
+            || (base
+                .binary_search_by(|entry| entry.as_bytes().cmp(bytes))
+                .is_ok()
+                && !found(&self.removed))
+    }
+
+    /// `holds`, comparing character by character.
+    fn holds_chars(&self, base: List<'_>, key: impl Iterator<Item = char> + Clone) -> bool {
         let folded = || key.clone().map(fold_char);
         let found = |list: &[String]| {
             list.binary_search_by(|entry| entry.chars().cmp(folded()))
@@ -340,8 +365,10 @@ impl Typographer {
         });
         let mut signatures = Signatures::NONE;
         signatures.add_table(&data);
+        for unit in &self.settings.units.added {
+            signatures.add_dictionary(WordList::Units, unit.chars());
+        }
         let added = [
-            (WordList::Dictionary, &self.settings.units.added),
             (WordList::ShortWords, &self.settings.short_words.added),
             (WordList::Particles, &self.settings.particles.added),
         ];
@@ -1243,6 +1270,30 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(format!("{built:?}"), before);
+    }
+
+    #[test]
+    fn short_words_of_any_length_are_found() {
+        // `holds` compares a short key from a buffer and a long one character by character.
+        let long = "пред".repeat(10);
+        let t = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+            .add_short_words([long.as_str()])
+            .remove_short_words(["для"])
+            .build()
+            .unwrap();
+        assert!(t.has_short_word(long.chars()));
+        assert!(t.has_short_word(long.to_uppercase().chars()));
+        assert!(!t.has_short_word("пред".repeat(9).chars()));
+        assert!(t.has_short_word("Без".chars()));
+        assert!(!t.has_short_word("для".chars()));
+        let mut chars = long.chars();
+        chars.next_back();
+        assert!(!t.has_short_word(chars));
+        assert!(
+            t.settings
+                .short_words
+                .holds_chars(t.language.data().short_words, long.chars())
+        );
     }
 
     #[test]

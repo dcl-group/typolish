@@ -64,29 +64,39 @@ mod tests {
             let mut set = Signatures::NONE;
             set.add_table(&table);
             let lists = [
-                (WordList::Dictionary, table.units),
-                (WordList::Dictionary, table.months),
-                (WordList::Dictionary, table.atom_exceptions),
-                (WordList::Dictionary, table.elisions),
+                (WordList::Units, table.units),
+                (WordList::Months, table.months),
+                (WordList::Exceptions, table.atom_exceptions),
+                (WordList::Exceptions, table.elisions),
                 (WordList::ShortWords, table.short_words),
                 (WordList::Particles, table.particles),
             ];
             for (list, entries) in lists {
+                let dictionary = !matches!(list, WordList::ShortWords | WordList::Particles);
                 for entry in entries.iter() {
                     assert!(set.may_hold(list, entry.chars()), "{entry}");
-                    // With the first letter in uppercase, as `cased_in` reads it.
+                    assert!(
+                        !dictionary || set.may_hold(WordList::Dictionary, entry.chars()),
+                        "{entry}"
+                    );
+                    // With the first letter in uppercase, as `cased_in` reads it; units are
+                    // compared with case alone.
                     let mut chars = entry.chars();
                     let upper = chars.next().into_iter().flat_map(char::to_uppercase);
-                    assert!(set.may_hold(list, upper.chain(chars)), "{entry}");
+                    if list != WordList::Units {
+                        assert!(set.may_hold(list, upper.chain(chars)), "{entry}");
+                    }
                 }
             }
             for (parts, _) in table.abbreviations.iter() {
-                for part in parts.iter() {
-                    assert!(set.may_hold(WordList::Dictionary, part.chars()), "{part}");
-                }
+                let mut runs: Vec<String> = parts.iter().map(str::to_owned).collect();
                 if parts.iter().all(|p| p.ends_with('.')) {
-                    let whole = parts.iter().flat_map(str::chars);
-                    assert!(set.may_hold(WordList::Dictionary, whole), "{parts:?}");
+                    runs.push(parts.iter().collect());
+                }
+                for run in runs {
+                    for list in [WordList::Dictionary, WordList::Abbreviations] {
+                        assert!(set.may_hold(list, run.chars()), "{run}");
+                    }
                 }
             }
         }
@@ -95,22 +105,63 @@ mod tests {
         set.add_table(&ru_ru::RU_RU.table());
         assert!(!set.may_hold(WordList::Dictionary, "изменения".chars()));
         assert!(!set.may_hold(WordList::ShortWords, "Сохранить".chars()));
+        // Units keep their case: `в` is a short word, `В` (volt) a unit.
+        assert!(set.may_hold(WordList::Units, "В".chars()));
+        assert!(!set.may_hold(WordList::Units, "в".chars()));
     }
 
     #[test]
-    fn abbreviations_starting_with_a_letter_are_one_range() {
+    fn a_shape_with_a_character_added_is_that_of_the_longer_key() {
+        use data::Shape;
+        for key in ["", "a", "т.е", "tis"] {
+            let dotted = format!("{key}.");
+            let elided = format!("'{key}");
+            assert_eq!(Shape::of(key.chars()).then('.'), Shape::of(dotted.chars()));
+            assert_eq!(
+                Shape::of(key.chars()).after('\''),
+                Shape::of(elided.chars())
+            );
+        }
+    }
+
+    #[test]
+    fn abbreviations_with_a_prefix_are_one_range() {
         for data in BUILTIN {
             let list = data.table().abbreviations;
-            for c in ['т', 'Т', 'и', 'г', 'D', 'p', 'a', 'я', '.'] {
-                let range = list.starting_with(c);
+            for prefix in [
+                "т",
+                "Т",
+                "т.",
+                "и",
+                "г",
+                "г-",
+                "г-ж",
+                "гл",
+                "D",
+                "Dr",
+                "Dr.",
+                "p",
+                "pp",
+                "a",
+                "я",
+                ".",
+                "",
+                "просп",
+                "просто",
+                "No",
+                "Nos.",
+                "Nose",
+            ] {
+                let range = list.with_prefix(prefix.chars());
                 let expected: Vec<usize> = (0..list.len())
                     .filter(|&k| {
                         list.get(k)
                             .and_then(|(parts, _)| parts.get(0))
-                            .is_some_and(|part| part.starts_with(c))
+                            .is_some_and(|part| part.starts_with(prefix))
                     })
                     .collect();
-                assert_eq!(range.collect::<Vec<_>>(), expected, "{} {c}", data.tag);
+                let found: Vec<usize> = range.collect();
+                assert_eq!(found, expected, "{} {prefix}", data.tag);
             }
         }
     }

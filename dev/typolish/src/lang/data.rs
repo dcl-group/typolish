@@ -587,6 +587,7 @@ impl LanguageData {
     }
 
     /// The view of the table that the engine reads (design section 7.1).
+    #[inline]
     pub(crate) const fn table(&self) -> Table<'static> {
         Table {
             cldr_version: self.cldr_version,
@@ -788,16 +789,28 @@ impl<'a> Abbreviations<'a> {
         (0..self.len()).filter_map(move |i| self.get(i))
     }
 
-    /// The indices of the entries whose first part starts with `c`. The entries are sorted by
-    /// their parts (design section 7.6), so they form one range, found by binary search.
-    pub(crate) fn starting_with(self, c: char) -> core::ops::Range<usize> {
-        let first = |i: usize| {
-            self.get(i)
-                .and_then(|(parts, _)| parts.get(0))
-                .and_then(|part| part.chars().next())
-        };
-        let lo = partition(0, self.len(), |i| first(i) < Some(c));
-        let hi = partition(lo, self.len(), |i| first(i) <= Some(c));
+    /// The indices of the entries whose first part starts with the characters of `prefix`. The
+    /// entries are sorted by their parts (design section 7.6), so they form one range, narrowed by
+    /// one binary search per character; reading stops when the range is empty.
+    pub(crate) fn with_prefix(self, prefix: impl Iterator<Item = char>) -> core::ops::Range<usize> {
+        let (mut lo, mut hi) = (0, self.len());
+        // Every entry in `lo..hi` has a first part that starts with the first `bytes` bytes of
+        // `prefix`.
+        let mut bytes = 0;
+        for c in prefix {
+            let next = |i: usize| {
+                self.get(i)
+                    .and_then(|(parts, _)| parts.get(0))
+                    .and_then(|part| part.get(bytes..))
+                    .and_then(|rest| rest.chars().next())
+            };
+            lo = partition(lo, hi, |i| next(i) < Some(c));
+            hi = partition(lo, hi, |i| next(i) <= Some(c));
+            if lo >= hi {
+                return lo..lo;
+            }
+            bytes += c.len_utf8();
+        }
         lo..hi
     }
 }
@@ -908,6 +921,7 @@ impl OwnedTable {
     }
 
     /// The view of the owned data.
+    #[inline]
     pub(crate) fn table(&self) -> Table<'_> {
         Table {
             cldr_version: &self.cldr_version,
@@ -1155,50 +1169,98 @@ fn is_valid_parts(parts: List<'_>) -> bool {
 /// The word lists that `Signatures` covers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum WordList {
-    /// The entries of check 0 of the classifier (design section 3.6): units (the builder's
-    /// additions included), month forms, atom exceptions, elisions, and every abbreviation part or
-    /// run of parts that check 0 matches written together.
+    /// All the entries of check 0 of the classifier (design section 3.6): the four lists below.
     Dictionary,
+    /// The units, the builder's additions included. The only list compared with case alone, so
+    /// its signature is not folded.
+    Units,
+    /// The month forms.
+    Months,
+    /// Every abbreviation part or run of parts that check 0 matches written together.
+    Abbreviations,
+    /// The atom exceptions and the elisions.
+    Exceptions,
     /// The short words, the builder's additions included.
     ShortWords,
     /// The particles, the builder's additions included.
     Particles,
 }
 
-/// The signatures of the entries of some word lists of a typographer: a Bloom filter of 2048
-/// bits over the list, the length in characters and the folded first and last characters of
-/// every entry. Every comparison of design section 7.1 (with case, with the first letter folded,
-/// or without case) keeps the signature, because folding is idempotent, so a key whose signature
-/// is absent equals no entry of the list and its lookups can be skipped. A present signature
-/// proves nothing. Computed once per typographer, with the active rules, without allocation.
+/// What the signature of a key reads: its length in characters and its first and last characters.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Signatures([u64; 32]);
+pub(crate) struct Shape {
+    len: u64,
+    first: Option<char>,
+    last: Option<char>,
+}
+
+impl Shape {
+    /// The shape of the characters `chars`.
+    pub(crate) fn of(mut chars: impl Iterator<Item = char>) -> Shape {
+        let first = chars.next();
+        let mut shape = Shape {
+            len: u64::from(first.is_some()),
+            first,
+            last: first,
+        };
+        for c in chars {
+            shape.last = Some(c);
+            shape.len += 1;
+        }
+        shape
+    }
+
+    /// The shape of the key with `c` appended.
+    pub(crate) fn then(self, c: char) -> Shape {
+        Shape {
+            len: self.len + 1,
+            first: self.first.or(Some(c)),
+            last: Some(c),
+        }
+    }
+
+    /// The shape of the key with `c` put before it.
+    pub(crate) fn after(self, c: char) -> Shape {
+        Shape {
+            len: self.len + 1,
+            first: Some(c),
+            last: self.last.or(Some(c)),
+        }
+    }
+}
+
+/// The signatures of the entries of some word lists of a typographer: a Bloom filter of 4096
+/// bits, two per entry, over the list, the length in characters and the first and last characters
+/// of every entry, folded except for `WordList::Units`. Every comparison of design section 7.1
+/// (with case, with the first letter folded, or without case) keeps the signature, because
+/// folding is idempotent, so a key whose signature is absent equals no entry of the list and its
+/// lookups can be skipped. A present signature proves nothing. Computed once per typographer,
+/// with the active rules, without allocation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Signatures([u64; 64]);
 
 impl Signatures {
     /// No signature.
-    pub(crate) const NONE: Signatures = Signatures([0; 32]);
+    pub(crate) const NONE: Signatures = Signatures([0; 64]);
 
-    /// The two bits of the signature of `chars` in `list`.
-    fn bits(list: WordList, mut chars: impl Iterator<Item = char>) -> [usize; 2] {
-        let first = chars.next();
-        let mut last = first;
-        let mut len = u64::from(first.is_some());
-        for c in chars {
-            last = Some(c);
-            len += 1;
-        }
-        let code = |c: Option<char>| u64::from(c.map_or(0, |c| u32::from(fold_char(c))));
+    /// The two bits of the signature of a key of this shape in `list`.
+    fn bits(list: WordList, shape: Shape) -> [usize; 2] {
+        let Shape { len, first, last } = shape;
+        let fold = list != WordList::Units;
+        let code = |c: Option<char>| {
+            u64::from(c.map_or(0, |c| u32::from(if fold { fold_char(c) } else { c })))
+        };
         let mut h = len ^ (code(first) << 8) ^ (code(last) << 32) ^ ((list as u64) << 60);
         // The finalizer of SplitMix64.
         h = (h ^ (h >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
         h = (h ^ (h >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
         h ^= h >> 31;
-        [(h & 0x7ff) as usize, ((h >> 11) & 0x7ff) as usize]
+        [(h & 0xfff) as usize, ((h >> 12) & 0xfff) as usize]
     }
 
     /// Adds the signature of an entry of `list`.
     pub(crate) fn add(&mut self, list: WordList, chars: impl Iterator<Item = char>) {
-        for bit in Signatures::bits(list, chars) {
+        for bit in Signatures::bits(list, Shape::of(chars)) {
             if let Some(word) = self.0.get_mut(bit / 64) {
                 *word |= 1 << (bit % 64);
             }
@@ -1207,18 +1269,40 @@ impl Signatures {
 
     /// Whether some entry of `list` may have the characters `chars`; `false` means that none has.
     pub(crate) fn may_hold(&self, list: WordList, chars: impl Iterator<Item = char>) -> bool {
-        Signatures::bits(list, chars).iter().all(|&bit| {
+        self.may_hold_shape(list, Shape::of(chars))
+    }
+
+    /// `may_hold` for a key of this shape.
+    pub(crate) fn may_hold_shape(&self, list: WordList, shape: Shape) -> bool {
+        Signatures::bits(list, shape).iter().all(|&bit| {
             self.0
                 .get(bit / 64)
                 .is_some_and(|word| word & (1 << (bit % 64)) != 0)
         })
     }
 
+    /// Adds an entry of a list of check 0, to its list and to `Dictionary`.
+    pub(crate) fn add_dictionary(
+        &mut self,
+        list: WordList,
+        chars: impl Iterator<Item = char> + Clone,
+    ) {
+        self.add(WordList::Dictionary, chars.clone());
+        self.add(list, chars);
+    }
+
     /// Adds the entries of a language's lists: check 0, short words and particles.
     pub(crate) fn add_table(&mut self, data: &Table<'_>) {
-        let lists = [data.units, data.months, data.atom_exceptions, data.elisions];
-        for entry in lists.iter().flat_map(|list| list.iter()) {
-            self.add(WordList::Dictionary, entry.chars());
+        let lists = [
+            (WordList::Units, data.units),
+            (WordList::Months, data.months),
+            (WordList::Exceptions, data.atom_exceptions),
+            (WordList::Exceptions, data.elisions),
+        ];
+        for (list, entries) in lists {
+            for entry in entries.iter() {
+                self.add_dictionary(list, entry.chars());
+            }
         }
         // The parts of an abbreviation as check 0 reads them: one part, or a run of parts that
         // all end in a full stop.
@@ -1232,7 +1316,7 @@ impl Signatures {
                         break;
                     }
                     let run = parts.iter().skip(i).take(n + 1 - i).flat_map(str::chars);
-                    self.add(WordList::Dictionary, run);
+                    self.add_dictionary(WordList::Abbreviations, run);
                 }
             }
         }

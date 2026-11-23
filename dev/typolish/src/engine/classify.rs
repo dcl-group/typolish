@@ -11,7 +11,7 @@
 use super::Recorder;
 use super::lex::{Flags, Kind, Mark, NO_PIECE, Op, Tok, WordScript, is_format_char, is_joiner};
 use super::record::{Loc, Sink};
-use crate::lang::data::{Table, WordList, fold_char};
+use crate::lang::data::{Shape, Table, WordList, fold_char};
 use crate::report::{ProtectedKind, TechKind};
 use crate::{DiagnosticKind, Severity, SlotKind, Typographer};
 
@@ -98,6 +98,9 @@ pub(crate) struct Frag {
     pub(crate) stop: bool,
     /// The core counts as a label number (design section 3.6, "Label numbers").
     pub(crate) label: bool,
+    /// The fragment holds a slot of kind `Other` (section 8.2: no glue sticks to it). Slots are
+    /// never edited, so this holds for every phase of the pass.
+    pub(crate) other_slot: bool,
 }
 
 /// One unit of a core.
@@ -169,7 +172,7 @@ impl ClassifyScratch {
 
 /// The characters of a range of the call's text that the checks read: without format
 /// characters, ZWNJ and ZWJ (design section 3.6).
-fn visible(text: &str, start: u32, end: u32) -> impl Iterator<Item = char> + '_ {
+fn visible(text: &str, start: u32, end: u32) -> impl Iterator<Item = char> + Clone + '_ {
     text.get(start as usize..end as usize)
         .unwrap_or("")
         .chars()
@@ -289,6 +292,11 @@ fn classify_fragment<R: Recorder>(
         kind: FragKind::Punctuation,
         stop: false,
         label: false,
+        other_slot: tokens
+            .get(start as usize..end as usize)
+            .unwrap_or_default()
+            .iter()
+            .any(|t| t.kind == Kind::Slot(SlotKind::Other)),
     };
     if cs_i >= ce_i {
         frag.core_start = cs_i;
@@ -502,27 +510,49 @@ fn dictionary(
         && tokens.get(frag.core_start as usize - 1).is_some_and(|t| {
             t.kind == Kind::Quote && matches!(first_char(text, t), Some('\'' | '’'))
         });
+    // A key whose signature no entry has is no entry (design section 3.6); the key itself is
+    // built only for the lookups.
+    let chars = visible(text, first.src.start, last.src.end);
+    let signatures = &t.compiled().signatures;
+    let shape = Shape::of(chars.clone());
+    let held = |stop: bool| {
+        let key = if stop { shape.then('.') } else { shape };
+        signatures.may_hold_shape(WordList::Dictionary, key)
+            || (apostrophe && signatures.may_hold_shape(WordList::Dictionary, key.after('\'')))
+    };
+    let plain = held(false);
+    let stopped = frag.stop && held(true);
+    if !plain && !stopped {
+        return false;
+    }
     cs.key.clear();
-    cs.key.extend(visible(text, first.src.start, last.src.end));
-    if entry(t, data, apostrophe, cs) {
+    cs.key.extend(chars);
+    if plain && entry(t, data, apostrophe, cs, shape) {
         return true;
     }
-    frag.stop && {
+    stopped && {
         cs.key.push('.');
-        entry(t, data, apostrophe, cs)
+        entry(t, data, apostrophe, cs, shape.then('.'))
     }
 }
 
-/// Whether `cs.key` equals an entry of check 0, compared as design section 7.1 says.
-fn entry(t: &Typographer, data: &Table<'_>, apostrophe: bool, cs: &mut ClassifyScratch) -> bool {
-    let key = cs.key.as_str();
+/// Whether `cs.key`, of the shape `shape`, equals an entry of check 0, compared as design section
+/// 7.1 says. A list is read only when the signature of the key is in its own signatures.
+fn entry(
+    t: &Typographer,
+    data: &Table<'_>,
+    apostrophe: bool,
+    cs: &mut ClassifyScratch,
+    shape: Shape,
+) -> bool {
     let signatures = &t.compiled().signatures;
-    let elided = core::iter::once('\'').chain(key.chars());
-    if !signatures.may_hold(WordList::Dictionary, key.chars())
-        && !(apostrophe && signatures.may_hold(WordList::Dictionary, elided))
-    {
-        return false;
+    let held = |list| signatures.may_hold_shape(list, shape);
+    let key = cs.key.as_str();
+    if held(WordList::Units) && t.has_unit(key) {
+        return true;
     }
+    let months = held(WordList::Months);
+    let abbreviations = held(WordList::Abbreviations);
     // Entries compared with case, an entry that starts with a lowercase letter also matching the
     // text with that letter in uppercase, except a single letter with a full stop (section 7.1).
     cs.lowered.clear();
@@ -537,23 +567,25 @@ fn entry(t: &Typographer, data: &Table<'_>, apostrophe: bool, cs: &mut ClassifyS
     let cased = [key, cs.lowered.as_str()];
     let cased = cased.iter().filter(|k| !k.is_empty());
 
-    if t.has_unit(key) {
-        return true;
-    }
     for k in cased {
-        if data.months.contains(k) {
+        if months && data.months.contains(k) {
             return true;
         }
-        for (parts, _) in data.abbreviations.iter() {
-            if parts_match(parts, k) {
-                return true;
-            }
+        if abbreviations
+            && data
+                .abbreviations
+                .iter()
+                .any(|(parts, _)| parts_match(parts, k))
+        {
+            return true;
         }
     }
-    if folded_in(data.atom_exceptions, key) || folded_in(data.elisions, key) {
+    let exceptions = held(WordList::Exceptions);
+    if exceptions && (folded_in(data.atom_exceptions, key) || folded_in(data.elisions, key)) {
         return true;
     }
-    apostrophe && !data.elisions.is_empty() && {
+    let elided = signatures.may_hold_shape(WordList::Exceptions, shape.after('\''));
+    apostrophe && elided && !data.elisions.is_empty() && {
         cs.lowered.clear();
         cs.lowered.push('\'');
         cs.lowered.push_str(&cs.key);
@@ -590,6 +622,22 @@ fn folded_in(list: crate::lang::data::List<'_>, key: &str) -> bool {
 /// The checks 1 to 24 of design section 3.6, in order; `minus` is the minus sign of the settings,
 /// which check 15 reads as a sign.
 fn checks(data: &Table<'_>, minus: char, text: &str, u: &[Unit], stop: bool) -> (FragKind, Freeze) {
+    // The most common core, one word unit, matches none of the checks 1 to 22 (each needs a
+    // digit, a punctuation mark, a dash, a dot or a second unit) and is a word by check 23.
+    if let [Unit { u: U::Word(_), .. }] = u {
+        return (FragKind::Word, Freeze::Nothing);
+    }
+    table_checks(data, minus, text, u, stop)
+}
+
+/// The checks 1 to 24 without the shortcut for one word unit.
+fn table_checks(
+    data: &Table<'_>,
+    minus: char,
+    text: &str,
+    u: &[Unit],
+    stop: bool,
+) -> (FragKind, Freeze) {
     let whole = |kind| (kind, Freeze::Nothing);
     if is_url(text, u) {
         return whole(FragKind::Url);
@@ -1343,10 +1391,11 @@ fn labels(text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
         if transparent {
             continue;
         }
-        let core = tokens
+        // Read only after a sign: most cores are not.
+        let roman = || match tokens
             .get(frag.core_start as usize..frag.core_end as usize)
-            .unwrap_or_default();
-        let roman = match core {
+            .unwrap_or_default()
+        {
             [only] if matches!(only.kind, Kind::Word(_)) => is_roman(
                 text,
                 &Unit {
@@ -1372,7 +1421,7 @@ fn labels(text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
         let label = match frag.kind {
             FragKind::Number | FragKind::Range => after_sign,
             // A Roman numeral that is also a unit (`V`, `L`) is a `Dictionary` core.
-            FragKind::Word | FragKind::Dictionary => frag.label || (roman && after_sign),
+            FragKind::Word | FragKind::Dictionary => frag.label || (after_sign && roman()),
             _ => false,
         };
         if label {
@@ -1482,6 +1531,57 @@ mod tests {
     use super::super::record::NoRecord;
     use super::*;
     use crate::{Language, RuleSet};
+
+    #[test]
+    fn one_word_unit_is_a_word_by_the_whole_table() {
+        // The shortcut of `checks` for one word unit gives what the checks 1 to 24 give.
+        let words = [
+            "www",
+            "v",
+            "V",
+            "x",
+            "X",
+            "х",
+            "Х",
+            "deadbeef",
+            "DEADBEEF",
+            "abcdef",
+            "IV",
+            "XIX",
+            "MCMXCIV",
+            "I",
+            "Москва",
+            "сло\u{200d}во",
+            "ноя\u{ad}бря",
+            "e\u{301}",
+            "Мoсква",
+            "αβγ",
+            "\u{663}\u{664}",
+            "Ⅻ",
+            "e",
+            "a",
+            "Ph",
+        ];
+        for language in [Language::RU_RU, Language::EN_US, Language::COMMON] {
+            let data = language.data();
+            for text in words {
+                let len = u32::try_from(text.len()).unwrap();
+                let atoms = [Atom::Text { start: 0, end: len }];
+                let (mut clusters, mut tokens) = (Vec::new(), Vec::new());
+                lex_window(text, &atoms, &mut clusters, &mut tokens);
+                let mut units = Vec::new();
+                build_units(text, &tokens, 0, &mut units);
+                if !matches!(units[..], [Unit { u: U::Word(_), .. }]) {
+                    continue;
+                }
+                for stop in [false, true] {
+                    let (kind, freeze) = table_checks(&data, '-', text, &units, stop);
+                    assert_eq!(kind, FragKind::Word, "{text}");
+                    assert!(matches!(freeze, Freeze::Nothing), "{text}");
+                }
+            }
+        }
+    }
 
     /// The fragments of a one-window string: the text of the core (the whole fragment for
     /// `Punctuation`), its kind and its `LABEL` flag.

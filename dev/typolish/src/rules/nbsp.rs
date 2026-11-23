@@ -114,11 +114,7 @@ fn glue_of(cx: &Cx<'_>, place: NarrowGlue) -> Glue {
 /// sticks to such a fragment, quoted or bracketed alike (`and "{o}"`), because a nowrap group
 /// would take the whole fragment, slot included (sections 2.6, 8.2 and 11.5).
 pub(crate) fn holds_other(cx: &Cx<'_>, i: usize) -> bool {
-    let other = |j: usize| cx.kind(j) == Some(Kind::Slot(SlotKind::Other));
-    other(i)
-        || cx
-            .frag_of(i)
-            .is_some_and(|f| (f.start as usize..f.end as usize).any(other))
+    cx.kind(i) == Some(Kind::Slot(SlotKind::Other)) || cx.frag_of(i).is_some_and(|f| f.other_slot)
 }
 
 /// Whether a token separates fragments.
@@ -129,6 +125,18 @@ fn separator(cx: &Cx<'_>, i: usize) -> bool {
 /// The tokens on each side of the pattern space `s` between two fragments on one line, neither
 /// of them holding an `Other` slot (section 8.2).
 fn sides(cx: &Cx<'_>, s: usize) -> Option<(usize, usize)> {
+    // Most rules of the phase ask for the sides of the same space in turn.
+    if let Some((at, found)) = cx.sides.get()
+        && at == s
+    {
+        return found;
+    }
+    let found = sides_of(cx, s);
+    cx.sides.set(Some((s, found)));
+    found
+}
+
+fn sides_of(cx: &Cx<'_>, s: usize) -> Option<(usize, usize)> {
     if !cx.pattern_space(s) {
         return None;
     }
@@ -477,17 +485,19 @@ pub(crate) fn abbreviations(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
     head(cx, i)?;
     let list = cx.data.abbreviations;
-    // Only an entry whose first part starts with the first letter of the token, or with its
-    // folding (the relaxation of section 7.1), can match there. Such entries form a range of the
-    // sorted list each; they are read in the order of the list.
-    let ranges = match cx.visible(i, i).next() {
+    // The first part of an entry takes the whole text of the token, so only an entry whose first
+    // part starts with that text, or with that text with its first letter folded (the relaxation
+    // of section 7.1), can match there. Such entries form a range of the sorted list each; they
+    // are read in the order of the list.
+    let word = cx.visible(i, i);
+    let ranges = match word.clone().next() {
         Some(c) => {
-            let exact = list.starting_with(c);
+            let exact = list.with_prefix(word.clone());
             let folded = fold_char(c);
             let relaxed = if folded == c {
                 0..0
             } else {
-                list.starting_with(folded)
+                list.with_prefix(core::iter::once(folded).chain(word.skip(1)))
             };
             if relaxed.start < exact.start {
                 [relaxed, exact]
@@ -517,8 +527,6 @@ pub(crate) fn abbreviations(cx: &Cx<'_>, i: usize) -> Option<Match> {
 /// language's script with a full stop (`А.`), or a compact run of them (`А.С.`). A start wrapper
 /// is allowed with `lead`, more closing punctuation after the last full stop with `trail`.
 fn initials(cx: &Cx<'_>, f: &Frag, lead: bool, trail: bool) -> Option<usize> {
-    let (core, len) = core_tokens(cx, f)?;
-    let core = core.get(..len)?;
     let bit = language_bit(cx);
     let initial = |j: usize| {
         matches!(cx.kind(j), Some(Kind::Word(_))) && {
@@ -527,6 +535,12 @@ fn initials(cx: &Cx<'_>, f: &Frag, lead: bool, trail: bool) -> Option<usize> {
                 (Some(c), None) if c.is_uppercase() && script_bit(c) == bit)
         }
     };
+    // Most cores do not start with an initial; the loop below would refuse them at once.
+    if !initial(cx.core(f).next()?) {
+        return None;
+    }
+    let (core, len) = core_tokens(cx, f)?;
+    let core = core.get(..len)?;
     let mut count = 0;
     for (k, &j) in core.iter().enumerate() {
         let ok = if k % 2 == 0 {
@@ -626,8 +640,10 @@ pub(crate) fn initials_rule(cx: &Cx<'_>, s: usize) -> Option<Match> {
             return g.done();
         }
     }
-    // `Фамилия И. О.`: the surname ends at `l`.
+    // `Фамилия И. О.`: the surname ends at `l`. The first initial is read before the surname,
+    // which costs more; both are pure.
     let fl = tail(cx, l)?;
+    head(cx, r).and_then(|fr| initials(cx, fr, false, true))?;
     if !surname(cx, fl) {
         return None;
     }
@@ -690,7 +706,7 @@ fn month_ahead(cx: &Cx<'_>, f: &Frag) -> bool {
 fn month_in(cx: &Cx<'_>, months: List<'_>, key: impl Iterator<Item = char> + Clone) -> bool {
     cx.t.compiled()
         .signatures
-        .may_hold(WordList::Dictionary, key.clone())
+        .may_hold(WordList::Months, key.clone())
         && cased_in(months, key)
 }
 
@@ -1046,10 +1062,10 @@ pub(crate) fn short_length(cx: &Cx<'_>, s: usize) -> Option<Match> {
     if !is_word(cx, f) {
         return None;
     }
-    let (_, n) = letters(cx, f);
+    let (scripts, n) = letters(cx, f);
     let found = n >= 1
         && n <= usize::from(cx.t.short_word_length())
-        && (cx.t.short_words_any_script() || in_script(cx, f))
+        && (cx.t.short_words_any_script() || scripts & language_bit(cx) != 0)
         && glueable(cx, r, true);
     found.then(|| glue_one(cx, s, Glue::NoBreak)).flatten()
 }

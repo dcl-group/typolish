@@ -145,7 +145,13 @@ pub(crate) struct Cx<'a> {
     pub(crate) pairs: Option<QuotePairs>,
     pub(crate) single_quotes: SingleQuotes,
     pub(crate) dash: Option<DashData>,
+    /// The last space whose sides `rules::nbsp` computed, with the result: the rules of a phase
+    /// read one input, so it holds for the whole phase.
+    pub(crate) sides: core::cell::Cell<Option<(usize, Sides)>>,
 }
+
+/// The tokens on both sides of a pattern space, if the rules of section 8.2 may glue it.
+pub(crate) type Sides = Option<(usize, usize)>;
 
 impl<'a> Cx<'a> {
     pub(crate) fn tok(&self, i: usize) -> Option<&'a Tok> {

@@ -168,6 +168,7 @@ fn run_on<R: Recorder>(
                 pairs,
                 single_quotes,
                 dash,
+                sides: core::cell::Cell::new(None),
             };
             if *phase == Phase::Quotes {
                 quotes::analyze(&cx, quote_work, marks, &mut sink, report_pairs);
