@@ -7,9 +7,9 @@
 //! call. Its design is in `docs/design/` of the repository.
 //!
 //! The crate is in development: the engine recognizes protected and technical fragments and
-//! applies the rules of quotes, dashes, ranges, ellipses and no-break spaces;
-//! [`Typographer::report`] lists every edit, protected span and diagnostic. The rules of numbers
-//! and symbols change nothing yet.
+//! applies the rules of quotes, dashes, ranges, ellipses, no-break spaces and `number.times`;
+//! [`Typographer::report`] lists every edit, protected span and diagnostic. The rules `symbols.*`
+//! and `number.minus` change nothing yet.
 //!
 //! ```
 //! use typolish::{Language, Output, RuleSet, Typographer};
