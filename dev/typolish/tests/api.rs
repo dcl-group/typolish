@@ -1,6 +1,8 @@
 //! API contracts of design section 2 that are not output (design section 13.2, `tests/api.rs`).
 //!
-//! The rows that need `LanguageBuilder`, `report` or `lint` join with those parts.
+//! The rows that need `LanguageBuilder`, `report` or `lint` join with those parts; stage 4 adds
+//! the accessors and the `Display` of `Report`, `Change`, `ProtectedSpan` and `Diagnostic` and
+//! the rows that need `report_template` and `lint_template` (design sections 2.9 and 12.5).
 
 #![allow(
     clippy::unwrap_used,
@@ -17,7 +19,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use typolish::{
-    Error, Language, LanguageData, Number, Output, Piece, QuotePairs, Rule, RuleSet, Slot,
+    Change, Diagnostic, DiagnosticKind, Error, HtmlStyle, Language, LanguageData, Number, Output,
+    Piece, ProtectedKind, ProtectedSpan, QuotePairs, Rule, RuleSet, Severity, Slot, TechKind,
     Template, TemplatePart, Typographer,
 };
 
@@ -507,5 +510,280 @@ fn numbers_do_not_depend_on_the_rules_of_the_typographer() {
                 "{language}"
             );
         }
+    }
+}
+
+// Stage 4 (design section 15.4): `Report`, `Change`, `ProtectedSpan`, `Diagnostic`, `lint`.
+
+static UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+static PROSE: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+
+#[test]
+fn the_report_example_of_section_2_9() {
+    let r = UI.report("Цена - 5 руб.", Output::Unicode);
+    assert_eq!(r.result(), "Цена\u{a0}— 5\u{a0}руб.");
+    assert_eq!(
+        r.to_string(),
+        "\
+nbsp.dash           0:8..9    \" \" -> U+00A0
+dash.spaced-hyphen  0:9..10   \"-\" -> \"—\"
+nbsp.units          0:12..13  \" \" -> U+00A0
+"
+    );
+    let r = UI.report("Он сказал \"привет.", Output::Unicode);
+    assert_eq!(r.result(), "Он сказал \"привет.");
+    assert_eq!(r.diagnostics()[0].kind(), &DiagnosticKind::UnmatchedQuote);
+    assert_eq!(r.diagnostics()[0].range(), 18..19);
+}
+
+#[test]
+fn the_display_of_section_12_5() {
+    // Russian Prose; the result is `Он⍽— «врач», см.⍽host:8080`.
+    let r = PROSE.report("Он - \"врач\", см. host:8080", Output::Unicode);
+    assert_eq!(r.result(), "Он\u{a0}— «врач», см.\u{a0}host:8080");
+    assert_eq!(
+        r.to_string(),
+        "\
+nbsp.dash           0:4..5    \" \" -> U+00A0
+dash.spaced-hyphen  0:5..6    \"-\" -> \"—\"
+quotes.pairs        0:7..8    \"\\\"\" -> \"«\"
+quotes.pairs        0:16..17  \"\\\"\" -> \"»\"
+nbsp.abbreviations  0:24..25  \" \" -> U+00A0
+protected  Technical(Colon)  0:25..34  host:8080
+"
+    );
+}
+
+#[test]
+fn a_report_without_records_prints_nothing() {
+    let r = UI.report("Привет, мир.", Output::Unicode);
+    assert!(r.changes().is_empty() && r.protected().is_empty() && r.diagnostics().is_empty());
+    assert_eq!(r.to_string(), "");
+    let r = UI.report_template::<()>([Piece::Text("Привет")], Output::Unicode);
+    assert_eq!(r.to_string(), "");
+}
+
+#[test]
+fn the_display_of_a_template_report_names_the_piece() {
+    // One record per edit; the column widths are not fixed here, so compare the fields.
+    let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::DashSpacedHyphen));
+    let r = t.report_template::<()>(
+        [Piece::Markup("<b>"), Piece::Text("Он - врач")],
+        Output::Unicode,
+    );
+    assert_eq!(r.result().texts(), ["<b>Он — врач"]);
+    assert_eq!(r.changes().len(), 1);
+    let printed = r.to_string();
+    let lines: Vec<&str> = printed.lines().collect();
+    assert_eq!(lines.len(), 1, "{printed:?}");
+    let fields: Vec<&str> = lines[0].split_whitespace().collect();
+    assert_eq!(
+        fields,
+        ["dash.spaced-hyphen", "1:3..4", "\"-\"", "->", "\"—\""]
+    );
+}
+
+#[test]
+fn the_accessors_of_change() {
+    let r = UI.report("Цена - 5 руб.", Output::Unicode);
+    let changes: Vec<&Change> = r.changes().iter().collect();
+    assert_eq!(changes.len(), 3);
+    let rows = [
+        (Rule::NbspDash, 8..9, "\u{a0}", " "),
+        (Rule::DashSpacedHyphen, 9..10, "—", "-"),
+        (Rule::NbspUnits, 12..13, "\u{a0}", " "),
+    ];
+    for (change, (rule, range, replacement, original)) in changes.iter().zip(rows) {
+        assert_eq!(change.rule(), rule);
+        assert_eq!(change.piece(), 0);
+        assert_eq!(change.range(), range);
+        assert_eq!(change.replacement(), replacement);
+        assert_eq!(r.original(change), original);
+    }
+    // `Change` is `Clone`, `Debug`, `PartialEq`.
+    let first = changes[0].clone();
+    assert_eq!(&first, changes[0]);
+    assert_ne!(&first, changes[1]);
+    assert!(!format!("{first:?}").is_empty());
+}
+
+#[test]
+fn a_change_holds_unicode_whatever_the_output_kind() {
+    // Section 2.9: the replacement is in Unicode, before output encoding.
+    let input = "Цена - 5 руб.";
+    let unicode = UI.report(input, Output::Unicode);
+    for output in [
+        Output::Html(HtmlStyle::NAMED),
+        Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap")),
+        Output::Escaped(typolish::EscapeStyle::JS),
+    ] {
+        let r = UI.report(input, output);
+        assert_eq!(r.changes(), unicode.changes(), "{output:?}");
+        assert_eq!(r.protected(), unicode.protected());
+        assert_eq!(r.diagnostics(), unicode.diagnostics());
+        assert_eq!(r.result().as_ref(), UI.typeset(input, output).as_ref());
+    }
+    let named = UI.report(input, Output::Html(HtmlStyle::NAMED));
+    assert!(named.result().contains("&mdash;"), "{}", named.result());
+    assert!(
+        named
+            .changes()
+            .iter()
+            .all(|c| !c.replacement().contains('&'))
+    );
+}
+
+#[test]
+fn the_accessors_of_protected_span() {
+    // Section 12.5: `kind() == Technical(Colon)`, `piece() == 0`, `range() == 25..34`.
+    let r = PROSE.report("Он - \"врач\", см. host:8080", Output::Unicode);
+    let spans: &[ProtectedSpan] = r.protected();
+    assert_eq!(spans.len(), 1);
+    assert_eq!(spans[0].kind(), ProtectedKind::Technical(TechKind::Colon));
+    assert_eq!(spans[0].piece(), 0);
+    assert_eq!(spans[0].range(), 25..34);
+    assert_eq!(spans[0].clone(), spans[0]);
+    // A delimited span over two pieces: two `Delimited` records, `0:4..7` and `1:0..5`.
+    let r = UI.report_template::<()>(
+        [Piece::Text("Run `ls"), Piece::Text(" -la`")],
+        Output::Unicode,
+    );
+    let got: Vec<_> = r
+        .protected()
+        .iter()
+        .map(|s| (s.piece(), s.range(), s.kind()))
+        .collect();
+    assert_eq!(
+        got,
+        [
+            (0, 4..7, ProtectedKind::Delimited),
+            (1, 0..5, ProtectedKind::Delimited)
+        ]
+    );
+    // A slot has the empty range at its piece, a protected piece covers its whole piece.
+    let r = UI.report_template(
+        [
+            Piece::Text("a "),
+            Piece::Slot(1u8, Slot::WORD),
+            Piece::Protected("--x"),
+        ],
+        Output::Unicode,
+    );
+    let got: Vec<_> = r
+        .protected()
+        .iter()
+        .map(|s| (s.piece(), s.range(), s.kind()))
+        .collect();
+    assert_eq!(
+        got,
+        [
+            (1, 0..0, ProtectedKind::Slot),
+            (2, 0..3, ProtectedKind::ProtectedPiece)
+        ]
+    );
+}
+
+#[test]
+fn the_accessors_of_diagnostic_and_severity() {
+    let r = UI.report("Он сказал \"привет.", Output::Unicode);
+    let d: &Diagnostic = &r.diagnostics()[0];
+    assert_eq!(d.kind(), &DiagnosticKind::UnmatchedQuote);
+    assert_eq!(d.severity(), Severity::Warning);
+    assert_eq!(d.rule(), Some(Rule::QuotesPairs));
+    assert_eq!(d.piece(), 0);
+    assert_eq!(d.range(), 18..19);
+    assert_eq!(d.clone(), *d);
+    // Severity is `Copy`, ordered, `Info < Warning`.
+    assert!(Severity::Info < Severity::Warning);
+    assert_eq!(Severity::Info.max(Severity::Warning), Severity::Warning);
+    let mut levels = [Severity::Warning, Severity::Info, Severity::Warning];
+    levels.sort();
+    assert_eq!(
+        levels,
+        [Severity::Info, Severity::Warning, Severity::Warning]
+    );
+    // `lint` hands out the same diagnostic.
+    let linted: Vec<Diagnostic> = UI.lint("Он сказал \"привет.");
+    assert_eq!(linted, r.diagnostics());
+    assert_eq!(
+        linted[0].to_string(),
+        "warning quotes.pairs 0:18..19: straight quote has no pair; left as is"
+    );
+}
+
+#[test]
+fn into_result_gives_what_result_shows() {
+    let r = UI.report("Цена - 5 руб.", Output::Unicode);
+    let shown = r.result().clone();
+    let copy = r.clone();
+    assert_eq!(copy.into_result(), shown);
+    assert_eq!(r.into_result(), "Цена\u{a0}— 5\u{a0}руб.");
+    let r = UI.report_template::<()>([Piece::Text("Цена - 5")], Output::Unicode);
+    let texts: Vec<String> = r.result().texts().iter().map(|t| t.to_string()).collect();
+    let template = r.into_result();
+    assert_eq!(
+        template
+            .texts()
+            .iter()
+            .map(|t| t.to_string())
+            .collect::<Vec<_>>(),
+        texts
+    );
+}
+
+#[test]
+fn original_of_a_template_change_is_the_slice_of_its_piece() {
+    // `[Text("Ждём."), Text("..")]` → `Ждём…`: the first record holds the replacement, the other
+    // deletes the rest, and `original()` of each returns the slice of its own piece.
+    let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::EllipsisDots));
+    let r = t.report_template::<()>([Piece::Text("Ждём."), Piece::Text("..")], Output::Unicode);
+    assert_eq!(r.result().texts(), ["Ждём…"]);
+    let got: Vec<_> = r
+        .changes()
+        .iter()
+        .map(|c| {
+            (
+                c.piece(),
+                c.range(),
+                c.replacement().to_owned(),
+                r.original(c),
+            )
+        })
+        .collect();
+    assert_eq!(
+        got,
+        [
+            (0, 8..9, "…".to_owned(), "."),
+            (1, 0..2, String::new(), "..")
+        ]
+    );
+}
+
+#[test]
+fn mixed_script_over_two_pieces_is_one_diagnostic_in_both_calls() {
+    // Section 13.2: `Text("Мо")`, `Text("sква")` → one diagnostic, `piece() == 0`, `range() == 0..4`,
+    // equal in `report_template` and `lint_template`.
+    let pieces = || [Piece::Text("Мо"), Piece::Text("sква")];
+    let r = UI.report_template::<()>(pieces(), Output::Unicode);
+    let linted = UI.lint_template::<()>(pieces());
+    assert_eq!(r.diagnostics().len(), 1);
+    assert_eq!(r.diagnostics()[0].kind(), &DiagnosticKind::MixedScript);
+    assert_eq!(r.diagnostics()[0].piece(), 0);
+    assert_eq!(r.diagnostics()[0].range(), 0..4);
+    assert_eq!(linted, r.diagnostics());
+}
+
+#[test]
+fn lint_and_report_agree_without_typographic_characters() {
+    for text in [
+        "Он сказал \"привет.",
+        "Цена - 5 руб.",
+        "Слово \" в тексте.",
+        "10 - 20 штук",
+        "don`t",
+    ] {
+        let linted = UI.lint(text);
+        let r = UI.report(text, Output::Unicode);
+        assert_eq!(linted, r.diagnostics(), "{text}");
     }
 }

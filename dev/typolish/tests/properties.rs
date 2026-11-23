@@ -1,9 +1,10 @@
 //! The properties of design section 13.5 that hold at every stage and need only the public API:
 //! idempotence, the fixed-point oracle, slots and protected spans, letters and digits, `Cow`,
 //! pieces and strings, determinism of order and no panic; and, through `report`, the invariants I1,
-//! I2, I4 and I5 of design section 4.3 as far as the public API shows them. The properties that
-//! need `lint` join when it exists; those of `to_plain` (14 and 16) are at the end. Stage 3 adds the decoder properties (12),
-//! the safe alphabet (17), I3, and the properties of `format_number`.
+//! I2, I4 and I5 of design section 4.3 as far as the public API shows them. Stage 3 adds the
+//! decoder properties (12), the safe alphabet (17), I3, and the properties of `format_number`;
+//! stage 4 adds those of `to_plain` (14 and 16) and, at the end, those of `lint` and `report`
+//! (9, 10, 14 and 15).
 
 #![allow(
     clippy::unwrap_used,
@@ -24,9 +25,9 @@ use common::show;
 use common::strategies::{self, GenPiece, any_text, borrow, pieces, risky_text, rule_set};
 use proptest::prelude::*;
 use typolish::{
-    DiagnosticKind, EscapeStyle, HtmlStyle, Language, LanguageBuilder, Output, PercentSpacing,
-    ProtectedKind, QuotePairs, Report, Rule, RuleSet, Severity, SingleQuotes, Typographer,
-    TypographerBuilder,
+    Change, Diagnostic, DiagnosticKind, EscapeStyle, HtmlStyle, Language, LanguageBuilder, Output,
+    PercentSpacing, Piece, ProtectedKind, QuotePairs, Report, Rule, RuleSet, Scratch, Severity,
+    SingleQuotes, Template, Typographer, TypographerBuilder,
 };
 
 const LANGUAGES: [Language; 3] = [Language::RU_RU, Language::EN_US, Language::COMMON];
@@ -1142,5 +1143,457 @@ fn to_plain_is_stable_on_the_corpus() {
                 }
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Stage 4: `lint`, `lint_template` and the recorders (design sections 12.3 to 12.5; properties
+// 9, 10, 14 and 15).
+// ---------------------------------------------------------------------------------------------
+
+type Key = (
+    DiagnosticKind,
+    Severity,
+    Option<Rule>,
+    usize,
+    std::ops::Range<usize>,
+);
+
+fn key_of(d: &Diagnostic) -> Key {
+    (
+        d.kind().clone(),
+        d.severity(),
+        d.rule(),
+        d.piece(),
+        d.range(),
+    )
+}
+
+fn is_char(d: &Diagnostic) -> bool {
+    matches!(d.kind(), DiagnosticKind::TypographicChar { .. })
+}
+
+/// The diagnostics other than `TypographicChar`.
+fn sans_chars(diagnostics: &[Diagnostic]) -> Vec<Key> {
+    diagnostics
+        .iter()
+        .filter(|d| !is_char(d))
+        .map(key_of)
+        .collect()
+}
+
+/// The `TypographicChar` entries as `(piece, range, found)`.
+fn char_entries(diagnostics: &[Diagnostic]) -> Vec<(usize, std::ops::Range<usize>, char)> {
+    diagnostics
+        .iter()
+        .filter_map(|d| match d.kind() {
+            DiagnosticKind::TypographicChar { found, .. } => Some((d.piece(), d.range(), *found)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The place of a kind in the declaration of `DiagnosticKind`.
+fn kind_order(kind: &DiagnosticKind) -> usize {
+    match kind {
+        DiagnosticKind::UnmatchedQuote => 0,
+        DiagnosticKind::CrossingQuotes => 1,
+        DiagnosticKind::AmbiguousQuote => 2,
+        DiagnosticKind::UnclosedDelimiter => 3,
+        DiagnosticKind::AmbiguousHyphen => 4,
+        DiagnosticKind::MixedScript => 5,
+        DiagnosticKind::SlotGlue => 6,
+        DiagnosticKind::NowrapFallback => 7,
+        DiagnosticKind::TypographicChar { .. } => 8,
+        _ => 9,
+    }
+}
+
+/// Diagnostics are ordered by piece, byte start, byte end, then kind (section 12.4).
+fn assert_ordered(diagnostics: &[Diagnostic]) -> Result<(), TestCaseError> {
+    let key = |d: &Diagnostic| {
+        let r = d.range();
+        (d.piece(), r.start, r.end, kind_order(d.kind()))
+    };
+    for pair in diagnostics.windows(2) {
+        prop_assert!(
+            key(&pair[0]) <= key(&pair[1]),
+            "out of order: {:?} before {:?}",
+            pair[0],
+            pair[1]
+        );
+    }
+    Ok(())
+}
+
+/// Applies edits of one piece to its text: the edits are ordered by position, an insertion at a
+/// point comes before an edit that starts there, and edits do not overlap.
+fn apply_edits(text: &str, edits: &[&Change]) -> Result<String, TestCaseError> {
+    let mut edits: Vec<(usize, usize, &str)> = edits
+        .iter()
+        .map(|c| (c.range().start, c.range().end, c.replacement()))
+        .collect();
+    edits.sort_by_key(|e| (e.0, e.1));
+    let mut out = String::new();
+    let mut at = 0;
+    for (start, end, replacement) in edits {
+        prop_assert!(start >= at, "edits overlap in {}", show(text));
+        prop_assert!(text.get(at..start).is_some() && text.get(start..end).is_some());
+        out.push_str(&text[at..start]);
+        out.push_str(replacement);
+        at = end;
+    }
+    out.push_str(&text[at..]);
+    Ok(out)
+}
+
+/// The records of a report are ordered by piece and position (the rule order breaks ties).
+fn assert_changes_ordered(changes: &[Change]) -> Result<(), TestCaseError> {
+    for pair in changes.windows(2) {
+        let a = (pair[0].piece(), pair[0].range().start);
+        let b = (pair[1].piece(), pair[1].range().start);
+        prop_assert!(a <= b, "changes out of order: {:?}", changes);
+    }
+    Ok(())
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(512))]
+
+    /// 9. Recorder independence: `typeset`, `typeset_with` and `report` give the same result in
+    /// every output kind; `lint(x)` without its `TypographicChar` entries equals the diagnostics
+    /// of `report(x, Output::Unicode)`; applying the changes of `report` to `x` yields the result.
+    #[test]
+    fn recorders_are_independent(
+        text in any_text(), lang in 0usize..3, set in rule_set(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let t = typographer(lang, set, quotes, percent);
+        let mut scratch = Scratch::new();
+        for output in outputs() {
+            let plain = t.typeset(&text, output);
+            let with = t.typeset_with(&mut scratch, &text, output);
+            let report = t.report(&text, output);
+            prop_assert_eq!(plain.as_ref(), with.as_ref(), "{:?}: {}", output, show(&text));
+            prop_assert_eq!(plain.as_ref(), report.result().as_ref(), "{:?}: {}", output, show(&text));
+            // The other records do not depend on the output kind either.
+            let unicode = t.report(&text, Output::Unicode);
+            prop_assert_eq!(report.changes(), unicode.changes());
+            prop_assert_eq!(report.protected(), unicode.protected());
+            prop_assert_eq!(report.diagnostics(), unicode.diagnostics());
+        }
+        let report = t.report(&text, Output::Unicode);
+        let linted = t.lint(&text);
+        prop_assert_eq!(sans_chars(&linted), sans_chars(report.diagnostics()), "{}", show(&text));
+        prop_assert!(report.diagnostics().iter().all(|d| !is_char(d)));
+        assert_ordered(&linted)?;
+        assert_ordered(report.diagnostics())?;
+        assert_changes_ordered(report.changes())?;
+        let edits: Vec<&Change> = report.changes().iter().collect();
+        for change in &edits {
+            prop_assert_eq!(change.piece(), 0);
+            prop_assert_eq!(report.original(change), &text[change.range()]);
+        }
+        let applied = apply_edits(&text, &edits)?;
+        prop_assert_eq!(applied.as_str(), report.result().as_ref(), "{}", show(&text));
+        // `lint` is a pure function of the text: a second call gives the same list.
+        prop_assert_eq!(t.lint(&text), linted);
+    }
+
+    /// 9 and 10. The same for pieces: `report_template` gives what `typeset_template` gives in
+    /// every output kind, `lint_template` without `TypographicChar` gives its diagnostics, and
+    /// applying the changes to each input piece yields the texts of the result.
+    #[test]
+    fn template_recorders_are_independent(
+        parts in pieces(), lang in 0usize..3, set in rule_set(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let t = typographer(lang, set, quotes, percent);
+        for output in outputs() {
+            let plain = t.typeset_template(borrow(&parts), output);
+            let report = t.report_template(borrow(&parts), output);
+            prop_assert_eq!(plain.texts(), report.result().texts(), "{:?}", output);
+            prop_assert_eq!(plain.slots(), report.result().slots());
+            prop_assert_eq!(plain.changed(), report.result().changed());
+        }
+        let report = t.report_template(borrow(&parts), Output::Unicode);
+        let linted = t.lint_template(borrow(&parts));
+        prop_assert_eq!(sans_chars(&linted), sans_chars(report.diagnostics()), "{:?}", parts);
+        prop_assert!(report.diagnostics().iter().all(|d| !is_char(d)));
+        assert_ordered(&linted)?;
+        assert_ordered(report.diagnostics())?;
+        assert_changes_ordered(report.changes())?;
+        assert_changes_apply_piece_by_piece(&parts, &report)?;
+        // `lint_template` never gives `NowrapFallback` and its entries sit in `Text` pieces.
+        for d in &linted {
+            prop_assert!(d.piece() < parts.len().max(1));
+            prop_assert!(d.kind() != &DiagnosticKind::NowrapFallback);
+            if is_char(d) {
+                prop_assert!(matches!(parts[d.piece()], GenPiece::Text(_)), "{:?}", d);
+            }
+        }
+    }
+}
+
+/// Property 10: applying `report_template(...).changes()` piece by piece yields the texts of the
+/// result in the `n + 1` form.
+fn assert_changes_apply_piece_by_piece(
+    parts: &[GenPiece],
+    report: &Report<'_, Template<'_, u32>>,
+) -> Result<(), TestCaseError> {
+    let mut texts = vec![String::new()];
+    for (i, part) in parts.iter().enumerate() {
+        let edits: Vec<&Change> = report.changes().iter().filter(|c| c.piece() == i).collect();
+        match part {
+            GenPiece::Text(text) => {
+                for c in &edits {
+                    prop_assert_eq!(report.original(c), &text[c.range()]);
+                }
+                let applied = apply_edits(text, &edits)?;
+                if let Some(last) = texts.last_mut() {
+                    last.push_str(&applied);
+                }
+            }
+            GenPiece::Protected(text) | GenPiece::Markup(text) => {
+                prop_assert!(
+                    edits.is_empty(),
+                    "an edit of piece {} that no rule may touch",
+                    i
+                );
+                if let Some(last) = texts.last_mut() {
+                    last.push_str(text);
+                }
+            }
+            GenPiece::Slot(..) => {
+                prop_assert!(edits.is_empty(), "an edit of the slot at piece {}", i);
+                texts.push(String::new());
+            }
+        }
+    }
+    let got: Vec<&str> = report.result().texts().iter().map(|t| t.as_ref()).collect();
+    let want: Vec<&str> = texts.iter().map(String::as_str).collect();
+    prop_assert_eq!(got, want);
+    Ok(())
+}
+
+/// A text of the n + 1 form of the input pieces: the pieces between two slots merged.
+fn merged_texts(parts: &[GenPiece]) -> Vec<String> {
+    let mut texts = vec![String::new()];
+    for part in parts {
+        match part {
+            GenPiece::Text(t) | GenPiece::Protected(t) | GenPiece::Markup(t) => {
+                if let Some(last) = texts.last_mut() {
+                    last.push_str(t);
+                }
+            }
+            GenPiece::Slot(..) => texts.push(String::new()),
+        }
+    }
+    texts
+}
+
+/// Characters of `skeleton` appear in `whole` in order (a subsequence).
+fn is_subsequence(skeleton: &str, whole: &str) -> bool {
+    let mut rest = whole.chars();
+    skeleton.chars().all(|c| rest.any(|w| w == c))
+}
+
+/// Property 15: the entries of `TypographicChar` of one string: each covers exactly the character it
+/// names, they are ordered and disjoint, and the characters that no entry covers stay in the
+/// plain form in order.
+fn assert_entries_cover_what_to_plain_changes(
+    t: &Typographer,
+    x: &str,
+) -> Result<(), TestCaseError> {
+    let linted = t.lint(x);
+    let entries = char_entries(&linted);
+    let plain = t.to_plain(x);
+    prop_assert_eq!(
+        !entries.is_empty(),
+        plain.as_ref() != x,
+        "lint and to_plain disagree on {}",
+        show(x)
+    );
+    let mut skeleton = String::new();
+    let mut at = 0;
+    for (piece, range, found) in &entries {
+        prop_assert_eq!(*piece, 0);
+        prop_assert!(range.start >= at, "entries overlap in {}", show(x));
+        let named = found.to_string();
+        prop_assert_eq!(x.get(range.clone()), Some(named.as_str()));
+        prop_assert!(
+            !found.is_ascii() && !found.is_alphanumeric(),
+            "found {:?}",
+            found
+        );
+        skeleton.push_str(&x[at..range.start]);
+        at = range.end;
+    }
+    skeleton.push_str(&x[at..]);
+    prop_assert!(
+        is_subsequence(&skeleton, &plain),
+        "a character that no entry covers changed: {} -> {}",
+        show(x),
+        show(&plain)
+    );
+    Ok(())
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(2_000))]
+
+    /// 15. `lint(x)` contains a `TypographicChar` exactly when `to_plain(x) != x`, and each such
+    /// entry covers one character that `to_plain` changes. The input is a generated string and
+    /// the typeset form of one, for every language and rule set.
+    #[test]
+    fn lint_matches_to_plain(
+        text in any_text(), lang in 0usize..3, set in rule_set(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let t = typographer(lang, set, quotes, percent);
+        let typeset = t.typeset(&text, Output::Unicode).into_owned();
+        for x in [text.as_str(), typeset.as_str()] {
+            assert_entries_cover_what_to_plain_changes(&t, x)?;
+        }
+    }
+
+    /// 15 on risky text in the built-in sets of the plain form: {ru, en} x {Prose, Interface}.
+    #[test]
+    fn lint_matches_to_plain_in_the_built_in_sets(
+        text in risky_text(), lang in 0usize..2, interface in any::<bool>(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let set = if interface { RuleSet::INTERFACE } else { RuleSet::PROSE };
+        let t = typographer(lang, set, quotes, percent);
+        let typeset = t.typeset(&text, Output::Unicode).into_owned();
+        for x in [text.as_str(), typeset.as_str()] {
+            assert_entries_cover_what_to_plain_changes(&t, x)?;
+        }
+        // The plain form of a typeset text has no entry: `to_plain` is stable (property 16).
+        prop_assert!(char_entries(&t.lint(&t.to_plain(&typeset))).is_empty());
+    }
+
+    /// 15 for pieces: `lint_template` has a `TypographicChar` exactly when `to_plain_template`
+    /// changes a text, and each entry covers its character in a `Text` piece.
+    #[test]
+    fn lint_template_matches_to_plain_template(parts in pieces(), lang in 0usize..3, set in rule_set()) {
+        let t = typographer(lang, set, 0, 0);
+        let linted = t.lint_template(borrow(&parts));
+        let entries = char_entries(&linted);
+        let plain = t.to_plain_template(borrow(&parts));
+        let before = merged_texts(&parts);
+        let after: Vec<&str> = plain.texts().iter().map(|c| c.as_ref()).collect();
+        let before: Vec<&str> = before.iter().map(String::as_str).collect();
+        prop_assert_eq!(!entries.is_empty(), after != before, "{:?}", parts);
+        for (piece, range, found) in &entries {
+            match &parts[*piece] {
+                GenPiece::Text(text) => {
+                    let named = found.to_string();
+                    prop_assert_eq!(text.get(range.clone()), Some(named.as_str()));
+                }
+                other => prop_assert!(false, "an entry in {:?}", other),
+            }
+        }
+    }
+
+    /// 10 for `lint_template`: a template of `Text` pieces cut anywhere gives the diagnostics of
+    /// the whole string (the piece and the range of each are those of its first piece).
+    #[test]
+    fn lint_of_cut_text_pieces_matches_the_whole(
+        text in risky_text(), lang in 0usize..3, set in rule_set(), cut in any::<prop::sample::Index>(),
+    ) {
+        let t = typographer(lang, set, 0, 0);
+        let boundaries: Vec<usize> = text.char_indices().map(|(i, _)| i).chain([text.len()]).collect();
+        let at = boundaries[cut.index(boundaries.len())];
+        let (a, b) = text.split_at(at);
+        let whole = t.lint(&text);
+        let parts = t.lint_template::<()>([Piece::Text(a), Piece::Text(b)]);
+        let mut whole_kinds: Vec<String> = whole.iter().map(|d| format!("{:?} {:?}", d.kind(), d.severity())).collect();
+        let mut part_kinds: Vec<String> = parts.iter().map(|d| format!("{:?} {:?}", d.kind(), d.severity())).collect();
+        whole_kinds.sort();
+        part_kinds.sort();
+        prop_assert_eq!(part_kinds, whole_kinds, "cut {} of {}", at, show(&text));
+        // Every range lies in its piece.
+        for d in &parts {
+            let piece = [a, b][d.piece().min(1)];
+            prop_assert!(d.piece() < 2);
+            prop_assert!(piece.get(d.range()).is_some(), "{:?}", d);
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(10_000))]
+
+    /// 14. No panic of `lint` on arbitrary strings, whatever the settings.
+    #[test]
+    fn no_panic_of_lint_on_strings(
+        text in any_text(), lang in 0usize..3, set in rule_set(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let t = typographer(lang, set, quotes, percent);
+        let linted = t.lint(&text);
+        for d in &linted {
+            prop_assert_eq!(d.piece(), 0);
+            prop_assert!(text.get(d.range()).is_some(), "{:?} in {}", d, show(&text));
+        }
+    }
+
+    #[test]
+    fn no_panic_of_lint_on_arbitrary_unicode(text in "\\PC*|.*", lang in 0usize..3) {
+        let t = typographer(lang, RuleSet::ALL, 0, 0);
+        let _ = t.lint(&text);
+    }
+
+    /// 14. No panic of `lint_template` on arbitrary pieces; every diagnostic names a piece and
+    /// a range inside it.
+    #[test]
+    fn no_panic_of_lint_on_pieces(parts in pieces(), lang in 0usize..3, set in rule_set()) {
+        let t = typographer(lang, set, 0, 0);
+        assert_lint_template_is_well_formed(&t, &parts)?;
+    }
+}
+
+fn assert_lint_template_is_well_formed(
+    t: &Typographer,
+    parts: &[GenPiece],
+) -> Result<(), TestCaseError> {
+    let linted = t.lint_template(borrow(parts));
+    for d in &linted {
+        prop_assert!(d.piece() < parts.len().max(1), "{:?}", d);
+        let range = d.range();
+        match parts.get(d.piece()) {
+            Some(GenPiece::Text(text) | GenPiece::Protected(text) | GenPiece::Markup(text)) => {
+                prop_assert!(text.get(range).is_some(), "{:?}", d);
+            }
+            Some(GenPiece::Slot(..)) => prop_assert_eq!(range, 0..0),
+            None => prop_assert_eq!(range, 0..0),
+        }
+    }
+    Ok(())
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(1_000_000))]
+
+    /// 14, the long run: no panic of `lint` on arbitrary strings, whatever the settings.
+    #[test]
+    #[ignore = "long run of design section 13.5, property 14"]
+    fn no_panic_of_lint_on_strings_long(
+        text in any_text(), lang in 0usize..3, set in rule_set(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let t = typographer(lang, set, quotes, percent);
+        let _ = t.lint(&text);
+    }
+
+    /// 14, the long run: no panic of `lint` on arbitrary Unicode.
+    #[test]
+    #[ignore = "long run of design section 13.5, property 14"]
+    fn no_panic_of_lint_on_arbitrary_unicode_long(text in "\\PC*|.*", lang in 0usize..3) {
+        let t = typographer(lang, RuleSet::ALL, 0, 0);
+        let _ = t.lint(&text);
+    }
+
+    /// 14, the long run: no panic of `lint_template` on arbitrary pieces.
+    #[test]
+    #[ignore = "long run of design section 13.5, property 14"]
+    fn no_panic_of_lint_on_pieces_long(parts in pieces(), lang in 0usize..3, set in rule_set()) {
+        let t = typographer(lang, set, 0, 0);
+        assert_lint_template_is_well_formed(&t, &parts)?;
     }
 }
