@@ -154,9 +154,9 @@ from_int!(Unsigned, u128: u8, u16, u32, u64, u128);
 impl From<isize> for Number<'static> {
     /// The integer as it is.
     fn from(value: isize) -> Number<'static> {
-        // `isize` is at most 64 bits wide on every target Rust supports.
+        // Widening: `isize` is never wider than `i128`, so the cast is exact.
         Number {
-            repr: Repr::Signed(i128::try_from(value).unwrap_or(0)),
+            repr: Repr::Signed(value as i128),
         }
     }
 }
@@ -164,8 +164,9 @@ impl From<isize> for Number<'static> {
 impl From<usize> for Number<'static> {
     /// The integer as it is.
     fn from(value: usize) -> Number<'static> {
+        // Widening: `usize` is never wider than `u128`, so the cast is exact.
         Number {
-            repr: Repr::Unsigned(u128::try_from(value).unwrap_or(0)),
+            repr: Repr::Unsigned(value as u128),
         }
     }
 }

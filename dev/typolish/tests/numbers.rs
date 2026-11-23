@@ -127,6 +127,19 @@ fn every_integer_type_converts() {
     same("u64", num(&RU, u64::MAX), "18⍽446⍽744⍽073⍽709⍽551⍽615");
     same("isize", num(&RU, -12345isize), "−12⍽345");
     same("usize", num(&RU, 12345usize), "12⍽345");
+    #[cfg(target_pointer_width = "64")]
+    {
+        same(
+            "isize::MIN",
+            num(&RU, isize::MIN),
+            "−9⍽223⍽372⍽036⍽854⍽775⍽808",
+        );
+        same(
+            "usize::MAX",
+            num(&RU, usize::MAX),
+            "18⍽446⍽744⍽073⍽709⍽551⍽615",
+        );
+    }
     same("i128", num(&EN, 1234i128), "1,234");
     same("u128", num(&EN, 1234u128), "1,234");
     same("f32", num(&EN, 1234.5f32), "1,234.5");
