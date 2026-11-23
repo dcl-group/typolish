@@ -606,7 +606,9 @@ piece. A span or a diagnostic that starts at a slot or a protected piece is repo
   the journal only when recording. For text with paragraphs, memory does not grow with the input. A
   10 MB paragraph without line breaks is the pathological case: memory is linear in its length. Cost
   is per token, not per byte: a paragraph of 10^5 emoji clusters holds about 4 MB of tokens in each
-  of the two buffers.
+  of the two buffers, and the engine as a whole takes about 13 MB for it (measured, section 13.8:
+  about 130 bytes per cluster for the token buffers and the rest of the scratch together; the result
+  is borrowed, so no output string).
 - Inputs exercised by the load tests (section 13.8): long runs of `"`, `'`, backticks, `-`, `.`,
   `(`; alternating Cyrillic and Latin letters; a string of ZWJ emoji; one 1 MiB line without spaces
   (one fragment: the classifier is linear, freezing is one pass); quote nesting whose depth grows

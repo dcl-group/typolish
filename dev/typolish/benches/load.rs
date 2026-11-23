@@ -15,6 +15,7 @@
 #[path = "../tests/common/load_inputs.rs"]
 mod load_inputs;
 
+use std::borrow::Cow;
 use std::fs;
 use std::hint::black_box;
 use std::path::PathBuf;
@@ -339,7 +340,8 @@ fn memory_kib() -> (u64, u64) {
     (field("VmHWM:"), field("VmRSS:"))
 }
 
-/// The child process of the memory measurement: one paragraph, one call, peak before and after.
+/// The child process of the memory measurement: one paragraph, one call, peak before and after,
+/// and whether the result is borrowed (then the growth holds no output string).
 fn peak_child(clusters: usize, output_name: &str) {
     let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}";
     let text = family.repeat(clusters);
@@ -353,8 +355,9 @@ fn peak_child(clusters: usize, output_name: &str) {
     let result = t.typeset_with(&mut scratch, black_box(&text), output);
     black_box(&result);
     let (peak_after, rss_after) = memory_kib();
+    let borrowed = u8::from(matches!(result, Cow::Borrowed(_)));
     println!(
-        "{clusters} {} {peak_before} {rss_before} {peak_after} {rss_after}",
+        "{clusters} {} {peak_before} {rss_before} {peak_after} {rss_after} {borrowed}",
         text.len()
     );
 }
@@ -364,8 +367,14 @@ fn memory() {
         "\n== peak memory for one paragraph of ZWJ emoji clusters (child process per row), KiB =="
     );
     println!(
-        "{:<10} {:>10} {:>12} {:>12} {:>14} {:>14}",
-        "clusters", "bytes", "peak before", "peak after", "growth (KiB)", "growth/cluster B"
+        "{:<10} {:>10} {:>12} {:>12} {:>14} {:>17} {:>9}",
+        "clusters",
+        "bytes",
+        "peak before",
+        "peak after",
+        "growth (KiB)",
+        "growth/cluster B",
+        "borrowed"
     );
     let Ok(exe) = std::env::current_exe() else {
         println!("no current_exe");
@@ -381,11 +390,12 @@ fn memory() {
             .split_whitespace()
             .filter_map(|w| w.parse().ok())
             .collect();
-        if let [c, bytes, pb, _rb, pa, _ra] = nums[..] {
+        if let [c, bytes, pb, _rb, pa, _ra, borrowed] = nums[..] {
             let growth = pa.saturating_sub(pb);
             println!(
-                "{c:<10} {bytes:>10} {pb:>12} {pa:>12} {growth:>14} {:>14.0}",
-                growth as f64 * 1024.0 / c as f64
+                "{c:<10} {bytes:>10} {pb:>12} {pa:>12} {growth:>14} {:>17.0} {:>9}",
+                growth as f64 * 1024.0 / c as f64,
+                if borrowed == 1 { "yes" } else { "no" }
             );
         }
     }

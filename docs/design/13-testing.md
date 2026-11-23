@@ -490,22 +490,25 @@ U+00A0 and must not be normalized.
 
 - `benches/load.rs` (`harness = false`, std only: `Instant`, `black_box`, the median of N runs), run
   as `cargo bench --bench load` in release (the file carries the allow list of section 14.5). It
-  prints: the whole corpus per set and output kind (MB/s); one interface string of about 60 bytes
-  and one without trigger bytes (prefilter), median and p99 over 100 000 runs, with and without
-  `typeset_with`; time per byte for 1 KiB, 64 KiB, 1 MiB and 16 MiB of joined corpus and for one 1
-  MiB paragraph; and the pathological inputs of section 3.12, with the peak memory for one paragraph
-  of 10^5 ZWJ emoji clusters (section 3.12 estimates about 4 MB of tokens in each of the two
-  buffers).
+  prints: the whole corpus per set and output kind (MB/s); interface strings of 42 to 83 bytes
+  (about 60 on average) and one-word strings without trigger bytes (prefilter), median and p99 over
+  100 000 runs, with and without `typeset_with`; time per byte for 1 KiB, 64 KiB, 1 MiB and 16 MiB
+  of joined corpus and for one 1 MiB paragraph; and the pathological inputs of section 3.12, with
+  the peak memory for one paragraph of 10^5 ZWJ emoji clusters (section 3.12) and whether its result
+  is borrowed.
 - `#[ignore]` test `load_is_linear`: time per byte for 16 MiB is at most twice that for 64 KiB,
   separately for each pathological input. No absolute thresholds: the machine is shared. Indicative
   targets, measured in stage 5 and not promised: at least 20 MB/s on the corpus in Unicode output, a
   median below 10 µs for one interface string. Measured on 2026-11-23 (release, one shared machine,
-  Rust 1.100): the corpus runs at 2 to 3.6 MB/s in every output kind (about 280 to 500 ns per byte),
-  one interface string of 45 bytes takes 13 to 33 µs (median) and 28 to 60 µs (p99), and a one-word
-  string that the prefilter rejects takes 28 to 48 ns. Both indicative targets are missed by an
-  order of magnitude; the cost is linear (the 16 MiB to 64 KiB ratio of every pathological input is
-  between 0.9 and 1.7), so this is a constant-factor matter, not a defect of section 3.12. The
-  tables of the run are in the report of stage 5a.
+  Rust 1.100): the corpus runs at 1.8 to 3.6 MB/s in every output kind (about 280 to 550 ns per
+  byte); the interface strings of the bench take 13 to 15 µs at the median and 29 to 31 µs at p99
+  for 42 to 44 bytes of en-US, and 31 to 33 µs at the median and 49 to 54 µs at p99 for 71 to 83
+  bytes of ru-RU; a one-word string that the prefilter rejects takes 29 to 48 ns. One paragraph of
+  10^5 ZWJ emoji clusters raises the peak memory by about 13 MB (about 130 bytes per cluster, 128 to
+  163 bytes from 10^4 to 10^6 clusters, so linear); the result is borrowed, so this is engine memory
+  only, about 1.6 times the estimate of section 3.12. Both indicative targets are missed by an order
+  of magnitude; the cost is linear (the 16 MiB to 64 KiB ratio of every pathological input is
+  between 0.9 and 1.7), so this is a constant-factor matter, not a defect of section 3.12.
 - `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` (the only file with
   `#![allow(unsafe_code)]`, section 14.5; the allocator counts and delegates to
   `std::alloc::System`) checks the table of section 2.12: zero allocations for an unchanged string
