@@ -1,23 +1,22 @@
 //! The reverse transformation (design sections 2.10 and 12.1): typeset Unicode text back to the
 //! canonical plain form of the typographer.
 //!
-//! The inverse tables of section 12.1 give, for every typographic character outside the spans of
-//! `protected()`, the plain text it came from (a candidate; a few characters have a second
-//! reading, such as `’`, which is an apostrophe or the closer of a nested pair). A candidate is
-//! undone only where the enabled rules produce its character: the engine runs forward on the text
-//! with the candidates undone, and a candidate whose plain text does not come back as its
-//! character, or whose plain text makes a rule change the text next to it, is tried in its next
-//! reading or kept. The check repeats until every remaining candidate holds, and the whole pass
-//! repeats on its own output until nothing changes, so the result is a fixed point of
-//! `to_plain`. So "undoes exactly the enabled rules" is decided by the rules themselves, with no
-//! second copy of their patterns.
+//! The inverse tables of section 12.1 give a reading (the plain text it came from) for every
+//! typographic character outside the spans of `protected()`; a closed or spaced dash has a second
+//! reading with `--`. Quote glyphs and apostrophes are undone by the tables and the rule for `’`
+//! alone. Every other character is undone only where the enabled rules produce it: the engine runs
+//! forward on the text with the readings in place, and a reading that does not come back as its
+//! character, or that makes a rule edit the text next to it, is put aside. Readings put aside are
+//! retried in batches far apart, each in its other readings, and the whole pass repeats on its own
+//! output until nothing changes. So "undoes exactly the enabled rules" is decided by the rules
+//! themselves, with no second copy of their patterns.
 
 use std::borrow::Cow;
 
 use super::Input;
 use super::ingest::Atom;
 use super::record::{NoRecord, Recorder};
-use super::render::{REdit, write_text};
+use super::render::{REdit, merge, write_text};
 use super::scratch::Scratch;
 use crate::report::{Change, Diagnostic, ProtectedKind, ProtectedSpan};
 use crate::{Rule, Typographer};
@@ -133,26 +132,6 @@ pub(crate) fn to_plain_template<'t>(
         texts.push(Cow::Owned(out));
     }
     (texts, changed)
-}
-
-/// The text of the pieces between two slots: borrowed while it maps to at most one non-empty
-/// piece, as in `typeset_template`.
-fn merge<'t>(group: &[Input<'t>]) -> Cow<'t, str> {
-    let mut parts = group.iter().filter_map(|item| match *item {
-        Input::Text(text) | Input::Protected(text) | Input::Markup(text) if !text.is_empty() => {
-            Some(text)
-        }
-        _ => None,
-    });
-    let Some(first) = parts.next() else {
-        return Cow::Borrowed("");
-    };
-    if parts.clone().next().is_none() {
-        return Cow::Borrowed(first);
-    }
-    let mut all = String::from(first);
-    parts.for_each(|text| all.push_str(text));
-    Cow::Owned(all)
 }
 
 /// The plain text of every input piece: `Some` for a `Text` piece that changed. The pass repeats

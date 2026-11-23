@@ -258,7 +258,7 @@ pub(crate) fn render_template<'t>(
 /// The text of the pieces between two slots: borrowed while it maps to at most one non-empty
 /// piece, otherwise one string allocated at its final length (design section 2.6, output
 /// contract item 2).
-fn merge<'t>(group: &[Input<'t>]) -> Cow<'t, str> {
+pub(crate) fn merge<'t>(group: &[Input<'t>]) -> Cow<'t, str> {
     let mut parts = group.iter().filter_map(|item| match *item {
         Input::Text(text) | Input::Protected(text) | Input::Markup(text) if !text.is_empty() => {
             Some(text)
