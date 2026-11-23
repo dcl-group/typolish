@@ -105,7 +105,8 @@ impl Edits {
 /// exists, lies within the taken range and is not `FROZEN`, and no insertion stands next to a
 /// frozen token of the call's text (the inside of a frozen fragment, the hyphen of a compound
 /// word or a frozen space). An insertion next to a slot or protected text, which are frozen but
-/// opaque, is allowed: it falls outside them.
+/// opaque, is allowed: it falls outside them. Glue and removal apply only to `Space` tokens, and
+/// no edit replaces a `Format` or `Markup` token (invariant I1).
 pub(crate) fn edits_allowed(tokens: &[Tok], anchor: usize, m: &Match) -> bool {
     let last = anchor + m.consume as usize;
     let editable = |at: u8| {
@@ -120,7 +121,20 @@ pub(crate) fn edits_allowed(tokens: &[Tok], anchor: usize, m: &Match) -> bool {
         return false;
     }
     m.edits.iter().all(|edit| match *edit {
-        Edit::Replace { at, .. } | Edit::Glue { at, .. } | Edit::Remove { at } => editable(at),
+        // Glue and removal apply only to `Space` tokens, and no edit touches markup or a format
+        // character (invariant I1 of design section 4.3, design section 3.4).
+        Edit::Glue { at, .. } | Edit::Remove { at } => {
+            editable(at)
+                && tokens
+                    .get(anchor + at as usize)
+                    .is_some_and(|t| t.kind == Kind::Space)
+        }
+        Edit::Replace { at, .. } => {
+            editable(at)
+                && tokens
+                    .get(anchor + at as usize)
+                    .is_some_and(|t| !t.kind.is_transparent())
+        }
         Edit::Insert { before, .. } => {
             let right = anchor + before as usize;
             right <= last + 1
@@ -643,6 +657,28 @@ mod tests {
 
     fn one(edit: Edit, consume: u8) -> Match {
         Match::with(consume, Edits::NONE.with(edit))
+    }
+
+    #[test]
+    fn edits_keep_the_contract_of_edit() {
+        // Invariant I1 of design section 4.3: glue and removal only on `Space` tokens, no edit of
+        // a `Format` or `Markup` token.
+        let t = tokens("a b", &[]);
+        let glue = |at| Edit::Glue {
+            at,
+            glue: Glue::NoBreak,
+        };
+        assert!(!edits_allowed(&t, 0, &one(glue(0), 1)));
+        assert!(!edits_allowed(&t, 0, &one(Edit::Remove { at: 0 }, 1)));
+        assert!(edits_allowed(&t, 0, &one(glue(1), 1)));
+        assert!(edits_allowed(&t, 0, &one(Edit::Remove { at: 1 }, 1)));
+        let t = tokens("a\u{AD}b", &[]);
+        assert_eq!(t[1].kind, Kind::Format);
+        let replace = Edit::Replace {
+            at: 1,
+            repl: Repl::Char('x'),
+        };
+        assert!(!edits_allowed(&t, 0, &one(replace, 1)));
     }
 
     #[test]
