@@ -632,13 +632,22 @@ const RU_DATES: &[(&str, &str)] = &[
     ("21\tноября", "21\tноября"),
     ("21\nноября", "21\nноября"),
     ("21⍽ноября", "21⍽ноября"),
+    // Design section 5.4: a soft hyphen or a ZWNJ inside the month word is skipped by the lookup.
+    ("21 ноя\u{AD}бря", "21⍽ноя\u{AD}бря"),
+    ("21 ноя\u{200C}бря", "21⍽ноя\u{200C}бря"),
 ];
 
 #[test]
 fn dates_in_russian() {
     alone_rows(ru(), DATES, RU_DATES);
     let t = alone(ru(), DATES);
-    for text in ["21 ноября", "2026 г.", "XIX в."] {
+    for text in [
+        "21 ноября",
+        "2026 г.",
+        "XIX в.",
+        "21 ноя\u{AD}бря",
+        "21 ноя\u{200C}бря",
+    ] {
         assert_changed_by("ru dates", &t, text, DATES);
     }
 }
@@ -1545,6 +1554,16 @@ fn short_words_by_setting() {
     check_in("en", &t, ("и вот", "и⍽вот"));
     // The default list of the language still works with the setting on.
     check_in("en", &t, ("the cat", "the⍽cat"));
+}
+
+#[test]
+fn a_word_in_nfd_does_not_match_a_list() {
+    // Design section 5.5: the crate does not normalize; `и` + U+0306 is not `й`, so the listed
+    // word `май` written in NFD gets no glue and the text comes back unchanged.
+    let t = with(ru(), &[SHORT_WORDS], |b| b.add_short_words(["май"]));
+    check_in("ru", &t, ("май слово", "май⍽слово"));
+    check_unchanged("ru", &t, "ма\u{438}\u{306} слово");
+    check_unchanged("ru", &t, "Ма\u{438}\u{306} слово");
 }
 
 #[test]
