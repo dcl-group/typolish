@@ -6,6 +6,7 @@
 
 #![allow(dead_code)]
 
+pub mod decode;
 pub mod set_glue;
 pub mod strategies;
 

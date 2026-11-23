@@ -1,0 +1,107 @@
+# Extract of entities.json of the HTML Living Standard (the WHATWG list of named character
+# references), taken on 2026-11-21 from https://html.spec.whatwg.org/entities.json.
+#
+# Selection: every entry whose code points are exactly one character of the typographic set of
+# design section 11.2 (no-break space, narrow no-break space, thin space, non-breaking hyphen,
+# en and em dash, ellipsis, quotes, minus, times, primes, legal marks, arrows, math signs) or one
+# of the characters that HTML text escapes (& < > " '). The entries are unmodified: one source
+# line each, without its trailing comma. No entry of the full list has the code point U+202F or
+# U+2011, which is why they are written as numeric references.
+#
+# Used only by tests/output.rs (design sections 11.2, 13.1 and 13.2); excluded from the published
+# package (`exclude` in Cargo.toml).
+#
+# Source and license: the WHATWG HTML Living Standard,
+# Copyright (c) WHATWG (Apple, Google, Mozilla, Microsoft). This work is licensed under a Creative
+# Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/).
+# Attribution: "Data from the HTML Living Standard, https://html.spec.whatwg.org/, by WHATWG
+# (Apple, Google, Mozilla, Microsoft), CC BY 4.0."
+#
+# Format: lines starting with `#` are comments; every other non-empty line is a source line
+# `"&name;": { "codepoints": [N], "characters": "\uXXXX" }`.
+  "&AMP": { "codepoints": [38], "characters": "\u0026" }
+  "&AMP;": { "codepoints": [38], "characters": "\u0026" }
+  "&COPY": { "codepoints": [169], "characters": "\u00A9" }
+  "&COPY;": { "codepoints": [169], "characters": "\u00A9" }
+  "&CloseCurlyDoubleQuote;": { "codepoints": [8221], "characters": "\u201D" }
+  "&CloseCurlyQuote;": { "codepoints": [8217], "characters": "\u2019" }
+  "&GT": { "codepoints": [62], "characters": "\u003E" }
+  "&GT;": { "codepoints": [62], "characters": "\u003E" }
+  "&GreaterEqual;": { "codepoints": [8805], "characters": "\u2265" }
+  "&LT": { "codepoints": [60], "characters": "\u003C" }
+  "&LT;": { "codepoints": [60], "characters": "\u003C" }
+  "&LeftArrow;": { "codepoints": [8592], "characters": "\u2190" }
+  "&LeftRightArrow;": { "codepoints": [8596], "characters": "\u2194" }
+  "&NonBreakingSpace;": { "codepoints": [160], "characters": "\u00A0" }
+  "&NotEqual;": { "codepoints": [8800], "characters": "\u2260" }
+  "&OpenCurlyDoubleQuote;": { "codepoints": [8220], "characters": "\u201C" }
+  "&OpenCurlyQuote;": { "codepoints": [8216], "characters": "\u2018" }
+  "&PlusMinus;": { "codepoints": [177], "characters": "\u00B1" }
+  "&Prime;": { "codepoints": [8243], "characters": "\u2033" }
+  "&QUOT": { "codepoints": [34], "characters": "\u0022" }
+  "&QUOT;": { "codepoints": [34], "characters": "\u0022" }
+  "&REG": { "codepoints": [174], "characters": "\u00AE" }
+  "&REG;": { "codepoints": [174], "characters": "\u00AE" }
+  "&RightArrow;": { "codepoints": [8594], "characters": "\u2192" }
+  "&ShortLeftArrow;": { "codepoints": [8592], "characters": "\u2190" }
+  "&ShortRightArrow;": { "codepoints": [8594], "characters": "\u2192" }
+  "&TRADE;": { "codepoints": [8482], "characters": "\u2122" }
+  "&ThinSpace;": { "codepoints": [8201], "characters": "\u2009" }
+  "&amp": { "codepoints": [38], "characters": "\u0026" }
+  "&amp;": { "codepoints": [38], "characters": "\u0026" }
+  "&apos;": { "codepoints": [39], "characters": "\u0027" }
+  "&bdquo;": { "codepoints": [8222], "characters": "\u201E" }
+  "&circledR;": { "codepoints": [174], "characters": "\u00AE" }
+  "&copy": { "codepoints": [169], "characters": "\u00A9" }
+  "&copy;": { "codepoints": [169], "characters": "\u00A9" }
+  "&ge;": { "codepoints": [8805], "characters": "\u2265" }
+  "&geq;": { "codepoints": [8805], "characters": "\u2265" }
+  "&gt": { "codepoints": [62], "characters": "\u003E" }
+  "&gt;": { "codepoints": [62], "characters": "\u003E" }
+  "&harr;": { "codepoints": [8596], "characters": "\u2194" }
+  "&hellip;": { "codepoints": [8230], "characters": "\u2026" }
+  "&laquo": { "codepoints": [171], "characters": "\u00AB" }
+  "&laquo;": { "codepoints": [171], "characters": "\u00AB" }
+  "&larr;": { "codepoints": [8592], "characters": "\u2190" }
+  "&ldquo;": { "codepoints": [8220], "characters": "\u201C" }
+  "&ldquor;": { "codepoints": [8222], "characters": "\u201E" }
+  "&le;": { "codepoints": [8804], "characters": "\u2264" }
+  "&leftarrow;": { "codepoints": [8592], "characters": "\u2190" }
+  "&leftrightarrow;": { "codepoints": [8596], "characters": "\u2194" }
+  "&leq;": { "codepoints": [8804], "characters": "\u2264" }
+  "&lsaquo;": { "codepoints": [8249], "characters": "\u2039" }
+  "&lsquo;": { "codepoints": [8216], "characters": "\u2018" }
+  "&lsquor;": { "codepoints": [8218], "characters": "\u201A" }
+  "&lt": { "codepoints": [60], "characters": "\u003C" }
+  "&lt;": { "codepoints": [60], "characters": "\u003C" }
+  "&mdash;": { "codepoints": [8212], "characters": "\u2014" }
+  "&minus;": { "codepoints": [8722], "characters": "\u2212" }
+  "&mldr;": { "codepoints": [8230], "characters": "\u2026" }
+  "&nbsp": { "codepoints": [160], "characters": "\u00A0" }
+  "&nbsp;": { "codepoints": [160], "characters": "\u00A0" }
+  "&ndash;": { "codepoints": [8211], "characters": "\u2013" }
+  "&ne;": { "codepoints": [8800], "characters": "\u2260" }
+  "&plusmn": { "codepoints": [177], "characters": "\u00B1" }
+  "&plusmn;": { "codepoints": [177], "characters": "\u00B1" }
+  "&pm;": { "codepoints": [177], "characters": "\u00B1" }
+  "&prime;": { "codepoints": [8242], "characters": "\u2032" }
+  "&quot": { "codepoints": [34], "characters": "\u0022" }
+  "&quot;": { "codepoints": [34], "characters": "\u0022" }
+  "&raquo": { "codepoints": [187], "characters": "\u00BB" }
+  "&raquo;": { "codepoints": [187], "characters": "\u00BB" }
+  "&rarr;": { "codepoints": [8594], "characters": "\u2192" }
+  "&rdquo;": { "codepoints": [8221], "characters": "\u201D" }
+  "&rdquor;": { "codepoints": [8221], "characters": "\u201D" }
+  "&reg": { "codepoints": [174], "characters": "\u00AE" }
+  "&reg;": { "codepoints": [174], "characters": "\u00AE" }
+  "&rightarrow;": { "codepoints": [8594], "characters": "\u2192" }
+  "&rsaquo;": { "codepoints": [8250], "characters": "\u203A" }
+  "&rsquo;": { "codepoints": [8217], "characters": "\u2019" }
+  "&rsquor;": { "codepoints": [8217], "characters": "\u2019" }
+  "&sbquo;": { "codepoints": [8218], "characters": "\u201A" }
+  "&slarr;": { "codepoints": [8592], "characters": "\u2190" }
+  "&srarr;": { "codepoints": [8594], "characters": "\u2192" }
+  "&thinsp;": { "codepoints": [8201], "characters": "\u2009" }
+  "&times": { "codepoints": [215], "characters": "\u00D7" }
+  "&times;": { "codepoints": [215], "characters": "\u00D7" }
+  "&trade;": { "codepoints": [8482], "characters": "\u2122" }

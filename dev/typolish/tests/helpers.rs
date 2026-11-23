@@ -159,3 +159,141 @@ fn configs_name_the_rule_alone_and_the_sets_that_hold_it() {
     let (_, alone) = &configs(&Language::EN_US, Rule::QuotesPairs)[0];
     assert_eq!(alone.rules(), RuleSet::EMPTY.with(Rule::QuotesPairs));
 }
+
+// The decoders and the reference encoder of `tests/common/decode.rs` (design sections 11.8 and
+// 13.5): they are the oracle of the output tests, so each is checked on rows written from the
+// tables of sections 11.2, 11.4 and 11.6.
+
+#[test]
+fn the_html_decoder_reads_references_and_elements() {
+    use common::decode::decode_html;
+    assert_eq!(
+        decode_html("a &amp; b &lt;c&gt; &quot;d&quot; &#39;e&#39;").unwrap(),
+        "a & b <c> \"d\" 'e'"
+    );
+    assert_eq!(
+        decode_html("5&nbsp;МБ &mdash; &#x202F;&#8212;&#xA0;").unwrap(),
+        "5\u{a0}МБ — \u{202f}—\u{a0}"
+    );
+    assert_eq!(
+        decode_html("<span class=\"nowrap\">и т.&#x202F;д.</span> и").unwrap(),
+        "и\u{a0}т.\u{202f}д. и"
+    );
+    assert_eq!(
+        decode_html("<span style=\"white-space:nowrap\">a b</span>").unwrap(),
+        "a\u{a0}b"
+    );
+    assert_eq!(
+        decode_html("<span class=\"a&quot;b\">x</span>").unwrap(),
+        "x"
+    );
+    for bad in [
+        "a < b",
+        "a > b",
+        "a \" b",
+        "a ' b",
+        "a & b",
+        "&unknown;",
+        "&nbsp",
+        "<span class=\"n\">a",
+        "a</span>",
+        "<span class=\"n\"><span class=\"n\">a</span></span>",
+        "<b>x</b>",
+        "&#xD800;",
+    ] {
+        assert!(decode_html(bad).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn the_escape_decoders_read_each_syntax_strictly() {
+    use common::decode::decode_escaped;
+    use typolish::EscapeStyle;
+    let ok = |style: EscapeStyle, body: &str, text: &str| {
+        assert_eq!(decode_escaped(style, body).as_deref(), Ok(text), "{body}");
+    };
+    let err = |style: EscapeStyle, body: &str| {
+        assert!(decode_escaped(style, body).is_err(), "{body}");
+    };
+    ok(
+        EscapeStyle::JS,
+        "a\\u00A0\\\\\\\"\\u0027\\n\\uD83D\\uDE00",
+        "a\u{a0}\\\"'\n😀",
+    );
+    err(EscapeStyle::JS, "\\x41");
+    err(EscapeStyle::JS, "\\u{41}");
+    err(EscapeStyle::JS, "\\uD83D");
+    err(EscapeStyle::JS, "'");
+    err(EscapeStyle::JS, "`");
+    err(EscapeStyle::JS, "<");
+    err(EscapeStyle::JS, "a${b");
+    ok(EscapeStyle::JS, "a$b", "a$b");
+    err(EscapeStyle::JS, "\u{2028}");
+    err(EscapeStyle::JS, "\u{0}");
+    ok(EscapeStyle::JS_HEX, "\\xA0\\u2014\\x00", "\u{a0}—\u{0}");
+    ok(
+        EscapeStyle::JS_CODE_POINT,
+        "\\u{A0}\\u{1F600}\\u{0}",
+        "\u{a0}😀\u{0}",
+    );
+    err(EscapeStyle::JS_CODE_POINT, "\\u00A0");
+    err(EscapeStyle::JS_CODE_POINT, "\\u{D800}");
+    ok(
+        EscapeStyle::JSON,
+        "\\u00a0\\\"\\/\\b\\f\\ud83d\\ude00'`$",
+        "\u{a0}\"/\u{8}\u{c}😀'`$",
+    );
+    err(EscapeStyle::JSON, "\\'");
+    err(EscapeStyle::JSON, "&");
+    ok(
+        EscapeStyle::RUST,
+        "\\u{a0}\\0\\u{1}\\\"'`&<",
+        "\u{a0}\0\u{1}\"'`&<",
+    );
+    err(EscapeStyle::RUST, "\\u00a0");
+    err(EscapeStyle::RUST, "\"");
+    err(EscapeStyle::RUST, "\n");
+    ok(
+        EscapeStyle::CSS,
+        "\\a0 \\fffd \\a \\\\\\'\\\"&`",
+        "\u{a0}\u{fffd}\n\\'\"&`",
+    );
+    err(EscapeStyle::CSS, "\\a0");
+    err(EscapeStyle::CSS, "\\n");
+    err(EscapeStyle::CSS, "'");
+    err(EscapeStyle::CSS, "<");
+    ok(EscapeStyle::CSS, "\u{85}\u{2028}", "\u{85}\u{2028}");
+    err(EscapeStyle::JS.non_ascii(), "Да");
+    ok(EscapeStyle::JS.non_ascii(), "\\u0414\\u0430", "Да");
+}
+
+#[test]
+fn the_reference_encoder_agrees_with_the_decoders() {
+    use common::decode::{all_outputs, decode, encode_reference, writes_characters};
+    use typolish::Output;
+    let text = "a & b <c> \"d\" 'e' `f` ${g} \\ \n\r\t\u{0}\u{1}\u{7f}\u{85}\u{2028}\u{2029} «»„“”‘’‚‹› – — … − × ′ ″ © ® ™ → ← ↔ ≥ ≤ ≠ ± \u{a0}\u{202f}\u{2009}\u{2011} Да 😀";
+    for output in all_outputs() {
+        if matches!(output, Output::Html(s) if s != typolish::HtmlStyle::NAMED && s != typolish::HtmlStyle::DECIMAL && s != typolish::HtmlStyle::HEX && s != typolish::HtmlStyle::CHARACTERS)
+        {
+            continue;
+        }
+        let encoded = encode_reference(output, text);
+        let expected = if matches!(output, Output::Escaped(s) if s == typolish::EscapeStyle::CSS || s == typolish::EscapeStyle::CSS.non_ascii())
+        {
+            text.replace('\u{0}', "\u{fffd}")
+        } else {
+            text.to_owned()
+        };
+        assert_eq!(
+            decode(output, &encoded).as_deref(),
+            Ok(expected.as_str()),
+            "{output:?}"
+        );
+        if let Output::Html(style) = output {
+            assert_eq!(
+                writes_characters(style),
+                style == typolish::HtmlStyle::CHARACTERS
+            );
+        }
+    }
+}
