@@ -237,7 +237,8 @@ fn idempotence_of_the_seed_with_a_built_language() {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(512))]
 
-    /// 1. Idempotence and 2. the fixed-point oracle.
+    /// 1. Idempotence and 2. the fixed-point oracle; a difference prints the reports of both
+    /// passes (design section 13.5).
     #[test]
     fn idempotence_and_fixed_point(
         text in any_text(), lang in 0usize..3, set in rule_set(), quotes in 0u8..3, percent in 0u8..4,
@@ -245,16 +246,27 @@ proptest! {
         let t = typographer(lang, set, quotes, percent);
         let once = t.typeset(&text, Output::Unicode).into_owned();
         let twice = t.typeset(&once, Output::Unicode).into_owned();
-        prop_assert_eq!(&once, &twice);
+        prop_assert!(
+            once == twice,
+            "first pass:\n{}\nsecond pass:\n{}",
+            t.report(&text, Output::Unicode),
+            t.report(&once, Output::Unicode)
+        );
         let mut current = text.clone();
+        let mut previous = text.clone();
         for _ in 0..3 {
             let next = t.typeset(&current, Output::Unicode).into_owned();
             if next == current {
                 break;
             }
-            current = next;
+            previous = std::mem::replace(&mut current, next);
         }
-        prop_assert_eq!(&current, &once);
+        prop_assert!(
+            current == once,
+            "first pass:\n{}\nlast pass:\n{}",
+            t.report(&text, Output::Unicode),
+            t.report(&previous, Output::Unicode)
+        );
     }
 
     /// 1. Idempotence with every minus sign the builder accepts (design section 2.11): the sign
@@ -273,7 +285,12 @@ proptest! {
             .unwrap();
         let once = t.typeset(&text, Output::Unicode).into_owned();
         let twice = t.typeset(&once, Output::Unicode).into_owned();
-        prop_assert_eq!(&once, &twice, "{:?} -> {:?}", text, once);
+        prop_assert!(
+            once == twice,
+            "first pass:\n{}\nsecond pass:\n{}",
+            t.report(&text, Output::Unicode),
+            t.report(&once, Output::Unicode)
+        );
     }
 
     /// 8. Cow: borrowed exactly when the output equals the input, for every output kind.
@@ -578,43 +595,84 @@ proptest! {
         prop_assert!(second.changes().is_empty(), "{:?} -> {:?} -> {:?}", text, out, second.changes());
     }
 
-    /// I5: quotes are all or nothing per window. In a window that does not converge (an
-    /// `UnmatchedQuote` warning or `CrossingQuotes`) no straight `"` changed, and a straight `'`
-    /// changed only by step 1 (an apostrophe or a prime). The text has no line break: one window.
+    /// I5: quotes are all or nothing per window (`i5_check`).
     #[test]
     fn i5_a_window_that_does_not_converge_keeps_its_quotes(
         text in quote_text(), lang in 0usize..2, bits in any::<u8>(), mode in 0u8..3,
     ) {
-        let mut set = RuleSet::EMPTY.with(Rule::QuotesPairs);
-        for (bit, rule) in [
-            (1, Rule::QuotesApostrophe),
-            (2, Rule::QuotesPrimes),
-            (4, Rule::EllipsisDots),
-            (8, Rule::DashSpacedHyphen),
-        ] {
-            if bits & bit != 0 {
-                set = set.with(rule);
-            }
+        i5_check(&text, lang, bits, mode)?;
+    }
+}
+
+/// I5 for one input: in a window that does not converge (an `UnmatchedQuote` warning or
+/// `CrossingQuotes`) no straight `"` changed, and a straight `'` changed only by step 1 (an
+/// apostrophe or a prime). The text has no line break: one window. Returns whether the window was
+/// blocked.
+fn i5_check(text: &str, lang: usize, bits: u8, mode: u8) -> Result<bool, TestCaseError> {
+    let mut set = RuleSet::EMPTY.with(Rule::QuotesPairs);
+    for (bit, rule) in [
+        (1, Rule::QuotesApostrophe),
+        (2, Rule::QuotesPrimes),
+        (4, Rule::EllipsisDots),
+        (8, Rule::DashSpacedHyphen),
+    ] {
+        if bits & bit != 0 {
+            set = set.with(rule);
         }
-        let t = typographer(lang, set, mode, 0);
-        let report = t.report(&text, Output::Unicode);
-        let blocked = report.diagnostics().iter().any(|d| {
-            (d.kind() == &DiagnosticKind::UnmatchedQuote && d.severity() == Severity::Warning)
-                || d.kind() == &DiagnosticKind::CrossingQuotes
-        });
-        if blocked {
-            for change in report.changes() {
-                let original = report.original(change);
-                prop_assert_ne!(original, "\"", "{:?} -> {:?}", text, report.result());
-                if original == "'" {
-                    prop_assert!(
-                        matches!(change.replacement(), "’" | "′"),
-                        "{:?} -> {:?}", text, report.result()
-                    );
-                }
+    }
+    let t = typographer(lang, set, mode, 0);
+    let report = t.report(text, Output::Unicode);
+    let blocked = report.diagnostics().iter().any(|d| {
+        (d.kind() == &DiagnosticKind::UnmatchedQuote && d.severity() == Severity::Warning)
+            || d.kind() == &DiagnosticKind::CrossingQuotes
+    });
+    if blocked {
+        for change in report.changes() {
+            let original = report.original(change);
+            prop_assert_ne!(original, "\"", "{:?} -> {:?}", text, report.result());
+            if original == "'" {
+                prop_assert!(
+                    matches!(change.replacement(), "’" | "′"),
+                    "{:?} -> {:?}",
+                    text,
+                    report.result()
+                );
             }
         }
     }
+    Ok(blocked)
+}
+
+#[test]
+fn i5_blocked_seeds() {
+    // Blocked windows, so that the check of `i5_check` runs: a crossing pair, and an unmatched
+    // quote next to an apostrophe that still changes (`'` → `’`), so the loop over changes runs.
+    for (text, lang, bits) in [
+        ("«a \"b» c\"", 0, 0),
+        ("Он сказал \"don't.", 0, 1),
+        ("He said \"don't.", 1, 1),
+    ] {
+        for mode in 0..3 {
+            assert!(
+                matches!(i5_check(text, lang, bits, mode), Ok(true)),
+                "{text:?} mode {mode}"
+            );
+        }
+    }
+    // The apostrophe changes in the blocked window: the loop over changes is not empty.
+    let t = typographer(
+        0,
+        RuleSet::EMPTY
+            .with(Rule::QuotesPairs)
+            .with(Rule::QuotesApostrophe),
+        0,
+        0,
+    );
+    assert!(
+        !t.report("Он сказал \"don't.", Output::Unicode)
+            .changes()
+            .is_empty()
+    );
 }
 
 /// Pieces of text and slots only (no protected or markup pieces), with no two texts side by side,
@@ -733,25 +791,42 @@ proptest! {
         }
     }
 
-    /// 8. Cow for templates: a text maps to an unchanged input piece exactly when it is borrowed,
-    /// and `changed()` says whether any text differs from its input, in every kind.
+    /// 8. Cow for templates (design section 2.6, output contract items 1 and 2): the text of a gap
+    /// between slots with at most one non-empty piece is borrowed exactly when it equals that
+    /// piece; a merged text is never borrowed; `changed()` says whether any text differs from the
+    /// concatenation of its pieces, in every kind.
     #[test]
     fn template_changed_agrees_with_the_texts(
         parts in pieces(), lang in 0usize..3, set in rule_set(),
     ) {
         let t = typographer(lang, set, 0, 0);
         let input = borrow(&parts);
+        // The pieces of each gap between slots.
+        let mut gaps: Vec<Vec<&str>> = vec![Vec::new()];
+        for piece in &input {
+            match *piece {
+                typolish::Piece::Slot(..) => gaps.push(Vec::new()),
+                typolish::Piece::Text(s) | typolish::Piece::Protected(s) | typolish::Piece::Markup(s) => {
+                    gaps.last_mut().unwrap().push(s);
+                }
+                _ => {}
+            }
+        }
         for output in all_outputs() {
             let template = t.typeset_template(input.iter().copied(), output);
-            // A template of one text piece is borrowed exactly when unchanged.
-            if let [typolish::Piece::Text(only)] = input.as_slice() {
-                prop_assert_eq!(
-                    matches!(template.texts()[0], Cow::Borrowed(_)),
-                    template.texts()[0] == *only,
-                    "{:?} {:?}", output, only
-                );
-                prop_assert_eq!(template.changed(), template.texts()[0] != *only);
+            prop_assert_eq!(template.texts().len(), gaps.len());
+            let mut any = false;
+            for (text, gap) in template.texts().iter().zip(&gaps) {
+                let joined: String = gap.concat();
+                let borrowed = matches!(text, Cow::Borrowed(_));
+                if gap.iter().filter(|s| !s.is_empty()).count() <= 1 {
+                    prop_assert_eq!(borrowed, *text == joined, "{:?} {:?}", output, gap);
+                } else {
+                    prop_assert!(!borrowed, "{:?} {:?}", output, gap);
+                }
+                any |= *text != joined;
             }
+            prop_assert_eq!(template.changed(), any, "{:?} {:?}", output, gaps);
         }
     }
 
