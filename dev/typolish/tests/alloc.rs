@@ -221,3 +221,43 @@ fn a_template_iterator_that_calls_the_typographer_adds_nothing_else() {
     assert_eq!((allocs, reallocs), (3, 0));
     assert_eq!(t.texts(), ["слово", ""]);
 }
+
+#[test]
+fn a_changed_template_text_is_one_allocation_however_much_it_grows() {
+    // Section 2.12: at most 3 plus one per changed text. A glued space takes two bytes for one,
+    // so a short glued text must not outgrow its string (`{n} дн.`, section 2.6).
+    // (pieces, texts, the number of changed texts)
+    let rows: [(Vec<Piece<'static, u8>>, &[&str], usize); 3] = [
+        (
+            vec![Piece::Slot(0, Slot::NUMBER), Piece::Text(" дн.")],
+            &["", "\u{a0}дн."],
+            1,
+        ),
+        (
+            vec![
+                Piece::Text("Скачано "),
+                Piece::Slot(0, Slot::NUMBER),
+                Piece::Text(" МБ за "),
+                Piece::Slot(1, Slot::NUMBER),
+                Piece::Text(" с."),
+            ],
+            &["Скачано ", "\u{a0}МБ за\u{a0}", "\u{a0}с."],
+            2,
+        ),
+        (
+            // Ten quotes in a short text: every one grows by a byte.
+            vec![
+                Piece::Text("\"a\" \"b\" \"c\" \"d\" \"e\" "),
+                Piece::Slot(0, Slot::WORD),
+            ],
+            &["«a» «b» «c» «d» «e» ", ""],
+            1,
+        ),
+    ];
+    for (pieces, texts, changed) in rows {
+        let _ = RU_UI.typeset_template(pieces.clone(), Output::Unicode);
+        let (allocs, reallocs, t) = count(|| RU_UI.typeset_template(pieces, Output::Unicode));
+        assert_eq!(t.texts(), texts);
+        assert_eq!((allocs, reallocs), (3 + changed, 0), "{texts:?}");
+    }
+}

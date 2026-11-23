@@ -3,8 +3,9 @@
 //! After the phases of a changed window, its tokens give one edit per replaced token, per glued
 //! space and per inserted space, and the phases list the removed spaces. Each edit replaces a
 //! range of the call's text. A string comes back borrowed when no window changed; otherwise the
-//! output is built once, at `len + len / 8` bytes, with the unchanged parts copied. A template
-//! text that no edit touches is the merge of its pieces, as without rules. Only
+//! output is built once, at `len + len / 8` bytes, with the unchanged parts copied. A changed
+//! template text is allocated once at its length plus the new text of its edits; a template text
+//! that no edit touches is the merge of its pieces, as without rules. Only
 //! `Output::Unicode` is rendered so far: `Html` and `Escaped` are written as Unicode until the
 //! encoders of stage 3.
 
@@ -72,6 +73,15 @@ pub(crate) fn collect(tokens: &[Tok], removed: &[(u32, u32)], out: &mut Vec<REdi
     }));
     if let Some(window) = out.get_mut(base..) {
         window.sort_unstable_by_key(|e| (e.start, e.end));
+    }
+}
+
+/// The length in bytes of the new text of an edit.
+fn written_len(text: RText, data: &Table<'_>) -> usize {
+    match text {
+        RText::Empty => 0,
+        RText::Char(c) => c.len_utf8(),
+        RText::Ellipsis(form) => ellipsis_tail(data, form).len(),
     }
 }
 
@@ -181,11 +191,26 @@ pub(crate) fn render_template<'t>(
             continue;
         }
         changed = true;
-        let len = group.iter().fold(0usize, |len, item| match item {
-            Input::Text(s) | Input::Protected(s) | Input::Markup(s) => len.saturating_add(s.len()),
-            Input::Slot(_) => len,
-        });
-        let mut out = String::with_capacity(len + len / 8);
+        // The text and the new text of its edits: a bound on the result, so the string is
+        // allocated once (design section 2.12), however much the edits grow a short text (a
+        // glued space takes two bytes for one).
+        let len = group
+            .iter()
+            .enumerate()
+            .fold(0usize, |len, (k, item)| match item {
+                Input::Text(s) => {
+                    let grown = piece_of(base + k).map_or(0, |p| {
+                        edits_of(edits, p)
+                            .filter(|e| e.start >= p.start)
+                            .map(|e| written_len(e.text, data))
+                            .fold(0usize, usize::saturating_add)
+                    });
+                    len.saturating_add(s.len()).saturating_add(grown)
+                }
+                Input::Protected(s) | Input::Markup(s) => len.saturating_add(s.len()),
+                Input::Slot(_) => len,
+            });
+        let mut out = String::with_capacity(len);
         for (k, item) in group.iter().enumerate() {
             match *item {
                 Input::Text(s) => match piece_of(base + k) {

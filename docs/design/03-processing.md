@@ -552,7 +552,10 @@ and encoding changes nothing, nothing is built. At the first change the output g
 `String::with_capacity(len + len / 8)`, the unchanged prefix of the input is copied in, and windows
 are written from there, with the boundary characters between them (section 3.3). If nothing changed
 to the end, the result is `Cow::Borrowed(input)`. For templates the same holds per text: a text that
-maps to one unchanged input piece borrows it.
+maps to one unchanged input piece borrows it, and a changed text gets one string sized from its
+pieces plus the new text of its edits, a bound on its length, so it is never grown (section 2.12: a
+glued space takes two bytes for one, which `len + len / 8` would not cover in a short text such as
+`{n} дн.`).
 
 ### 3.11 Recording
 
