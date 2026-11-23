@@ -418,7 +418,7 @@ fn class_of_char(c: char) -> Class {
         '±' => Class::Single(Kind::Operator(Op::PlusMinus)),
         '(' | '[' | '{' => Class::Single(Kind::Open(c)),
         ')' | ']' | '}' => Class::Single(Kind::Close(c)),
-        _ if is_line_break(c) || c == '\u{2029}' => Class::Single(Kind::Newline),
+        _ if is_line_break(c) => Class::Single(Kind::Newline),
         _ if is_horizontal_space(c) => Class::Space,
         _ if is_format_char(c) || is_joiner(c) => Class::Single(Kind::Format),
         _ if is_quote_char(c) => Class::Single(Kind::Quote),
