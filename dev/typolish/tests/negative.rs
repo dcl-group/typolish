@@ -593,6 +593,25 @@ fn row_3_in_prose() {
             "Run git checkout—file now.",
         ),
     );
+    // Next to slots (design section 10.5): the lone `--` between two word slots is a dash; `Closed`
+    // keeps the spaces next to a slot (design section 8.4).
+    for (t, text, expected) in [
+        (&ru, " -- ", "\u{a0}— "),
+        (&ru, " Запустите -- сейчас. ", " Запустите\u{a0}— сейчас. "),
+        (&en, " -- ", " — "),
+        (&en, " Run -- now. ", " Run—now. "),
+    ] {
+        let out = t.typeset_template(
+            [
+                Piece::Slot("a", Slot::WORD),
+                Piece::Text(text),
+                Piece::Slot("b", Slot::WORD),
+            ],
+            Output::Unicode,
+        );
+        assert_eq!(out.texts(), ["", expected, ""], "{text:?}");
+        assert!(out.changed(), "{text:?}");
+    }
     // `report` names the rule; in Russian `nbsp.dash` also glues the space before the dash.
     let r = ru.report("Запустите -- сейчас.", Output::Unicode);
     let rules: Vec<Rule> = r.changes().iter().map(|c| c.rule()).collect();
@@ -1222,12 +1241,19 @@ fn corpus_cases_keep_their_token_in_prose() {
 #[test]
 fn corpus_cases_are_unchanged_when_no_rule_runs() {
     // The tables are not trivially satisfied: with every rule off nothing changes either, and
-    // the tokens of the cases are found in the inputs.
-    let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY);
-    for r in negative_rows(ru::ROWS) {
-        assert!(vis(r.input) == r.input, "{}", r.id);
-        check_unchanged("no rules", &t, r.input);
-        let token = token_range(r, &FRAMES_RU).unwrap_or(0..r.input.len());
-        assert!(!r.input[token].is_empty(), "{}", r.id);
+    // the tokens of the cases are found in the inputs, in both languages.
+    for (language, frames, rows) in [
+        (Language::RU_RU, FRAMES_RU, ru::ROWS),
+        (Language::EN_US, FRAMES_EN, en_us::ROWS),
+    ] {
+        let t = Typographer::new(language, RuleSet::EMPTY);
+        let rows = negative_rows(rows);
+        assert!(!rows.is_empty());
+        for r in rows {
+            assert!(vis(r.input) == r.input, "{}", r.id);
+            check_unchanged("no rules", &t, r.input);
+            let token = token_range(r, &frames).unwrap_or(0..r.input.len());
+            assert!(!r.input[token].is_empty(), "{}", r.id);
+        }
     }
 }
