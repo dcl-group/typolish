@@ -2,7 +2,7 @@
 //! idempotence, the fixed-point oracle, slots and protected spans, letters and digits, `Cow`,
 //! pieces and strings, determinism of order and no panic; and, through `report`, the invariants I1,
 //! I2, I4 and I5 of design section 4.3 as far as the public API shows them. The properties that
-//! need `lint` and `to_plain` join when those parts exist. Stage 3 adds the decoder properties (12),
+//! need `lint` join when it exists; those of `to_plain` (14 and 16) are at the end. Stage 3 adds the decoder properties (12),
 //! the safe alphabet (17), I3, and the properties of `format_number`.
 
 #![allow(
@@ -962,6 +962,136 @@ proptest! {
                 t.format_number(b, Output::Unicode)
             );
             prop_assert_eq!(unicode, sides);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Stage 4: `to_plain` (design sections 2.10 and 12.1; properties 14 and 16). The round trip,
+// property 13, lives in `tests/roundtrip.rs`.
+// ---------------------------------------------------------------------------------------------
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(10_000))]
+
+    /// 14. No panic of `to_plain` on arbitrary strings, whatever the settings.
+    #[test]
+    fn no_panic_of_to_plain_on_strings(
+        text in any_text(), lang in 0usize..3, set in rule_set(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let t = typographer(lang, set, quotes, percent);
+        let _ = t.to_plain(&text);
+    }
+
+    #[test]
+    fn no_panic_of_to_plain_on_arbitrary_unicode(text in "\\PC*|.*", lang in 0usize..3) {
+        let t = typographer(lang, RuleSet::ALL, 0, 0);
+        let _ = t.to_plain(&text);
+    }
+
+    /// 14. No panic of `to_plain_template` on arbitrary pieces; slots keep their order and kinds.
+    #[test]
+    fn no_panic_of_to_plain_on_pieces(parts in pieces(), lang in 0usize..3, set in rule_set()) {
+        let t = typographer(lang, set, 0, 0);
+        let input = borrow(&parts);
+        let out = t.to_plain_template(input);
+        prop_assert_eq!(out.texts().len(), out.slots().len() + 1);
+        let want: Vec<(u32, typolish::SlotKind)> = parts
+            .iter()
+            .filter_map(|p| match p {
+                GenPiece::Slot(id, kind) => Some((*id, *kind)),
+                _ => None,
+            })
+            .collect();
+        let got: Vec<(u32, typolish::SlotKind)> =
+            out.slots().iter().map(|(id, slot)| (*id, slot.kind())).collect();
+        prop_assert_eq!(got, want);
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(2_000))]
+
+    /// 16. `to_plain` is stable: `to_plain(to_plain(x)) == to_plain(x)` for {ru, en} x {Prose,
+    /// Interface}, and the result is `Borrowed` exactly when it equals the input. The input is a
+    /// generated string and the typeset form of one.
+    #[test]
+    fn to_plain_is_stable(
+        text in any_text(), lang in 0usize..2, interface in any::<bool>(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let set = if interface { RuleSet::INTERFACE } else { RuleSet::PROSE };
+        let t = typographer(lang, set, quotes, percent);
+        let typeset = t.typeset(&text, Output::Unicode).into_owned();
+        for x in [text.as_str(), typeset.as_str()] {
+            let once = t.to_plain(x);
+            let twice = t.to_plain(&once);
+            prop_assert_eq!(&twice, &once, "x = {}", show(x));
+            prop_assert_eq!(
+                matches!(once, Cow::Borrowed(_)),
+                once == x,
+                "Borrowed exactly when unchanged: {}",
+                show(x)
+            );
+        }
+    }
+
+    /// 16. The same for `to_plain_template`: texts stable, slots equal.
+    #[test]
+    fn to_plain_template_is_stable(parts in pieces(), lang in 0usize..2, interface in any::<bool>()) {
+        // Protected and markup pieces become plain text of the result, which a second pass would
+        // read as text: the stability is that of `Text` and `Slot` pieces.
+        let parts: Vec<GenPiece> = parts
+            .into_iter()
+            .filter(|p| matches!(p, GenPiece::Text(_) | GenPiece::Slot(..)))
+            .collect();
+        let set = if interface { RuleSet::INTERFACE } else { RuleSet::PROSE };
+        let t = typographer(lang, set, 0, 0);
+        let once = t.to_plain_template(borrow(&parts));
+        let again_input: Vec<typolish::Piece<'_, u32>> = once
+            .iter()
+            .map(|part| match part {
+                typolish::TemplatePart::Text(text) => typolish::Piece::Text(text),
+                typolish::TemplatePart::Slot(id, slot) => typolish::Piece::Slot(*id, slot),
+                _ => panic!("a part of a template that the test does not know"),
+            })
+            .collect();
+        let twice = t.to_plain_template(again_input);
+        prop_assert_eq!(twice.texts(), once.texts());
+        prop_assert_eq!(twice.slots(), once.slots());
+    }
+}
+
+/// 16 on the corpus: the plain lines and their typeset forms, with both sets.
+#[test]
+fn to_plain_is_stable_on_the_corpus() {
+    use common::corpus::{
+        FILES, LANGS, SETS, messages, text_lines, typographer as corpus_typographer,
+    };
+    for lang in LANGS {
+        for (set_name, _) in SETS {
+            let t = corpus_typographer(lang, set_name);
+            let mut lines: Vec<String> = Vec::new();
+            for file in FILES {
+                if file.ends_with(".tmpl") {
+                    lines.extend(messages(lang).iter().map(|m| m.flat()));
+                } else {
+                    lines.extend(text_lines(lang, file));
+                }
+            }
+            for line in lines {
+                let typeset = t.typeset(&line, Output::Unicode).into_owned();
+                for x in [line.as_str(), typeset.as_str()] {
+                    let once = t.to_plain(x);
+                    let twice = t.to_plain(&once);
+                    assert_eq!(twice, once, "{lang} {set_name}: {}", show(x));
+                    assert_eq!(
+                        matches!(once, Cow::Borrowed(_)),
+                        once == x,
+                        "{lang} {set_name}: Borrowed exactly when unchanged: {}",
+                        show(x)
+                    );
+                }
+            }
         }
     }
 }
