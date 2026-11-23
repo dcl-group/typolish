@@ -250,7 +250,8 @@ target directory lives outside the repository.
 
 ### 14.7 Gates
 
-Before every commit, from `dev/`, for the `typolish` package only: `cargo fmt --check`,
+Before every commit, from `dev/`, for the `typolish` package only, with `CARGO_TARGET_DIR` set to a
+directory outside the repository (section 14.6): `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings`, `cargo deny check`, `cargo test` (doctests included),
 `cargo hack --each-feature test`, `cargo +1.100.0 check --all-targets` (the MSRV toolchain,
 installed once with `rustup toolchain install 1.100.0` and again whenever the MSRV is raised;
