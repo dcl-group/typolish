@@ -3,7 +3,8 @@
 //! counts of the generated reference tables (design section 13.4).
 //!
 //! A cell that the table gives as a fragment is checked as a fragment of the output; a cell marked
-//! "glue aside" is compared with the no-break spaces turned into plain spaces.
+//! "unchanged" is compared with the input byte for byte; a cell marked "unchanged (glue aside)" is
+//! compared with the no-break spaces turned into plain spaces.
 
 #![allow(
     clippy::unwrap_used,
@@ -79,7 +80,7 @@ const EXACT_EN: &[(&str, &str, &str)] = &[
     ("EnNbsp", "5 MB", "5⍽MB"),
 ];
 
-/// Rows the table gives as "unchanged": the output equals the input, glue aside.
+/// Rows the table gives as "unchanged": the output equals the input byte for byte.
 const UNCHANGED_RU: &[(&str, &str)] = &[
     ("NoSpaceEdit", "host:8080"),
     ("NoSpaceEdit", "::1"),
@@ -89,13 +90,6 @@ const UNCHANGED_RU: &[(&str, &str)] = &[
     ("Technical", "a>>b"),
     ("Technical", "0x1F"),
     ("Technical", "1/2/2026"),
-    ("AuthorPunctuation", "А если.."),
-    ("AuthorPunctuation", "Конец...."),
-    ("AuthorPunctuation", "Да!!"),
-    ("AuthorPunctuation", "Да!?"),
-    ("NoSpelling", "кто то"),
-    ("NoSpelling", "из за"),
-    ("NoSpelling", "25-ый этаж"),
     ("LegalMarkContext", "Вариант (c)"),
     ("LegalMarkContext", "(R) знак"),
     ("NoDigitChange", "20C"),
@@ -103,6 +97,18 @@ const UNCHANGED_RU: &[(&str, &str)] = &[
     ("AlreadyTypeset", "Что?…"),
     ("EllipsisDigits", "-5...5"),
     ("NoTrim", "Строка   \nвторая\t\n\n\n\nтретья  "),
+];
+
+/// Rows the table gives as "unchanged (glue aside)": the output equals the input once its
+/// no-break spaces are written as plain ones.
+const GLUE_ASIDE_RU: &[(&str, &str)] = &[
+    ("AuthorPunctuation", "А если.."),
+    ("AuthorPunctuation", "Конец...."),
+    ("AuthorPunctuation", "Да!!"),
+    ("AuthorPunctuation", "Да!?"),
+    ("NoSpelling", "кто то"),
+    ("NoSpelling", "из за"),
+    ("NoSpelling", "25-ый этаж"),
 ];
 
 #[test]
@@ -127,9 +133,18 @@ fn unchanged_rows_of_the_table() {
     let mut failures = Vec::new();
     for (reason, input) in UNCHANGED_RU {
         let got = set(Language::RU_RU, input);
-        if unglued(&got) != *input {
+        if got != *input {
             failures.push(format!(
                 "{reason}: {input:?} gives {:?}, the table says unchanged",
+                common::show(&got)
+            ));
+        }
+    }
+    for (reason, input) in GLUE_ASIDE_RU {
+        let got = set(Language::RU_RU, input);
+        if unglued(&got) != *input {
+            failures.push(format!(
+                "{reason}: {input:?} gives {:?}, the table says unchanged (glue aside)",
                 common::show(&got)
             ));
         }
@@ -139,10 +154,14 @@ fn unchanged_rows_of_the_table() {
 
 #[test]
 fn unmatched_quotes_are_not_guessed() {
-    // NoGuess: unchanged, with UnmatchedQuote.
-    for input in ["Он сказал \"привет.", "\"Один \"два три\""] {
+    // NoGuess: the quotes stay as written, with UnmatchedQuote; the first row is glued after the
+    // short word `Он` (section 8.7), the second is unchanged.
+    for (input, expected) in [
+        ("Он сказал \"привет.", "Он⍽сказал \"привет."),
+        ("\"Один \"два три\"", "\"Один \"два три\""),
+    ] {
         let got = set(Language::RU_RU, input);
-        assert_eq!(unglued(&got), input, "NoGuess {input:?}");
+        assert_eq!(got, vis(expected), "NoGuess {input:?}");
         assert!(
             diagnostics(Language::RU_RU, input).contains(&DiagnosticKind::UnmatchedQuote),
             "NoGuess {input:?}: no UnmatchedQuote"
@@ -167,7 +186,7 @@ fn look_alike_letters_are_not_replaced() {
 fn ambiguous_hyphen_is_left_alone_and_reported() {
     for input in ["10 - 20 штук", "5 - 3 = 2"] {
         let got = set(Language::RU_RU, input);
-        assert_eq!(unglued(&got), input, "AmbiguousHyphen {input:?}");
+        assert_eq!(got, input, "AmbiguousHyphen {input:?}");
         assert!(
             diagnostics(Language::RU_RU, input).contains(&DiagnosticKind::AmbiguousHyphen),
             "AmbiguousHyphen {input:?}: no AmbiguousHyphen"
