@@ -397,8 +397,10 @@ fn a_built_language_has_its_own_tag_and_is_not_resolved_by_from_tag() {
 fn the_builder_is_clone_and_debug() {
     let b = LanguageBuilder::new("xx").short_words(["а"]);
     let c = b.clone();
+    // `Debug` shows the builder's data: the clone prints the same, and the tag is there.
+    assert_eq!(format!("{b:?}"), format!("{c:?}"));
+    assert!(format!("{b:?}").contains("\"xx\""), "{b:?}");
     assert_eq!(b.build().unwrap(), c.build().unwrap());
-    let _ = format!("{:?}", LanguageBuilder::new("xx"));
 }
 
 #[test]
