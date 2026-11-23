@@ -169,7 +169,9 @@ fn copyright_in_prose_next_to_a_range() {
         let t = prose(language);
         check_exact("Prose", &t, ("2020-2026 (c)", "2020–2026 ©"));
         check_exact("Prose", &t, ("(c) 2020-2026", "© 2020–2026"));
-        check_exact("Prose", &t, ("2020-2026(c)", "2020–2026(c)"));
+        // A mark attached after a range makes the fragment unclassified and frozen (sections 3.6
+        // and 13.2), so not even the range dash changes.
+        check_exact("Prose", &t, ("2020-2026(c)", "2020-2026(c)"));
     }
 }
 

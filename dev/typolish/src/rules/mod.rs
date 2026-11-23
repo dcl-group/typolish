@@ -1,7 +1,6 @@
 //! The rules (design section 8): `RULES`, the table of rule functions in the order of design
 //! section 4.1, the trigger bytes of every rule (design section 3.2), and the conditions that
-//! several rules share (design section 8.2). The rules `symbols.*` declare their trigger bytes and
-//! match nothing yet.
+//! several rules share (design section 8.2).
 
 pub(crate) mod dash;
 pub(crate) mod ellipsis;
@@ -21,16 +20,11 @@ use crate::lang::data::{List, Script, Table, fold_char};
 /// 3.8).
 pub(crate) type RuleFn = fn(&Cx<'_>, usize) -> Option<Match>;
 
-/// A rule that matches nothing yet (`symbols.*`).
-fn later(_cx: &Cx<'_>, _i: usize) -> Option<Match> {
-    None
-}
-
 /// The rule functions, indexed by `Rule as usize`, in the order of `ORDER` (design section 4.1).
 pub(crate) const RULES: [RuleFn; 27] = [
-    later,
-    later,
-    later,
+    symbols::copyright,
+    symbols::arrows,
+    symbols::math,
     ellipsis::dots,
     ellipsis::inner,
     dash::dialogue,
