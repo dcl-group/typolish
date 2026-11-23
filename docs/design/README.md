@@ -62,7 +62,8 @@ with no binary. Its modules are private and every public type is re-exported fro
 (`typolish::Typographer`): the surface is small, and a flat namespace is easier to use than nested
 modules. Whether the name is free on crates.io is checked in stage 5 with one query to the crates.io
 API, which the maintainer allowed (section 15.5, item 3); no query is made before then, because it
-discloses the project name to an outside service.
+discloses the project name to an outside service. The query was made on 2026-11-23: the name was
+free (section 14.8).
 
 ### 1.2 What the crate does
 

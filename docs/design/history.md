@@ -88,10 +88,23 @@ no references; `Scratch` holds vectors of them and lives in a `thread_local!` `R
 initialization; it is filled from inputs of any lifetime, and `Typographer` and `Scratch` are
 asserted `Send + Sync + 'static` in a `const` item. `Tok` is at most 40 bytes (a unit test).
 
+**Name on crates.io** (stage 5, 2026-11-23T10:46:45Z): the one query that section 15.5, item 3
+allows, `GET https://crates.io/api/v1/crates/typolish` with a neutral `User-Agent` and no personal
+data, answered `HTTP 404` with ``{"errors":[{"detail":"crate `typolish` does not exist"}]}``. The
+name was free at that moment; it is not reserved, and nothing was published. No other query was
+made.
+
+**Package** (stage 5, 2026-11-23): `cargo package --list` gives 195 files: `Cargo.toml`,
+`Cargo.lock`, `README.md`, both license files, `src/`, `tests/` without `tests/fixtures/` (excluded
+by section 14.5), `benches/load.rs` and the three examples; the name of the reference implementation
+appears in none of them. `cargo package` packed 3.0 MiB (607 KiB compressed) and built the crate
+from its own tarball; `cargo test` in the unpacked tarball passes as in the repository (1055 tests,
+doctests and README included). Without the excluded fixtures, `tests/output.rs` and
+`tests/graphemes.rs` skip the checks that read them (`whatwg-entities.txt`,
+`GraphemeBreakTest.txt`).
+
 **Not checked:**
 
-- Whether the name `typolish` is free on crates.io: the maintainer allowed one query to the
-  crates.io API in stage 5 (section 15.5, item 3), and none was made before.
 - Mil'chin's handbook, GOST standards and the Chicago Manual of Style were not read; the Russian and
   English norms marked "secondary" rest on Wikipedia articles (section 15.5, item 16).
 - The design was not compiled as a whole; the allocation and linearity claims are verified by tests
