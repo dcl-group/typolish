@@ -55,8 +55,13 @@ pub(crate) fn split_windows(text: &str, atoms: &[Atom], out: &mut Vec<Atom>) {
 /// The next boundary in `text[from..end]`: the range from its first to its last line break or
 /// paragraph separator.
 fn find_boundary(text: &str, from: usize, end: usize) -> Option<(usize, usize)> {
+    let bytes = text.as_bytes();
     let mut i = from;
     while i < end {
+        // Only `\n`, `\r` and the lead bytes of U+0085, U+2028 and U+2029 start a line break or
+        // a paragraph separator; the bytes in between are skipped.
+        let candidate = |b: &u8| matches!(*b, b'\n' | b'\r' | 0xc2 | 0xe2);
+        i += bytes.get(i..end)?.iter().position(candidate)?;
         let c = text.get(i..end)?.chars().next()?;
         if !(is_line_break(c) || c == '\u{2029}') {
             i += c.len_utf8();

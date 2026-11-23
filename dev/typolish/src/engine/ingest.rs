@@ -189,6 +189,18 @@ fn run_length(bytes: &[u8], at: usize, end: usize) -> usize {
 pub(crate) fn cut_fences(text: &str, atoms: &[Atom], out: &mut Vec<Atom>, d: &mut DelimScratch) {
     let bytes = text.as_bytes();
     d.events.clear();
+    // A fence is a run of backticks: without a backtick there is nothing to cut.
+    let backtick = atoms.iter().any(|atom| match *atom {
+        Atom::Text { start, end } => bytes
+            .get(start as usize..end as usize)
+            .is_some_and(|b| b.contains(&b'`')),
+        _ => false,
+    });
+    if !backtick {
+        d.spans.clear();
+        cut(atoms, &[], out);
+        return;
+    }
     let mut line_start = true;
     for atom in atoms {
         let Atom::Text { start, end } = *atom else {
@@ -320,6 +332,16 @@ fn match_window(
         let (start, end) = (start as usize, end as usize);
         let mut i = start;
         while i < end {
+            if pairs.is_empty() {
+                // Only backtick runs delimit: skip to the next backtick, an ASCII byte.
+                match bytes
+                    .get(i..end)
+                    .and_then(|r| r.iter().position(|&b| b == b'`'))
+                {
+                    Some(n) => i += n,
+                    None => break,
+                }
+            }
             let rest = bytes.get(i..end).unwrap_or_default();
             let own = pairs.iter().enumerate().find_map(|(k, (open, close))| {
                 let k = u32::try_from(k).ok()?;
