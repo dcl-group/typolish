@@ -1226,8 +1226,15 @@ fn signs_inside_both_sets() {
             ("Документ № 5", "Документ №⍽5"),
             ("№5", "№⍽5"),
             ("№\t5", "№\t5"),
-            ("№ -5", "№ -5"),
-            ("§ -1", "§ -1"),
+        ],
+    );
+    // No glue before a fragment that starts with `-` (section 8.2) in either set; in Prose
+    // `number.minus` turns the hyphen into the minus sign (section 8.8), and the glue stays off.
+    set_rows(
+        ru(),
+        &[
+            ("№ -5", "№ \u{2212}5", "№ -5"),
+            ("§ -1", "§ \u{2212}1", "§ -1"),
         ],
     );
     // A short word before a sign (section 8.7, `nbsp.short-words`): the sign is a next token.

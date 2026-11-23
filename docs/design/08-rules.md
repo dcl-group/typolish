@@ -158,7 +158,9 @@ bracket on the right → em dash. It does not fire, and reports `AmbiguousHyphen
   `Word` slot is not a single-letter word;
 - a flag or another fragment that starts with `-` stands on either side (`diff -u - file.txt`,
   `tar -cf - -C dir`, `Use - --force`): the `-` is most likely an argument (standard input, the end
-  of options);
+  of options); a signed number counts with either form of its sign (`-5` and `−5`, the form that
+  `number.minus` writes), so the minus of the first pass changes nothing for the second (I4 of
+  section 4.3);
 - words outside the language's script or technical fragments stand on both sides, in any mix
   (`cat - file`, `cat - /etc/hosts` and `tls-server - agent-ca` in Russian text,
   `host:8080 - 10.0.0.1`): most often a command line. A technical fragment counts as a foreign word

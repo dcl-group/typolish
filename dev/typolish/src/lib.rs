@@ -7,9 +7,9 @@
 //! call. Its design is in `docs/design/` of the repository.
 //!
 //! The crate is in development: the engine recognizes protected and technical fragments and
-//! applies the rules of quotes, dashes, ranges, ellipses, no-break spaces and `number.times` (the
-//! rules `symbols.*` and `number.minus` change nothing yet); [`Typographer::report`] lists every
-//! edit, protected span and diagnostic;
+//! applies the rules of quotes, dashes, ranges, ellipses, no-break spaces and `number.*` (the rules
+//! `symbols.*` change nothing yet); [`Typographer::report`] lists every edit, protected span and
+//! diagnostic;
 //! [`Typographer::format_number`] and [`Typographer::format_range`] format values by the language;
 //! every [`Output`] kind is encoded (HTML with entities or nowrap elements, escaped string bodies
 //! for JavaScript, JSON, Rust and CSS).

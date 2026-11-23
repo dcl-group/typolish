@@ -437,6 +437,13 @@ impl Typographer {
         data
     }
 
+    /// The minus sign in effect (`number.minus`).
+    pub(crate) fn minus_sign(&self) -> char {
+        self.settings
+            .minus_sign
+            .unwrap_or(self.language.data().numbers.minus)
+    }
+
     /// The quote pairs in effect: the setting, or the language's.
     pub(crate) fn quote_pairs(&self) -> Option<QuotePairs> {
         self.settings.quote_pairs.or(self.language.data().quotes)
