@@ -17,8 +17,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use typolish::{
-    Error, Language, LanguageData, Output, Piece, QuotePairs, Rule, RuleSet, Slot, Template,
-    TemplatePart, Typographer,
+    Error, Language, LanguageData, Number, Output, Piece, QuotePairs, Rule, RuleSet, Slot,
+    Template, TemplatePart, Typographer,
 };
 
 fn invalid_rule_set(input: &str) -> &'static str {
@@ -446,4 +446,66 @@ fn an_iterator_that_calls_the_typographer_meets_a_free_scratch() {
         Output::Unicode,
     );
     assert_eq!(out.texts(), ["ab"]);
+}
+
+// Stage 3 (design section 15.4): the API contracts that need the numbers and the settings.
+
+#[test]
+fn the_builder_example_of_section_2_4_builds_and_works() {
+    use std::sync::LazyLock;
+    use typolish::DashStyle;
+    static EN_DOCS: LazyLock<Typographer> = LazyLock::new(|| {
+        Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+            .enable(Rule::NumberTimes)
+            .disable(Rule::NbspShortWords)
+            .dash_style(DashStyle::Spaced)
+            .add_units(["req/s", "vCPU"])
+            .protect_between("{{", "}}")
+            .build()
+            .expect("settings are valid")
+    });
+    assert!(EN_DOCS.rules().contains(Rule::NumberTimes));
+    assert!(!EN_DOCS.rules().contains(Rule::NbspShortWords));
+    assert_eq!(
+        EN_DOCS.typeset("Screen 1920x1080 at 60 req/s", Output::Unicode),
+        "Screen 1920×1080 at 60\u{a0}req/s"
+    );
+    // A protected pair of the builder stays as typed, and the text is borrowed.
+    assert!(matches!(
+        EN_DOCS.typeset("Say {{a - b}} now", Output::Unicode),
+        Cow::Borrowed("Say {{a - b}} now")
+    ));
+    // The rules of a caller's configuration file.
+    let rules: RuleSet = "interface,+symbols.arrows,-nbsp.initials".parse().unwrap();
+    let ui = Typographer::builder(Language::RU_RU, rules)
+        .build()
+        .unwrap();
+    assert!(ui.rules().contains(Rule::SymbolsArrows));
+    assert!(!ui.rules().contains(Rule::NbspInitials));
+    assert_eq!(ui.typeset("Вход -> выход", Output::Unicode), "Вход → выход");
+}
+
+#[test]
+fn number_errors_compare_by_value() {
+    let a = Number::decimal("1e3").unwrap_err();
+    assert_eq!(a, Number::decimal("1e3").unwrap_err());
+    assert_ne!(a, Number::decimal("1e4").unwrap_err());
+    assert!(matches!(a, Error::InvalidNumber { .. }));
+    assert_eq!(a.clone(), a);
+}
+
+#[test]
+fn numbers_do_not_depend_on_the_rules_of_the_typographer() {
+    // Section 2.4: settings do not depend on rule sets, and a language supplies the defaults.
+    for language in [Language::RU_RU, Language::EN_US, Language::COMMON] {
+        let a = Typographer::new(language.clone(), RuleSet::EMPTY);
+        let b = Typographer::new(language.clone(), RuleSet::ALL);
+        for n in [0.0, -1234567.5, 1e21, f64::NAN] {
+            assert_eq!(
+                a.format_number(n, Output::Unicode).to_string(),
+                b.format_number(n, Output::Unicode).to_string(),
+                "{language}"
+            );
+        }
+    }
 }

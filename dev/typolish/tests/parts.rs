@@ -3,10 +3,10 @@
 //! The rows run in the full Prose and Interface (stage 3 of section 15.4): the expectations carry
 //! the glue of the `nbsp.*` rules, which also makes the slot participation rows of `nbsp.units`,
 //! `nbsp.dates`, glue before and after a slot, abbreviations after a slot, labels and percent next
-//! to slots, `{a}-5 кг` and `{d} г. Затем` testable. The row of `number.times` (`{w}x{h}`) needs
-//! that rule, `format_number` and the escaped and HTML outputs (the flow of section 2.14 for
-//! `EscapeStyle::RUST` and `EscapeStyle::JSON`, and with `HtmlStyle::NAMED.nowrap_class`) and
-//! nowrap groups at slots belong to the output tests of the same stage.
+//! to slots, `{a}-5 кг` and `{d} г. Затем` testable. The row of `number.times` (`{w}x{h}`) and the
+//! flow of section 2.14 for `EscapeStyle::RUST`, `EscapeStyle::JSON` and
+//! `HtmlStyle::NAMED.nowrap_class` (the last tests of the file) use `format_number` and the
+//! encoders; the nowrap groups at slots are in `tests/output.rs`.
 
 #![allow(
     clippy::unwrap_used,
@@ -22,10 +22,11 @@ mod common;
 
 use std::borrow::Cow;
 
-use common::{TmplPiece, interface, parse_tmpl, prose};
+use common::decode::decode_escaped;
+use common::{TmplPiece, interface, parse_tmpl, prose, vis};
 use typolish::{
-    DiagnosticKind, HtmlStyle, Language, Output, Piece, Rule, Scratch, Severity, Slot, SlotKind,
-    Template, Typographer,
+    DiagnosticKind, EscapeStyle, HtmlStyle, Language, Output, Piece, Rule, Scratch, Severity, Slot,
+    SlotKind, Template, Typographer,
 };
 
 fn sets(language: &Language) -> Vec<(String, Typographer)> {
@@ -1093,4 +1094,121 @@ fn the_flow_of_a_template_with_a_unit_and_a_dash() {
         ],
     );
     assert_eq!(out, ["", "\u{2013}", "\u{a0}дн."]);
+}
+
+// The flow of section 2.14: texts written by a generator as the bodies of string literals, values
+// formatted at run time with `format_number` and `Output::Unicode`.
+fn flow_template() -> Vec<Piece<'static, &'static str>> {
+    vec![Piece::Slot("n", Slot::NUMBER), Piece::Text(" руб.")]
+}
+
+#[test]
+fn the_generator_flow_for_rust_and_json_bodies() {
+    let t = interface(Language::RU_RU);
+    let unicode = t.typeset_template(flow_template(), Output::Unicode);
+    let filled = unicode.fill(|_| Cow::Owned(t.format_number(1000, Output::Unicode).to_string()));
+    assert_eq!(filled, vis("1⍽000⍽руб."));
+    for style in [EscapeStyle::RUST, EscapeStyle::JSON] {
+        let template = t.typeset_template(flow_template(), Output::Escaped(style));
+        assert!(template.changed(), "{style:?}");
+        // Each text is the body of a literal: decoded, joined with the plain value, it is the text
+        // of the `Output::Unicode` template filled the same way, with a real U+00A0.
+        let values = [t.format_number(1000, Output::Unicode).to_string()];
+        let mut joined = String::new();
+        for (i, text) in template.texts().iter().enumerate() {
+            joined.push_str(&decode_escaped(style, text).unwrap());
+            if let Some(value) = values.get(i) {
+                joined.push_str(value);
+            }
+        }
+        assert_eq!(joined, filled, "{style:?}");
+        assert!(joined.contains('\u{a0}'));
+        // The escaped text contains no raw backslash of the value and the filled text has none.
+        assert!(!joined.contains('\\'), "{style:?}");
+        // The texts of the escaped template are the escapes of the Unicode texts.
+        assert_eq!(
+            template.texts()[1],
+            if style == EscapeStyle::RUST {
+                "\\u{a0}руб."
+            } else {
+                "\\u00a0руб."
+            }
+        );
+    }
+}
+
+#[test]
+fn the_generator_flow_for_html_texts_as_debug_literals() {
+    // With `Output::Html` the texts are HTML, not bodies of literals: each is written as a complete
+    // literal with `{t:?}`, and the decoder of `EscapeStyle::RUST` reads the body of every such
+    // literal back to the text unchanged (section 2.14).
+    let t = interface(Language::RU_RU);
+    let output = Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"));
+    let pieces = || {
+        vec![
+            Piece::Text("Цена - 5 руб. в "),
+            Piece::Protected("`C:\\temp`"),
+            Piece::Slot("n", Slot::NUMBER),
+            Piece::Text(" МБ"),
+        ]
+    };
+    let template = t.typeset_template(pieces(), output);
+    assert!(
+        template
+            .texts()
+            .iter()
+            .any(|text| text.contains("<span class=\"nowrap\">"))
+    );
+    assert!(template.texts().iter().any(|text| text.contains('\\')));
+    for text in template.texts() {
+        let literal = format!("{text:?}");
+        let body = &literal[1..literal.len() - 1];
+        assert_eq!(
+            decode_escaped(EscapeStyle::RUST, body).as_deref(),
+            Ok(text.as_ref()),
+            "{literal}"
+        );
+    }
+    // The same for a text with line breaks and quotes.
+    let template = t.typeset_template::<()>(
+        [Piece::Text("a\nb \"c\" \\ <d> \u{a0}")],
+        Output::Html(HtmlStyle::HEX.nowrap_style()),
+    );
+    for text in template.texts() {
+        let literal = format!("{text:?}");
+        let body = &literal[1..literal.len() - 1];
+        assert_eq!(
+            decode_escaped(EscapeStyle::RUST, body).as_deref(),
+            Ok(text.as_ref())
+        );
+    }
+}
+
+#[test]
+fn run_time_numbers_agree_with_the_template() {
+    // Section 2.7: one typographer sets the template at build time and formats the numbers at run
+    // time, so `{n} МБ` and the value fit together, in the output kind of the template.
+    let t = prose(Language::RU_RU);
+    for output in [
+        Output::Unicode,
+        Output::Html(HtmlStyle::NAMED),
+        Output::Escaped(EscapeStyle::JS),
+    ] {
+        let template = t.typeset_template(
+            [
+                Piece::Slot("n", Slot::NUMBER),
+                Piece::Text(" МБ, "),
+                Piece::Slot("m", Slot::NUMBER),
+            ],
+            output,
+        );
+        let value = t.format_number(12345, output).to_string();
+        let filled = template.fill(|_| Cow::Owned(value.clone()));
+        let nbsp = match output {
+            Output::Unicode => "\u{a0}",
+            Output::Html(_) => "&nbsp;",
+            _ => "\\u00A0",
+        };
+        assert_eq!(filled, format!("{value}{nbsp}МБ, {value}"), "{output:?}");
+    }
 }

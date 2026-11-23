@@ -2,7 +2,8 @@
 //! idempotence, the fixed-point oracle, slots and protected spans, letters and digits, `Cow`,
 //! pieces and strings, determinism of order and no panic; and, through `report`, the invariants I1,
 //! I2, I4 and I5 of design section 4.3 as far as the public API shows them. The properties that
-//! need `lint`, `to_plain` or the decoders of the output kinds join when those parts exist.
+//! need `lint` and `to_plain` join when those parts exist. Stage 3 adds the decoder properties (12),
+//! the safe alphabet (17), I3, and the properties of `format_number`.
 
 #![allow(
     clippy::unwrap_used,
@@ -18,6 +19,7 @@ mod common;
 
 use std::borrow::Cow;
 
+use common::decode::{TYPOGRAPHIC, all_outputs, check_safe_alphabet, decode};
 use common::show;
 use common::strategies::{self, GenPiece, any_text, borrow, pieces, risky_text, rule_set};
 use proptest::prelude::*;
@@ -578,4 +580,275 @@ fn pieces_text_and_slots() -> impl Strategy<Value = Vec<GenPiece>> {
         }
         out
     })
+}
+
+// Stage 3 (design section 15.4): the output kinds, I3 and the numbers.
+
+fn is_css(output: Output) -> bool {
+    matches!(output, Output::Escaped(s) if s == EscapeStyle::CSS || s == EscapeStyle::CSS.non_ascii())
+}
+
+fn is_html(output: Output) -> bool {
+    matches!(output, Output::Html(_))
+}
+
+/// Section 11.8: for `CSS` every U+0000 of the generated text is replaced by U+FFFD before both
+/// equations.
+fn for_output(output: Output, text: &str) -> String {
+    if is_css(output) {
+        text.replace('\u{0}', "\u{fffd}")
+    } else {
+        text.to_owned()
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(768))]
+
+    /// 12. Output kinds: `decode(typeset(x, out)) == typeset(x, Unicode)` and
+    /// `typeset(decode(typeset(x, out)), out) == typeset(x, out)`, nowrap styles included.
+    #[test]
+    fn decoding_gives_the_unicode_result(
+        text in any_text(), lang in 0usize..3, set in rule_set(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let t = typographer(lang, set, quotes, percent);
+        for output in all_outputs() {
+            let text = for_output(output, &text);
+            let unicode = t.typeset(&text, Output::Unicode).into_owned();
+            let out = t.typeset(&text, output).into_owned();
+            let decoded = match decode(output, &out) {
+                Ok(decoded) => decoded,
+                Err(e) => return Err(TestCaseError::fail(format!("{output:?} {text:?}: {e}: {out:?}"))),
+            };
+            prop_assert_eq!(&decoded, &unicode, "{:?} {:?} {:?}", output, text, out);
+            let again = t.typeset(&decoded, output).into_owned();
+            prop_assert_eq!(&again, &out, "{:?} {:?}", output, text);
+        }
+    }
+
+    /// 17. Safe alphabet: the output of every kind holds none of the raw characters of its
+    /// syntax, every `\` starts an escape that the strict parser accepts, and except with
+    /// `HtmlStyle::CHARACTERS` no raw character of the typographic set.
+    #[test]
+    fn the_output_has_only_its_safe_alphabet(
+        text in any_text(), lang in 0usize..3, set in rule_set(),
+    ) {
+        let t = typographer(lang, set, 0, 0);
+        for output in all_outputs() {
+            let out = t.typeset(&text, output);
+            if let Err(e) = check_safe_alphabet(output, &out) {
+                return Err(TestCaseError::fail(format!("{output:?} {text:?}: {e}: {out:?}")));
+            }
+        }
+    }
+
+    /// 12 and 17 for the texts of a template: joined with slot values that need no encoding, the
+    /// texts decode to the Unicode template filled the same way (an element may open in one text
+    /// and close in another, section 11.5). `Markup` is written as it is in HTML, so the HTML kinds
+    /// run on templates without it.
+    #[test]
+    fn template_texts_decode_to_the_unicode_texts(
+        parts in pieces(), lang in 0usize..3, set in rule_set(),
+    ) {
+        let t = typographer(lang, set, 0, 0);
+        let input = borrow(&parts);
+        let has_markup = parts.iter().any(|p| matches!(p, GenPiece::Markup(_)));
+        let fill = |template: &typolish::Template<'_, u32>| {
+            template.fill(|id| Cow::Owned(format!("S{id}E")))
+        };
+        for output in all_outputs() {
+            if is_html(output) && has_markup {
+                continue;
+            }
+            let unicode = fill(&t.typeset_template(input.iter().copied(), Output::Unicode));
+            let template = t.typeset_template(input.iter().copied(), output);
+            prop_assert_eq!(template.texts().len(), template.slots().len() + 1);
+            let joined = fill(&template);
+            let decoded = match decode(output, &joined) {
+                Ok(decoded) => decoded,
+                Err(e) => return Err(TestCaseError::fail(format!("{output:?} {parts:?}: {e}: {joined:?}"))),
+            };
+            prop_assert_eq!(decoded, for_output(output, &unicode), "{:?} {:?}", output, parts);
+            if let Err(e) = check_safe_alphabet(output, &joined) {
+                return Err(TestCaseError::fail(format!("{output:?} {parts:?}: {e}: {joined:?}")));
+            }
+        }
+    }
+
+    /// 8. Cow for templates: a text maps to an unchanged input piece exactly when it is borrowed,
+    /// and `changed()` says whether any text differs from its input, in every kind.
+    #[test]
+    fn template_changed_agrees_with_the_texts(
+        parts in pieces(), lang in 0usize..3, set in rule_set(),
+    ) {
+        let t = typographer(lang, set, 0, 0);
+        let input = borrow(&parts);
+        for output in all_outputs() {
+            let template = t.typeset_template(input.iter().copied(), output);
+            // A template of one text piece is borrowed exactly when unchanged.
+            if let [typolish::Piece::Text(only)] = input.as_slice() {
+                prop_assert_eq!(
+                    matches!(template.texts()[0], Cow::Borrowed(_)),
+                    template.texts()[0] == *only,
+                    "{:?} {:?}", output, only
+                );
+                prop_assert_eq!(template.changed(), template.texts()[0] != *only);
+            }
+        }
+    }
+
+    /// I3: a rule changes only plain forms. Every edit of `report` starts from ASCII (straight
+    /// quotes, hyphens, dots, the letters of `(c)` and `x`, spaces) or from the Cyrillic look-alikes
+    /// the symbol and times rules read, never from a character of the typographic set; and the
+    /// output is a fixed point with no edit left, with all 27 rules.
+    #[test]
+    fn i3_rules_change_only_plain_forms(
+        text in any_text(), lang in 0usize..3, set in rule_set(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let t = typographer(lang, set, quotes, percent);
+        let report = t.report(&text, Output::Unicode);
+        for change in report.changes() {
+            let original = report.original(change);
+            for c in original.chars() {
+                prop_assert!(
+                    !TYPOGRAPHIC.contains(&c) && (c.is_ascii() || matches!(c, 'с' | 'С' | 'х' | 'Х')),
+                    "{:?} changed {:?} in {:?}", change.rule(), original, text
+                );
+            }
+        }
+        let out = report.result().to_string();
+        let second = t.report(&out, Output::Unicode);
+        prop_assert!(second.changes().is_empty(), "{:?} -> {:?} -> {:?}", text, out, second.changes());
+    }
+
+    /// 11. Determinism of order with all 27 rules: the full set built forwards and backwards.
+    #[test]
+    fn all_rules_in_any_order_give_the_same_output(text in any_text(), lang in 0usize..3, quotes in 0u8..3) {
+        let forward: RuleSet = Rule::ALL.iter().copied().collect();
+        let backward: RuleSet = Rule::ALL.iter().rev().copied().collect();
+        prop_assert_eq!(forward, backward);
+        prop_assert_eq!(forward, RuleSet::ALL);
+        let a = typographer(lang, forward, quotes, 0).typeset(&text, Output::Unicode).into_owned();
+        let b = typographer(lang, backward, quotes, 0).typeset(&text, Output::Unicode).into_owned();
+        prop_assert_eq!(a, b);
+        prop_assert_eq!(Rule::ALL.len(), 27);
+    }
+}
+
+fn number_typographer(lang: usize, digits: u8) -> Typographer {
+    Typographer::builder(LANGUAGES[lang % 3].clone(), RuleSet::PROSE)
+        .min_grouping_digits(digits % 5)
+        .build()
+        .unwrap()
+}
+
+/// The symbols of a built-in language: group, decimal, minus, and where grouping starts.
+fn symbols(lang: usize, digits: u8) -> (char, char, char, usize) {
+    let digits = digits % 5;
+    let group = if lang % 3 == 1 { ',' } else { '\u{a0}' };
+    let decimal = if lang.is_multiple_of(3) { ',' } else { '.' };
+    (
+        group,
+        decimal,
+        '\u{2212}',
+        if digits == 0 {
+            usize::MAX
+        } else {
+            3 + usize::from(digits)
+        },
+    )
+}
+
+/// The number as core wrote it (`text`, an optional `-`, digits, an optional `.` and digits)
+/// grouped by the symbols: an independent model of section 2.7.
+fn model(text: &str, lang: usize, digits: u8, zero_unsigned: bool) -> String {
+    let (group, decimal, minus, threshold) = symbols(lang, digits);
+    let (negative, rest) = match text.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, text.strip_prefix('+').unwrap_or(text)),
+    };
+    let (int, frac) = match rest.split_once('.') {
+        Some((i, f)) => (i, Some(f)),
+        None => (rest, None),
+    };
+    let mut out = String::new();
+    if negative && !zero_unsigned {
+        out.push(minus);
+    }
+    for (i, c) in int.chars().enumerate() {
+        if int.len() >= threshold && i > 0 && (int.len() - i) % 3 == 0 {
+            out.push(group);
+        }
+        out.push(c);
+    }
+    if let Some(f) = frac {
+        out.push(decimal);
+        out.push_str(f);
+    }
+    out
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(768))]
+
+    /// Numbers: the digits are those of core's `{}`, grouped by three from the threshold, with
+    /// the symbols of the language, for every integer type, float and decimal string; NaN and the
+    /// infinities are the symbols of the language.
+    #[test]
+    fn numbers_are_the_digits_grouped(
+        lang in 0usize..3, digits in 0u8..5, i in any::<i128>(), u in any::<u128>(), f in any::<f64>(),
+        g in any::<f32>(), d in "[+-]?[0-9]{1,40}(\\.[0-9]{1,20})?", places in 0u8..12,
+    ) {
+        use typolish::Number;
+        let t = number_typographer(lang, digits);
+        let show = |n: Number<'_>| t.format_number(n, Output::Unicode).to_string();
+        prop_assert_eq!(show(Number::from(i)), model(&i.to_string(), lang, digits, false));
+        prop_assert_eq!(show(Number::from(u)), model(&u.to_string(), lang, digits, false));
+        if f.is_finite() {
+            let text = format!("{f}");
+            let zero = f == 0.0;
+            prop_assert_eq!(show(Number::from(f)), model(&text, lang, digits, zero));
+            let fixed = format!("{:.*}", usize::from(places), f);
+            let zero = fixed.trim_start_matches('-').chars().all(|c| matches!(c, '0' | '.'));
+            prop_assert_eq!(show(Number::fixed(f, places)), model(&fixed, lang, digits, zero));
+        }
+        if g.is_finite() {
+            let zero = g == 0.0;
+            prop_assert_eq!(show(Number::from(g)), model(&format!("{g}"), lang, digits, zero));
+        }
+        let parsed = Number::decimal(&d).unwrap();
+        let zero = d.trim_start_matches(['+', '-']).chars().all(|c| matches!(c, '0' | '.'));
+        prop_assert_eq!(show(parsed), model(&d, lang, digits, zero));
+    }
+
+    /// Output kinds of numbers: `decode(format_number(n, out))` is the Unicode number, and
+    /// `format_range` is the two numbers around the range dash.
+    #[test]
+    fn numbers_decode_in_every_kind(
+        lang in 0usize..3, digits in 0u8..5, i in any::<i64>(), f in any::<f64>(), j in any::<i128>(),
+    ) {
+        use typolish::Number;
+        let t = number_typographer(lang, digits);
+        for output in all_outputs() {
+            for n in [Number::from(i), Number::from(f), Number::from(j), Number::fixed(f, 2)] {
+                let unicode = t.format_number(n, Output::Unicode).to_string();
+                let out = t.format_number(n, output).to_string();
+                if let Err(e) = check_safe_alphabet(output, &out) {
+                    return Err(TestCaseError::fail(format!("{output:?} {n:?}: {e}: {out:?}")));
+                }
+                prop_assert_eq!(decode(output, &out), Ok(unicode), "{:?} {:?}", output, n);
+            }
+            let a = Number::from(i);
+            let b = Number::from(f);
+            let unicode = t.format_range(a, b, Output::Unicode).to_string();
+            let out = t.format_range(a, b, output).to_string();
+            prop_assert_eq!(decode(output, &out), Ok(unicode.clone()), "{:?}", output);
+            let sides = format!(
+                "{}\u{2013}{}",
+                t.format_number(a, Output::Unicode),
+                t.format_number(b, Output::Unicode)
+            );
+            prop_assert_eq!(unicode, sides);
+        }
+    }
 }

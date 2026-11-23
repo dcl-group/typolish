@@ -16,9 +16,9 @@ use std::hash::Hash;
 
 use typolish::{
     Abbreviation, Bind, DashData, DashStyle, EllipsisForms, EscapeStyle, HtmlStyle, Language,
-    LanguageData, MonthPosition, NarrowGlue, NumberData, Output, PercentSpacing, Piece, QuotePairs,
-    Rule, RuleSet, Scratch, Script, SingleQuotes, Slot, SlotKind, Template, TemplatePart,
-    Typographer, TypographerBuilder,
+    LanguageData, MonthPosition, NarrowGlue, Number, NumberData, NumberDisplay, Output,
+    PercentSpacing, Piece, QuotePairs, RangeDisplay, Rule, RuleSet, Scratch, Script, SingleQuotes,
+    Slot, SlotKind, Template, TemplatePart, Typographer, TypographerBuilder,
 };
 
 fn send_sync<T: Send + Sync>() {}
@@ -230,4 +230,36 @@ fn language_is_clone_but_not_copy() {
     // The probe itself works.
     const { assert!(Probe::<Rule>::COPY) };
     const { assert!(Probe::<RuleSet>::COPY) };
+}
+
+// Section 2.13: `Number` holds floats and is `PartialEq` only; it is `Copy`. The lazy displays of
+// section 2.7 implement `Display`.
+#[test]
+fn number_and_its_displays() {
+    fn plain<T: Clone + Copy + Debug + PartialEq>() {}
+    fn display<T: std::fmt::Display>() {}
+    plain::<Number<'static>>();
+    send_sync::<Number<'static>>();
+    display::<NumberDisplay<'static, 'static>>();
+    display::<RangeDisplay<'static, 'static>>();
+    // Every type of section 2.7 converts, and the formatting entry points take any of them.
+    fn takes<'n>(_: impl Into<Number<'n>>) {}
+    takes(1i8);
+    takes(1i16);
+    takes(1i32);
+    takes(1i64);
+    takes(1i128);
+    takes(1isize);
+    takes(1u8);
+    takes(1u16);
+    takes(1u32);
+    takes(1u64);
+    takes(1u128);
+    takes(1usize);
+    takes(1f32);
+    takes(1f64);
+    takes(Number::fixed(1.0, 1));
+    takes(Number::decimal("1").unwrap());
+    // `Number::fixed` owns its digits: `Number<'static>`.
+    let _: Number<'static> = Number::fixed(1.0, 1);
 }
