@@ -1305,16 +1305,22 @@ fn number_data_is_checked() {
         rejected(with(NumberData::new().with_decimal(bad)), "numbers");
     }
     // Nor a character that hides it between two digits (`1\u{ad}5` shows as `15`): a control or
-    // format character, a joiner, a mark that joins a digit; nor `-` or a dash, which would read as
-    // a range or a minus (`1–5`).
+    // format character (the whole category `Cf`), a joiner, a mark that joins a digit; nor a
+    // character with the Unicode `Dash` property, which would read as a range or a minus (`1–5`,
+    // `1－5`); nor a quote character, which the quote rules rewrite between two digits (`1'5` would
+    // become `1′5`).
     for bad in [
         '\0',
         '\u{ad}',
         '\u{200b}',
         '\u{200d}',
         '\u{2068}',
+        '\u{206a}',
+        '\u{206f}',
         '\u{feff}',
         '\u{61c}',
+        '\u{13430}',
+        '\u{1343f}',
         '\u{e0041}',
         '\u{301}',
         '\u{fe0f}',
@@ -1324,10 +1330,22 @@ fn number_data_is_checked() {
         '\u{2013}',
         '\u{2014}',
         '\u{2212}',
+        '\u{2053}',
+        '\u{2e3a}',
+        '\u{2e3b}',
+        '\u{fe58}',
+        '\u{fe63}',
+        '\u{ff0d}',
+        '\'',
+        '"',
+        '’',
+        '′',
+        '″',
+        '«',
     ] {
         rejected(with(NumberData::new().with_decimal(bad)), "numbers");
     }
-    for good in [',', '.', '\u{66b}', '\u{b7}', '\'', '!'] {
+    for good in [',', '.', '\u{66b}', '\u{b7}', '\u{2396}', '!'] {
         accepted(with(
             NumberData::new().with_decimal(good).with_group('\u{a0}'),
         ));

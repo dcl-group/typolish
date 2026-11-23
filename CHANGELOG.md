@@ -48,7 +48,8 @@ supported Rust version: 1.100.
   error for a language without data, `LanguageData` with `const fn` setters for a language declared
   as a `const`, and `LanguageBuilder` for a language built at run time; validation also requires the
   range dash to be `–` or `—`, the decimal separator to be a visible character of its own that is
-  not a letter, a digit, whitespace, `-` or a dash, and signs to be punctuation characters.
+  not a letter, a digit, whitespace, a quote character or a character with the Unicode `Dash`
+  property, and signs to be punctuation characters.
 - Protection: backtick spans and fenced blocks, delimiters of one's own, `Piece::Protected`, and the
   technical fragments that the classifier recognizes by their shape (URLs, e-mail addresses and
   mentions, flags, paths, `host:port`, operators, UUIDs, hex numbers, ISO dates, versions, dotted

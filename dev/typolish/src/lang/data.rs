@@ -309,7 +309,8 @@ impl NumberData {
     }
 
     /// Sets the decimal separator: a visible character of its own that is not a letter, a digit,
-    /// whitespace, `-` or a dash (design section 7.6).
+    /// whitespace, a quote character or a character with the Unicode `Dash` property (design
+    /// section 7.6).
     ///
     /// ```
     /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
@@ -1714,7 +1715,7 @@ impl Table<'_> {
         }
         if !is_valid_decimal(n.decimal) {
             return Err(
-                "numbers: the decimal separator must be a visible character of its own, not a letter, a digit, whitespace, `-` or a dash",
+                "numbers: the decimal separator must be a visible character of its own, not a letter, a digit, whitespace, a quote character or a dash",
             );
         }
         let e = &self.ellipsis;
@@ -1995,9 +1996,11 @@ pub(crate) fn is_valid_group(c: char) -> bool {
 }
 
 /// A decimal separator of design section 7.6: a visible character of its own that is not a letter,
-/// a digit, whitespace, `-` or a dash. A control or format character, or a mark that joins a digit
-/// next to it, would hide the separator (`1\u{ad}5` shows as `15`); `-` or a dash would read as a
-/// range or a minus (`1–5` is also the range from 1 to 5), so the number would not keep its meaning.
+/// a digit, whitespace, a quote character, or a character with the Unicode `Dash` property. A
+/// control or format character, or a mark that joins a digit next to it, would hide the separator
+/// (`1\u{ad}5` shows as `15`); a dash would read as a range or a minus (`1–5` is also the range from
+/// 1 to 5); a quote character between two digits is rewritten by the quote rules (`1'5` becomes the
+/// prime of `1′5`), so the number would not keep its meaning.
 pub(crate) fn is_valid_decimal(c: char) -> bool {
     use unicode_segmentation::UnicodeSegmentation;
     // Between two digits the separator is a cluster of its own.
@@ -2007,25 +2010,74 @@ pub(crate) fn is_valid_decimal(c: char) -> bool {
         .graphemes(true)
         .count()
         == 3;
-    // The format characters (`Cf`) that the lexer does not list, all invisible.
-    let format = matches!(
-        c,
-        '\u{61c}'
-            | '\u{180e}'
-            | '\u{fff9}'..='\u{fffb}'
-            | '\u{1bca0}'..='\u{1bca3}'
-            | '\u{1d173}'..='\u{1d17a}'
-            | '\u{e0000}'..='\u{e0fff}'
-    );
     alone
-        && !format
         && !c.is_alphanumeric()
         && !c.is_whitespace()
         && !c.is_control()
-        && !crate::engine::lex::is_format_char(c)
+        && !is_format_category(c)
         && !crate::engine::lex::is_joiner(c)
-        && c != '-'
-        && !crate::engine::lex::is_dash_char(c)
+        && !crate::engine::lex::is_quote_char(c)
+        && !is_dash_property(c)
+}
+
+/// Whether `c` is of general category `Cf` (format), all of them invisible, by the Unicode 15.1
+/// tables; the tag block is taken whole (U+E0000 to U+E0FFF).
+const fn is_format_category(c: char) -> bool {
+    matches!(
+        c,
+        '\u{ad}'
+            | '\u{600}'..='\u{605}'
+            | '\u{61c}'
+            | '\u{6dd}'
+            | '\u{70f}'
+            | '\u{890}'..='\u{891}'
+            | '\u{8e2}'
+            | '\u{180e}'
+            | '\u{200b}'..='\u{200f}'
+            | '\u{202a}'..='\u{202e}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{2066}'..='\u{206f}'
+            | '\u{feff}'
+            | '\u{fff9}'..='\u{fffb}'
+            | '\u{110bd}'
+            | '\u{110cd}'
+            | '\u{13430}'..='\u{1343f}'
+            | '\u{1bca0}'..='\u{1bca3}'
+            | '\u{1d173}'..='\u{1d17a}'
+            | '\u{e0000}'..='\u{e0fff}'
+    )
+}
+
+/// Whether `c` has the Unicode `Dash` property (`PropList.txt` of Unicode 15.1, and U+10D6E of
+/// 16.0): `-`, the dashes of the lexer and their look-alikes such as U+FE63 SMALL HYPHEN-MINUS and
+/// U+FF0D FULLWIDTH HYPHEN-MINUS.
+const fn is_dash_property(c: char) -> bool {
+    matches!(
+        c,
+        '-' | '\u{58a}'
+            | '\u{5be}'
+            | '\u{1400}'
+            | '\u{1806}'
+            | '\u{2010}'..='\u{2015}'
+            | '\u{2053}'
+            | '\u{207b}'
+            | '\u{208b}'
+            | '\u{2212}'
+            | '\u{2e17}'
+            | '\u{2e1a}'
+            | '\u{2e3a}'..='\u{2e3b}'
+            | '\u{2e40}'
+            | '\u{2e5d}'
+            | '\u{301c}'
+            | '\u{3030}'
+            | '\u{30a0}'
+            | '\u{fe31}'..='\u{fe32}'
+            | '\u{fe58}'
+            | '\u{fe63}'
+            | '\u{ff0d}'
+            | '\u{10d6e}'
+            | '\u{10ead}'
+    )
 }
 
 /// A minus sign of design section 7.6: `-` or a dash character of the lexer (U+2010 to U+2015,

@@ -285,6 +285,11 @@ fn build_validates_like_from_data() {
         ('\u{2013}', "decimal equal to the range dash"),
         ('-', "decimal that is a hyphen-minus"),
         ('\u{2212}', "decimal equal to the minus"),
+        ('\u{206a}', "decimal that is an invisible format character"),
+        ('\u{13430}', "decimal that is a hieroglyph format control"),
+        ('\u{ff0d}', "decimal that is a fullwidth hyphen-minus"),
+        ('\u{2053}', "decimal that is a swung dash"),
+        ('\'', "decimal that the quote rules make a prime"),
     ] {
         invalid(
             LanguageBuilder::from_language(&Language::RU_RU, "xx")

@@ -1137,3 +1137,32 @@ fn number_is_a_plain_value() {
     assert_ne!(Number::from(f64::NAN), Number::from(f64::NAN));
     assert!(!format!("{a:?}").is_empty());
 }
+
+#[test]
+fn a_number_with_any_valid_decimal_separator_is_stable_under_typeset() {
+    // Design section 7.6: the decimal separator keeps the number's meaning, so typeset leaves a
+    // formatted number and range as they are. A quote character would not do: the quote rules
+    // made the second separator of `1'5–2'5` a prime.
+    for decimal in [',', '.', '\u{66b}', '\u{b7}', '\u{2396}', '!'] {
+        let language = LanguageBuilder::from_language(&Language::RU_RU, "xx-XX")
+            .numbers(NumberData::new().with_decimal(decimal).with_group('\u{a0}'))
+            .build()
+            .unwrap();
+        let t = Typographer::new(language, RuleSet::PROSE);
+        for text in [
+            t.format_number(1234.5f64, Output::Unicode).to_string(),
+            t.format_range(1.5f64, 2.5f64, Output::Unicode).to_string(),
+        ] {
+            assert_eq!(t.typeset(&text, Output::Unicode), text, "{decimal:?}");
+        }
+    }
+    for decimal in ['\'', '\u{ff0d}', '\u{206a}'] {
+        assert!(
+            LanguageBuilder::from_language(&Language::RU_RU, "xx-XX")
+                .numbers(NumberData::new().with_decimal(decimal))
+                .build()
+                .is_err(),
+            "{decimal:?}"
+        );
+    }
+}
