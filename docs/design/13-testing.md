@@ -498,7 +498,13 @@ U+00A0 and must not be normalized.
 - `#[ignore]` test `load_is_linear`: time per byte for 16 MiB is at most twice that for 64 KiB,
   separately for each pathological input. No absolute thresholds: the machine is shared. Indicative
   targets, measured in stage 5 and not promised: at least 20 MB/s on the corpus in Unicode output, a
-  median below 10 µs for one interface string.
+  median below 10 µs for one interface string. Measured on 2026-11-23 (release, one shared machine,
+  Rust 1.100): the corpus runs at 2 to 3.6 MB/s in every output kind (about 280 to 500 ns per byte),
+  one interface string of 45 bytes takes 13 to 33 µs (median) and 28 to 60 µs (p99), and a one-word
+  string that the prefilter rejects takes 28 to 48 ns. Both indicative targets are missed by an
+  order of magnitude; the cost is linear (the 16 MiB to 64 KiB ratio of every pathological input is
+  between 0.9 and 1.7), so this is a constant-factor matter, not a defect of section 3.12. The
+  tables of the run are in the report of stage 5a.
 - `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` (the only file with
   `#![allow(unsafe_code)]`, section 14.5; the allocator counts and delegates to
   `std::alloc::System`) checks the table of section 2.12: zero allocations for an unchanged string
