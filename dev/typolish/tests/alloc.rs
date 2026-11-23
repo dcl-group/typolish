@@ -222,12 +222,14 @@ fn a_template_iterator_that_calls_the_typographer_adds_nothing_else() {
     assert_eq!(t.texts(), ["слово", ""]);
 }
 
+/// A row of the template growth table: the pieces, the texts and the number of changed texts.
+type Grown = (Vec<Piece<'static, u8>>, &'static [&'static str], usize);
+
 #[test]
 fn a_changed_template_text_is_one_allocation_however_much_it_grows() {
     // Section 2.12: at most 3 plus one per changed text. A glued space takes two bytes for one,
     // so a short glued text must not outgrow its string (`{n} дн.`, section 2.6).
-    // (pieces, texts, the number of changed texts)
-    let rows: [(Vec<Piece<'static, u8>>, &[&str], usize); 3] = [
+    let rows: [Grown; 3] = [
         (
             vec![Piece::Slot(0, Slot::NUMBER), Piece::Text(" дн.")],
             &["", "\u{a0}дн."],
