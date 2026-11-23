@@ -244,28 +244,35 @@ fn quotes_primes() {
 
 #[test]
 fn dash_without_glue() {
+    let ru_rows: &[(&str, &str)] = &[
+        ("Москва — столица", "Москва - столица"),
+        ("Привет, — сказал он.", "Привет, - сказал он."),
+        ("кто-то — что-то", "кто-то - что-то"),
+    ];
+    let en_rows: &[(&str, &str)] = &[
+        // The closed form of the English style becomes a spaced hyphen.
+        ("Moscow—the capital", "Moscow - the capital"),
+        ("Open host:8080 — now", "Open host:8080 - now"),
+        ("Hello, — he said", "Hello, - he said"),
+        (
+            "mother-in-law — father-in-law",
+            "mother-in-law - father-in-law",
+        ),
+    ];
     for rule in [Rule::DashSpacedHyphen, Rule::DashDoubleHyphen] {
-        run(
-            &configs(&ru(), rule),
-            &[
-                ("Москва — столица", "Москва - столица"),
-                ("Привет, — сказал он.", "Привет, - сказал он."),
-                ("кто-то — что-то", "кто-то - что-то"),
-            ],
-        );
-        run(
-            &configs(&en(), rule),
-            &[
-                // The closed form of the English style becomes a spaced hyphen.
-                ("Moscow—the capital", "Moscow - the capital"),
-                ("Open host:8080 — now", "Open host:8080 - now"),
-                ("Hello, — he said", "Hello, - he said"),
-                (
-                    "mother-in-law — father-in-law",
-                    "mother-in-law - father-in-law",
-                ),
-            ],
-        );
+        for (language, rows) in [(ru(), ru_rows), (en(), en_rows)] {
+            let mut typographers = configs(&language, rule);
+            if rule == Rule::DashDoubleHyphen {
+                // `dash.double-hyphen` alone turns only `--` into a dash, so the dash goes back
+                // to `--`: with `-` the round trip of section 12.2 would not hold for this rule
+                // set on its own (section 12.1).
+                let (what, alone) = typographers.remove(0);
+                for &(typeset, plain) in rows {
+                    check_plain(&what, &alone, (typeset, &plain.replace(" - ", " -- ")));
+                }
+            }
+            run(&typographers, rows);
+        }
     }
 }
 
@@ -514,7 +521,11 @@ fn nbsp_rules_give_their_glue_back_as_spaces() {
         (
             en(),
             Rule::NbspDates,
-            &[("On⍽November⍽21", "On November 21")],
+            // The glue after `On` is set by `nbsp.short-words`, not by this rule; Prose undoes both.
+            &[
+                ("November⍽21", "November 21"),
+                ("On November⍽21", "On November 21"),
+            ],
         ),
         (en(), Rule::NbspUnits, &[("5⍽MB", "5 MB"), ("100%", "100%")]),
         (en(), Rule::NbspSigns, &[("№⍽5", "№ 5")]),
@@ -705,8 +716,10 @@ fn protected_text_is_not_touched() {
             "Команда `ls …` — «готово»…",
             "Команда `ls …` - \"готово\"...",
         ),
-        // An opening delimiter without its closing one is text (section 10.1).
-        ("`«x» и «y»", "`\"x\" и \"y\""),
+        // An opening delimiter without its closing one is text (section 10.1); glued to the
+        // quote and the word after it, it makes the frozen fragment "`«x"
+        // (`Technical(Unclassified)`), a protected span that stays (sections 10.5, 12.1).
+        ("`«x» и «y»", "`«x\" и \"y\""),
     ] {
         check_plain("ru Prose", &t, (typeset, plain));
     }
@@ -723,7 +736,9 @@ fn protected_text_is_not_touched() {
     check_plain(
         "no backticks",
         &no_backticks,
-        ("`«x»` и «y»", "`\"x\"` и \"y\""),
+        // Without backtick protection, "`«x»`" is one frozen fragment (`Technical(Unclassified)`):
+        // a protected span that stays (sections 10.5, 12.1).
+        ("`«x»` и «y»", "`«x»` и \"y\""),
     );
 }
 
@@ -803,7 +818,10 @@ fn the_kinds_and_payloads_of_slots_are_kept_in_order() {
         ]
     );
     assert_eq!(back.texts().len(), back.slots().len() + 1);
-    assert_eq!(back.texts(), ["", "\"", "\"", "", ""]);
+    // A quote glued between two slots is a frozen fragment (`Technical(Unclassified)`), a
+    // protected span of section 12.5 that `to_plain` does not touch (section 12.1).
+    assert_eq!(back.texts(), ["", "“", "”", "", ""]);
+    assert!(!back.changed());
 }
 
 #[test]

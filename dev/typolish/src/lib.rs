@@ -8,6 +8,7 @@
 //!
 //! The crate is in development: the engine recognizes protected and technical fragments and
 //! applies all 27 rules; [`Typographer::report`] lists every edit, protected span and diagnostic;
+//! [`Typographer::to_plain`] maps typeset text back to the plain form;
 //! [`Typographer::format_number`] and [`Typographer::format_range`] format values by the language;
 //! every [`Output`] kind is encoded (HTML with entities or nowrap elements, escaped string bodies
 //! for JavaScript, JSON, Rust and CSS).

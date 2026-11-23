@@ -6,6 +6,7 @@ pub(crate) mod classify;
 pub(crate) mod ingest;
 pub(crate) mod lex;
 pub(crate) mod phase;
+mod plain;
 pub(crate) mod record;
 mod render;
 pub(crate) mod scratch;
@@ -421,6 +422,25 @@ pub(crate) fn report_template<'t>(
         &mut journal,
     );
     (texts, changed, journal.finish())
+}
+
+/// `Typographer::to_plain` (design section 12.1).
+pub(crate) fn to_plain<'a>(
+    typographer: &Typographer,
+    scratch: &mut Scratch,
+    text: &'a str,
+) -> Cow<'a, str> {
+    plain::to_plain(typographer, scratch, text)
+}
+
+/// `Typographer::to_plain_template`: the texts in the n + 1 form and whether any changed.
+pub(crate) fn to_plain_template<'t>(
+    typographer: &Typographer,
+    scratch: &mut Scratch,
+    input: &[Input<'t>],
+    slot_count: usize,
+) -> (Vec<Cow<'t, str>>, bool) {
+    plain::to_plain_template(typographer, scratch, input, slot_count)
 }
 
 // The generators of design section 13.5; the file allows `dead_code` itself.

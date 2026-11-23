@@ -4,10 +4,10 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 
 ## 12. Reverse transformation, source check, explain mode
 
-All three run on the engine of section 3: `to_plain` is a separate pass over the same tokens with
-inverse tables, `lint` is the engine with the `Diagnostics` recorder, plus the `to_plain` pass that
-raises `TypographicChar` (section 12.3), and `report` is the engine with the `Journal` recorder
-(section 3.11).
+All three run on the engine of section 3: `to_plain` reads the text with inverse tables and checks
+its readings with forward runs of the engine (section 12.1), `lint` is the engine with the
+`Diagnostics` recorder, plus the `to_plain` pass that raises `TypographicChar` (section 12.3), and
+`report` is the engine with the `Journal` recorder (section 3.11).
 
 ### 12.1 Reverse transformation
 
@@ -18,28 +18,48 @@ P2) holds for every rule set on its own. Characters that no enabled rule produce
 spans, with delimiters working as in `typeset`, protected pieces, slots and frozen fragments) and
 markup are never touched.
 
-| Rule                                       | Typeset                                                                                                                                                                                                                                                                                                                                                                | Plain                                                       |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `quotes.pairs`                             | glyphs of both quote pairs of the language, at every level                                                                                                                                                                                                                                                                                                             | `"`                                                         |
-| `quotes.apostrophe`                        | `’` that is an apostrophe by the rule below the table                                                                                                                                                                                                                                                                                                                  | `'`                                                         |
-| `quotes.primes`                            | `″`, `′`                                                                                                                                                                                                                                                                                                                                                               | `"`, `'`                                                    |
-| `dash.spaced-hyphen`, `dash.double-hyphen` | `—` with spaces (glued or not) between operands; `—` closed between words                                                                                                                                                                                                                                                                                              | `-` with the same spaces; spaced `-` for the closed form    |
-| `dash.dialogue`                            | `—⍽` at a line start                                                                                                                                                                                                                                                                                                                                                   | `- `                                                        |
-| `range.*`                                  | `–` without spaces between numbers, slots, times, Roman numerals                                                                                                                                                                                                                                                                                                       | `-`                                                         |
-| `ellipsis.*`                               | `…`                                                                                                                                                                                                                                                                                                                                                                    | `...`; `?..` and `!..` stay (they are plain)                |
-| `nbsp.*`                                   | glue (U+00A0, U+202F) set by a rule's pattern                                                                                                                                                                                                                                                                                                                          | a space; inserted glue (`т.⍽е.`, `№⍽5`) becomes a space too |
-| `number.minus`                             | `−` before a number                                                                                                                                                                                                                                                                                                                                                    | `-`                                                         |
-| `number.times`                             | `×` between numbers                                                                                                                                                                                                                                                                                                                                                    | `x`                                                         |
-| `symbols.*`                                | `©` `®` `™` where `symbols.copyright` would produce them (section 8.9: `©` before a four-digit year, attached or one space away, `©` one space after a four-digit year, or `©` one space from a range of years; `®`, `™` attached to or one space after a capitalized word of at least two letters, not followed by an operator fragment), `→` `←` `↔` `≥` `≤` `≠` `±` | `(c)` `(r)` `(tm)` `->` `<-` `<->` `>=` `<=` `!=` `+-`      |
+| Rule                                       | Typeset                                                                                                                                                                                                                                                                                                                                                                | Plain                                                                                                          |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `quotes.pairs`                             | glyphs of both quote pairs of the language, at every level                                                                                                                                                                                                                                                                                                             | `"`                                                                                                            |
+| `quotes.apostrophe`                        | `’` that is an apostrophe by the rule below the table                                                                                                                                                                                                                                                                                                                  | `'`                                                                                                            |
+| `quotes.primes`                            | `″`, `′`                                                                                                                                                                                                                                                                                                                                                               | `"`, `'`                                                                                                       |
+| `dash.spaced-hyphen`, `dash.double-hyphen` | `—` with spaces (glued or not) between operands; `—` closed between words (whatever the dash style)                                                                                                                                                                                                                                                                    | `-` with the same spaces; spaced `-` for the closed form; `--` instead of `-` when `dash.spaced-hyphen` is off |
+| `dash.dialogue`                            | `—⍽` at a line start                                                                                                                                                                                                                                                                                                                                                   | `- `                                                                                                           |
+| `range.*`                                  | `–` without spaces between numbers, slots, times, Roman numerals                                                                                                                                                                                                                                                                                                       | `-`                                                                                                            |
+| `ellipsis.*`                               | `…`                                                                                                                                                                                                                                                                                                                                                                    | `...`; `?..` and `!..` stay (they are plain)                                                                   |
+| `nbsp.*`                                   | glue (U+00A0, U+202F) set by a rule's pattern                                                                                                                                                                                                                                                                                                                          | a space; inserted glue (`т.⍽е.`, `№⍽5`) becomes a space too                                                    |
+| `number.minus`                             | `−` before a number                                                                                                                                                                                                                                                                                                                                                    | `-`                                                                                                            |
+| `number.times`                             | `×` between numbers                                                                                                                                                                                                                                                                                                                                                    | `x`                                                                                                            |
+| `symbols.*`                                | `©` `®` `™` where `symbols.copyright` would produce them (section 8.9: `©` before a four-digit year, attached or one space away, `©` one space after a four-digit year, or `©` one space from a range of years; `®`, `™` attached to or one space after a capitalized word of at least two letters, not followed by an operator fragment), `→` `←` `↔` `≥` `≤` `≠` `±` | `(c)` `(r)` `(tm)` `->` `<-` `<->` `>=` `<=` `!=` `+-`                                                         |
 
-A typed `–` with spaces (`Москва⍽– столица`, `10⍽– 20`) is not a product of the range rules and
-stays; only the glue that `nbsp.dash` set before it becomes a space (section 8.7). A lone `©`, `®`
-or `™` outside those contexts (`© Example Corp`, `® знак`) is not a product of the rule and stays.
+Glue that no enabled rule sets at its place stays: with `nbsp.units` alone, `5⍽МБ в⍽доме` →
+`5 МБ в⍽доме`. A typed `–` with spaces (`Москва⍽– столица`, `10⍽– 20`) is not a product of the range
+rules and stays; only the glue that `nbsp.dash` set before it becomes a space (section 8.7). A lone
+`©`, `®` or `™` outside those contexts (`© Example Corp`, `® знак`) is not a product of the rule and
+stays.
 
 `to_plain` changes only the typographic characters of the table above. Plain forms (`--`, `т.д.`,
 `?...`, `(C)`) are not normalized: `to_plain("a -- b")` returns the input. Its output contains no
 character it would change, so `to_plain(to_plain(x)) == to_plain(x)`, and text without such
 characters comes back as `Cow::Borrowed`.
+
+**How a reading is checked.** The table gives the reading of every typographic character outside the
+spans of `protected()`: the plain text it came from (`a—b` reads as `a - b`, or `a -- b` when only
+`dash.double-hyphen` is on; `a — b` as `a - b` or `a -- b`). Quote glyphs and apostrophes are undone
+by the table and the rule below alone, since their plain form does not depend on the level the
+forward rule would choose (`„x“` and `‘x’` at the top level give `"x"` too). Every other character
+is undone only where an enabled rule produces it, and the rules decide that themselves: the engine
+runs forward on the text with the readings in place, and a reading is dropped (the character stays)
+when it does not come back as its character, or when it makes a rule edit the text next to it that
+the text as it was does not get, so that the round trip would break there. Glue of either width
+counts as glue, and the spaces that the dash style sets around a dash do not count; the restored
+spaces of a closed dash are exempt from the second test, because the closed form joins two words
+into one fragment, which by design changes the rules around it (section 8.4). A reading that failed
+only because a neighbouring reading was wrong is tried again alone, one per window (windows are
+independent, section 3.3). The whole pass repeats on its own output until nothing changes, so
+`to_plain` is stable by construction. There is no second copy of the rule patterns to drift from
+them, and P2 holds wherever the forward pass is idempotent; the price is a few forward runs per
+call, which the tooling path allows (section 2.12).
 
 **Which `’` is an apostrophe** (English, where `’` is both the apostrophe and the nested closing
 quote). A `’` in a fixed apostrophe context of section 6.2 (between letters, after a digit before a
@@ -55,11 +75,12 @@ one closes, and the round trip lists the case as a known loss (`NestedPossessive
 
 The canonical plain form, for the enabled rules, is the Plain column of the table above, with these
 choices: no typographic character that the rules produce; a dash between words written `-` (not
-`--`) with spaces on both sides; a range written `a-b` with no spaces; `x`, `(c)`, `(r)`, `(tm)` in
-lowercase Latin letters; abbreviations with a space (`т. е.`); `№ 5` with a space; double quotes at
-every level; `'` only for apostrophes and primes; `...` for an ellipsis; `?..` after a question in
-Russian; a percentage in the form that `PercentSpacing` keeps: either form with `AsWritten`, `100%`
-with `Attached` and with `Language` for en, `100 %` with `Spaced` and with `Language` for ru.
+`--`, unless `dash.double-hyphen` is on and `dash.spaced-hyphen` off) with spaces on both sides; a
+range written `a-b` with no spaces; `x`, `(c)`, `(r)`, `(tm)` in lowercase Latin letters;
+abbreviations with a space (`т. е.`); `№ 5` with a space; double quotes at every level; `'` only for
+apostrophes and primes; `...` for an ellipsis; `?..` after a question in Russian; a percentage in
+the form that `PercentSpacing` keeps: either form with `AsWritten`, `100%` with `Attached` and with
+`Language` for en, `100 %` with `Spaced` and with `Language` for ru.
 
 It is a method of the typographer because it needs the enabled rules, the quote pairs, single-quote
 mode and dash style of the typographer (the language data with the builder's overrides), and the
@@ -91,23 +112,24 @@ the failure prints the list. A new loss inside the canonical form is a P1 failur
 generator for P1 avoids its pattern, and its row also passes P2.
 
 In the table, `default` means `RuleSet::PROSE` with the language's own settings; a named setting
-changes only that one setting. The language is ru unless a row says `en`.
+changes only that one setting. The language is ru unless a row says `en`. The `typeset` column is
+the exact output, glue included (`roundtrip-known.tsv` holds the same rows with whole inputs).
 
 | Input (non-canonical unless noted)                 | Settings                   | `typeset`                 | `to_plain`                | Code                |
 | -------------------------------------------------- | -------------------------- | ------------------------- | ------------------------- | ------------------- |
 | `--` between words                                 | `default`                  | `—`                       | `-`                       | `DoubleHyphen`      |
 | `т.д.`                                             | `default`                  | `т.⍽д.`                   | `т. д.`                   | `CompactAbbr`       |
 | `№5`                                               | `default`                  | `№⍽5`                     | `№ 5`                     | `AttachedSign`      |
-| `?...` (ru)                                        | `default`                  | `?..`                     | `?..`                     | `TerminalEllipsis`  |
+| `?...` (ru; also `!...`, `?!...`, section 8.6)     | `default`                  | `?..`                     | `?..`                     | `TerminalEllipsis`  |
 | `'x'` (en)                                         | `SingleQuotes::Everywhere` | `“x”`                     | `"x"`                     | `SingleQuote`       |
-| `"a 'b' c"` (en)                                   | `default`                  | `“a ‘b’ c”`               | `"a "b" c"`               | `NestedSingle`      |
+| `"a 'b' c"` (en)                                   | `default`                  | `“a⍽‘b’ c”`               | `"a "b" c"`               | `NestedSingle`      |
 | `1920х1080` (Cyrillic `х`)                         | `default`                  | `1920×1080`               | `1920x1080`               | `CyrillicTimes`     |
 | `100%` (ru)                                        | `PercentSpacing::Language` | `100⍽%`                   | `100 %`                   | `PercentInserted`   |
 | `100 %` (en)                                       | `PercentSpacing::Attached` | `100%`                    | `100%`                    | `PercentRemoved`    |
 | `(C) 2026`, `(с) 2026` (Cyrillic `с`), `Brand(TM)` | `default`                  | `© 2026`, `Brand™`        | `(c) 2026`, `Brand(tm)`   | `LegalMarkSpelling` |
 | `1920X1080`                                        | `default`                  | `1920×1080`               | `1920x1080`               | `TimesSpelling`     |
-| U+00A0 typed by the author                         | `default`                  | U+00A0                    | a space                   | `AuthorGlue`        |
-| `"a "the dogs' bowls" b"` (en; canonical)          | `default`                  | `“a ‘the dogs’ bowls’ b”` | `"a "the dogs" bowls' b"` | `NestedPossessive`  |
+| U+00A0 typed by the author where a rule sets glue  | `default`                  | U+00A0                    | a space                   | `AuthorGlue`        |
+| `"a "the dogs' bowls" b"` (en; canonical)          | `default`                  | `“a⍽‘the⍽dogs’ bowls’ b”` | `"a "the dogs" bowls' b"` | `NestedPossessive`  |
 
 ### 12.3 Source check
 

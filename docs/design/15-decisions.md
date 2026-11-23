@@ -135,6 +135,7 @@ that the maintainer settled in section 15.5 name the item.
 | C28 | `LanguageBuilder` owns its lists, and the engine reads static and owned data through one private view; `build()` validates the lists and does not repair them | leaking the builder's strings into `&'static` data; dropping entries that fail a check silently | 7.1       |
 | C29 | A minus sign is `-` or a dash (U+2010 to U+2015, U+2212): the signs check 15 reads as the sign of a number again                                              | any non-letter, non-digit, non-space, non-quote sign: the second pass breaks idempotence        | 2.11, 7.6 |
 | C30 | No glue sticks to a fragment that holds an `Other` slot (`and "{o}"`, `и {d}{o}`): a nowrap group takes whole fragments                                       | "next to" as the adjacent token: `and⍽"{o}"` glued                                              | 2.6, 8.2  |
+| C31 | `to_plain` checks every reading with forward runs of the engine: a character goes back only where an enabled rule produces it                                 | inverse patterns per rule, a second copy that drifts from the forward rules                     | 12.1      |
 
 ### 15.4 Stage plan
 

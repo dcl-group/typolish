@@ -95,7 +95,8 @@ fn written_len(text: RText, data: &Table<'_>) -> usize {
     }
 }
 
-fn write(out: &mut String, text: RText, data: &Table<'_>) {
+/// Appends the new text of an edit.
+pub(crate) fn write_text(out: &mut String, text: RText, data: &Table<'_>) {
     match text {
         RText::Empty => {}
         RText::Char(c) => out.push(c),
@@ -138,7 +139,7 @@ pub(crate) fn render_text_into(text: &str, edits: &[REdit], data: &Table<'_>, ou
     for e in edits {
         let (start, end) = (e.start as usize, e.end as usize);
         out.push_str(text.get(pos..start).unwrap_or(""));
-        write(out, e.text, data);
+        write_text(out, e.text, data);
         pos = end.max(pos);
     }
     out.push_str(text.get(pos..).unwrap_or(""));
@@ -181,7 +182,7 @@ fn write_piece(out: &mut String, text: &str, p: &TextPiece, edits: &[REdit], dat
                 .unwrap_or(""),
         );
         if e.start >= p.start {
-            write(out, e.text, data);
+            write_text(out, e.text, data);
         }
         pos = pos.max(end);
     }

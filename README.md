@@ -11,9 +11,10 @@ In development; nothing is released. The design is in
 [`docs/design/`](https://github.com/dcl-group/typolish/tree/main/docs/design). The engine recognizes
 protected and technical fragments and applies all 27 rules of quotes, dashes, ranges, ellipses,
 no-break spaces, numbers and symbols; `Typographer::report` lists every edit, protected span and
-diagnostic; `Typographer::format_number` and `Typographer::format_range` format values by the
-language; every output kind is encoded: Unicode, HTML (entities or nowrap elements) and escaped
-string bodies for JavaScript, JSON, Rust and CSS.
+diagnostic; `Typographer::to_plain` maps typeset text back to the plain form;
+`Typographer::format_number` and `Typographer::format_range` format values by the language; every
+output kind is encoded: Unicode, HTML (entities or nowrap elements) and escaped string bodies for
+JavaScript, JSON, Rust and CSS.
 
 ## Usage
 

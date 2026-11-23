@@ -661,6 +661,62 @@ impl Typographer {
             .collect();
         Report::new(Template::from_parts(texts, slots, changed), records, inputs)
     }
+
+    /// Maps typeset Unicode text back to the canonical plain form, undoing exactly the enabled
+    /// rules (design section 12.1). The spans of `protected()` (design section 12.5) and markup
+    /// are left alone. The input is Unicode text (`Output::Unicode`); HTML entities and escapes are
+    /// not decoded and are read as ordinary characters.
+    ///
+    /// A typographic character is undone only where an enabled rule produces it: a `©` stays when
+    /// `symbols.copyright` is off, glue stays where no enabled rule sets it. Plain forms are not
+    /// normalized, the result holds no character that `to_plain` would change, and text without
+    /// such characters comes back borrowed. It uses the thread-local working memory and makes no
+    /// allocation promise.
+    ///
+    /// ```
+    /// use typolish::{Language, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// assert_eq!(
+    ///     RU.to_plain("Файл «report.pdf» не\u{a0}найден\u{a0}— проверьте"),
+    ///     "Файл \"report.pdf\" не найден - проверьте",
+    /// );
+    /// ```
+    #[must_use]
+    pub fn to_plain<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        engine::scratch::with_thread_scratch(|scratch| engine::to_plain(self, scratch, text))
+    }
+
+    /// [`Typographer::to_plain`] for the pieces of a message template: the slots come back in
+    /// input order with their payloads, `Protected` and `Markup` pieces are left alone, and the
+    /// texts are in the n + 1 form of [`Template`] (design section 2.10).
+    ///
+    /// ```
+    /// use typolish::{Language, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    ///
+    /// let t = RU.to_plain_template([
+    ///     Piece::Text("«"),
+    ///     Piece::Slot("name", Slot::WORD),
+    ///     Piece::Text("» нашёл файл"),
+    /// ]);
+    /// assert_eq!(t.texts(), ["\"", "\" нашёл файл"]);
+    /// assert!(t.changed());
+    /// ```
+    #[must_use]
+    pub fn to_plain_template<'t, S>(
+        &self,
+        pieces: impl IntoIterator<Item = Piece<'t, S>>,
+    ) -> Template<'t, S> {
+        let (input, slots) = split_pieces(pieces);
+        let slot_count = slots.len();
+        let (texts, changed) = engine::scratch::with_thread_scratch(|scratch| {
+            engine::to_plain_template(self, scratch, &input, slot_count)
+        });
+        Template::from_parts(texts, slots, changed)
+    }
 }
 
 /// Splits pieces into the call-local vector of piece texts and the slots with their payloads.
