@@ -1,8 +1,8 @@
 # typolish design
 
-Status: the design of version 0.1, approved by the maintainer on 2026-11-22; implementation is under
-way in `dev/typolish`, stage 3 (section 15.4). Where this document and the code disagree, one of
-them is fixed in the same change.
+Status: the design of version 0.1, approved by the maintainer on 2026-11-22; stages 2 to 5 are
+implemented in `dev/typolish`, and version 0.1.0 is prepared and not published (section 15.4). Where
+this document and the code disagree, one of them is fixed in the same change.
 
 Conventions used below:
 

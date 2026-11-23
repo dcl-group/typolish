@@ -14,11 +14,11 @@ Rules work on whole clusters:
 
 - A replacement replaces one or more whole clusters. A cluster of several characters led by a
   non-letter is a `Symbol` (except `\r\n`, a cluster of ZWNJ and ZWJ only, section 5.4, and a space
-  with a combining mark, ZWNJ or ZWJ attached, section 5.3): a straight quote with a combining mark
-  attached (`"` + U+0301) is not a quote candidate, and a keycap (`1️⃣`, `#️⃣`) is not a number or a
-  sign. The fast path of section 3.5 hands the simple characters on both sides of any other
-  character to the segmenter, so this holds right before and right after ASCII, Latin, Greek and
-  Cyrillic text too.
+  with a combining mark (Mn, Mc or Me), ZWNJ or ZWJ attached, section 5.3): a straight quote with a
+  combining mark attached (`"` + U+0301) is not a quote candidate, and a keycap (`1️⃣`, `#️⃣`) is not
+  a number or a sign. The fast path of section 3.5 hands the simple characters on both sides of any
+  other character to the segmenter, so this holds right before and right after ASCII, Latin, Greek
+  and Cyrillic text too.
 - An insertion (`т.е.` → `т.⍽е.`, `№5` → `№⍽5`) is made only between clusters.
 - Glue is set only on a `Space` token, which is a whole cluster.
 - Emoji sequences (ZWJ, skin-tone modifiers, flags, keycaps, tag sequences) are single `Symbol`
@@ -66,9 +66,10 @@ a foreign crate enabling it would silently change everybody's output).
 - Line breaks: `\n`, `\r\n`, `\r`, U+0085, U+2028. U+2029 is a paragraph separator, neither a line
   break nor a token: it always ends a window. A window boundary (section 3.3) is U+2029 or two or
   more line breaks with only horizontal whitespace between them. Line breaks are never glued.
-- A space cluster with a combining mark, ZWNJ or ZWJ attached (U+0020 + U+0301, U+0020 + U+200D) is
-  a frozen `Space`: it separates fragments, is never glued or removed, and the mark stays. A
-  no-break rule that would have glued it simply does not, without a diagnostic.
+- A space cluster with a combining mark (Mn, Mc or Me), ZWNJ or ZWJ attached (U+0020 + U+0301,
+  U+0020 + U+0903, U+0020 + U+200D) is a frozen `Space`: it separates fragments, is never glued or
+  removed, and the mark stays. A no-break rule that would have glued it simply does not, without a
+  diagnostic.
 
 ### 5.4 Format characters and Fluent isolation marks
 

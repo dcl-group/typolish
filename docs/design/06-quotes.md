@@ -38,14 +38,14 @@ Local context removes from pairing what is certainly not a quote. The decision i
 plain (`'`) and the typed form (`’` for an apostrophe, `′` for a prime), so a second pass removes
 the same tokens (invariant I4): `’` stays an apostrophe, and `′` is never a candidate (section 6.1).
 
-| Context of `'` or `’`                                                                                                                                       | Result     | Rule                |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------- |
-| a letter on both sides, any script (`don't`, `O'Brien`, `rock'n'roll`, `Д'Артаньян`)                                                                        | `’` U+2019 | `quotes.apostrophe` |
-| a `Word` or `Number` slot on the left, a letter on the right (`{name}'s`)                                                                                   | `’`        | `quotes.apostrophe` |
-| a digit on the left, a letter on the right (`90's`)                                                                                                         | `’`        | `quotes.apostrophe` |
-| word start and an elision of the language's list (`'tis`, `'em`, `'cause`)                                                                                  | `’`        | `quotes.apostrophe` |
-| word start, two digits, then `s`, if the language has the decade flag (`decade_apostrophe`, section 7.1; `'90s`)                                            | `’`        | `quotes.apostrophe` |
-| a number of one to three digits on the left and one or two digits ending the core on the right (`5'10`; a straight `'` only: `5’10` is frozen, section 3.6) | `′` U+2032 | `quotes.primes`     |
+| Context of `'` or `’`                                                                                                                                                                                | Result     | Rule                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------- |
+| a letter on both sides, any script (`don't`, `O'Brien`, `rock'n'roll`, `Д'Артаньян`)                                                                                                                 | `’` U+2019 | `quotes.apostrophe` |
+| a `Word` or `Number` slot on the left, a letter on the right (`{name}'s`)                                                                                                                            | `’`        | `quotes.apostrophe` |
+| a digit on the left, a letter on the right (`90's`)                                                                                                                                                  | `’`        | `quotes.apostrophe` |
+| word start and an elision of the language's list (`'tis`, `'em`, `'cause`)                                                                                                                           | `’`        | `quotes.apostrophe` |
+| word start, two digits, then `s` and then a character that is neither a letter nor a digit, or the end of the window, if the language has the decade flag (`decade_apostrophe`, section 7.1; `'90s`) | `’`        | `quotes.apostrophe` |
+| a number of one to three digits on the left and one or two digits ending the core on the right (`5'10`; a straight `'` only: `5’10` is frozen, section 3.6)                                          | `′` U+2032 | `quotes.primes`     |
 
 The apostrophe is U+2019 for every language, as the Unicode Standard (chapter 6) recommends for
 typeset text; it is a constant of the crate, not a field of `LanguageData` (section 7.1). A straight

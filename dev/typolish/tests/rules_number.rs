@@ -414,10 +414,14 @@ fn times_after_a_label_number() {
     check_exact("alone", &t, ("№10 x 5", "№10 × 5"));
     check_exact("alone", &t, ("№ 10 x 5", "№ 10 × 5"));
     check_exact("alone", &t, ("№010 x 5", "№010 x 5"));
+    // A Roman label is no factor (design sections 3.6 and 8.2).
+    check_exact("alone", &t, ("№IV x 5", "№IV x 5"));
     let t = prose(Language::RU_RU);
     check_exact("ru Prose", &t, ("№10 x 5", "№⍽10 × 5"));
     check_exact("ru Prose", &t, ("№ 10 x 5", "№⍽10 × 5"));
     check_exact("ru Prose", &t, ("№⍽10 × 5", "№⍽10 × 5"));
+    check_exact("ru Prose", &t, ("№IV x 5", "№⍽IV x 5"));
+    check_exact("ru Prose", &t, ("№ IV x 5", "№⍽IV x 5"));
 }
 
 #[test]

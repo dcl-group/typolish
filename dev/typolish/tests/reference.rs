@@ -225,3 +225,61 @@ fn every_reason_of_section_8_12_has_a_row() {
         assert!(used.contains(&reason), "no row for {reason:?}");
     }
 }
+
+#[test]
+fn glue_only_rows_name_a_glue_reason() {
+    // Design section 13.4: a row that differs from the recorded output only in its glue marks names
+    // a reason that explains glue: one of the glue codes of design section 8.12, `DashStyleEn` for
+    // the space before a spaced dash in en-US, or `Slots` for glue next to a slot.
+    let fold = |s: &str| -> String {
+        s.chars()
+            .map(|c| {
+                if matches!(c, '\u{a0}' | '\u{202f}') {
+                    ' '
+                } else {
+                    c
+                }
+            })
+            .collect()
+    };
+    let mut seen = 0;
+    for row in ru::ROWS.iter().chain(en_us::ROWS) {
+        let Group::Diverge { ours, reasons } = row.group else {
+            continue;
+        };
+        if fold(row.recorded) != fold(ours) {
+            continue;
+        }
+        seen += 1;
+        for reason in reasons {
+            assert!(
+                matches!(
+                    reason,
+                    Reason::NoLastShortWord
+                        | Reason::EnNbsp
+                        | Reason::RuNbsp
+                        | Reason::WideGlue
+                        | Reason::DashStyleEn
+                        | Reason::Slots
+                ),
+                "{}: differs only in glue, but names {reason:?}",
+                row.id
+            );
+            if *reason == Reason::DashStyleEn {
+                assert!(
+                    row.id.contains(".en-US.") && row.recorded.contains("\u{a0}—"),
+                    "{}: `DashStyleEn` on a glue-only row without a glued dash in en-US",
+                    row.id
+                );
+            }
+            if *reason == Reason::Slots {
+                assert!(
+                    row.input.contains('{'),
+                    "{}: `Slots` on a glue-only row without a slot",
+                    row.id
+                );
+            }
+        }
+    }
+    assert!(seen > 0, "no row differs only in glue");
+}

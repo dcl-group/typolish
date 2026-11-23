@@ -228,9 +228,10 @@ holds the `Rule` and `RuleSet` tables of sections 2.3, 4.1 and 9.2; it is not on
 The tables of ingest, windows, the lexer and the classifier (stage 2) observe the engine through
 `report` and `report_template` and live in their own targets: `classifier.rs`, `protection.rs`,
 `pieces_report.rs`, `lexer.rs`, `negative_report.rs` and `engine_properties.rs`, with the helpers of
-`tests/common/probe.rs`, which these targets include through `#[path]`. `ingest_rules.rs` reads the
-same decisions in the output of the stage 2 rules (`quotes.*`, `dash.*`, `range.*`, `ellipsis.*`)
-and is added in the same change as those rules, so that the gates stay green.
+`tests/common/probe.rs`, which these targets, `negative.rs`, `graphemes.rs` and the seven
+`rules_*.rs` tables include through `#[path]`. `ingest_rules.rs` reads the same decisions in the
+output of the stage 2 rules (`quotes.*`, `dash.*`, `range.*`, `ellipsis.*`) and is added in the same
+change as those rules, so that the gates stay green.
 
 `language_builder.rs` holds the `LanguageBuilder` rows of sections 7.1 and 7.6. The other helpers of
 `tests/common/` are `canonical.rs` (the generators of property 13, section 13.5), `corpus.rs` (the
@@ -255,7 +256,7 @@ Before every commit, from `dev/`, for the `typolish` package only: `cargo fmt --
 installed once with `rustup toolchain install 1.100.0` and again whenever the MSRV is raised;
 identical to the other gates while the installed stable is 1.100, it keeps the MSRV checked when
 stable moves on). Formatting of Markdown and JSON is a manual step before the commit, not a gate, as
-in zonewright: `npx --yes prettier@3 --write --ignore-path .prettierignore -- <paths>`
+in zonewright: `npx --yes prettier@3.10.1 --write --ignore-path .prettierignore -- <paths>`
 (`proseWrap: always`, width 100); TOML is tidied by hand. Plus the script outside the repository
 that rejects the reference implementation's name in `git diff --cached` (contents and paths) and, as
 a `commit-msg` hook, in the commit message. Commits are small, in Conventional Commits style with

@@ -32,7 +32,8 @@ use typolish::{
 const DOTS: Rule = Rule::EllipsisDots;
 const INNER: Rule = Rule::EllipsisInner;
 
-// ellipsis.dots, Russian: exactly three full stops at a word end or alone; `?...` gives `?..`.
+// ellipsis.dots, Russian: exactly three full stops attached to what precedes them or alone; `?...`
+// gives `?..`.
 const RU_DOTS: &[(&str, &str)] = &[
     ("Подождите...", "Подождите…"),
     ("...", "…"),
@@ -51,6 +52,9 @@ const RU_DOTS: &[(&str, &str)] = &[
     ("Что?!...", "Что?!.."),
     // The quote is closing by its role, so the ellipsis fires (section 6.3).
     ("Подождите...\" дальше", "Подождите…\" дальше"),
+    // The dots attach to a number or a sign as well as to a word (design section 8.6).
+    ("Осталось 5...", "Осталось 5…"),
+    ("10%...", "10%…"),
     // Not three full stops, or digits on both sides, or not at a word end: nothing changes.
     ("А если..", "А если.."),
     ("../x", "../x"),
@@ -108,6 +112,7 @@ const EN_DOTS: &[(&str, &str)] = &[
     ("What!...", "What!…"),
     ("What?!...", "What?!…"),
     ("Slow ...", "Slow …"),
+    ("Wait 5...", "Wait 5…"),
     ("... and then", "… and then"),
     ("Wait..", "Wait.."),
     ("Wait....", "Wait...."),

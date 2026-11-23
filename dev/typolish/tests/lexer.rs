@@ -93,11 +93,12 @@ fn line_breaks_separate_fragments() {
 
 #[test]
 fn a_space_with_a_mark_is_a_frozen_space_that_still_separates() {
-    // Section 5.3: U+0020 + U+0301 and U+0020 + U+200D are a frozen `Space`: it separates
-    // fragments, is never glued or removed, and the mark stays.
+    // Design section 5.3: U+0020 + U+0301, U+0020 + U+0903 and U+0020 + U+200D are a frozen
+    // `Space`: it separates fragments, is never glued or removed, and the mark stays.
     let rows: Vec<(&str, Vec<(ProtectedKind, &str)>)> = vec![
         ("a:b \u{301}c:d", vec![(COLON, "a:b"), (COLON, "c:d")]),
         ("a:b \u{200d}c:d", vec![(COLON, "a:b"), (COLON, "c:d")]),
+        ("a:b \u{903}c:d", vec![(COLON, "a:b"), (COLON, "c:d")]),
         ("a:b \u{200c}c:d", vec![(COLON, "a:b"), (COLON, "c:d")]),
         ("a:b\u{a0}\u{301}c:d", vec![(COLON, "a:b"), (COLON, "c:d")]),
         // A tab is a `Control` character, so the mark after it is a cluster of its own (UAX #29,

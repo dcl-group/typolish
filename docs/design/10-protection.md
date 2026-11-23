@@ -24,8 +24,9 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   cross single line breaks.
 - **Matching** is one pass for fenced blocks over the whole input, then one pass per window for the
   other delimiters: positions are collected first, pairs are formed left to right, and spans do not
-  nest (inside an open span only its closing delimiter is looked for). Time is O(n) even for 10⁵
-  unclosed backticks (section 3.12).
+  nest (inside an open span only its closing delimiter is looked for). Time is O(n log n) at worst
+  (one sort of the backtick runs), with no quadratic behavior, even for 10⁵ unclosed backticks
+  (section 3.12).
 - **An unclosed delimiter** is an ordinary character, not protection to the end of the text: a stray
   backtick in prose (``don`t``) does not switch off processing of the rest, and two stray backticks
   in different paragraphs do not pair (``Don`t.\n\nОн сказал "да".\n\nIt`s ok.`` gets `«да»` and two

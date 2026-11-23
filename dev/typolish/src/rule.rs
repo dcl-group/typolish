@@ -45,7 +45,7 @@ pub enum Rule {
     /// assert_eq!(t.typeset("a >= b", Output::Unicode), "a ≥ b");
     /// ```
     SymbolsMath,
-    /// `ellipsis.dots`: `...` at a word end or alone, and after `?` and `!`.
+    /// `ellipsis.dots`: `...` attached to what precedes it or alone, and after `?` and `!`.
     ///
     /// ```
     /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};

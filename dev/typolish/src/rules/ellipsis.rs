@@ -38,9 +38,10 @@ fn form_after(cx: &Cx<'_>, prev: Option<usize>) -> Option<EllipsisForm> {
     }
 }
 
-/// `ellipsis.dots`: exactly three full stops at the end of a word (followed by a space, a line
-/// break, the end of the window, closing punctuation or a closing quote), or forming a fragment of
-/// their own between boundaries → `…`; after `?`, `!` or `?!` the language's form.
+/// `ellipsis.dots`: exactly three full stops attached to the preceding token (a word, a number, a
+/// closing quote or bracket, a sign; followed by a space, a line break, the end of the window,
+/// closing punctuation or a closing quote), or forming a fragment of their own between boundaries
+/// → `…`; after `?`, `!` or `?!` the language's form (design section 8.6).
 pub(crate) fn dots(cx: &Cx<'_>, i: usize) -> Option<Match> {
     if cx.kind(i) != Some(Kind::Dots) {
         return None;

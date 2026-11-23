@@ -102,7 +102,8 @@ gives the output of the whole set.
   `10-10` → unchanged, no diagnostic; `XIX-XX вв.` → `XIX–XX вв.`; `XX-XIX вв.`, `xix-xx вв.` and
   `ХIХ-ХХ вв.` (Cyrillic `Х`) → unchanged, the last with `MixedScript`.
 - `tests/rules_ellipsis.rs`: `Ждите - ...` with `ellipsis.dots` alone → `Ждите - …`; `...` alone →
-  `…`; in both `report().protected()` is empty. `и т.д...` → `и т.д…`. Boundaries:
+  `…`; in both `report().protected()` is empty. `и т.д...` → `и т.д…`, `Осталось 5...` →
+  `Осталось 5…`, `10%...` → `10%…` (the dots attach to a number or a sign, section 8.6). Boundaries:
   `Подождите...\nДальше` → `Подождите…\nДальше`, `... слово` → `… слово`, `Слово ...` → `Слово …`,
   `Подождите...\tДальше` → `Подождите…\tДальше`, `Подождите...  Дальше` → `Подождите…  Дальше`,
   `Слово\t...и тогда` (Prose) → `Слово\t…и тогда`, ru `Что?...\nДа` → `Что?..\nДа`; ru
@@ -323,17 +324,20 @@ a reason, and where section 8.12 names a diagnostic for a reason of the row (`No
 for a template row) holds that diagnostic. Every reason has at least one row. The cause of a row is
 decided by the script that wrote the tables and checked by hand: a row that differs in more than
 glue gets the reasons of its content change, and a glue mark that differs outside a changed fragment
-gets `NoLastShortWord` (the reference implementation glues, we do not), `EnNbsp` or `RuNbsp` (we
-glue, it does not) or `WideGlue` (the character differs). The 405 cases of the `neg.*` groups
-(section 13.3) are also run with Interface and checked as section 13.3 says: the case's token byte
-for byte through `report`, glue of `nbsp.*` rules outside it allowed; whole-string equality with the
-input is not required, because Interface keeps `nbsp.short-words` (`Он вызвал ls на⍽сервере.`). Both
-sections read the same tables, `tests/reference/{ru,en_us}.rs`. Stage 2 generates them with every
-row (case id, input and recorded output), which `tests/negative.rs` reads from then on; stage 5 adds
-to each row its group and reason code, and adds the target `tests/reference.rs` (section 15.4). A
-failure prints the input, our output, the recorded output and the `report` table (section 12.5). The
-stage 5 report prints a summary per reason code. The phrase used in tables and comments is
-"reference implementation".
+gets the reason that explains it, if section 8.12 has one: `DashStyleEn` for the space before a
+spaced dash in en-US (`nbsp.dash` needs the style `SpacedGlued`, so `Closed` never glues it,
+`Moscow⍽— the` against `Moscow — the`), `Slots` for glue next to a slot that the reference
+implementation reads as text (`{n}⍽МБ` against `{n} МБ`); otherwise `NoLastShortWord` (the reference
+implementation glues, we do not), `EnNbsp` or `RuNbsp` (we glue, it does not) or `WideGlue` (the
+character differs). The 405 cases of the `neg.*` groups (section 13.3) are also run with Interface
+and checked as section 13.3 says: the case's token byte for byte through `report`, glue of `nbsp.*`
+rules outside it allowed; whole-string equality with the input is not required, because Interface
+keeps `nbsp.short-words` (`Он вызвал ls на⍽сервере.`). Both sections read the same tables,
+`tests/reference/{ru,en_us}.rs`. Stage 2 generates them with every row (case id, input and recorded
+output), which `tests/negative.rs` reads from then on; stage 5 adds to each row its group and reason
+code, and adds the target `tests/reference.rs` (section 15.4). A failure prints the input, our
+output, the recorded output and the `report` table (section 12.5). The stage 5 report prints a
+summary per reason code. The phrase used in tables and comments is "reference implementation".
 
 **Provenance and drift.** Each generated file (`tests/reference/ru.rs` and
 `tests/reference/en_us.rs`, which also hold the negative cases of section 13.3) starts with a
@@ -347,11 +351,12 @@ version named in the header.
 
 ### 13.5 Properties
 
-Test files: properties 1 to 12 and 14 to 17 live in `tests/properties.rs` (the prefilter part of
-property 8 is a unit test, below); property 13 lives in `tests/roundtrip.rs` together with the table
-test of `roundtrip-known.tsv`; `tests/corpus.rs` compares the snapshots of section 13.7
-(`expected/`) and runs idempotence on the corpus; the `#[ignore]` test `load_is_linear` of section
-13.8 lives in `tests/load.rs`.
+Test files: properties 1 to 4, 6, 8 to 12 and 14 to 17 live in `tests/properties.rs` (the prefilter
+part of property 8 is a unit test, below); properties 5 and 7, and the parts of properties 4, 9 and
+14 that `report` shows on strings, live in `tests/engine_properties.rs`; property 13 lives in
+`tests/roundtrip.rs` together with the table test of `roundtrip-known.tsv`; `tests/corpus.rs`
+compares the snapshots of section 13.7 (`expected/`) and runs idempotence on the corpus; the
+`#[ignore]` test `load_is_linear` of section 13.8 lives in `tests/load.rs`.
 
 `proptest` generators: a grammar of risky pieces (straight and typed quotes, `-`, `--`, `—`, `–`,
 `.`, `...`, `…`, numbers, units, short words of both languages, technical fragments from section
@@ -531,19 +536,21 @@ U+00A0 and must not be normalized.
   other output kinds; time per byte of joined corpus is 65 to 100 ns from 1 KiB to 16 MiB; the
   interface strings take 3.2 to 5.6 µs at the median and 6.4 to 12.4 µs at p99 for en-US, 3.1 to 6.3
   µs at the median and 5.9 to 14.3 µs at p99 for ru-RU; a one-word string that the prefilter rejects
-  takes 28 to 47 ns. One paragraph of 10^5 ZWJ emoji clusters raises the peak memory by about 7 MB
-  (about 70 bytes per cluster, 68 to 113 bytes from 10^4 to 10^6 clusters, so linear); the result is
-  borrowed, so this is engine memory only (section 3.12). The latency target is met; the throughput
-  target is missed by a factor of 1.4 to 3, which the maintainer accepted for version 0.1 (section
-  15.2, item 27). What remains is spread over the passes the design prescribes rather than
-  concentrated in one place: per fragment the classifier reads the wrapper, the units, the signature
-  of check 0, the table and the labels (about 150 to 250 ns per fragment); per space every active
-  no-break rule re-reads its context and its lists (the no-break phase is about 35 to 40 ns per
-  byte); and the lexer classes every character. The cost is linear: in `load_is_linear` the 16 MiB
-  to 64 KiB ratio of every pathological input is between 1.0 and 1.8 (up to 1.9 in the bench, which
-  starts each input with a new scratch); the step between 64 KiB and 1 MiB, where the token buffers
-  of one window leave the caches, is most of it. The faster the passes, the larger that memory-bound
-  share, so the margin to the bound of 2 is smaller than it was.
+  takes 28 to 47 ns (each call is timed on its own, so the figure includes two clock reads, about 17
+  ns on that machine; timed in batches the call takes about 12 to 31 ns). One paragraph of 10^5 ZWJ
+  emoji clusters raises the peak memory by about 7 MB (about 70 bytes per cluster, 68 to 113 bytes
+  from 10^4 to 10^6 clusters, so linear); the result is borrowed, so this is engine memory only
+  (section 3.12). The latency target is met; the throughput target is missed by a factor of 1.4 to
+  3, which the maintainer accepted for version 0.1 (section 15.2, item 27). What remains is spread
+  over the passes the design prescribes rather than concentrated in one place: per fragment the
+  classifier reads the wrapper, the units, the signature of check 0, the table and the labels (about
+  150 to 250 ns per fragment); per space every active no-break rule re-reads its context and its
+  lists (the no-break phase is about 35 to 40 ns per byte); and the lexer classes every character.
+  The cost is linear: in `load_is_linear` the 16 MiB to 64 KiB ratio of every pathological input is
+  between 1.0 and 1.8 (up to 1.9 in the bench, which starts each input with a new scratch); the step
+  between 64 KiB and 1 MiB, where the token buffers of one window leave the caches, is most of it.
+  The faster the passes, the larger that memory-bound share, so the margin to the bound of 2 is
+  smaller than it was.
 - `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` (the only file with
   `#![allow(unsafe_code)]`, section 14.5; the allocator counts and delegates to
   `std::alloc::System`) checks the table of section 2.12: zero allocations for an unchanged string
@@ -621,16 +628,16 @@ stand for its variants (decided by the maintainer, section 15.2, item 29). Struc
 rustdoc (`missing_docs` checks it) and are shown by the example of their type. The rustdoc lint
 `missing_doc_code_examples` is unstable and skips items re-exported from private modules, which is
 every item of this crate. Therefore `tests/documentation.rs` checks inside the gates, from the
-source text, that every `pub` item of `src/` has an example (the variants of public enums are being
-given theirs, and the check covers them once they have) and that every example of `src/` is run (no
-`ignore`, `no_run` or other language); the stage 5 report cross-checks the count with the rustdoc
-JSON of a nightly toolchain, outside the gates. README and CHANGELOG are in English, and every text
-of the repository (README, CHANGELOG, the design and every Rust file of the crate) is in American
-English. The README states the known limits of section 10.8 and how to protect commands; its code
-blocks run as doctests through a `#[cfg(doctest)]` item of `lib.rs` that includes it.
-`tests/documentation.rs` also checks that every README block is a `rust` block, that the numbers the
-README states (rules, version, MSRV) are those of the code, that its links point at files of the
-repository, that its known limits are those of section 10.8 and are what the crate does, and that
-the CHANGELOG has the prepared `0.1.0` entry naming every rule. It reads the README through the
-crate's `README.md`, which the package holds; the checks that need the CHANGELOG, the design or the
-targets of links skip outside the repository, as in `tests/package.rs` (section 13.9).
+source text, that every `pub` item of `src/`, every variant of a public enum included, has an
+example of its own (section 15.2, item 29) and that every example of `src/` is run (no `ignore`,
+`no_run` or other language); the stage 5 report cross-checks the count with the rustdoc JSON of a
+nightly toolchain, outside the gates. README and CHANGELOG are in English, and every text of the
+repository (README, CHANGELOG, the design and every Rust file of the crate) is in American English.
+The README states the known limits of section 10.8 and how to protect commands; its code blocks run
+as doctests through a `#[cfg(doctest)]` item of `lib.rs` that includes it. `tests/documentation.rs`
+also checks that every README block is a `rust` block, that the numbers the README states (rules,
+version, MSRV) are those of the code, that its links point at files of the repository, that its
+known limits are those of section 10.8 and are what the crate does, and that the CHANGELOG has the
+prepared `0.1.0` entry naming every rule. It reads the README through the crate's `README.md`, which
+the package holds; the checks that need the CHANGELOG, the design or the targets of links skip
+outside the repository, as in `tests/package.rs` (section 13.9).

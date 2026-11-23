@@ -582,6 +582,9 @@ fn the_apostrophe_follows_the_language_data() {
     }
     check_in("en", &en, ("the 90's", "the 90’s"));
     check_in("en", &en, ("'90s", "’90s"));
+    // The decade of step 1 needs a non-letter, non-digit after `s` (design section 6.2).
+    check_in("en", &en, ("the '90s-era", "the ’90s-era"));
+    check_unchanged("en", &en, "the '90s2");
     check_in(
         "en",
         &en,

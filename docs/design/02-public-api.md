@@ -171,7 +171,7 @@ impl Rule {
     pub const ALL: &'static [Rule];
     /// Stable id, for example `"nbsp.short-words"`.
     pub const fn id(self) -> &'static str;
-    /// Looks a rule up by id; also accepts the retired ids of renamed rules.
+    /// Looks a rule up by id. A rule renamed in a later version keeps its old id here as an alias; version 1 has none.
     pub fn from_id(id: &str) -> Option<Rule>;
     /// One English line for logs and reports.
     pub const fn summary(self) -> &'static str;
@@ -1046,8 +1046,10 @@ included); streaming without a buffer (quote pairing defers decisions to the end
 
 ### 2.13 SemVer commitments
 
-- Every public enum is `#[non_exhaustive]`; so are variants with fields. Structs with invariants
-  have private fields and `const` constructors.
+- Every public enum is `#[non_exhaustive]`; so are its struct variants, whose fields may grow (the
+  variants of `Error`, `DiagnosticKind::TypographicChar`). Tuple variants (`Output::Html`,
+  `Piece::Slot`, `ProtectedKind::Technical`, ...) are built by callers and carry no attribute.
+  Structs with invariants have private fields and `const` constructors.
 - Commitments that cannot be lifted without a breaking release: `Typographer::new`,
   `Language::from_static` and `Scratch::new` are `const`; `Typographer: Send + Sync + Clone`;
   `Scratch: Send + Sync + Default + Debug` (its `Debug` shows no contents); `NumberData: Default`,
