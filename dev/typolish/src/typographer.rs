@@ -699,7 +699,8 @@ impl Typographer {
     /// Allocates at most three vectors (the piece texts, the texts and the slots) plus one string
     /// per text that is changed or merged from more than one non-empty piece (design section
     /// 2.12). The vectors are sized from the lower bound of the iterator's `size_hint`; an iterator
-    /// that reports less than its length makes them reallocate while they grow.
+    /// that reports less than its length makes them reallocate while they grow. A lower bound that
+    /// cannot be reserved is skipped.
     #[must_use]
     pub fn typeset_template<'t, S>(
         &self,
@@ -937,16 +938,21 @@ impl Typographer {
 
 /// Splits pieces into the call-local vector of piece texts and the slots with their payloads.
 ///
-/// Both vectors are sized once from the lower bound of `size_hint` (exact for arrays, vectors and
-/// slices): there are never more slots than pieces, so neither reallocates for such an iterator
-/// (design section 2.12).
+/// Both vectors are reserved once from the lower bound of `size_hint` (exact for arrays, vectors
+/// and slices): there are never more slots than pieces, so neither reallocates for such an iterator
+/// (design section 2.12). A lower bound that cannot be reserved is skipped.
 fn split_pieces<'t, S>(
     pieces: impl IntoIterator<Item = Piece<'t, S>>,
 ) -> (Vec<Input<'t>>, Vec<(S, crate::Slot)>) {
     let pieces = pieces.into_iter();
     let (len, _) = pieces.size_hint();
-    let mut input = Vec::with_capacity(len);
-    let mut slots = Vec::with_capacity(len);
+    let mut input = Vec::new();
+    let mut slots = Vec::new();
+    // A lower bound the allocator cannot satisfy (a size_hint above the length breaks the Iterator
+    // contract) is skipped: the vectors then grow while they are filled (design section 2.12).
+    if input.try_reserve_exact(len).is_ok() {
+        slots.try_reserve_exact(len).ok();
+    }
     for piece in pieces {
         input.push(match piece {
             Piece::Text(text) => Input::Text(text),

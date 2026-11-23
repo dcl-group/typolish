@@ -20,8 +20,8 @@ use std::hash::{Hash, Hasher};
 
 use typolish::{
     Change, Diagnostic, DiagnosticKind, Error, HtmlStyle, Language, LanguageData, Number, Output,
-    Piece, ProtectedKind, ProtectedSpan, QuotePairs, Rule, RuleSet, Severity, Slot, TechKind,
-    Template, TemplatePart, Typographer,
+    Piece, ProtectedKind, ProtectedSpan, QuotePairs, Rule, RuleSet, Scratch, Severity, Slot,
+    TechKind, Template, TemplatePart, Typographer,
 };
 
 fn invalid_rule_set(input: &str) -> &'static str {
@@ -390,6 +390,49 @@ fn inert_rules_are_not_active() {
     );
     let ru = Typographer::new(Language::RU_RU, RuleSet::PROSE);
     assert_eq!(ru.active_rules(), RuleSet::PROSE);
+}
+
+/// An iterator whose `size_hint` lower bound is above its length (a caller bug).
+struct LyingPieces(Option<Piece<'static, u8>>, usize);
+
+impl Iterator for LyingPieces {
+    type Item = Piece<'static, u8>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.take()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.1, None)
+    }
+}
+
+#[test]
+fn templates_survive_a_lying_size_hint() {
+    // Design sections 2.11 and 2.12: a lower bound that cannot be reserved is skipped, so the
+    // template methods neither panic nor abort.
+    let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    let honest = || [Piece::<u8>::Text("\"a\"")];
+    for hint in [usize::MAX, 1 << 40] {
+        let lying = || LyingPieces(Some(Piece::Text("\"a\"")), hint);
+        assert_eq!(
+            t.typeset_template(lying(), Output::Unicode).texts(),
+            ["“a”"]
+        );
+        let mut scratch = Scratch::new();
+        assert_eq!(
+            t.typeset_template_with(&mut scratch, lying(), Output::Unicode)
+                .texts(),
+            ["“a”"]
+        );
+        assert_eq!(
+            t.report_template(lying(), Output::Unicode).result().texts(),
+            ["“a”"]
+        );
+        assert_eq!(t.lint_template(lying()), t.lint_template(honest()));
+        assert_eq!(
+            t.to_plain_template(lying()).texts(),
+            t.to_plain_template(honest()).texts()
+        );
+    }
 }
 
 #[test]
