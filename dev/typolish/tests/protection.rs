@@ -161,13 +161,18 @@ fn an_unclosed_run_is_text_not_protection_to_the_end() {
 
 #[test]
 fn two_stray_backticks_in_different_paragraphs_do_not_pair() {
-    // Section 10.1: `Don`t.\n\nОн сказал "да".\n\nIt`s ok.` gets two diagnostics.
+    // Design section 10.1: `Don`t.\n\nОн сказал "да".\n\nIt`s ok.` gets `«да»` and two
+    // diagnostics.
     let t = interface();
     let input = "Don`t.\n\nОн сказал \"да\".\n\nIt`s ok.";
     assert!(ds(&t, input).is_empty());
     assert_eq!(
         unclosed(&t, input),
         [nth(input, "`", 0), nth(input, "`", 1)]
+    );
+    assert_eq!(
+        t.typeset(input, Output::Unicode),
+        "Don`t.\n\nОн сказал «да».\n\nIt`s ok."
     );
 }
 
