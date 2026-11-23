@@ -50,6 +50,16 @@ const EXACT_RU: &[(&str, &str, &str)] = &[
     ("PercentAsWritten", "Скидка 100 %.", "Скидка 100⍽%."),
     ("Technical", "a <-> b", "a ↔ b"),
     ("NoLastShortWord", "Что ж,", "Что ж,"),
+    (
+        "NoLastShortWord",
+        "-- Привет! -- сказал он.",
+        "—⍽Привет!⍽— сказал он.",
+    ),
+    (
+        "NoLastShortWord",
+        "Пушкин А. С. написал.",
+        "Пушкин⍽А.⍽С. написал.",
+    ),
     ("RangeLiteral", "Страницы 10-20.", "Страницы 10–20."),
     ("Apostrophe", "don't", "don’t"),
     ("RuNbsp", "Г. Москва", "Г.⍽Москва"),
