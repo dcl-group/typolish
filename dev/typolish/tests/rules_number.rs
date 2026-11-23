@@ -335,6 +335,14 @@ fn times() {
             "alone and Prose: Interface has no number.times"
         );
         check_rows(&all, TIMES_ROWS);
+        // A `Format` token in the fragment of the sign is skipped (design section 3.6).
+        check_rows(
+            &all,
+            &[
+                ("10 \u{AD}x 5", "10 \u{AD}× 5"),
+                ("10 x\u{AD} 5", "10 ×\u{AD} 5"),
+            ],
+        );
         for (what, t) in &all {
             assert_changed_by(what, t, "1920x1080", TIMES);
             assert_changed_by(what, t, "10 x 5", TIMES);

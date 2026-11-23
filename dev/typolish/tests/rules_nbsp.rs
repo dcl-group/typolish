@@ -230,6 +230,10 @@ const RU_ABBR: &[(&str, &str)] = &[
 #[test]
 fn abbreviations_in_russian() {
     alone_rows(ru(), ABBR, RU_ABBR);
+    // A `Format` token between the core and its stop is skipped (design section 3.6).
+    let prose = set(ru(), RuleSet::PROSE);
+    check_in("ru Prose", &prose, ("т.е\u{AD}. да", "т.⍽е\u{AD}. да"));
+    check_in("ru Prose", &prose, ("т.е\u{ad}...", "т.⍽е\u{ad}…"));
     let t = alone(ru(), ABBR);
     for text in ["т.е.", "и т. д.", "см. рис. 5", "ул. Ленина"] {
         assert_changed_by("ru abbreviations", &t, text, ABBR);
@@ -1158,6 +1162,9 @@ const SIGN_ROWS: &[(&str, &str)] = &[
     ("¶ IV", "¶⍽IV"),
     ("¶VV", "¶VV"),
     ("¶ VV", "¶ VV"),
+    // A `Format` token inside a Roman numeral is skipped (design section 3.6).
+    ("§ I\u{AD}V", "§⍽I\u{AD}V"),
+    ("¶ X\u{AD}IX", "¶⍽X\u{AD}IX"),
     // Doubled signs count as one.
     ("№№ 5", "№№⍽5"),
     ("§§ 3", "§§⍽3"),

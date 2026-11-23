@@ -178,6 +178,7 @@ const SAME_AS_PLAIN: &[&str] = &[
     "Он сказал бы ‹это›",
     "‹21› ноября ‹2026› г.",
     "Run ‹ls› in ‹the› box",
+    "10 ‹x› 5",
     "Open \"‹a›\" and \"‹b›\" now",
     // An empty value between a sign and its number does not hide the sign: the number stays a
     // label, not a quantity (sections 3.6 and 5.4).

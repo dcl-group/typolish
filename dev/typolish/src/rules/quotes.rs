@@ -989,7 +989,15 @@ fn step1(cx: &Cx<'_>, i: usize, glyph: char) -> Option<Mark> {
     let n = next?;
     // An elision of the language's list (`'tis`).
     if letter_right && !data.elisions.is_empty() {
-        let key = core::iter::once('\'').chain(cx.src(n).chars().map(fold_char));
+        // The word runs on across `Format` and `Markup` tokens (design section 3.6).
+        let mut last = n;
+        while let Some(j) = cx.next(last)
+            && j > last + 1
+            && matches!(cx.kind(j), Some(Kind::Word(_)))
+        {
+            last = j;
+        }
+        let key = core::iter::once('\'').chain(cx.visible(n, last).map(fold_char));
         if data
             .elisions
             .binary_search_by(|e| e.chars().cmp(key.clone()))

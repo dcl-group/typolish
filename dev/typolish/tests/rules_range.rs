@@ -170,6 +170,8 @@ const RU_CONTEXT: &[(&str, &str)] = &[
     ("1941-1945 гг.", "1941–1945 гг."),
     ("XIX-XX вв.", "XIX–XX вв."),
     ("IV-VI вв.", "IV–VI вв."),
+    // A `Format` token inside a Roman numeral is skipped (design section 3.6).
+    ("XI\u{AD}X-XX века", "XI\u{AD}X–XX века"),
     ("1,5-2,5 кг", "1,5–2,5 кг"),
     ("5-10 кг", "5–10 кг"),
     ("стр. 9-12", "стр. 9–12"),

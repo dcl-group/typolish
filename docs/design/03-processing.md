@@ -280,9 +280,10 @@ except `′` and `″`, and runs of dots; at the end `)`, every `Quote` token, `
 of dots. `[ ]`, `{ }` and `< >` are not wrapper: they belong to technical notation (`[::1]:8080`,
 `{x}`, `<T>`). The wrapper stays editable (it is sentence punctuation). The rest, the **core**, gets
 one kind. The **stop** of a core is the token right after it, when that token is a `Dots` token in
-any form (`.`, `..`, `...`, `…`). Checks 0 and 14 read a core that has a stop as if a single full
-stop followed it. A `LegalMark` token is one token, so `(c)` keeps its parentheses, and its core is
-not frozen (special cases below).
+any form (`.`, `..`, `...`, `…`); `Format` and `Markup` tokens between the core and that token are
+skipped (section 5.4). Checks 0 and 14 read a core that has a stop as if a single full stop followed
+it. A `LegalMark` token is one token, so `(c)` keeps its parentheses, and its core is not frozen
+(special cases below).
 
 If the start wrapper and the end wrapper together take every token of a fragment other than `Format`
 and `Markup` tokens (`...`, `…`, `"`, `«»`, `()`, `?!`, `,`, `"?"`, `"\u{2068}\u{2069}"`), the

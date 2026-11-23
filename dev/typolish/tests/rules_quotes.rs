@@ -586,6 +586,15 @@ fn the_apostrophe_follows_the_language_data() {
     );
     // Not in the elision list: `'n'` quotes a letter.
     check_unchanged("en", &en, "Press 'y' or 'n' now");
+    // The elision runs on across a `Format` token (design section 3.6).
+    for t in [&en, &prose(Language::EN_US)] {
+        check_in(
+            "en",
+            t,
+            ("He said 'ca\u{AD}use it", "He said ’ca\u{AD}use it"),
+        );
+    }
+    check_unchanged("en", &en, "He said 'causeway it");
     // A decade without `s` waits for pairing (section 6.2) and is an apostrophe only unpaired.
     check_unchanged("en", &en, "Press '42' to confirm");
     // A digit before a letter: the possessive of a number.

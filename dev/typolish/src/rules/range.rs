@@ -111,8 +111,13 @@ enum Side<'a> {
 fn side<'a>(cx: &Cx<'a>, tokens: &[usize]) -> Option<Side<'a>> {
     match *tokens {
         [n] if cx.kind(n) == Some(Kind::Number) => Some(Side::Number(cx.src(n), "")),
-        [w] if matches!(cx.kind(w), Some(Kind::Word(_))) => {
-            roman_value(cx.visible(w, w)).map(Side::Roman)
+        // A Roman numeral, also split by `Format` and `Markup` tokens (design section 3.6).
+        [w, .., last] | [w @ last]
+            if tokens
+                .iter()
+                .all(|&t| matches!(cx.kind(t), Some(Kind::Word(_)))) =>
+        {
+            roman_value(cx.visible(w, last)).map(Side::Roman)
         }
         [a, sep, b] if cx.kind(a) == Some(Kind::Number) && cx.kind(b) == Some(Kind::Number) => {
             let decimal = cx.data.numbers.decimal;

@@ -303,7 +303,13 @@ fn classify_fragment<R: Recorder>(
         frag.core_end = cs_i;
         return frag;
     }
-    frag.stop = tok(ce_i).is_some_and(|t| t.kind == Kind::Dots && ce_i < end);
+    // The stop after the core: `Format` and `Markup` tokens before it are skipped (design
+    // section 3.6).
+    let mut stop_i = ce_i;
+    while stop_i < end && tok(stop_i).is_some_and(|t| t.kind.is_transparent()) {
+        stop_i += 1;
+    }
+    frag.stop = stop_i < end && tok(stop_i).is_some_and(|t| t.kind == Kind::Dots);
 
     let core = tokens.get(cs_i as usize..ce_i as usize).unwrap_or_default();
     build_units(text, core, cs_i, &mut cs.units);
@@ -505,11 +511,12 @@ fn dictionary(
     if core.iter().any(|t| t.kind.is_opaque()) {
         return false;
     }
-    // An elision starts with an apostrophe, which the wrapper cuts off.
-    let apostrophe = frag.core_start > frag.start
-        && tokens.get(frag.core_start as usize - 1).is_some_and(|t| {
-            t.kind == Kind::Quote && matches!(first_char(text, t), Some('\'' | '’'))
-        });
+    // An elision starts with an apostrophe, which the wrapper cuts off: the last token of the
+    // wrapper that is not `Format` or `Markup` (design section 3.6).
+    let apostrophe = tokens
+        .get(frag.start as usize..frag.core_start as usize)
+        .and_then(|wrapper| wrapper.iter().rev().find(|t| !t.kind.is_transparent()))
+        .is_some_and(|t| t.kind == Kind::Quote && matches!(first_char(text, t), Some('\'' | '’')));
     // A key whose signature no entry has is no entry (design section 3.6); the key itself is
     // built only for the lookups.
     let chars = visible(text, first.src.start, last.src.end);
@@ -1351,13 +1358,16 @@ fn lone_times(signs: &[char], text: &str, tokens: &mut [Tok], frags: &mut [Frag]
             Some(owner) if spaced_percent(tokens, owner, prev) => owner,
             _ => prev,
         };
-        if !ends_in_number(signs, tokens, left)
-            || next.kind != FragKind::Number
-            || cur.end != cur.start + 1
-        {
+        if !ends_in_number(signs, tokens, left) || next.kind != FragKind::Number {
             continue;
         }
-        let Some(tok) = tokens.get_mut(cur.start as usize) else {
+        // The one token of the fragment that is not `Format` or `Markup` (design section 3.6).
+        let mut opaque = (cur.start as usize..cur.end as usize)
+            .filter(|&j| tokens.get(j).is_some_and(|t| !t.kind.is_transparent()));
+        let (Some(only), None) = (opaque.next(), opaque.next()) else {
+            continue;
+        };
+        let Some(tok) = tokens.get_mut(only) else {
             continue;
         };
         let letter = match tok.kind {
@@ -1395,22 +1405,30 @@ fn labels(text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
         if transparent {
             continue;
         }
-        // Read only after a sign: most cores are not.
-        let roman = || match tokens
-            .get(frag.core_start as usize..frag.core_end as usize)
-            .unwrap_or_default()
-        {
-            [only] if matches!(only.kind, Kind::Word(_)) => is_roman(
-                text,
-                &Unit {
-                    u: U::Word(WordScript::Latin),
-                    start: only.src.start,
-                    end: only.src.end,
-                    first: 0,
-                    last: 0,
-                },
-            ),
-            _ => false,
+        // Read only after a sign: most cores are not. `Format` and `Markup` tokens of the core
+        // are skipped (design section 3.6): every other token is a word.
+        let roman = || {
+            let mut core = tokens
+                .get(frag.core_start as usize..frag.core_end as usize)
+                .unwrap_or_default()
+                .iter()
+                .filter(|t| !t.kind.is_transparent());
+            let (Some(first), last) = (core.next(), core.clone().next_back()) else {
+                return false;
+            };
+            let last = last.unwrap_or(first);
+            core.all(|t| matches!(t.kind, Kind::Word(_)))
+                && matches!(first.kind, Kind::Word(_))
+                && is_roman(
+                    text,
+                    &Unit {
+                        u: U::Word(WordScript::Latin),
+                        start: first.src.start,
+                        end: last.src.end,
+                        first: 0,
+                        last: 0,
+                    },
+                )
         };
         let after_sign = prev.replace(frag).is_some_and(|prev| {
             prev.kind == FragKind::Sign
@@ -1625,6 +1643,43 @@ mod tests {
                 (text[start..end].to_owned(), f.kind, f.label)
             })
             .collect()
+    }
+
+    /// The first fragment of a one-window string, as the classifier leaves it.
+    fn first_frag(language: Language, text: &str) -> Frag {
+        let t = Typographer::new(language, RuleSet::INTERFACE);
+        let len = u32::try_from(text.len()).unwrap();
+        let atoms = [Atom::Text { start: 0, end: len }];
+        let mut clusters = Vec::new();
+        let mut tokens = Vec::new();
+        lex_window(text, &atoms, &mut clusters, &mut tokens);
+        let mut cs = ClassifyScratch::new();
+        let pieces = [TextPiece {
+            piece: 0,
+            start: 0,
+            end: len,
+        }];
+        let mut rec = NoRecord;
+        let mut sink = Sink {
+            rec: &mut rec,
+            pieces: &pieces,
+            lens: &[len],
+        };
+        classify(&t, text, &mut tokens, &mut cs, &mut sink);
+        cs.frags[0]
+    }
+
+    #[test]
+    fn format_tokens_are_skipped_before_the_stop_and_in_a_label() {
+        // Design section 3.6: `Format` tokens inside a fragment are skipped by every check.
+        let f = first_frag(Language::RU_RU, "т.е\u{ad}...");
+        assert!(f.stop);
+        assert_eq!(f.kind, FragKind::Dictionary);
+        let all = frags(Language::RU_RU, "§ I\u{AD}V");
+        assert_eq!(
+            all.last().map(|f| (f.0.as_str(), f.2)),
+            Some(("I\u{AD}V", true))
+        );
     }
 
     fn kind_of(language: Language, text: &str) -> FragKind {

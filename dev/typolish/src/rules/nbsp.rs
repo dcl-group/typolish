@@ -337,10 +337,19 @@ fn slot_core(cx: &Cx<'_>, f: &Frag, kind: SlotKind) -> bool {
     matches!(core_tokens(cx, f), Some(([j, ..], 1)) if cx.kind(j) == Some(Kind::Slot(kind)))
 }
 
-/// A Roman numeral core (section 3.6).
+/// A Roman numeral core (section 3.6): words only, `Format` and `Markup` tokens skipped.
 fn roman(cx: &Cx<'_>, f: &Frag) -> bool {
-    matches!(core_tokens(cx, f), Some(([j, ..], 1))
-        if matches!(cx.kind(j), Some(Kind::Word(_))) && roman_value(cx.visible(j, j)).is_some())
+    let mut core = cx.core(f);
+    let Some(first) = core.next() else {
+        return false;
+    };
+    let mut last = first;
+    for j in core {
+        last = j;
+    }
+    cx.core(f)
+        .all(|j| matches!(cx.kind(j), Some(Kind::Word(_))))
+        && roman_value(cx.visible(first, last)).is_some()
 }
 
 /// What a year word follows: a number, a range, a `YearMonth` core, a date core or a `Number` or
