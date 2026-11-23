@@ -35,12 +35,20 @@ const SPACED: Rule = Rule::DashSpacedHyphen;
 const DOUBLE: Rule = Rule::DashDoubleHyphen;
 const DIALOGUE: Rule = Rule::DashDialogue;
 
-fn ambiguous(t: &Typographer, text: &str) -> Vec<String> {
+/// The text with each `AmbiguousHyphen` range of `t` in brackets.
+fn marked(t: &Typographer, text: &str) -> String {
     let source = vis(text);
-    diag_ranges(t, &source, &DiagnosticKind::AmbiguousHyphen)
-        .into_iter()
-        .map(|r| source[r].to_owned())
-        .collect()
+    let mut out = String::new();
+    let mut at = 0;
+    for r in diag_ranges(t, &source, &DiagnosticKind::AmbiguousHyphen) {
+        out.push_str(&source[at..r.start]);
+        out.push('[');
+        out.push_str(&source[r.clone()]);
+        out.push(']');
+        at = r.end;
+    }
+    out.push_str(&source[at..]);
+    out
 }
 
 // dash.spaced-hyphen, Russian (SpacedGlued: the author's spaces stay; `nbsp.dash` is stage 3).
@@ -201,7 +209,7 @@ fn spaced_hyphen_with_a_quote_after_it() {
     for (what, t) in configs(&Language::EN_US, SPACED) {
         let text = "He said - \" a cat\"";
         check_unchanged(&what, &t, text);
-        assert!(ambiguous(&t, text).is_empty(), "{what}");
+        assert_eq!(marked(&t, text), text, "{what}");
     }
     for t in [prose(Language::EN_US), interface(Language::EN_US)] {
         let kinds: Vec<_> = diagnostics_of(&t, "He said - \" a cat\"")
@@ -292,7 +300,7 @@ fn spaced_hyphen_and_the_ellipsis_rule() {
     // `AmbiguousHyphen` and no protected span; the sets also set the ellipsis.
     let t = only(Language::RU_RU, &[SPACED]);
     check_unchanged("alone", &t, "Ждите - ...");
-    assert!(ambiguous(&t, "Ждите - ...").is_empty());
+    assert_eq!(marked(&t, "Ждите - ..."), "Ждите - ...");
     assert!(
         t.report("Ждите - ...", Output::Unicode)
             .protected()
@@ -301,49 +309,82 @@ fn spaced_hyphen_and_the_ellipsis_rule() {
     for t in [prose(Language::RU_RU), interface(Language::RU_RU)] {
         check_in("set", &t, ("Ждите - ...", "Ждите - …"));
         check_unchanged("set", &t, "Ждите - …");
-        assert!(ambiguous(&t, "Ждите - ...").is_empty());
+        assert_eq!(marked(&t, "Ждите - ..."), "Ждите - ...");
     }
 }
 
 #[test]
 fn ambiguous_hyphens_are_reported_at_the_hyphen() {
-    let cases: &[(Language, &str, &[&str])] = &[
-        (Language::RU_RU, "10 - 20 штук", &["-"]),
-        (Language::RU_RU, "5 - 3 = 2", &["-"]),
-        (Language::RU_RU, "Выполните cat - file", &["-"]),
-        (Language::RU_RU, "tls-server - agent-ca", &["-"]),
-        (Language::RU_RU, "Выполните diff -u - file.txt", &["-"]),
-        (Language::RU_RU, "5–10 - 20", &["-"]),
-        (Language::RU_RU, "5 - 10-20%", &["-"]),
-        (Language::EN_US, "10-20% - 5", &["-"]),
-        (Language::RU_RU, "123-45-67 - 123-45-68", &["-"]),
-        (Language::RU_RU, "cat - 123-45-67", &["-"]),
-        (Language::EN_US, "x - 5", &["-"]),
-        (Language::EN_US, "5 - x", &["-"]),
-        (Language::EN_US, "5 - x - Moscow", &["-"]),
-        (Language::EN_US, "tar -cf - -C dir", &["-"]),
-        (Language::EN_US, "Use - --force", &["-"]),
-        (Language::EN_US, "123-45-67 - 123-45-68", &["-"]),
+    // Each row: the text and the text with the reported ranges in brackets.
+    let cases: &[(Language, &str, &str)] = &[
+        (Language::RU_RU, "10 - 20 штук", "10 [-] 20 штук"),
+        (Language::RU_RU, "5 - 3 = 2", "5 [-] 3 = 2"),
+        (
+            Language::RU_RU,
+            "Выполните cat - file",
+            "Выполните cat [-] file",
+        ),
+        (
+            Language::RU_RU,
+            "tls-server - agent-ca",
+            "tls-server [-] agent-ca",
+        ),
+        (
+            Language::RU_RU,
+            "Выполните diff -u - file.txt",
+            "Выполните diff -u [-] file.txt",
+        ),
+        (Language::RU_RU, "5–10 - 20", "5–10 [-] 20"),
+        (Language::RU_RU, "5 - 10-20%", "5 [-] 10-20%"),
+        (Language::EN_US, "10-20% - 5", "10-20% [-] 5"),
+        (
+            Language::RU_RU,
+            "123-45-67 - 123-45-68",
+            "123-45-67 [-] 123-45-68",
+        ),
+        (Language::RU_RU, "cat - 123-45-67", "cat [-] 123-45-67"),
+        (Language::EN_US, "x - 5", "x [-] 5"),
+        (Language::EN_US, "5 - x", "5 [-] x"),
+        (Language::EN_US, "5 - x - Moscow", "5 [-] x - Moscow"),
+        (Language::EN_US, "tar -cf - -C dir", "tar -cf [-] -C dir"),
+        (Language::EN_US, "Use - --force", "Use [-] --force"),
+        (
+            Language::EN_US,
+            "123-45-67 - 123-45-68",
+            "123-45-67 [-] 123-45-68",
+        ),
         // No diagnostic: a pattern that does not match is not a refusal.
-        (Language::RU_RU, "Москва - столица", &[]),
-        (Language::RU_RU, "слово  -  слово", &[]),
-        (Language::RU_RU, "слово\t-\tслово", &[]),
-        (Language::RU_RU, "Москва — столица", &[]),
-        (Language::RU_RU, "1920x1080 - монитор", &[]),
-        (Language::EN_US, "5 - x—Moscow", &[]),
-        (Language::EN_US, "Moscow—the - capital", &[]),
-        (Language::EN_US, "word  -  word", &[]),
-        (Language::EN_US, "word\t-\tword", &[]),
-        (Language::EN_US, "git checkout -- file", &[]),
+        (Language::RU_RU, "Москва - столица", "Москва - столица"),
+        (Language::RU_RU, "слово  -  слово", "слово  -  слово"),
+        (Language::RU_RU, "слово\t-\tслово", "слово\t-\tслово"),
+        (Language::RU_RU, "Москва — столица", "Москва — столица"),
+        (
+            Language::RU_RU,
+            "1920x1080 - монитор",
+            "1920x1080 - монитор",
+        ),
+        (Language::EN_US, "5 - x—Moscow", "5 - x—Moscow"),
+        (
+            Language::EN_US,
+            "Moscow—the - capital",
+            "Moscow—the - capital",
+        ),
+        (Language::EN_US, "word  -  word", "word  -  word"),
+        (Language::EN_US, "word\t-\tword", "word\t-\tword"),
+        (
+            Language::EN_US,
+            "git checkout -- file",
+            "git checkout -- file",
+        ),
     ];
     for (language, text, expected) in cases {
         for (what, t) in configs(language, SPACED) {
-            assert_eq!(&ambiguous(&t, text), expected, "{what}: {}", show(text));
+            assert_eq!(marked(&t, text), *expected, "{what}: {}", show(text));
         }
     }
     // Two refusals, two diagnostics.
     let t = only(Language::RU_RU, &[SPACED]);
-    assert_eq!(ambiguous(&t, "5 - x и x - 5"), ["-", "-"]);
+    assert_eq!(marked(&t, "5 - x и x - 5"), "5 [-] x и x [-] 5");
     // The diagnostic names the rule that raised it.
     let d = diagnostics_of(&t, "10 - 20 штук");
     assert_eq!(d.len(), 1);
@@ -510,16 +551,36 @@ fn double_hyphen() {
 
 #[test]
 fn double_hyphen_refusals_are_reported() {
-    for (language, text, count) in [
-        (Language::RU_RU, "npm test -- --watch", 1),
-        (Language::RU_RU, "git checkout -- file", 1),
-        (Language::EN_US, "npm test -- --watch", 1),
-        (Language::EN_US, "x -- y", 1),
-        (Language::RU_RU, "Запустите -- сейчас.", 0),
-        (Language::EN_US, "Moscow -- the capital", 0),
+    for (language, text, expected) in [
+        (
+            Language::RU_RU,
+            "npm test -- --watch",
+            "npm test [--] --watch",
+        ),
+        (
+            Language::RU_RU,
+            "git checkout -- file",
+            "git checkout [--] file",
+        ),
+        (
+            Language::EN_US,
+            "npm test -- --watch",
+            "npm test [--] --watch",
+        ),
+        (Language::EN_US, "x -- y", "x [--] y"),
+        (
+            Language::RU_RU,
+            "Запустите -- сейчас.",
+            "Запустите -- сейчас.",
+        ),
+        (
+            Language::EN_US,
+            "Moscow -- the capital",
+            "Moscow -- the capital",
+        ),
     ] {
         for (what, t) in configs(&language, DOUBLE) {
-            assert_eq!(ambiguous(&t, text).len(), count, "{what}: {}", show(text));
+            assert_eq!(marked(&t, text), expected, "{what}: {}", show(text));
         }
     }
 }
@@ -697,14 +758,14 @@ fn interaction_strings_of_section_10_7_for_the_dash_rules() {
     for t in [&ru_prose, &ru_ui] {
         check_unchanged("ru", t, "5 - x");
         check_unchanged("ru", t, "x - 5");
-        assert_eq!(ambiguous(t, "5 - x"), ["-"]);
-        assert_eq!(ambiguous(t, "x - 5"), ["-"]);
+        assert_eq!(marked(t, "5 - x"), "5 [-] x");
+        assert_eq!(marked(t, "x - 5"), "x [-] 5");
     }
     for t in [&en_prose, &en_ui] {
-        assert_eq!(ambiguous(t, "5 - x"), ["-"]);
-        assert_eq!(ambiguous(t, "x - 5"), ["-"]);
-        assert!(ambiguous(t, "word  -  word").is_empty());
-        assert!(ambiguous(t, "word\t-\tword").is_empty());
+        assert_eq!(marked(t, "5 - x"), "5 [-] x");
+        assert_eq!(marked(t, "x - 5"), "x [-] 5");
+        assert_eq!(marked(t, "word  -  word"), "word  -  word");
+        assert_eq!(marked(t, "word\t-\tword"), "word\t-\tword");
     }
 }
 

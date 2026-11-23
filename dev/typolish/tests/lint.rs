@@ -323,14 +323,14 @@ fn unclosed_delimiter() {
 
 #[test]
 fn ambiguous_hyphen() {
-    // Firing: the `-` that section 8.4 refuses, each with its range at the hyphen.
-    let rows: &[(&Language, &str, &str)] = &[
-        (&RU, "10 - 20 штук", "-"),
-        (&RU, "Выполните cat - file", "-"),
-        (&RU, "tls-server - agent-ca", "-"),
-        (&RU, "Выполните diff -u - file.txt", "-"),
-        (&EN, "x - 5", "-"),
-        (&EN, "tar -cf - -C dir", "-"),
+    // Firing: the `-` that design section 8.4 refuses, each with its byte range at the hyphen.
+    let rows: &[(&Language, &str, Range<usize>)] = &[
+        (&RU, "10 - 20 штук", 3..4),
+        (&RU, "Выполните cat - file", 23..24),
+        (&RU, "tls-server - agent-ca", 11..12),
+        (&RU, "Выполните diff -u - file.txt", 27..28),
+        (&EN, "x - 5", 2..3),
+        (&EN, "tar -cf - -C dir", 8..9),
     ];
     for (language, text, hyphen) in rows {
         for (what, t) in sets(language) {
@@ -339,7 +339,8 @@ fn ambiguous_hyphen() {
             assert_eq!(hyphens.len(), 1, "{what}: {}: {got:?}", show(text));
             assert_eq!(hyphens[0].1, Info, "{what}: {text}");
             assert_eq!(hyphens[0].2, Some(Rule::DashSpacedHyphen), "{what}: {text}");
-            assert_eq!(&text[hyphens[0].3.clone()], *hyphen, "{what}: {text}");
+            assert_eq!(hyphens[0].3, *hyphen, "{what}: {text}");
+            assert_eq!(&text[hyphen.clone()], "-", "{what}: {text}");
             check(&what, &t, text, &got);
         }
     }
