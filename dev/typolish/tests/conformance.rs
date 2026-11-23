@@ -67,12 +67,14 @@ fn all_ids() -> Vec<&'static str> {
 
 #[test]
 fn license_copies_are_identical() {
+    // Outside the repository (the published package) there is no root copy; inside it a missing
+    // root file fails.
+    if !repo_dir().join("docs").is_dir() {
+        eprintln!("skipped: not in the repository");
+        return;
+    }
     for name in ["LICENSE-MIT", "LICENSE-APACHE"] {
         let root = repo_dir().join(name);
-        if !root.exists() {
-            eprintln!("skipped: {} is absent", root.display());
-            continue;
-        }
         assert_eq!(
             fs::read(&root).unwrap(),
             fs::read(crate_dir().join(name)).unwrap(),
