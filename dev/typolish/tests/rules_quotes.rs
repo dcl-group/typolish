@@ -649,6 +649,13 @@ fn a_number_split_by_a_format_token_is_one_number() {
         &t,
         ("He is 5'1\u{AD}0 tall", "He is 5′1\u{AD}0 tall"),
     );
+    // The number on the left is read as a run too: two digits split make a prime, four do not.
+    check_exact(
+        "en Prose",
+        &t,
+        ("He is 1\u{AD}2'5 tall", "He is 1\u{AD}2′5 tall"),
+    );
+    check_unchanged("en Prose", &t, "He is 1\u{AD}000'1 tall");
 }
 
 #[test]
