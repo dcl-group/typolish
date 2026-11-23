@@ -18,7 +18,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use proptest::prelude::*;
-use typolish::{Language, Output, Rule, RuleSet, Scratch, Typographer};
+use typolish::{Change, Language, Output, Piece, Rule, RuleSet, Scratch, Slot, Typographer};
 
 fn crate_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -115,8 +115,10 @@ fn a_typographer_fits_a_static() {
 
 #[test]
 fn replacement_tables_produce_no_letter_and_no_digit() {
-    // Design section 13.9: the characters that rules write contain no letter and no digit. Every
-    // replacement table of `symbols.*`, `number.times` and the other rules is reached here.
+    // Design section 13.9: the characters that rules write contain no letter and no digit. Each of
+    // `TEXTS` changes something in every language; `LANGUAGE_TEXTS` reach the rules that read
+    // language data, and the template reaches `range.placeholders`. Together they reach every
+    // active rule of `RuleSet::ALL` in every language, which the end of the test checks.
     const TEXTS: [&str; 12] = [
         "(c) 2026",
         "Brand(tm)",
@@ -131,24 +133,85 @@ fn replacement_tables_produce_no_letter_and_no_digit() {
         "5x3",
         "Ну... да?.. -5 и 1000000 \"цитата 'вложенная'\" -- тире 1990-2000 гг.",
     ];
-    const SIGNS: [char; 11] = ['©', '™', '®', '→', '←', '↔', '≥', '≤', '≠', '±', '×'];
+    const LANGUAGE_TEXTS: [&str; 16] = [
+        "Рост 5'10\", it's, don't",
+        "Москва - столица, word - word",
+        "Москва -- столица, word -- word",
+        "да...нет",
+        "- Привет!\n- Пока.",
+        "XIX-XX вв., 1.5-2.5 kg",
+        "10:00-12:00",
+        "т.е. так, Mr. Smith",
+        "А. С. Пушкин, J. R. R. Tolkien",
+        "21 ноября, November 21",
+        "5 МБ, 5 kg",
+        "№ 5",
+        "+7 495 123 45 67",
+        "в доме, a dog",
+        "ох дом",
+        "пришёл бы",
+    ];
+    // The signs of design section 11.2 that rules write in every language, primes and apostrophe
+    // included.
+    const SIGNS: [char; 14] = [
+        '©', '™', '®', '→', '←', '↔', '≥', '≤', '≠', '±', '×', '′', '″', '’',
+    ];
+    fn record(
+        what: &str,
+        changes: &[Change],
+        written: &mut BTreeSet<char>,
+        reached: &mut BTreeSet<Rule>,
+    ) {
+        for change in changes {
+            assert!(
+                !change.replacement().chars().any(char::is_alphanumeric),
+                "{what}: {change:?}"
+            );
+            written.extend(change.replacement().chars());
+            reached.insert(change.rule());
+        }
+    }
     for language in Language::builtin().chain([Language::COMMON]) {
         let t = Typographer::new(language.clone(), RuleSet::ALL);
         let mut written = BTreeSet::new();
+        let mut reached = BTreeSet::new();
         for text in TEXTS {
             let report = t.report(text, Output::Unicode);
             assert!(!report.changes().is_empty(), "{language} {text:?}");
-            for change in report.changes() {
-                assert!(
-                    !change.replacement().chars().any(char::is_alphanumeric),
-                    "{language} {text:?}: {change:?}"
-                );
-                written.extend(change.replacement().chars());
-            }
+            let what = format!("{language} {text:?}");
+            record(&what, report.changes(), &mut written, &mut reached);
         }
+        for text in LANGUAGE_TEXTS {
+            let report = t.report(text, Output::Unicode);
+            let what = format!("{language} {text:?}");
+            record(&what, report.changes(), &mut written, &mut reached);
+        }
+        let report = t.report_template(
+            [
+                Piece::Slot("a", Slot::NUMBER),
+                Piece::Text("-"),
+                Piece::Slot("b", Slot::NUMBER),
+            ],
+            Output::Unicode,
+        );
+        let what = format!("{language} {{a}}-{{b}}");
+        record(&what, report.changes(), &mut written, &mut reached);
         for sign in SIGNS {
             assert!(written.contains(&sign), "{language}: no {sign:?}");
         }
+        // The dash that `dash.*` write in the language's dash style; `COMMON` has no dash data.
+        if language != Language::COMMON {
+            assert!(written.contains(&'—'), "{language}: no language dash");
+        }
+        let missing: Vec<Rule> = t
+            .active_rules()
+            .iter()
+            .filter(|rule| !reached.contains(rule))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "{language}: rules not reached: {missing:?}"
+        );
     }
 }
 

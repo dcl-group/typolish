@@ -583,9 +583,10 @@ contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; the `#![
 attributes of every `tests/*.rs` list exactly the lints of section 14.5 (`tests/alloc.rs` also
 `unsafe_code`, first), and that of `tests/common/mod.rs` only `dead_code`; `src/lang/ru_ru.rs`,
 `src/lang/en_us.rs` and `src/lang/common.rs` contain no `fn`, `impl`, `match` or `if` (section 7.1);
-the replacements that rules write in every built-in language with `RuleSet::ALL` on a fixed set of
-texts that reaches every replacement table (the typographic set of section 11.2, with the quote
-glyphs, dashes and minus sign that rules copy from language data) contain no letter and no digit
+the replacements that rules write in every built-in language and `COMMON` with `RuleSet::ALL` on a
+fixed set of texts, with one template for `range.placeholders`, contain no letter and no digit; the
+test checks that the set reaches every active rule of the language, and that the writes include the
+signs of section 11.2 (primes and apostrophe among them) and, in a language with dash data, the dash
 (the fields of language data themselves are checked by `tests/data.rs`); every character the lexer
 reads as `Quote` (section 3.5) other than `"` and `'` is in the table of section 11.2, `′` and `″`
 in the primes row and the others in the quotes row; built-in languages × built-in sets build without
