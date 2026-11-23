@@ -18,6 +18,8 @@ mod common;
 #[path = "common/probe.rs"]
 mod probe;
 
+use std::borrow::Cow;
+
 use common::{
     assert_changed_by, assert_changed_by_with_glue, check_in, check_rows, check_unchanged, configs,
     interface, only, prose, without_rule,
@@ -267,12 +269,15 @@ fn a_slot_next_to_the_ellipsis() {
             Output::Unicode,
         );
         assert_eq!(out.texts(), ["", "… дальше"], "{what}");
-        // The dots are in the text before the slot, and the slot stays where it is.
+        // A `Number` slot after the dots is none of the followers of design section 8.6, and
+        // `ellipsis.inner` counts only `Word` and `Other` slots as words: the dots stay.
         let out = t.typeset_template(
             [Piece::Text("Подождите..."), Piece::Slot("n", Slot::NUMBER)],
             Output::Unicode,
         );
-        assert_eq!(out.texts().len(), 2, "{what}");
+        assert_eq!(out.texts(), ["Подождите...", ""], "{what}");
+        assert!(!out.changed(), "{what}");
+        assert!(matches!(out.texts()[0], Cow::Borrowed(_)), "{what}");
     }
 }
 
