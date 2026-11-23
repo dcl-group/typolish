@@ -338,11 +338,33 @@ pub(crate) fn ellipsis_tail(data: &Table<'_>, form: EllipsisForm) -> &'static st
     whole.trim_start_matches(['?', '!'])
 }
 
+/// The most rules that one phase has in `ORDER`: the capacity of `PhaseRules`, so a rule added
+/// to a phase can never be dropped for want of room.
+const PHASE_CAPACITY: usize = {
+    let mut max = 0;
+    let mut outer: &[(Rule, Phase)] = &ORDER;
+    while let [(_, phase), rest @ ..] = outer {
+        let mut n = 0;
+        let mut inner: &[(Rule, Phase)] = &ORDER;
+        while let [(_, other), tail @ ..] = inner {
+            if *other as u8 == *phase as u8 {
+                n += 1;
+            }
+            inner = tail;
+        }
+        if n > max {
+            max = n;
+        }
+        outer = rest;
+    }
+    max
+};
+
 /// The active rules of one phase, in the order of design section 4.1.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct PhaseRules {
     len: usize,
-    rules: [Rule; 10],
+    rules: [Rule; PHASE_CAPACITY],
     /// The kinds at which some of the rules can match (`ANCHORS`).
     anchors: u32,
 }
@@ -352,7 +374,7 @@ impl PhaseRules {
     pub(crate) fn of(phase: Phase, active: crate::RuleSet) -> PhaseRules {
         let mut out = PhaseRules {
             len: 0,
-            rules: [Rule::SymbolsCopyright; 10],
+            rules: [Rule::SymbolsCopyright; PHASE_CAPACITY],
             anchors: 0,
         };
         for (rule, p) in ORDER {
@@ -657,6 +679,18 @@ mod tests {
 
     fn one(edit: Edit, consume: u8) -> Match {
         Match::with(consume, Edits::NONE.with(edit))
+    }
+
+    #[test]
+    fn every_rule_of_a_phase_has_room() {
+        for (_, phase) in ORDER {
+            let expected = ORDER.iter().filter(|(_, p)| *p == phase).count();
+            assert_eq!(
+                PhaseRules::of(phase, crate::RuleSet::ALL).as_slice().len(),
+                expected,
+                "{phase:?}"
+            );
+        }
     }
 
     #[test]
