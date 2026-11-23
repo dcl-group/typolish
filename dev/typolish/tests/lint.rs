@@ -801,6 +801,39 @@ fn typographic_char_is_reported_for_templates_by_piece() {
     );
 }
 
+#[test]
+fn typographic_char_finds_its_piece_in_a_long_template() {
+    // Many `Text` pieces between `Markup` pieces, some empty and some without a candidate: every
+    // entry names its own piece and the bytes of its character there, and the plain texts follow
+    // (sections 12.1 and 12.4). The lookup of the piece of a candidate walks both lists once
+    // (section 3.12), so the length is not a problem.
+    let t = prose(RU);
+    let mut pieces: Vec<Piece<'_, ()>> = Vec::new();
+    for n in 0..3000 {
+        pieces.push(match n % 3 {
+            0 => Piece::Text("Он «привет» — да "),
+            1 => Piece::Text(""),
+            _ => Piece::Text("просто текст "),
+        });
+        pieces.push(Piece::Markup("<b>"));
+    }
+    let linted = t.lint_template(pieces.iter().copied());
+    let entries = chars(&linted);
+    assert_eq!(entries.len(), 1000 * 3);
+    for (piece, range, c) in &entries {
+        assert_eq!(piece % 6, 0, "{piece}");
+        let Some(Piece::Text(text)) = pieces.get(*piece) else {
+            panic!("{piece}");
+        };
+        assert_eq!(&text[range.clone()], c.to_string());
+    }
+    let plain = t.to_plain_template(pieces.iter().copied());
+    assert_eq!(
+        plain.texts(),
+        ["Он \"привет\" - да <b><b>просто текст <b>".repeat(1000)]
+    );
+}
+
 // ---------------------------------------------------------------------------------------------
 // The order, the equality with `report`, `Display`.
 // ---------------------------------------------------------------------------------------------

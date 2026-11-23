@@ -214,9 +214,12 @@ fn passes(
                 let Some(Input::Text(now)) = current.get(index) else {
                     continue;
                 };
+                // `undone` is ordered by piece (see `round`).
+                let lo = undone.partition_point(|u| u.piece < index);
+                let hi = undone.partition_point(|u| u.piece <= index);
                 if let Some(slot) = origins.get_mut(index) {
                     let old = slot.take();
-                    *slot = Some(remap(now, old, &undone, index));
+                    *slot = Some(remap(now, old, undone.get(lo..hi).unwrap_or(&[])));
                 }
             }
         }
@@ -230,17 +233,17 @@ fn passes(
     owned
 }
 
-/// The input byte of every byte of the text of piece `index` after the candidates `undone` of
-/// `now` were replaced by their readings (`usize::MAX` for a byte of a reading); `old` maps the
-/// bytes of `now`, and no map means that `now` is the input piece itself.
-fn remap(now: &str, old: Option<Vec<usize>>, undone: &[Undone], index: usize) -> Vec<usize> {
+/// The input byte of every byte of the text of a piece after the candidates `undone` of `now`,
+/// all of that piece and in order, were replaced by their readings (`usize::MAX` for a byte of a
+/// reading); `old` maps the bytes of `now`, and no map means that `now` is the input piece itself.
+fn remap(now: &str, old: Option<Vec<usize>>, undone: &[Undone]) -> Vec<usize> {
     let of = |pos: usize| match &old {
         Some(map) => map.get(pos).copied().unwrap_or(usize::MAX),
         None => pos,
     };
     let mut map = Vec::with_capacity(now.len());
     let mut pos = 0usize;
-    for u in undone.iter().filter(|u| u.piece == index) {
+    for u in undone {
         map.extend((pos..u.start).map(of));
         map.extend(core::iter::repeat_n(usize::MAX, u.written));
         pos = u.end;
@@ -530,13 +533,20 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
         .filter(|(p, t)| p.text != t.as_str())
         .map(|(p, t)| (p.index, t))
         .collect();
+    // The candidates and the pieces are both in text order, so one cursor finds the piece of
+    // every candidate and `undone` comes out ordered by piece.
+    let mut cursor = 0usize;
     let undone: Vec<Undone> = cands
         .iter()
         .filter(|c| c.on)
         .filter_map(|c| {
-            let piece = pieces
-                .iter()
-                .rfind(|p| p.start <= c.start && c.start < p.start.saturating_add(p.text.len()))?;
+            while pieces
+                .get(cursor)
+                .is_some_and(|p| p.start.saturating_add(p.text.len()) <= c.start)
+            {
+                cursor = cursor.saturating_add(1);
+            }
+            let piece = pieces.get(cursor).filter(|p| p.start <= c.start)?;
             Some(Undone {
                 piece: piece.index,
                 start: c.start.saturating_sub(piece.start),
