@@ -265,21 +265,43 @@ fn glue_only_rows_name_a_glue_reason() {
                 "{}: differs only in glue, but names {reason:?}",
                 row.id
             );
+        }
+    }
+    assert!(seen > 0, "no row differs only in glue");
+}
+
+#[test]
+fn dash_style_and_slot_reasons_fit_their_rows() {
+    // Design sections 8.12 and 13.4: on every `DIVERGE` row, whether the reason explains a
+    // content change or a glue mark, `DashStyleEn` stands only where the reference implementation
+    // wrote a glued spaced dash in en-US, and `Slots` only where the input holds a slot.
+    let mut dash = 0;
+    let mut slots = 0;
+    for row in ru::ROWS.iter().chain(en_us::ROWS) {
+        let Group::Diverge { reasons, .. } = row.group else {
+            continue;
+        };
+        for reason in reasons {
             if *reason == Reason::DashStyleEn {
+                dash += 1;
                 assert!(
                     row.id.contains(".en-US.") && row.recorded.contains("\u{a0}—"),
-                    "{}: `DashStyleEn` on a glue-only row without a glued dash in en-US",
+                    "{}: `DashStyleEn` without a glued spaced dash of the reference in en-US",
                     row.id
                 );
             }
             if *reason == Reason::Slots {
+                slots += 1;
                 assert!(
                     row.input.contains('{'),
-                    "{}: `Slots` on a glue-only row without a slot",
+                    "{}: `Slots` without a slot",
                     row.id
                 );
             }
         }
     }
-    assert!(seen > 0, "no row differs only in glue");
+    assert!(
+        dash > 0 && slots > 0,
+        "no row names `DashStyleEn` or `Slots`"
+    );
 }
