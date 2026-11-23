@@ -99,13 +99,15 @@ look at the context around it. Explicit protection is still needed for commands 
 Every case of the task's list, with the mechanisms that keep it unchanged in Interface, for both
 languages. Every row is a test (section 13.3): alone, inside the sentence frames
 `Запустите X сейчас.` and `Значение: X, затем далее.` (ru) and `Run X now.` and
-`Value: X, then more.` (en), and as a `Piece::Text` next to slots. The frames contain no listed
-short word. In Interface every row is checked through `report`: the tokens of the case stay byte for
-byte, and no edit other than glue outside them occurs; the expected output also equals the input
-byte for byte and is `Cow::Borrowed`, with two exceptions that come from the case itself, not from
-the frame (below). In Prose the same check through `report` applies, except where the last column
-says that Prose changes the tokens of the case (rows 3 and 10): there the expected output is the one
-that column gives, and `report` names the rules it names.
+`Value: X, then more.` (en), and as a `Piece::Text` between two slots, separated from them by spaces
+(`{a} X {b}`); glued to a slot, a case is a different fragment (section 3.6) and is checked only for
+staying unchanged where its row stays unchanged (Interface, and Prose outside rows 3 and 10). The
+frames contain no listed short word. In Interface every row is checked through `report`: the tokens
+of the case stay byte for byte, and no edit other than glue outside them occurs; the expected output
+also equals the input byte for byte and is `Cow::Borrowed`, with two exceptions that come from the
+case itself, not from the frame (below). In Prose the same check through `report` applies, except
+where the last column says that Prose changes the tokens of the case (rows 3 and 10): there the
+expected output is the one that column gives, and `report` names the rules it names.
 
 The two exceptions in Interface:
 
@@ -168,6 +170,12 @@ and `Порты 8000-8100 с балансировкой` never changes there (th
 `nbsp.short-words`: `с⍽балансировкой`). In Prose `8000-8100` becomes `8000–8100` deliberately: the
 task asks for en dashes in numeric ranges, and technical text belongs in Interface or in backticks
 (section 15.5, item 7).
+
+A literal range glued to a slot is not a literal range: in `{n}8000-8100` or `8000-8100{n}` the
+slot's value joins the number, so the core is not `N-N` (check 17) but a `Compound` (check 21), and
+its hyphen stays in both sets. The range the value would give is unknown (`{n} = 5` gives
+`58000-8100`), the same reason a `Number` slot next to a literal number blocks `range.digits`
+(section 3.6).
 
 ### 10.7 Additional stress strings
 

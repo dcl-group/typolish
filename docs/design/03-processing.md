@@ -414,7 +414,8 @@ checks read a core:
   it counts as letters, so `{n}-{d}` and `5-{d}` are `Compound`. A `Number` slot and a literal
   number (`{a}-5`, `5-{b}`) form a `Range` whose dash no rule edits: `range.placeholders` needs two
   slots, `range.digits` and `range.context` need two literals; the fragment still counts as a range
-  for `nbsp.units` and `nbsp.dates`.
+  for `nbsp.units` and `nbsp.dates`. A slot glued to the digits of a literal (`{n}8000-8100`) makes
+  that side more than one N, so the core is a `Compound` (check 21) with frozen hyphens.
 - The wrapper `"` of `27"` is cut off: the core `27` is a number, and the quote goes to the quote
   algorithm (section 6.5).
 - `Format` tokens (section 5.4) inside a fragment, and ZWNJ and ZWJ inside the text of a token, are

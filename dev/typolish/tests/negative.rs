@@ -1,6 +1,7 @@
 //! The mandatory negative cases of design section 10.5 and the stress strings of section 10.7 at
 //! the level of `typeset`: in the full Interface every case comes back unchanged and borrowed,
-//! alone, in the two sentence frames of each language and as a `Piece::Text` next to slots, with
+//! alone, in the two sentence frames of each language and as a `Piece::Text` next to slots, spaced
+//! and glued, with
 //! the two exceptions that section 10.5 names (row 24's `if a<b and c>d` in English gets its glue,
 //! `if⍽a<b and⍽c>d`; row 25 is checked in English with short Cyrillic words); in the full Prose
 //! the rows that Prose leaves unchanged do the same, and rows 3 and 10 give the output that
@@ -378,13 +379,21 @@ fn run_row(t: &typolish::Typographer, frames: &[&str; 2], text: &str, what: &str
         assert_eq!(out.texts()[1], expected, "{what}: next to slots");
         assert!(out.changed(), "{what}");
     }
+    // Glued to a slot the case is one fragment with the slot (design section 3.6); it stays
+    // unchanged where its row stays unchanged.
+    let prefix = frames[0].split('X').next().unwrap();
     let glued = [
-        Piece::Text(frames[0].split('X').next().unwrap()),
+        Piece::Text(prefix),
         Piece::Text(text),
         Piece::Slot("n", Slot::NUMBER),
     ];
     let out = t.typeset_template(glued, Output::Unicode);
     assert_eq!(out.texts().len(), 2, "{what}");
+    let joined = format!("{prefix}{text}");
+    let expected = expected_of(english, &joined);
+    assert_eq!(out.texts()[0], expected, "{what}: glued to a slot");
+    assert_eq!(out.texts()[1], "", "{what}");
+    assert_eq!(out.changed(), expected != joined, "{what}");
 }
 
 #[test]
@@ -642,6 +651,42 @@ fn row_10_in_prose() {
         );
         assert_eq!(out.texts(), ["", " 8000–8100 ", ""], "{language}");
         assert!(out.changed());
+        // Glued to a slot, the range is one fragment with it, a `Compound` whose hyphen stays in
+        // both sets (design sections 3.6 and 10.6).
+        for t in [&t, &interface(language.clone())] {
+            for (pieces, texts) in [
+                (
+                    [Piece::Slot("n", Slot::NUMBER), Piece::Text("8000-8100")],
+                    ["", "8000-8100"],
+                ),
+                (
+                    [Piece::Text("8000-8100"), Piece::Slot("n", Slot::NUMBER)],
+                    ["8000-8100", ""],
+                ),
+            ] {
+                let out = t.typeset_template(pieces, Output::Unicode);
+                assert_eq!(out.texts(), texts, "{language}");
+                assert!(!out.changed(), "{language}");
+                let r = t.report_template(pieces, Output::Unicode);
+                assert!(r.changes().is_empty(), "{language}: {:?}", r.changes());
+                let spans: Vec<_> = r
+                    .protected()
+                    .iter()
+                    .filter(|p| p.kind() != ProtectedKind::Slot)
+                    .map(|p| (p.kind(), p.piece(), p.range()))
+                    .collect();
+                let piece = usize::from(texts[0].is_empty());
+                assert_eq!(
+                    spans,
+                    [(
+                        ProtectedKind::Technical(TechKind::CompoundHyphens),
+                        piece,
+                        4..5
+                    )],
+                    "{language}"
+                );
+            }
+        }
         let ui = interface(language);
         check_unchanged("Interface", &ui, "8000-8100");
         check_unchanged("Interface", &ui, "ports 8000-8100");
