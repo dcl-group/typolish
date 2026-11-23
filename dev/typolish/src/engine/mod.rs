@@ -351,16 +351,10 @@ pub(crate) fn typeset_template<'t>(
         _ => None,
     });
     if !wanted(typographer, output, texts, encoded_only) {
-        // No byte that a rule reads or the output kind encodes: every text is its merge.
-        return template_texts(
-            typographer,
-            scratch,
-            input,
-            slot_count,
-            false,
-            Output::Unicode,
-            &mut NoRecord,
-        );
+        // No byte that a rule reads or the output kind encodes: every text is its merge. No run
+        // happened, so nothing of the scratch is read.
+        let data = typographer.language().data();
+        return render::render_template(input, &[], &[], slot_count, &data);
     }
     let changed = run(typographer, scratch, input, &mut NoRecord);
     template_texts(

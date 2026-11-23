@@ -388,3 +388,34 @@ fn the_template_is_a_value() {
     assert_eq!(a, b);
     assert!(!format!("{a:?}").is_empty());
 }
+
+#[test]
+fn a_rejected_template_after_a_changed_one_reuses_no_state() {
+    // Design sections 2.12 and 3.2: a template that the prefilter rejects is rendered from its
+    // pieces alone, never from the working memory of the previous call.
+    let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    let mut scratch = Scratch::new();
+    let out = t.typeset_template_with(
+        &mut scratch,
+        [
+            Piece::Text("He said \"hi\" - ok"),
+            Piece::Slot(0u8, Slot::OTHER),
+            Piece::Text("x \"y\""),
+        ],
+        Output::Unicode,
+    );
+    assert_eq!(out.texts(), ["He said “hi” — ok", "x “y”"]);
+    assert!(out.changed());
+    let plain = || {
+        [
+            Piece::Text("plain"),
+            Piece::Slot(0u8, Slot::OTHER),
+            Piece::Text("text"),
+        ]
+    };
+    let out = t.typeset_template_with(&mut scratch, plain(), Output::Unicode);
+    assert_eq!(out.texts(), ["plain", "text"]);
+    assert!(!out.changed());
+    let fresh = t.typeset_template_with(&mut Scratch::new(), plain(), Output::Unicode);
+    assert_eq!(out.texts(), fresh.texts());
+}
