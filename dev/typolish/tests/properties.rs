@@ -26,11 +26,16 @@ use proptest::prelude::*;
 use typolish::{
     DiagnosticKind, EscapeStyle, HtmlStyle, Language, LanguageBuilder, Output, PercentSpacing,
     ProtectedKind, QuotePairs, Report, Rule, RuleSet, Severity, SingleQuotes, Typographer,
+    TypographerBuilder,
 };
 
 const LANGUAGES: [Language; 3] = [Language::RU_RU, Language::EN_US, Language::COMMON];
 
 fn typographer(lang: usize, set: RuleSet, quotes: u8, percent: u8) -> Typographer {
+    builder(lang, set, quotes, percent).build().unwrap()
+}
+
+fn builder(lang: usize, set: RuleSet, quotes: u8, percent: u8) -> TypographerBuilder {
     let mode = match quotes % 3 {
         0 => SingleQuotes::NestedOnly,
         1 => SingleQuotes::Everywhere,
@@ -39,8 +44,21 @@ fn typographer(lang: usize, set: RuleSet, quotes: u8, percent: u8) -> Typographe
     Typographer::builder(LANGUAGES[lang % 3].clone(), set)
         .single_quotes(mode)
         .percent(spacing(percent))
-        .build()
-        .unwrap()
+}
+
+/// A built-in set by index.
+fn base_set(i: usize) -> RuleSet {
+    [
+        RuleSet::EMPTY,
+        RuleSet::PROSE,
+        RuleSet::INTERFACE,
+        RuleSet::ALL,
+    ][i % 4]
+}
+
+/// A permutation of all 27 rules.
+fn permutation() -> impl Strategy<Value = Vec<Rule>> {
+    Just(Rule::ALL.to_vec()).prop_shuffle()
 }
 
 fn spacing(percent: u8) -> PercentSpacing {
@@ -754,17 +772,79 @@ proptest! {
         prop_assert!(second.changes().is_empty(), "{:?} -> {:?} -> {:?}", text, out, second.changes());
     }
 
-    /// 11. Determinism of order with all 27 rules: the full set built forwards and backwards.
+    /// 11. Determinism of order with all 27 rules: the full set built along different paths, in
+    /// orders drawn from the seed, gives byte-equal output in every output kind. The paths: `with`
+    /// from `EMPTY`; `with`, `without` and `with` again from a built-in set; `FromStr` of a shuffled
+    /// id list; and `TypographerBuilder::enable` from a built-in set.
     #[test]
-    fn all_rules_in_any_order_give_the_same_output(text in any_text(), lang in 0usize..3, quotes in 0u8..3) {
-        let forward: RuleSet = Rule::ALL.iter().copied().collect();
-        let backward: RuleSet = Rule::ALL.iter().rev().copied().collect();
-        prop_assert_eq!(forward, backward);
-        prop_assert_eq!(forward, RuleSet::ALL);
-        let a = typographer(lang, forward, quotes, 0).typeset(&text, Output::Unicode).into_owned();
-        let b = typographer(lang, backward, quotes, 0).typeset(&text, Output::Unicode).into_owned();
-        prop_assert_eq!(a, b);
+    fn all_rules_in_any_order_give_the_same_output(
+        text in any_text(), lang in 0usize..3, quotes in 0u8..3,
+        first in permutation(), second in permutation(),
+        bases in (0usize..4, 0usize..4, 0usize..4), plus in prop::collection::vec(any::<bool>(), 27),
+    ) {
         prop_assert_eq!(Rule::ALL.len(), 27);
+        let with = first.iter().fold(RuleSet::EMPTY, |set, rule| set.with(*rule));
+        let there_and_back = first.iter().fold(base_set(bases.0), |set, rule| set.with(*rule));
+        let there_and_back = second.iter().fold(there_and_back, |set, rule| set.without(*rule));
+        prop_assert_eq!(there_and_back, RuleSet::EMPTY);
+        let there_and_back = first.iter().fold(there_and_back, |set, rule| set.with(*rule));
+        let names = ["empty", "prose", "interface", "all"];
+        let ids: Vec<String> = second
+            .iter()
+            .zip(&plus)
+            .map(|(rule, plus)| format!("{}{}", if *plus { "+" } else { "" }, rule.id()))
+            .collect();
+        let parsed: RuleSet = format!("{},{}", names[bases.1], ids.join(","))
+            .parse()
+            .unwrap();
+        for set in [with, there_and_back, parsed] {
+            prop_assert_eq!(set, RuleSet::ALL);
+        }
+        let enabled = first
+            .iter()
+            .fold(builder(lang, base_set(bases.2), quotes, 0), |b, rule| b.enable(*rule))
+            .build()
+            .unwrap();
+        prop_assert_eq!(enabled.rules(), RuleSet::ALL);
+        let typographers = [
+            typographer(lang, with, quotes, 0),
+            typographer(lang, there_and_back, quotes, 0),
+            typographer(lang, parsed, quotes, 0),
+            enabled,
+        ];
+        for output in outputs() {
+            let expected = typographers[0].typeset(&text, output).into_owned();
+            for t in &typographers[1..] {
+                prop_assert_eq!(&t.typeset(&text, output).into_owned(), &expected, "{:?}", output);
+            }
+        }
+    }
+
+    /// 11. Determinism of order with rules removed: a set without a drawn subset of rules, built by
+    /// `without` and by `TypographerBuilder::disable` in two orders, gives byte-equal output.
+    #[test]
+    fn removals_in_any_order_give_the_same_output(
+        text in any_text(), lang in 0usize..3,
+        first in permutation(), second in permutation(), removed in prop::collection::vec(any::<bool>(), 27),
+    ) {
+        let drop = |rule: &Rule| removed[Rule::ALL.iter().position(|r| r == rule).unwrap()];
+        let a = first.iter().filter(|r| drop(r)).fold(RuleSet::ALL, |set, rule| set.without(*rule));
+        let b = second.iter().filter(|r| drop(r)).fold(RuleSet::ALL, |set, rule| set.without(*rule));
+        prop_assert_eq!(a, b);
+        let disabled = second
+            .iter()
+            .filter(|r| drop(r))
+            .fold(builder(lang, RuleSet::ALL, 0, 0), |b, rule| b.disable(*rule))
+            .build()
+            .unwrap();
+        prop_assert_eq!(disabled.rules(), a);
+        let typographers = [typographer(lang, a, 0, 0), typographer(lang, b, 0, 0), disabled];
+        for output in outputs() {
+            let expected = typographers[0].typeset(&text, output).into_owned();
+            for t in &typographers[1..] {
+                prop_assert_eq!(&t.typeset(&text, output).into_owned(), &expected, "{:?}", output);
+            }
+        }
     }
 }
 
