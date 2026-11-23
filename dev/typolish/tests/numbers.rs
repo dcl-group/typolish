@@ -641,9 +641,10 @@ fn the_template_dash_and_the_range_dash_come_from_one_field() {
             assert_eq!(range, format!("1{dash}2"));
         }
     }
-    // A language with another dash in its number data: both follow it.
+    // A language with another dash in its number data: both follow it. The dash is one of the
+    // two that design section 7.6 allows.
     let language = LanguageBuilder::from_language(&Language::COMMON, "xx")
-        .numbers(NumberData::new().with_range_dash('\u{2012}'))
+        .numbers(NumberData::new().with_range_dash('\u{2014}'))
         .build()
         .unwrap();
     let t = Typographer::new(language, RuleSet::PROSE);
@@ -655,8 +656,8 @@ fn the_template_dash_and_the_range_dash_come_from_one_field() {
         ],
         UNICODE,
     );
-    assert_eq!(out.texts(), ["", "\u{2012}", ""]);
-    assert_eq!(t.format_range(1, 2, UNICODE).to_string(), "1\u{2012}2");
+    assert_eq!(out.texts(), ["", "\u{2014}", ""]);
+    assert_eq!(t.format_range(1, 2, UNICODE).to_string(), "1\u{2014}2");
 }
 
 #[test]

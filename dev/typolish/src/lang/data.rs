@@ -308,7 +308,7 @@ impl NumberData {
         }
     }
 
-    /// Sets the decimal separator.
+    /// Sets the decimal separator: not a letter, a digit or whitespace (design section 7.6).
     ///
     /// ```
     /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
@@ -409,6 +409,9 @@ impl NumberData {
     }
 
     /// Sets the dash of the CLDR range pattern.
+    ///
+    /// The dash must be `–` U+2013 or `—` U+2014 (design section 7.6): the range rules write only a
+    /// dash that a second pass and `to_plain` read back.
     ///
     /// ```
     /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
@@ -1703,6 +1706,14 @@ impl Table<'_> {
         }
         if !is_valid_minus(n.minus) {
             return Err("numbers: the minus must be `-` or a dash, U+2010 to U+2015 or U+2212");
+        }
+        if !matches!(n.range_dash, '\u{2013}' | '\u{2014}') {
+            return Err("numbers: the range dash must be U+2013 or U+2014");
+        }
+        if n.decimal.is_alphanumeric() || n.decimal.is_whitespace() {
+            return Err(
+                "numbers: the decimal separator must not be a letter, a digit or whitespace",
+            );
         }
         let e = &self.ellipsis;
         if [e.question, e.exclamation, e.both].iter().any(|form| {

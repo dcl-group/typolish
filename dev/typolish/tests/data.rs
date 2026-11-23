@@ -1293,6 +1293,17 @@ fn number_data_is_checked() {
     for good in ['\u{a0}', '\u{202f}', ',', '\'', '.', '_'] {
         accepted(with(NumberData::new().with_decimal('!').with_group(good)));
     }
+    // The range dash is `–` or `—`, the dashes a second pass and `to_plain` read back; the
+    // decimal separator is not a letter, a digit or whitespace (design section 7.6).
+    for bad in ['a', '7', ' ', '-', '\u{2012}', '~'] {
+        rejected(with(NumberData::new().with_range_dash(bad)), "numbers");
+    }
+    for good in ['\u{2013}', '\u{2014}'] {
+        accepted(with(NumberData::new().with_range_dash(good)));
+    }
+    for bad in ['a', '7', ' '] {
+        rejected(with(NumberData::new().with_decimal(bad)), "numbers");
+    }
 }
 
 #[test]

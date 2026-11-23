@@ -336,10 +336,12 @@ cannot reach a user.
   7.1). Units do not start with an ASCII digit (0-9); ambiguous units are also in `units`.
 - A unit equal to a short word or a particle (compared with case: `с` must be listed, `В` need not)
   must be listed in `ambiguous_units`.
-- `decimal != group`; `min_grouping_digits <= 4`; `minus`, `group` and signs are not letters or
-  digits; `group` is U+00A0, U+202F or not whitespace; `minus` is `-` or a dash (U+2010 to U+2015,
-  U+2212), the signs that check 15 of section 3.6 reads as the sign of a number; ellipsis forms
-  consist of `?`, `!`, `.` and `…` only.
+- `decimal != group`; `min_grouping_digits <= 4`; `minus`, `group`, `decimal` and signs are not
+  letters or digits; `decimal` is not whitespace; `group` is U+00A0, U+202F or not whitespace;
+  `minus` is `-` or a dash (U+2010 to U+2015, U+2212), the signs that check 15 of section 3.6 reads
+  as the sign of a number; `range_dash` is `–` U+2013 or `—` U+2014, the dashes that a second pass
+  and `to_plain` read back (sections 3.6 and 12.1); ellipsis forms consist of `?`, `!`, `.` and `…`
+  only.
 
 ### 7.7 Adding a language
 

@@ -269,6 +269,12 @@ fn build_validates_like_from_data() {
     );
     invalid(
         LanguageBuilder::new("xx")
+            .numbers(NumberData::new().with_range_dash('a'))
+            .build(),
+        "range dash that is a letter",
+    );
+    invalid(
+        LanguageBuilder::new("xx")
             .numbers(NumberData::new().with_decimal(',').with_group(','))
             .build(),
         "decimal == group",

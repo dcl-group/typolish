@@ -45,7 +45,8 @@ supported Rust version: 1.100.
 - Languages as data: `Language::RU_RU` and `Language::EN_US` (checked against CLDR 49),
   `Language::COMMON` for the rules that need no language data, `Language::from_tag` with an explicit
   error for a language without data, `LanguageData` with `const fn` setters for a language declared
-  as a `const`, and `LanguageBuilder` for a language built at run time.
+  as a `const`, and `LanguageBuilder` for a language built at run time; validation also requires the
+  range dash to be `–` or `—` and the decimal separator not to be a letter, a digit or whitespace.
 - Protection: backtick spans and fenced blocks, delimiters of one's own, `Piece::Protected`, and the
   technical fragments that the classifier recognizes by their shape (URLs, e-mail addresses and
   mentions, flags, paths, `host:port`, operators, UUIDs, hex numbers, ISO dates, versions, dotted
