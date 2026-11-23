@@ -229,7 +229,7 @@ fn percent_shape(cx: &Cx<'_>, f: &Frag, joint: &str) -> bool {
 
 /// The fragment that the dash rules read on the left of a dash (design section 8.2: a percentage
 /// is one in both forms): for a lone `%` or `‰` after spaces, the number, label number or range
-/// before the spaces (`100 %` reads as `100%`, `5–10 %` as `5–10%`, `№5 %` as `№5%`); otherwise
+/// before the spaces (`100 %` reads as `100%`, `5–10 %` as `5–10%`, `№⍽5 %` as `№⍽5%`); otherwise
 /// the fragment itself. So the space that the percent setting or `nbsp.signs` inserts or removes
 /// changes nothing for those rules (invariant I2).
 pub(crate) fn percent_owner<'a>(cx: &Cx<'a>, f: &'a Frag) -> &'a Frag {

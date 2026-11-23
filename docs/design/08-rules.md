@@ -361,8 +361,10 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   → `100%` (only a single U+0020 is removed)); `Attached` removes a single U+0020 between the number
   and the sign; a U+00A0 or U+202F typed by the author, a tab or a run of spaces stays (section
   5.3); `Spaced` glues or inserts. A range takes the setting as a number does (`5–10%` → `5–10⍽%`
-  with ru `Language` or `Spaced`, `5–10 %` → `5–10%` with `Attached`). Settled in section 15.5,
-  item 11.
+  with ru `Language` or `Spaced`, `5–10 %` → `5–10%` with `Attached`). So does a label number
+  (section 8.2): `№ 5 %` → `№⍽5⍽%` by default, `№⍽5%` with `Attached`. A sign with an attached
+  number and percent sign (`№5%`, `§5%`) is not a word by check 23 and is frozen by check 24 of
+  section 3.6. Settled in section 15.5, item 11.
 - **`nbsp.signs`.** `№`, `§`, `¶` before a number (its label number, section 8.2), a Roman numeral
   or a slot (not `Other`): a space is glued, a missing space is inserted (`№5` → `№⍽5`, `¶IV` →
   `¶⍽IV`; the attached forms are words by check 23 of section 3.6, and the sign alone is a `Sign`

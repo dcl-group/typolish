@@ -842,13 +842,14 @@ pub(crate) fn units(cx: &Cx<'_>, i: usize) -> Option<Match> {
 fn units_at_space(cx: &Cx<'_>, s: usize) -> Option<Match> {
     let (l, r) = sides(cx, s)?;
     let fl = tail(cx, l)?;
-    if !quantity(cx, fl) {
-        return None;
-    }
     let fr = cx.frag_of(r)?;
     if matches!(cx.kind(r), Some(Kind::Punct('%' | '‰'))) {
-        // A percentage after a space: the sign alone is the core.
-        if head(cx, r).is_none() || !matches!(core_tokens(cx, fr), Some((_, 1))) {
+        // A percentage after a space: the sign alone is the core, and the fragment on the left
+        // owns it, a label number included (design section 8.2).
+        if head(cx, r).is_none()
+            || !matches!(core_tokens(cx, fr), Some((_, 1)))
+            || !core::ptr::eq(percent_owner(cx, fr), fl)
+        {
             return None;
         }
         return match percent_spaced(cx) {
@@ -859,6 +860,9 @@ fn units_at_space(cx: &Cx<'_>, s: usize) -> Option<Match> {
             // A U+00A0 or U+202F typed by the author stays (section 5.3).
             Some(false) => Some(Match::done(0)),
         };
+    }
+    if !quantity(cx, fl) {
+        return None;
     }
     let (ends, ambiguous) = unit_at(cx, r, fr)?;
     if ambiguous && ends {
@@ -879,7 +883,7 @@ fn percent_attached(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
     let f = cx.frag_of(i)?;
     let kind = f.kind == FragKind::Number || percent_range(cx, f);
-    if !kind || f.label || !cx.in_core(i) {
+    if !kind || !cx.in_core(i) {
         return None;
     }
     let p = cx.prev(i)?;

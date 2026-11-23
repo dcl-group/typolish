@@ -1096,6 +1096,53 @@ fn percent_spacing_and_the_dash_rules() {
 }
 
 #[test]
+fn percent_spacing_with_a_label_number() {
+    // Design sections 8.2 and 8.7: a label number counts as a number for the percent handling of
+    // `nbsp.units`, as it does for the dash rules; `№5%` and `§5%` are frozen by check 24 of
+    // design section 3.6 and stay in every setting.
+    use typolish::PercentSpacing::{AsWritten, Attached, Language as Lang, Spaced};
+    let rows: &[(Language, typolish::PercentSpacing, &str, &str)] = &[
+        (ru(), AsWritten, "№ 5 %", "№⍽5⍽%"),
+        (ru(), AsWritten, "№5 %", "№⍽5⍽%"),
+        (ru(), AsWritten, "§ 5 %", "§⍽5⍽%"),
+        (ru(), AsWritten, "№ 5%", "№⍽5%"),
+        (ru(), AsWritten, "№5 % - норма", "№⍽5⍽%⍽— норма"),
+        (ru(), Attached, "№ 5 %", "№⍽5%"),
+        (ru(), Attached, "№5 %", "№⍽5%"),
+        (ru(), Spaced, "№ 5%", "№⍽5⍽%"),
+        (ru(), Lang, "№ 5%", "№⍽5⍽%"),
+        (en(), Lang, "№ 5 %", "№⍽5%"),
+        (ru(), AsWritten, "№ 5 МБ", "№⍽5 МБ"),
+    ];
+    for (language, spacing, input, expected) in rows {
+        let t = Typographer::builder(language.clone(), RuleSet::PROSE)
+            .percent(*spacing)
+            .build()
+            .unwrap();
+        let what = format!("{language} Prose {spacing:?}");
+        check_in(&what, &t, (input, expected));
+        check_unchanged(&format!("{what}, second pass"), &t, expected);
+    }
+    for spacing in [AsWritten, Attached, Spaced, Lang] {
+        for language in [ru(), en()] {
+            let t = Typographer::builder(language.clone(), RuleSet::PROSE)
+                .percent(spacing)
+                .build()
+                .unwrap();
+            for text in ["№5%", "§5%"] {
+                check_unchanged(&format!("{language} Prose {spacing:?}"), &t, text);
+            }
+        }
+    }
+    let t = Typographer::builder(ru(), RuleSet::PROSE)
+        .percent(AsWritten)
+        .disable(Rule::NbspSigns)
+        .build()
+        .unwrap();
+    check_in("ru Prose without nbsp.signs", &t, ("№5 %", "№5⍽%"));
+}
+
+#[test]
 fn percent_spacing_in_the_sets() {
     // With a non-default setting `nbsp.units` also inserts and removes in Interface (section 9.1).
     for set_ in [RuleSet::PROSE, RuleSet::INTERFACE] {

@@ -138,13 +138,16 @@ gives the output of the whole set.
   with `nbsp.short-length` alone `Знаешь ли ты` → unchanged (section 15.3, C33); ru `21 Ноября` →
   `21⍽Ноября`; en `chapter 5 may be` → unchanged; en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both
   sets); ru `Привезли 5 т груза` → `Привезли 5⍽т груза`; en with `PercentSpacing::Attached`: `100⍽%`
-  → unchanged (only a single U+0020 is removed, section 8.7); ru `1990–2000 г. Затем`,
-  `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` →
-  `г.⍽Москвы` (a label range); ru `21.11.2026 г.` → `21.11.2026⍽г.`; ru
-  `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and `report().protected()` lists
-  `Technical(Version)` for the date; ru `21.11.26 г.` → `21.11.26⍽г.`; ru
-  `Договор от 21.11.26 г. Затем` → no glue after `г.`; ru `0.2.27 г.` → unchanged (not a date core);
-  ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en
+  → unchanged (only a single U+0020 is removed, section 8.7); a label number with a percent sign
+  after spaces (section 8.7): ru `№ 5 %` and `№5 %` → `№⍽5⍽%` (`AsWritten`), `№⍽5%` (`Attached`),
+  `№ 5%` → `№⍽5⍽%` (`Spaced`, ru `Language`), en `№ 5 %` → `№⍽5%` (`Language`), `№5%` and `§5%`
+  unchanged in every setting, `№5 % - норма` → `№⍽5⍽%⍽— норма`, and `№5 %` → `№5⍽%` without
+  `nbsp.signs`; ru `1990–2000 г. Затем`, `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or
+  `ч.`, while `§§ 5-7 г. Москвы` → `г.⍽Москвы` (a label range); ru `21.11.2026 г.` →
+  `21.11.2026⍽г.`; ru `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and
+  `report().protected()` lists `Technical(Version)` for the date; ru `21.11.26 г.` → `21.11.26⍽г.`;
+  ru `Договор от 21.11.26 г. Затем` → no glue after `г.`; ru `0.2.27 г.` → unchanged (not a date
+  core); ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en
   `J. R. R. R. Tolkien` → unchanged (Interface); `nbsp.initials`: ru `Об этом сказал А. Петров.` →
   `Об этом сказал А.⍽Петров.`, ru `Выберите вариант А. После этого` →
   `Выберите вариант А.⍽После этого`, en `I chose plan B. Then I left.` →
