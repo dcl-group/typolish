@@ -656,7 +656,7 @@ equal diagnostics (section 12.3).
 - Inputs exercised by the load tests (section 13.8): long runs of `"`, `'`, backticks, `-`, `.`,
   `(`; alternating Cyrillic and Latin letters; a string of ZWJ emoji; one 1 MiB line without spaces
   (one fragment: the classifier is linear, freezing is one pass); quote nesting whose depth grows
-  with the input (one level per 8 bytes of input size: about 8 000 deep at 64 KiB and about two
+  with the input (one level per 6 bytes of input size: about 11 000 deep at 64 KiB and about 2.8
   million at 16 MiB); a long run of `Format` tokens (U+200B, U+2060 U+200C) before many dashes, each
   a fragment of its own (a rule reads the nearest non-transparent neighbors of a token, never the
   whole run again); many straight quotes in the wrapper of one technical fragment (what the quote
