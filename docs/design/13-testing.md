@@ -135,11 +135,11 @@ gives the output of the whole set.
   number of tokens, section 8.2); ru `кто-то же` with `nbsp.particles` alone → `кто-то⍽же` (a
   compound word is a word, section 8.2); the particles of section 15.2, items 18 and 19, in both
   sets: `Знаешь ли ты` → `Знаешь⍽ли ты`, `Что ж,` → `Что⍽ж,`, `что же бы ты` → `что⍽же⍽бы ты`
-  (section 15.3, C33), `Что ж - ладно` → `Что⍽ж⍽— ладно`, an initial whose letter is a particle
+  (section 15.2, item 24), `Что ж - ладно` → `Что⍽ж⍽— ладно`, an initial whose letter is a particle
   `Иван Б. Петров` → `Иван Б.⍽Петров`, typed `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`, a particle after a
   `Word` slot (`{x}⍽же ты`) and after an `Other` slot (Prose `{x} же⍽ты`, Interface unchanged), and
-  with `nbsp.short-length` alone `Знаешь ли ты` → unchanged (section 15.3, C33); ru `21 Ноября` →
-  `21⍽Ноября`; en `chapter 5 may be` → unchanged; en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both
+  with `nbsp.short-length` alone `Знаешь ли ты` → unchanged (section 15.2, item 25); ru `21 Ноября`
+  → `21⍽Ноября`; en `chapter 5 may be` → unchanged; en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both
   sets); ru `Привезли 5 т груза` → `Привезли 5⍽т груза`; en with `PercentSpacing::Attached`: `100⍽%`
   → unchanged (only a single U+0020 is removed, section 8.7); a label number with a percent sign
   after spaces (section 8.7): ru `№ 5 %` and `№5 %` → `№⍽5⍽%` (`AsWritten`), `№⍽5%` (`Attached`),
@@ -530,15 +530,16 @@ U+00A0 and must not be normalized.
   takes 28 to 47 ns. One paragraph of 10^5 ZWJ emoji clusters raises the peak memory by about 7 MB
   (about 70 bytes per cluster, 68 to 113 bytes from 10^4 to 10^6 clusters, so linear); the result is
   borrowed, so this is engine memory only (section 3.12). The latency target is met; the throughput
-  target is missed by a factor of 1.4 to 3. What remains is spread over the passes the design
-  prescribes rather than concentrated in one place: per fragment the classifier reads the wrapper,
-  the units, the signature of check 0, the table and the labels (about 150 to 250 ns per fragment);
-  per space every active no-break rule re-reads its context and its lists (the no-break phase is
-  about 35 to 40 ns per byte); and the lexer classes every character. The cost is linear: in
-  `load_is_linear` the 16 MiB to 64 KiB ratio of every pathological input is between 1.0 and 1.8 (up
-  to 1.9 in the bench, which starts each input with a new scratch); the step between 64 KiB and 1
-  MiB, where the token buffers of one window leave the caches, is most of it. The faster the passes,
-  the larger that memory-bound share, so the margin to the bound of 2 is smaller than it was.
+  target is missed by a factor of 1.4 to 3, which the maintainer accepted for version 0.1 (section
+  15.2, item 27). What remains is spread over the passes the design prescribes rather than
+  concentrated in one place: per fragment the classifier reads the wrapper, the units, the signature
+  of check 0, the table and the labels (about 150 to 250 ns per fragment); per space every active
+  no-break rule re-reads its context and its lists (the no-break phase is about 35 to 40 ns per
+  byte); and the lexer classes every character. The cost is linear: in `load_is_linear` the 16 MiB
+  to 64 KiB ratio of every pathological input is between 1.0 and 1.8 (up to 1.9 in the bench, which
+  starts each input with a new scratch); the step between 64 KiB and 1 MiB, where the token buffers
+  of one window leave the caches, is most of it. The faster the passes, the larger that memory-bound
+  share, so the margin to the bound of 2 is smaller than it was.
 - `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` (the only file with
   `#![allow(unsafe_code)]`, section 14.5; the allocator counts and delegates to
   `std::alloc::System`) checks the table of section 2.12: zero allocations for an unchanged string

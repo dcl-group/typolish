@@ -123,11 +123,11 @@ Conditions that hold for every rule:
   the dash and the word stands one pattern space.
 - A space is glued only if the next fragment starts with a letter, a digit, a slot (not `Other`), a
   protected span, an opening quote or the opening bracket `(` (`[` and `{` start technical notation,
-  section 3.6, so `в [х]` stays), except where a rule names the next token (`nbsp.dash` before a
-  dash, `nbsp.units` before a unit, `nbsp.short-words` before a sign of `signs`). Never before a
-  fragment that starts with `-` (`ls -la` stays intact whatever the lists say), and never next to a
-  fragment that holds an `Other` slot, on either side, whatever wraps the slot (`and "{o}"` stays;
-  section 2.6).
+  section 3.6, so `в [х]` stays; section 15.2, item 21), except where a rule names the next token
+  (`nbsp.dash` before a dash, `nbsp.units` before a unit, `nbsp.short-words` before a sign of
+  `signs`). Never before a fragment that starts with `-` (`ls -la` stays intact whatever the lists
+  say), and never next to a fragment that holds an `Other` slot, on either side, whatever wraps the
+  slot (`and "{o}"` stays; section 2.6).
 - A trigger word is a whole core, compared as section 7.1 (Lookups) says for its list. The wrapper
   does not hide it: `(в 2026)` → `(в⍽2026)`. A word followed by closing punctuation (`и,`) triggers
   nothing. A particle of `nbsp.particles` is no trigger word: it stands after the glued space, and
@@ -345,7 +345,7 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   en `I`) before a capitalized word gets the same glue (`вариант А.⍽После`): the rule does not look
   for sentence ends (section 15.2, item 11), and the glue only forbids a line break there (section
   10.8). Where initials stand between two capitalized words, the forward form takes them and the
-  word before stays apart (`Иван А.⍽Петров`, `Пушкин А.⍽С.⍽Иванов`).
+  word before stays apart (`Иван А.⍽Петров`, `Пушкин А.⍽С.⍽Иванов`; section 15.2, item 22).
 - **`nbsp.dates`.** By `month_position`: `AfterDay` (ru) glues a day number 1 to 31 (or a `Number`
   slot) before a month form (`21⍽ноября`); `BeforeDay` glues a month form before a day number;
   `Both` (en) glues both orders (`November⍽21`, `21⍽November`). With year and century words (only in
@@ -371,7 +371,7 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
 - **`nbsp.signs`.** `№`, `§`, `¶` before a number (its label number, section 8.2), a Roman numeral
   or a slot (not `Other`): a space is glued, a missing space is inserted (`№5` → `№⍽5`, `¶IV` →
   `¶⍽IV`; the attached forms are words by check 23 of section 3.6, and the sign alone is a `Sign`
-  fragment). Doubled signs (`№№ 5`, `§§ 3`) count as one.
+  fragment). Doubled signs (`№№ 5`, `§§ 3`) count as one and stay doubled (section 15.2, item 26).
 - **`nbsp.phone`** (Prose). A run of fragments separated by single spaces that starts with a country
   code `+D` (one to three digits) or with an area code in brackets `(DDD)` (optionally after a
   one-digit trunk prefix: `8 (800)`), followed by one to four further fragments, each a group of two
@@ -402,16 +402,16 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   `Ну что⍽ж. Ладно`. A particle in this place is **bound** to the word before it and glues nothing
   after itself: `nbsp.short-words` and `nbsp.short-length` do not take it as a trigger word, so
   there is no chain: `Знаешь ли ты` → `Знаешь⍽ли ты`, also with `ли` added to the short words
-  (section 15.2, item 18), and so for every particle of the list (section 15.3, C34). Each particle
-  of a run is bound to the word before it, the run to the first word: `что⍽же⍽бы ты` (section 15.3,
-  C33: `бы` is glued to the word before it, `же`, by the first half of item 18). A dash after a
-  bound particle is glued to it by `nbsp.dash` as to any operand: `Что⍽ж⍽— ладно`. A particle with
-  no word or slot one pattern space before it (at a line start, after punctuation, a tab or an
-  `Other` slot) is not bound and is an ordinary word: Prose `Ли ты знал` → `Ли⍽ты⍽знал`. A particle
-  is bound by the list of particles whichever rules are enabled (section 15.3, C33): with
-  `nbsp.short-length` alone `Знаешь ли ты` stays unchanged, and after `remove_particles(["ли"])`
-  Prose gives `Знаешь ли⍽ты`. A no-break space the author typed after a particle stays (section 4.3,
-  I3): `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`.
+  (section 15.2, item 18), and so for every particle of the list (section 15.2, item 23). Each
+  particle of a run is bound to the word before it, the run to the first word: `что⍽же⍽бы ты`
+  (section 15.2, item 24: `бы` is glued to the word before it, `же`, by the first half of item 18).
+  A dash after a bound particle is glued to it by `nbsp.dash` as to any operand: `Что⍽ж⍽— ладно`. A
+  particle with no word or slot one pattern space before it (at a line start, after punctuation, a
+  tab or an `Other` slot) is not bound and is an ordinary word: Prose `Ли ты знал` → `Ли⍽ты⍽знал`. A
+  particle is bound by the list of particles whichever rules are enabled (section 15.2, item 25):
+  with `nbsp.short-length` alone `Знаешь ли ты` stays unchanged, and after
+  `remove_particles(["ли"])` Prose gives `Знаешь ли⍽ты`. A no-break space the author typed after a
+  particle stays (section 4.3, I3): `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`.
 - **`nbsp.dash`.** The space before a dash fragment that stands for a spaced dash (a produced or
   typed `—`, or a typed `–`, section 8.4) in the context of `dash.spaced-hyphen` (an operand or
   closing punctuation on the left, an operand, an opening quote or an opening bracket on the right,

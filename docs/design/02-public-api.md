@@ -577,7 +577,7 @@ for its neighbors it behaves as its kind says:
 No glue sticks to an `Other` slot: its value may be long, and a nowrap group around a long path
 breaks the layout. That holds for the whole fragment that holds the slot, since a group takes whole
 fragments (section 11.5): no glue before or after a quoted or bracketed `Other` slot or one joined
-to other tokens (`and "{o}"`, `в ({o})`, `и {d}{o}` keep their spaces; section 15.3, C30). A
+to other tokens (`and "{o}"`, `в ({o})`, `и {d}{o}` keep their spaces; section 15.2, item 20). A
 `Number` slot after `№`, `§` or `¶` (`№ {n}`, `№{n}`) is a label number (section 8.2): `nbsp.signs`
 glues it to the sign, and the rules that read a quantity or a year (`nbsp.units`, `nbsp.dates`)
 leave it alone. Two `Number` slots or two `Date` slots joined by `-` form a `Range` core (check 17
