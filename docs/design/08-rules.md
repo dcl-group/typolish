@@ -133,7 +133,7 @@ Conditions that hold for every rule:
   nothing. A particle of `nbsp.particles` is no trigger word: it stands after the glued space, and
   closing punctuation after it does not matter (`Что⍽ж,`, section 8.7).
 - An 'opening quote' or a 'closing quote' in a pattern of a rule is a quote with that role by the
-  local rule of section 6.3, the sign-only pair included, computed from its neighbours when the rule
+  local rule of section 6.3, the sign-only pair included, computed from its neighbors when the rule
   runs; a typed glyph has its own role, a straight quote that 6.3 gives neither role is neither. The
   sign-only pair belongs here because the quote phase places it: in `Слово - "" да` the `""` is an
   opening quote on the first pass as `«»` is on the second (section 4.3, I4). Where one quote ends a
@@ -201,7 +201,7 @@ or a flag never swallows the next word (autolinkers that cut a link at the next 
 space around them is removed. On such a typed dash the rule matches with an empty edit and the same
 `consume` (the tokens a match closes to the other rules of its phase, section 3.7) when its context
 holds; it raises `AmbiguousHyphen` only on a plain `-`. A `Joined` or a `Dimensions` core is not an
-operand (section 8.2): a dash whose neighbour on one side is such a core, with no wrapper between
+operand (section 8.2): a dash whose neighbor on one side is such a core, with no wrapper between
 them, is matched by no dash rule and gets no glue from `nbsp.dash`, and no diagnostic is raised
 (`Moscow—the - capital`, `5 - x—Moscow` and ru `1920x1080 — монитор` stay). Were a `Joined` core an
 operand, a `-` refused next to a single letter would fire on the next pass once a merge had made
@@ -295,7 +295,7 @@ The rule for port ranges such as `8000-8100` is section 10.6.
 
 - **`ellipsis.dots`** (both sets): exactly three full stops at the end of a word, followed by a
   space, a line break, the end of the window, closing punctuation or a closing quote, or forming a
-  fragment of their own whose neighbour on each side is a space, a line break or a window boundary
+  fragment of their own whose neighbor on each side is a space, a line break or a window boundary
   (`... и тогда`, `Слово ...`, `Подождите...\nДальше`) → `…`. After `?`, `!` or `?!` → the forms of
   `LanguageData::ellipsis` (ru `?..`, `!..`, `?!..`; en `?…`, `!…`, `?!…`). Two full stops
   (`А если..`, `../x`, `0..5`) and four or more (`....`, leaders in tables of contents) never

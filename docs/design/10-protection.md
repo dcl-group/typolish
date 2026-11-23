@@ -42,7 +42,7 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   digit; it is neither equal to nor a prefix of a delimiter of another pair; within one pair the two
   delimiters may be equal, but neither may be a proper prefix of the other
   (`Error::InvalidSetting`).
-- **For its neighbours a protected span is one word**: a preposition before a span in backticks gets
+- **For its neighbors a protected span is one word**: a preposition before a span in backticks gets
   glue (`` в⍽`--config` ``), and quotes around it follow the language (``"`--force`"`` →
   ``«`--force`»``). Its content is written as is and encoded for the output kind (`<` in code
   becomes `&lt;` in HTML): protection means "do not typeset", not "do not encode".

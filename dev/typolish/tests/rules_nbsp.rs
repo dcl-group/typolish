@@ -2140,7 +2140,7 @@ fn the_two_rows_of_section_8_7_for_the_full_sets() {
 #[test]
 fn the_examples_of_sections_2_5_and_2_8() {
     // The rustdoc examples of the design, in Unicode: a protected span is one word for its
-    // neighbours (`в⍽`--config``), and the space before a dash and before a unit is glued.
+    // neighbors (`в⍽`--config``), and the space before a dash and before a unit is glued.
     let ui = set(ru(), RuleSet::INTERFACE);
     check_in(
         "section 2.5",

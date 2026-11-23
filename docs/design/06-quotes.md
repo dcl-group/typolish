@@ -64,12 +64,12 @@ Adjacent quotes form a **series** (plain and typed mixed). A series is a maximal
 `Quote` tokens of any form: straight, typed, neutral, apostrophes and primes (`Format` and `Markup`
 tokens between them are skipped). L and R are the nearest tokens before and after the whole series;
 they are never quotes, and every quote of the series has the same L and R. The role of a straight
-quote is decided for the whole series from the classes of its neighbours, the left one L and the
+quote is decided for the whole series from the classes of its neighbors, the left one L and the
 right one R, with `Format` and `Markup` tokens skipped. Classes: `Space` (also the start and end of
 the window and a line break); `OpenP` (`( [ {`, an operator token, `/`); `CloseP`
 (`) ] } . , ; : ! ?` and `Dots`); `DashC` (a `Dash` in any form); `Word` (a word, a number, a slot,
 a protected span, a frozen core, a legal mark, a `Symbol`, and every other sign: `№ § % # @ & * $`).
-A neighbour inside a frozen core is of class `Word`, whatever its own token: in `"/etc/"` the quote
+A neighbor inside a frozen core is of class `Word`, whatever its own token: in `"/etc/"` the quote
 after `/etc/` has L = `Word`, not `OpenP`. Wrapper tokens and tokens of cores that are not frozen
 have the class of their token. Whether a closing quote is weak (section 6.5) still depends on the
 character before it, with `Format` and `Markup` tokens skipped: `27\u{AD}"` and
@@ -110,7 +110,7 @@ others.
 Typed glyphs have the role of their glyph in the language's pairs: in Russian `«` and `„` open, `»`
 and `“` close; in English `“` and `‘` open, `”` closes. U+2019 `’` closes a `‘` only if one is open
 (on the stack of section 6.4 and covered by nothing but straight `'` entries, so that it never
-causes a crossing) and its neighbours allow a closing role (the closing test above: L ∉ {Space,
+causes a crossing) and its neighbors allow a closing role (the closing test above: L ∉ {Space,
 OpenP, DashC} and R ∈ {Space, CloseP, DashC}); otherwise it is an apostrophe and never blocks
 anything (it is both the apostrophe and the English closing single quote). So `’26` and `’tis` at a
 word start are always apostrophes.
@@ -237,7 +237,7 @@ Settled in section 15.5, item 9.
 
 A slot of any kind and a protected span are of class `Word` for roles. `"{name}"`, ``"`ls`"`` and
 `"{a}" и "{b}"` are quoted like words; the slot itself never changes (it is frozen), and the glyphs
-go into the neighbouring texts. A `Number` slot before a closing straight quote makes it weak:
+go into the neighboring texts. A `Number` slot before a closing straight quote makes it weak:
 `"{n}"` pairs in pass 2 → `«{n}»`; `{n}"` alone becomes a prime `{n}″` (with `quotes.primes`).
 
 ### 6.10 Scope
@@ -252,8 +252,8 @@ This is a known limit of version 1 (section 1.5).
 
 ### 6.11 Idempotence of the phase
 
-Roles on a second pass are those of the first: a role comes from the classes of the neighbours of a
-series, every `Quote` token is in its series (section 6.3), and the class of a neighbour does not
+Roles on a second pass are those of the first: a role comes from the classes of the neighbors of a
+series, every `Quote` token is in its series (section 6.3), and the class of a neighbor does not
 change, because an edit never changes the kind of a token (I1). Step 1 removes the same tokens (I4).
 The first pass either converged or did not.
 

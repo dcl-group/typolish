@@ -101,7 +101,7 @@ found before the inline protection delimiters (section 3.4), so a U+2029 can be 
 in a fenced block or in a protected or markup piece; there it is part of the atom's text.
 
 Why: a long text does not hold all its tokens in memory at once; an error in one paragraph (an
-unpaired quote) does not affect its neighbours; and the window is the natural unit for "all or
+unpaired quote) does not affect its neighbors; and the window is the natural unit for "all or
 nothing" in quote pairing.
 
 ### 3.4 Ingest
@@ -154,7 +154,7 @@ with the slot inside, and a template of `Text` pieces behaves exactly as their c
 A slot, a protected piece or a `Delimited` atom becomes one opaque token (`Slot` or `Protected`): it
 is always `FROZEN`, takes part in rule context through its class (section 3.5), and is never inside
 the range of an edit. A markup atom becomes a zero-width token that is transparent for context:
-rules look through it for neighbours, and edits never touch it.
+rules look through it for neighbors, and edits never touch it.
 
 Lexing reads a run of adjacent `Text` atoms with no other atom between them as one text, so a token
 (a run of dots, dashes or spaces, a word, a number) may span a piece boundary; property 10 of
@@ -443,7 +443,7 @@ on:
 Both forms are labels, so the space that `nbsp.signs` inserts into `№5` or `¶IV` leaves the number a
 label (invariant I2 of section 4.3). The rules that read a quantity or a year do not take a label
 for a number (section 8.2): in `Школа №5 г. Москвы`, `г.` is a city, not a year. Marking labels
-looks at one neighbouring fragment (past fragments of transparent tokens), so it stays linear.
+looks at one neighboring fragment (past fragments of transparent tokens), so it stays linear.
 
 Why per fragment, not per string: a technical fragment, once found, is frozen whole, and no rule,
 including a future one, can damage it. The reference implementation works with regular expressions
@@ -540,7 +540,7 @@ This is a sketch: real code has no panicking indexing. Properties of a phase:
    preliminary pass over the window (section 6), after which its rules only read decisions.
 
 `Cx` gives rules read-only access: the text of a token (resolved from the call's inputs and its
-replacement), neighbours with `Format` and `Markup` tokens skipped, the fragment with its kind and
+replacement), neighbors with `Format` and `Markup` tokens skipped, the fragment with its kind and
 flags, language data, settings, line and window starts, piece numbers. Two token vectors per window
 swap between phases; a phase copies its input into the other vector only from its first match with
 edits, so a phase that edits nothing copies nothing and its input stands as its output. Every rule

@@ -447,7 +447,7 @@ pub enum Piece<'t, S> {
     /// An opaque placeholder whose value is unknown; rules see only its kind.
     Slot(S, Slot),
     /// Visible text that is never typeset (a command, a path, code). Acts as one word for its
-    /// neighbours; encoded for the output kind.
+    /// neighbors; encoded for the output kind.
     Protected(&'t str),
     /// Invisible markup (for example a tag supplied by an HTML splitter). Transparent for rules;
     /// written as is in Unicode and HTML output, escaped in escaped output.
@@ -557,7 +557,7 @@ Output contract:
    the output kind encoded it. Merging adjacent pieces into one text is not a change.
 
 How a slot takes part in rules (the slot participation table). A slot is one opaque, frozen token;
-for its neighbours it behaves as its kind says:
+for its neighbors it behaves as its kind says:
 
 | Context                                                                               | `Number`                                                        | `Word`   | `Date`              | `Other`  |
 | ------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------- | ------------------- | -------- |

@@ -22,7 +22,7 @@ Rules work on whole clusters:
 - An insertion (`т.е.` → `т.⍽е.`, `№5` → `№⍽5`) is made only between clusters.
 - Glue is set only on a `Space` token, which is a whole cluster.
 - Emoji sequences (ZWJ, skin-tone modifiers, flags, keycaps, tag sequences) are single `Symbol`
-  tokens; for neighbouring quotes they behave as words: `"🙂"` → `«🙂»`.
+  tokens; for neighboring quotes they behave as words: `"🙂"` → `«🙂»`.
 
 Every edit position is therefore a cluster boundary of the input. A test runs every line of the
 Unicode `GraphemeBreakTest.txt` for the Unicode version of the dependency (17.0.0) through both rule
@@ -84,7 +84,7 @@ only at the start of a text and after a character of the UAX #29 classes `Contro
 list other than ZWNJ and ZWJ (`a\t\u{200D}b`, `a\u{AD}\u{200D}b`). A ZWNJ or ZWJ right after such a
 lone ZWNJ or ZWJ joins its cluster (`\n\u{200C}\u{200D}` gives one cluster of two characters). A
 cluster of ZWNJ and ZWJ only is a `Format` token. `Format` tokens are transparent for context: rules
-skip them when they look for neighbours, never insert or remove them, and never put them inside an
+skip them when they look for neighbors, never insert or remove them, and never put them inside an
 edit. Inside a fragment the classifier and the list lookups skip `Format` tokens, and ZWNJ and ZWJ
 inside the text of a token, too (section 3.6), so a word with soft hyphens from a hyphenation
 preprocessor is still a word: `21 ноя\u{AD}бря` gets its glue, and `Мо\u{AD}скве` is a `Word`, not

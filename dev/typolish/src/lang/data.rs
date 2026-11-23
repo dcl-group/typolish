@@ -47,7 +47,7 @@ pub enum DashStyle {
     SpacedGlued,
 }
 
-/// How an abbreviation binds to its neighbours (rule `nbsp.abbreviations`, design section 8.7).
+/// How an abbreviation binds to its neighbors (rule `nbsp.abbreviations`, design section 8.7).
 ///
 /// ```
 /// use typolish::{Abbreviation, Bind};

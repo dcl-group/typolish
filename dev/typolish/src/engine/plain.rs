@@ -350,7 +350,7 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
     };
     settle_quotes(&check, scratch, &mut cands);
     // First the candidates that do not come back are put aside, until all that are left come
-    // back; one that failed only because of a neighbour's wrong reading is then tried again, one
+    // back; one that failed only because of a neighbor's wrong reading is then tried again, one
     // at a time in each window (windows are independent, design section 3.3), in each of its
     // readings.
     let mut parked = vec![false; cands.len()];
@@ -370,7 +370,7 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
             continue;
         }
         // An edit outside every candidate that the text as it was does not get: the plain text
-        // of a neighbouring candidate made a rule fire, so it is not the plain text the character
+        // of a neighboring candidate made a rule fire, so it is not the plain text the character
         // came from (the round trip of section 12.2 would break). The nearest candidates on both
         // sides are put aside; one that was innocent comes back below. The spaces of a closed
         // dash are exempt: the closed form joins two words into one fragment, which by design
@@ -975,7 +975,7 @@ fn blank(near: Near) -> bool {
     }
 }
 
-/// The classes of the neighbours of a quote (design section 6.3).
+/// The classes of the neighbors of a quote (design section 6.3).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Class {
     Space,
@@ -1013,7 +1013,7 @@ fn is_quote(reading: &Reading, c: char) -> bool {
 struct QuoteAt {
     c: char,
     window: usize,
-    /// The neighbours of its series allow a closing role (design section 6.3).
+    /// The neighbors of its series allow a closing role (design section 6.3).
     closing: bool,
     /// It follows `s`, where the forward algorithm puts a trailing possessive.
     after_s: bool,
