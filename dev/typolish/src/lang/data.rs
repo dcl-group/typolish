@@ -1111,7 +1111,8 @@ impl LanguageData {
         self
     }
 
-    /// Sets the signs that name a number (`№`, `§`, `¶`): sorted by code point.
+    /// Sets the signs that name a number (`№`, `§`, `¶`): sorted by code point, each a
+    /// punctuation character of the lexer (`#`, `№`, `§`, `¶`, …; design sections 3.5 and 7.6).
     ///
     /// ```
     /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
@@ -1688,9 +1689,9 @@ impl Table<'_> {
         if self
             .signs
             .iter()
-            .any(|c| c.is_alphanumeric() || c.is_whitespace())
+            .any(|c| !crate::engine::lex::is_punct_char(*c))
         {
-            return Err("signs: a sign must not be a letter, a digit or whitespace");
+            return Err("signs: a sign must be a punctuation character of design section 3.5");
         }
         let n = &self.numbers;
         if n.decimal == n.group {

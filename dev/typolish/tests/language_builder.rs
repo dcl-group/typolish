@@ -283,6 +283,10 @@ fn build_validates_like_from_data() {
         LanguageBuilder::new("xx").signs(['a']).build(),
         "sign that is a letter",
     );
+    match LanguageBuilder::new("xx").signs(['€']).build() {
+        Err(Error::InvalidLanguageData { reason, .. }) => assert!(reason.contains("signs")),
+        other => panic!("a sign that is no punctuation: {other:?}"),
+    }
     invalid(
         LanguageBuilder::new("xx")
             .ellipsis(EllipsisForms::new("?x", "!…", "?!…"))

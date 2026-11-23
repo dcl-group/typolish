@@ -397,9 +397,10 @@ checks read a core:
   replaces it have one kind; dash rules decide its fate by context. A typed `—` or `–` is matched by
   `dash.spaced-hyphen` with an empty edit, and a run `--` or `---` only by `dash.double-hyphen`
   (section 8.4).
-- A core that is only a sign of the language's `signs`, single or doubled (`№`, `§§`, `¶`), has kind
-  `Sign`: it is not frozen and not technical, and no check of the table runs on it; `nbsp.signs`,
-  `nbsp.short-words` and the `LABEL` rule below read it.
+- A core that is only a sign of the language's `signs` (characters of the `Punct` class, section
+  7.6), single or doubled (`№`, `§§`, `¶`), has kind `Sign`: it is not frozen and not technical, and
+  no check of the table runs on it; `nbsp.signs`, `nbsp.short-words` and the `LABEL` rule below read
+  it.
 - A core that is a single `LegalMark` token in either form, alone or with one `Number` token
   attached after it (`(c)`, `©`, `(r)`, `(tm)`, `(c)2026`), has kind `Word`: it is not frozen and
   not technical, and no check of the table runs on it. Whether `(c)`, `(r)` or `(tm)` changes is

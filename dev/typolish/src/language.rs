@@ -771,7 +771,8 @@ impl LanguageBuilder {
         self
     }
 
-    /// Sets the signs that name a number (`№`, `§`, `¶`); `build` sorts them.
+    /// Sets the signs that name a number (`№`, `§`, `¶`); `build` sorts them. Each is a
+    /// punctuation character of the lexer (`#`, `№`, `§`, `¶`, …; design sections 3.5 and 7.6).
     ///
     /// ```
     /// use typolish::{LanguageBuilder, Output, Rule, RuleSet, Typographer};

@@ -1307,11 +1307,20 @@ fn number_data_is_checked() {
 }
 
 #[test]
-fn signs_are_not_letters_or_digits() {
+fn signs_are_punctuation() {
+    // Design section 7.6: a sign is a character of the lexer's `Punct` class (design section
+    // 3.5), the only class the readers of a sign match.
     rejected(base().with_signs(&['a']), "signs");
     rejected(base().with_signs(&['я']), "signs");
     rejected(base().with_signs(&['5']), "signs");
+    rejected(base().with_signs(&['€']), "signs");
+    rejected(base().with_signs(&['©']), "signs");
+    rejected(base().with_signs(&['→']), "signs");
+    rejected(base().with_signs(&[' ']), "signs");
+    rejected(base().with_signs(&['\u{a0}']), "signs");
+    rejected(base().with_signs(&['\t']), "signs");
     accepted(base().with_signs(&['§', '¶', '№']));
+    accepted(base().with_signs(&['#']));
 }
 
 #[test]
