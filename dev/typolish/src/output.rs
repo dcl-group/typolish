@@ -50,8 +50,12 @@ pub enum Output {
     /// Characters as they are (UTF-8). Nothing is escaped.
     Unicode,
     /// HTML text: `& < > " '` escaped, typographic characters as entities, no-break groups as
-    /// entities or as nowrap elements (design sections 11.4 and 11.5). Safe as element content and
-    /// as an attribute value in either kind of quotes.
+    /// entities or as nowrap elements (design sections 11.4 and 11.5). Safe as element content.
+    /// Safe as an attribute value in either kind of quotes only with an entity style (`NAMED`,
+    /// `DECIMAL`, `HEX`, `CHARACTERS`) without a nowrap element, since `nowrap_class` and
+    /// `nowrap_style` write `<span>` tags. `Piece::Markup` is written as it is and is the caller's.
+    /// Controls are written as they are: an HTML parser drops U+0000 in element content and reads
+    /// CR and CR LF as LF (design section 11.8).
     Html(HtmlStyle),
     /// The body of a string literal of a given syntax, ready to paste between its quotes (design
     /// section 11.6).
@@ -150,7 +154,8 @@ impl HtmlStyle {
     };
 
     /// Wraps each no-break group in `<span class="{class}">`; U+00A0 glue becomes an ordinary
-    /// space inside (design section 11.5). The class is escaped as an attribute value.
+    /// space inside (design section 11.5). The class is escaped as an attribute value. The result
+    /// is element content, not an attribute value.
     ///
     /// ```
     /// use typolish::{HtmlStyle, Language, Output, RuleSet, Typographer};

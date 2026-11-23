@@ -67,9 +67,11 @@ test compares it with `tests/fixtures/whatwg-entities.txt`, an extract of that l
 ### 11.4 HTML
 
 - `&` → `&amp;`, `<` → `&lt;`, `>` → `&gt;`, `"` → `&quot;`, `'` → `&#39;` everywhere in text and
-  protected spans. The output is safe both as element content and as an attribute value in either
-  kind of quotes. Without this, `<word>` would become a tag and a literal `&nbsp;` in the text could
-  not be told from the entity; escaping after the crate would ruin its own entities.
+  protected spans. The output is safe as element content, and as an attribute value in either kind
+  of quotes when the style writes no nowrap element; `Markup` pieces are the caller's. Controls are
+  written as they are (section 11.8). Without this, `<word>` would become a tag and a literal
+  `&nbsp;` in the text could not be told from the entity; escaping after the crate would ruin its
+  own entities.
 - Characters of the typographic set: `HtmlStyle::NAMED` writes named references where HTML has them
   and hexadecimal references otherwise; `DECIMAL` writes `&#160;`, `&#8212;`; `HEX` writes `&#xA0;`,
   `&#x2014;`; `CHARACTERS` writes the characters themselves (only markup is escaped). Cyrillic and
@@ -91,7 +93,7 @@ written as references of the chosen style (`&#x202F;`, `&#x2011;`, `&mdash;`; th
 themselves with `CHARACTERS`). So the narrow space keeps its width, a hyphen the caller typed as
 U+2011 comes back as U+2011, and an ordinary space inside the element can only be U+00A0 glue, which
 keeps decoding exact (section 11.8). The class string is escaped as an attribute value. Groups do
-not nest.
+not nest. Output with nowrap elements is element content only; it is not an attribute value.
 
 - Example: `и⍽т.⍽д.` → `<span class="nowrap">и т. д.</span>`; a telephone number `+7 495 123-45-67`
   glued by `nbsp.phone` (Prose) → `<span class="nowrap">+7 495 123-45-67</span>`; the same number
@@ -177,8 +179,12 @@ no way to write it, so the encoder writes `\fffd ` (section 11.6), which a CSS r
 test decoder (a strict parser of CSS) read as U+FFFD. The encoder writes a raw U+FFFD as it is (as
 `\fffd ` with `non_ascii()`), so no decoder can tell the two apart. For `CSS` both equations
 therefore run on `x` with every U+0000 replaced by U+FFFD; the encoding of U+0000 itself is checked
-by the fixed row `a\u{0}b` → `a\fffd b` of section 13.2. Both are property tests with decoders
-written as test helpers (section 13.5), for every kind including the nowrap styles: the decoder
-turns an element back into its content, reads an ordinary space inside it as U+00A0 and every
-reference as its character. Encoded output fed back as input is plain text with literal ampersands
-and backslashes, and is encoded again; this is documented, not a defect.
+by the fixed row `a\u{0}b` → `a\fffd b` of section 13.2. For `Output::Html` the guarantee is about
+the test decoder, which reads the text as the encoder writes it. An HTML parser differs on two
+characters the encoder writes as they are: it drops a U+0000 in element content (U+FFFD in an
+attribute value) and reads CR and CR LF as LF. The text carries what the input had; nothing else is
+lost. Both are property tests with decoders written as test helpers (section 13.5), for every kind
+including the nowrap styles: the decoder turns an element back into its content, reads an ordinary
+space inside it as U+00A0 and every reference as its character. Encoded output fed back as input is
+plain text with literal ampersands and backslashes, and is encoded again; this is documented, not a
+defect.

@@ -781,9 +781,10 @@ Choices:
   builder, so one typographer serves an HTML page and a JSON response alike.
 - **Output is a separate encoding pass over the Unicode result.** Rules work in Unicode and never
   see the output kind; explanation, reverse transformation and tests are the same for every output.
-- **Every output is safe where it is meant to go**: HTML text and attribute values, the inside of a
-  JS, JSON or Rust string literal. There is no "entities without escaping markup" mode: it would
-  produce invalid or dangerous HTML. Markup is passed as `Piece::Markup`.
+- **Every output is safe where it is meant to go**: HTML element content, and attribute values with
+  the entity styles, the inside of a JS, JSON or Rust string literal. There is no "entities without
+  escaping markup" mode: it would produce invalid or dangerous HTML. Markup is passed as
+  `Piece::Markup`.
 - `class` is `&'static str` so that `HtmlStyle` stays `Copy` and usable in `const`; it is escaped as
   an attribute value when written.
 
