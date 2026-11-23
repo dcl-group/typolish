@@ -589,5 +589,11 @@ the same pairs `Error::InvalidSetting`; that `Language::from_data` with the tag 
 ### 13.10 Documentation
 
 Every public item has rustdoc with an example (`missing_docs = "deny"`); examples are doctests and
-run with `cargo test`. README and CHANGELOG are in English. The README states the known limits of
-section 10.8 and how to protect commands.
+run with `cargo test`. "Public item" here is every public type, function, method and constant,
+associated constants included. Enum variants and struct fields have rustdoc (`missing_docs` checks
+it) and are shown by the example of their type; an example per variant would repeat the type's. The
+rustdoc lint `missing_doc_code_examples` is unstable and skips items re-exported from private
+modules, which is every item of this crate, so the stage 5 report counts the examples from the
+rustdoc JSON of a nightly toolchain, outside the gates. README and CHANGELOG are in English. The
+README states the known limits of section 10.8 and how to protect commands; its code blocks run as
+doctests through a `#[cfg(doctest)]` item of `lib.rs` that includes it.

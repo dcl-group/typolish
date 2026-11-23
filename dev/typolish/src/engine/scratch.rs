@@ -56,6 +56,16 @@ pub struct Scratch {
 
 impl Scratch {
     /// Empty working memory; allocates nothing.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Scratch, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let mut scratch = Scratch::new();
+    /// let out = RU.typeset_with(&mut scratch, "Файл не найден", Output::Unicode);
+    /// assert_eq!(out, "Файл не\u{a0}найден");
+    /// ```
     #[must_use]
     pub const fn new() -> Scratch {
         Scratch {

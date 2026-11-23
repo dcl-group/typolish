@@ -41,21 +41,82 @@ pub struct Slot {
 
 impl Slot {
     /// A number formatted by `format_number` of the same typographer.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Slot("n", Slot::NUMBER), Piece::Text(" дн.")],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.texts(), ["", "\u{a0}дн."]);
+    /// ```
     pub const NUMBER: Slot = Slot::new(SlotKind::Number);
     /// A word or a name.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Text("Файл \""), Piece::Slot("name", Slot::WORD), Piece::Text("\" удалён")],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.texts(), ["Файл «", "» удалён"]);
+    /// ```
     pub const WORD: Slot = Slot::new(SlotKind::Word);
     /// A date or a time.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Slot("from", Slot::DATE), Piece::Text("-"), Piece::Slot("to", Slot::DATE)],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.texts(), ["", "–", ""]);
+    /// ```
     pub const DATE: Slot = Slot::new(SlotKind::Date);
     /// Anything else: a path, a URL, code, a string of unknown length.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// // No glue sticks to a slot of unknown length.
+    /// let t = RU.typeset_template(
+    ///     [Piece::Text("в "), Piece::Slot("path", Slot::OTHER)],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.texts(), ["в ", ""]);
+    /// ```
     pub const OTHER: Slot = Slot::new(SlotKind::Other);
 
     /// A slot of the given kind.
+    ///
+    /// ```
+    /// use typolish::{Slot, SlotKind};
+    ///
+    /// assert_eq!(Slot::new(SlotKind::Number), Slot::NUMBER);
+    /// ```
     #[must_use]
     pub const fn new(kind: SlotKind) -> Slot {
         Slot { kind }
     }
 
     /// The kind of the slot.
+    ///
+    /// ```
+    /// use typolish::{Slot, SlotKind};
+    ///
+    /// assert_eq!(Slot::WORD.kind(), SlotKind::Word);
+    /// ```
     #[must_use]
     pub const fn kind(self) -> SlotKind {
         self.kind
@@ -111,9 +172,18 @@ pub struct Template<'t, S> {
 ///
 /// static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
 ///
-/// let t = EN.typeset_template([Piece::Slot(0usize, Slot::NUMBER), Piece::Text(" files")], Output::Unicode);
+/// let t = EN.typeset_template(
+///     [Piece::Slot(0usize, Slot::NUMBER), Piece::Text(" files")],
+///     Output::Unicode,
+/// );
 /// let parts: Vec<_> = t.iter().collect();
-/// assert_eq!(parts, [TemplatePart::Slot(&0, Slot::NUMBER), TemplatePart::Text(" files")]);
+/// assert_eq!(
+///     parts,
+///     [
+///         TemplatePart::Slot(&0, Slot::NUMBER),
+///         TemplatePart::Text(" files")
+///     ]
+/// );
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -139,12 +209,36 @@ impl<'t, S> Template<'t, S> {
     }
 
     /// The n + 1 texts; `texts()[i]` stands before `slots()[i]`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Slot("n", Slot::NUMBER), Piece::Text(" из "), Piece::Slot("m", Slot::NUMBER)],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.texts(), ["", " из\u{a0}", ""]);
+    /// ```
     #[must_use]
     pub fn texts(&self) -> &[Cow<'t, str>] {
         &self.texts
     }
 
     /// The n slots in input order, each with the caller's payload.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Slot("n", Slot::NUMBER), Piece::Text(" из "), Piece::Slot("m", Slot::NUMBER)],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.slots(), [("n", Slot::NUMBER), ("m", Slot::NUMBER)]);
+    /// ```
     #[must_use]
     pub fn slots(&self) -> &[(S, Slot)] {
         &self.slots
@@ -152,12 +246,49 @@ impl<'t, S> Template<'t, S> {
 
     /// Whether any text differs from the input text it came from (a rule edited it or the output
     /// kind encoded it). Merging adjacent input pieces into one text is not a change.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let plain = RU.typeset_template(
+    ///     [Piece::Text("Привет, "), Piece::Slot(0, Slot::WORD)],
+    ///     Output::Unicode,
+    /// );
+    /// assert!(!plain.changed());
+    /// let edited = RU.typeset_template(
+    ///     [Piece::Slot(0, Slot::WORD), Piece::Text(" не найден")],
+    ///     Output::Unicode,
+    /// );
+    /// assert!(edited.changed());
+    /// ```
     #[must_use]
     pub fn changed(&self) -> bool {
         self.changed
     }
 
     /// The parts in order; empty texts are skipped.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, TemplatePart, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Slot("n", Slot::NUMBER), Piece::Text(" МБ")],
+    ///     Output::Unicode,
+    /// );
+    /// let parts: Vec<_> = t.iter().collect();
+    /// // The empty text before the slot is skipped.
+    /// assert_eq!(
+    ///     parts,
+    ///     [
+    ///         TemplatePart::Slot(&"n", Slot::NUMBER),
+    ///         TemplatePart::Text("\u{a0}МБ")
+    ///     ]
+    /// );
+    /// ```
     pub fn iter(&self) -> impl Iterator<Item = TemplatePart<'_, S>> {
         let mut slots = self.slots.iter();
         self.texts.iter().flat_map(move |text| {
@@ -170,6 +301,20 @@ impl<'t, S> Template<'t, S> {
     }
 
     /// The texts and the slots.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Slot("n", Slot::NUMBER), Piece::Text(" МБ")],
+    ///     Output::Unicode,
+    /// );
+    /// let (texts, slots) = t.into_parts();
+    /// assert_eq!(texts, ["", "\u{a0}МБ"]);
+    /// assert_eq!(slots, [("n", Slot::NUMBER)]);
+    /// ```
     #[must_use]
     pub fn into_parts(self) -> (Vec<Cow<'t, str>>, Vec<(S, Slot)>) {
         (self.texts, self.slots)
@@ -179,6 +324,19 @@ impl<'t, S> Template<'t, S> {
     ///
     /// Values are inserted as they are: with `Output::Html` or `Output::Escaped` the closure must
     /// return values already encoded for that output (design section 11.1).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Slot("n", Slot::NUMBER), Piece::Text(" МБ")],
+    ///     Output::Unicode,
+    /// );
+    /// let size = RU.format_number(1536, Output::Unicode).to_string();
+    /// assert_eq!(t.fill(|_| size.as_str().into()), "1\u{a0}536\u{a0}МБ");
+    /// ```
     #[must_use]
     pub fn fill<'v>(&self, mut value: impl FnMut(&S) -> Cow<'v, str>) -> String {
         let mut out = String::new();

@@ -353,12 +353,31 @@ impl LanguageBuilder {
     }
 
     /// Sets the CLDR version the values were checked against.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder};
+    ///
+    /// let lang = LanguageBuilder::from_language(&Language::RU_RU, "ru-KZ")
+    ///     .cldr_version("49")
+    ///     .build()?;
+    /// assert_eq!(lang.tag(), "ru-KZ");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn cldr_version(mut self, version: &str) -> Self {
         version.clone_into(&mut self.data.cldr_version);
         self
     }
 
     /// Sets the script of the language's words.
+    ///
+    /// ```
+    /// use typolish::{LanguageBuilder, Output, Rule, RuleSet, Script, Typographer};
+    ///
+    /// let lang = LanguageBuilder::new("xx").script(Script::Latin).short_words(["a"]).build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::NbspShortWords));
+    /// assert_eq!(t.typeset("a cat", Output::Unicode), "a\u{a0}cat");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn script(mut self, script: Script) -> Self {
         self.data.script = script;
         self
@@ -379,6 +398,20 @@ impl LanguageBuilder {
     }
 
     /// Sets the elisions (`'cause`); `build` lowercases and sorts them.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let lang = LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+    ///     .elisions(["'CAUSE"])
+    ///     .build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::QuotesApostrophe));
+    /// assert_eq!(
+    ///     t.typeset("'cause I said so", Output::Unicode),
+    ///     "’cause I said so"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn elisions<I>(mut self, elisions: I) -> Self
     where
         I: IntoIterator,
@@ -389,18 +422,57 @@ impl LanguageBuilder {
     }
 
     /// Sets whether `'90s` takes an apostrophe.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let lang = LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+    ///     .decade_apostrophe(false)
+    ///     .build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::QuotesApostrophe));
+    /// assert_eq!(t.typeset("the '90s", Output::Unicode), "the '90s");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn decade_apostrophe(mut self, on: bool) -> Self {
         self.data.decade_apostrophe = on;
         self
     }
 
     /// Sets whether a trailing possessive (`dogs'`) takes an apostrophe.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let lang = LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+    ///     .trailing_possessive(false)
+    ///     .build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::QuotesApostrophe));
+    /// assert_eq!(
+    ///     t.typeset("the dogs' toys", Output::Unicode),
+    ///     "the dogs' toys"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn trailing_possessive(mut self, on: bool) -> Self {
         self.data.trailing_possessive = on;
         self
     }
 
     /// Sets the dash data; `None` makes the `dash.*` rules and `nbsp.dash` inert.
+    ///
+    /// ```
+    /// use typolish::{DashData, DashStyle, Language, LanguageBuilder, Rule};
+    ///
+    /// let none = LanguageBuilder::from_language(&Language::RU_RU, "ru-KZ")
+    ///     .dash(None)
+    ///     .build()?;
+    /// assert!(!none.supports(Rule::NbspDash));
+    /// let spaced = LanguageBuilder::new("xx")
+    ///     .dash(Some(DashData::new(DashStyle::Spaced, true)))
+    ///     .build()?;
+    /// assert!(spaced.supports(Rule::DashDialogue));
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn dash(mut self, dash: Option<DashData>) -> Self {
         self.data.dash = dash;
         self
@@ -427,6 +499,19 @@ impl LanguageBuilder {
     }
 
     /// Sets the ellipsis forms after `?` and `!`.
+    ///
+    /// ```
+    /// use typolish::{
+    ///     EllipsisForms, Language, LanguageBuilder, Output, Rule, RuleSet, Typographer,
+    /// };
+    ///
+    /// let lang = LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+    ///     .ellipsis(EllipsisForms::new("?..", "!..", "?!.."))
+    ///     .build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::EllipsisDots));
+    /// assert_eq!(t.typeset("Stop!...", Output::Unicode), "Stop!..");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn ellipsis(mut self, ellipsis: EllipsisForms) -> Self {
         self.data.ellipsis = ellipsis;
         self
@@ -454,6 +539,16 @@ impl LanguageBuilder {
 
     /// Sets the length up to which any word of the language's script is short; 0 makes
     /// `nbsp.short-length` inert.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder, Rule};
+    ///
+    /// let lang = LanguageBuilder::from_language(&Language::RU_RU, "ru-KZ")
+    ///     .short_word_length(0)
+    ///     .build()?;
+    /// assert!(!lang.supports(Rule::NbspShortLength));
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn short_word_length(mut self, max_chars: u8) -> Self {
         self.data.short_word_length = max_chars;
         self
@@ -522,6 +617,20 @@ impl LanguageBuilder {
     }
 
     /// Sets the dotted words that are not technical (`e.g.`); `build` lowercases and sorts them.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder, Output, RuleSet, Typographer};
+    ///
+    /// let gb = LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+    ///     .atom_exceptions(["Ph.D"])
+    ///     .build()?;
+    /// // Without the exception `Ph.D` is a dotted technical fragment, like a host name.
+    /// let us = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    /// let gb = Typographer::new(gb, RuleSet::PROSE);
+    /// assert_eq!(us.report("a Ph.D student", Output::Unicode).protected().len(), 1);
+    /// assert!(gb.report("a Ph.D student", Output::Unicode).protected().is_empty());
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn atom_exceptions<I>(mut self, words: I) -> Self
     where
         I: IntoIterator,
@@ -533,6 +642,15 @@ impl LanguageBuilder {
 
     /// Sets the units, compared with case (rules `nbsp.units` and `range.context`); `build`
     /// sorts them and keeps their case.
+    ///
+    /// ```
+    /// use typolish::{LanguageBuilder, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let lang = LanguageBuilder::new("xx").units(["kB", "MB"]).build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::NbspUnits));
+    /// assert_eq!(t.typeset("5 MB", Output::Unicode), "5\u{a0}MB");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn units<I>(mut self, units: I) -> Self
     where
         I: IntoIterator,
@@ -543,6 +661,13 @@ impl LanguageBuilder {
     }
 
     /// Sets the units that are also words; each must also be a unit.
+    ///
+    /// ```
+    /// use typolish::LanguageBuilder;
+    ///
+    /// assert!(LanguageBuilder::new("xx").units(["in"]).ambiguous_units(["in"]).build().is_ok());
+    /// assert!(LanguageBuilder::new("xx").ambiguous_units(["in"]).build().is_err());
+    /// ```
     pub fn ambiguous_units<I>(mut self, units: I) -> Self
     where
         I: IntoIterator,
@@ -553,6 +678,15 @@ impl LanguageBuilder {
     }
 
     /// Sets the month forms used next to a day number, as printed (rule `nbsp.dates`).
+    ///
+    /// ```
+    /// use typolish::{LanguageBuilder, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let lang = LanguageBuilder::new("xx").months(["Mai", "Juni"]).build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::NbspDates));
+    /// assert_eq!(t.typeset("am 21 Mai", Output::Unicode), "am 21\u{a0}Mai");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn months<I>(mut self, months: I) -> Self
     where
         I: IntoIterator,
@@ -563,12 +697,33 @@ impl LanguageBuilder {
     }
 
     /// Sets where a month name stands relative to the day number.
+    ///
+    /// ```
+    /// use typolish::{LanguageBuilder, MonthPosition, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let lang = LanguageBuilder::new("xx")
+    ///     .months(["May"])
+    ///     .month_position(MonthPosition::BeforeDay)
+    ///     .build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::NbspDates));
+    /// assert_eq!(t.typeset("on May 21", Output::Unicode), "on May\u{a0}21");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn month_position(mut self, position: MonthPosition) -> Self {
         self.data.month_position = position;
         self
     }
 
     /// Sets the words after a year; `build` lowercases and sorts them.
+    ///
+    /// ```
+    /// use typolish::{LanguageBuilder, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let lang = LanguageBuilder::new("xx").year_words(["R."]).build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::NbspDates));
+    /// assert_eq!(t.typeset("w 2026 r.", Output::Unicode), "w 2026\u{a0}r.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn year_words<I>(mut self, words: I) -> Self
     where
         I: IntoIterator,
@@ -579,6 +734,15 @@ impl LanguageBuilder {
     }
 
     /// Sets the words after a century; `build` lowercases and sorts them.
+    ///
+    /// ```
+    /// use typolish::{LanguageBuilder, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let lang = LanguageBuilder::new("xx").century_words(["w."]).build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::NbspDates));
+    /// assert_eq!(t.typeset("XX w.", Output::Unicode), "XX\u{a0}w.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn century_words<I>(mut self, words: I) -> Self
     where
         I: IntoIterator,
@@ -589,6 +753,15 @@ impl LanguageBuilder {
     }
 
     /// Sets the words before a range (`стр.`, `pp.`); `build` lowercases and sorts them.
+    ///
+    /// ```
+    /// use typolish::{LanguageBuilder, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let lang = LanguageBuilder::new("xx").range_lead_words(["s."]).build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::RangeContext));
+    /// assert_eq!(t.typeset("s. 10-20", Output::Unicode), "s. 10–20");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn range_lead_words<I>(mut self, words: I) -> Self
     where
         I: IntoIterator,
@@ -599,6 +772,15 @@ impl LanguageBuilder {
     }
 
     /// Sets the signs that name a number (`№`, `§`, `¶`); `build` sorts them.
+    ///
+    /// ```
+    /// use typolish::{LanguageBuilder, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let lang = LanguageBuilder::new("xx").signs(['№', '#']).build()?;
+    /// let t = Typographer::new(lang, RuleSet::EMPTY.with(Rule::NbspSigns));
+    /// assert_eq!(t.typeset("# 5", Output::Unicode), "#\u{a0}5");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn signs<I>(mut self, signs: I) -> Self
     where
         I: IntoIterator<Item = char>,
@@ -608,6 +790,25 @@ impl LanguageBuilder {
     }
 
     /// Sets the number symbols and patterns.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageBuilder, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// let de = LanguageBuilder::from_language(&Language::EN_US, "de-DE")
+    ///     .numbers(
+    ///         NumberData::new()
+    ///             .with_decimal(',')
+    ///             .with_group('.')
+    ///             .with_min_grouping_digits(1),
+    ///     )
+    ///     .build()?;
+    /// let t = Typographer::new(de, RuleSet::EMPTY);
+    /// assert_eq!(
+    ///     t.format_number(1234.5, Output::Unicode).to_string(),
+    ///     "1.234,5"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn numbers(mut self, numbers: NumberData) -> Self {
         self.data.numbers = numbers;
         self

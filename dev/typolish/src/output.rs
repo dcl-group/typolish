@@ -19,15 +19,30 @@ use crate::rules::Triggers;
 /// let src = "Цена - 5 руб.";
 ///
 /// assert_eq!(RU.typeset(src, Output::Unicode), "Цена\u{a0}— 5\u{a0}руб.");
-/// assert_eq!(RU.typeset(src, Output::Html(HtmlStyle::NAMED)), "Цена&nbsp;&mdash; 5&nbsp;руб.");
-/// assert_eq!(RU.typeset(src, Output::Html(HtmlStyle::HEX)), "Цена&#xA0;&#x2014; 5&#xA0;руб.");
+/// assert_eq!(
+///     RU.typeset(src, Output::Html(HtmlStyle::NAMED)),
+///     "Цена&nbsp;&mdash; 5&nbsp;руб."
+/// );
+/// assert_eq!(
+///     RU.typeset(src, Output::Html(HtmlStyle::HEX)),
+///     "Цена&#xA0;&#x2014; 5&#xA0;руб."
+/// );
 /// assert_eq!(
 ///     RU.typeset(src, Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"))),
 ///     "<span class=\"nowrap\">Цена &mdash;</span> <span class=\"nowrap\">5 руб.</span>",
 /// );
-/// assert_eq!(RU.typeset(src, Output::Escaped(EscapeStyle::JS)), "Цена\\u00A0\\u2014 5\\u00A0руб.");
-/// assert_eq!(RU.typeset(src, Output::Escaped(EscapeStyle::JS_HEX)), "Цена\\xA0\\u2014 5\\xA0руб.");
-/// assert_eq!(RU.typeset(src, Output::Escaped(EscapeStyle::RUST)), "Цена\\u{a0}\\u{2014} 5\\u{a0}руб.");
+/// assert_eq!(
+///     RU.typeset(src, Output::Escaped(EscapeStyle::JS)),
+///     "Цена\\u00A0\\u2014 5\\u00A0руб."
+/// );
+/// assert_eq!(
+///     RU.typeset(src, Output::Escaped(EscapeStyle::JS_HEX)),
+///     "Цена\\xA0\\u2014 5\\xA0руб."
+/// );
+/// assert_eq!(
+///     RU.typeset(src, Output::Escaped(EscapeStyle::RUST)),
+///     "Цена\\u{a0}\\u{2014} 5\\u{a0}руб."
+/// );
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -79,21 +94,56 @@ pub struct HtmlStyle {
 
 impl HtmlStyle {
     /// Named references (`&nbsp;`, `&mdash;`), hexadecimal ones where HTML has no name.
+    ///
+    /// ```
+    /// use typolish::{HtmlStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// assert_eq!(RU.typeset("да - нет", Output::Html(HtmlStyle::NAMED)), "да&nbsp;&mdash; нет");
+    /// ```
     pub const NAMED: HtmlStyle = HtmlStyle {
         entities: Entities::Named,
         nowrap: Nowrap::Entity,
     };
     /// Decimal references (`&#160;`, `&#8212;`).
+    ///
+    /// ```
+    /// use typolish::{HtmlStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// assert_eq!(RU.typeset("да - нет", Output::Html(HtmlStyle::DECIMAL)), "да&#160;&#8212; нет");
+    /// ```
     pub const DECIMAL: HtmlStyle = HtmlStyle {
         entities: Entities::Decimal,
         nowrap: Nowrap::Entity,
     };
     /// Hexadecimal references (`&#xA0;`, `&#x2014;`).
+    ///
+    /// ```
+    /// use typolish::{HtmlStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// assert_eq!(RU.typeset("да - нет", Output::Html(HtmlStyle::HEX)), "да&#xA0;&#x2014; нет");
+    /// ```
     pub const HEX: HtmlStyle = HtmlStyle {
         entities: Entities::Hex,
         nowrap: Nowrap::Entity,
     };
     /// Typographic characters as characters; only markup is escaped.
+    ///
+    /// ```
+    /// use typolish::{HtmlStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// assert_eq!(
+    ///     RU.typeset("да - <нет>", Output::Html(HtmlStyle::CHARACTERS)),
+    ///     "да\u{a0}— &lt;нет&gt;"
+    /// );
+    /// ```
     pub const CHARACTERS: HtmlStyle = HtmlStyle {
         entities: Entities::Characters,
         nowrap: Nowrap::Entity,
@@ -101,6 +151,15 @@ impl HtmlStyle {
 
     /// Wraps each no-break group in `<span class="{class}">`; U+00A0 glue becomes an ordinary
     /// space inside (design section 11.5). The class is escaped as an attribute value.
+    ///
+    /// ```
+    /// use typolish::{HtmlStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let out = Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"));
+    /// assert_eq!(RU.typeset("да - нет", out), "<span class=\"nowrap\">да &mdash;</span> нет");
+    /// ```
     #[must_use]
     pub const fn nowrap_class(self, class: &'static str) -> HtmlStyle {
         HtmlStyle {
@@ -110,6 +169,18 @@ impl HtmlStyle {
     }
 
     /// The same as [`HtmlStyle::nowrap_class`] with `<span style="white-space:nowrap">`.
+    ///
+    /// ```
+    /// use typolish::{HtmlStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let out = Output::Html(HtmlStyle::NAMED.nowrap_style());
+    /// assert_eq!(
+    ///     RU.typeset("да - нет", out),
+    ///     "<span style=\"white-space:nowrap\">да &mdash;</span> нет"
+    /// );
+    /// ```
     #[must_use]
     pub const fn nowrap_style(self) -> HtmlStyle {
         HtmlStyle {
@@ -161,16 +232,78 @@ pub struct EscapeStyle {
 impl EscapeStyle {
     /// JavaScript: `\u00A0`; above the BMP a surrogate pair. Safe in every kind of JavaScript
     /// string literal and inside an HTML `<script>` element.
+    ///
+    /// ```
+    /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// assert_eq!(
+    ///     RU.typeset("да - нет", Output::Escaped(EscapeStyle::JS)),
+    ///     "да\\u00A0\\u2014 нет"
+    /// );
+    /// ```
     pub const JS: EscapeStyle = EscapeStyle::of(Syntax::Js);
     /// JavaScript: `\xA0` up to U+00FF, `\u2014` above, surrogate pairs above the BMP.
+    ///
+    /// ```
+    /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// assert_eq!(
+    ///     RU.typeset("да - нет", Output::Escaped(EscapeStyle::JS_HEX)),
+    ///     "да\\xA0\\u2014 нет"
+    /// );
+    /// ```
     pub const JS_HEX: EscapeStyle = EscapeStyle::of(Syntax::JsHex);
     /// JavaScript (ES2015): `\u{A0}`, no surrogate pairs.
+    ///
+    /// ```
+    /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let out = Output::Escaped(EscapeStyle::JS_CODE_POINT);
+    /// assert_eq!(RU.typeset("да - нет", out), "да\\u{A0}\\u{2014} нет");
+    /// ```
     pub const JS_CODE_POINT: EscapeStyle = EscapeStyle::of(Syntax::JsCodePoint);
     /// JSON: `\u00a0`; `<`, `>`, `&`, U+2028 and U+2029 escaped too.
+    ///
+    /// ```
+    /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let out = Output::Escaped(EscapeStyle::JSON);
+    /// assert_eq!(
+    ///     RU.typeset("да - \"<нет>\"", out),
+    ///     "да\\u00a0\\u2014 \\u00ab\\u003cнет\\u003e\\u00bb"
+    /// );
+    /// ```
     pub const JSON: EscapeStyle = EscapeStyle::of(Syntax::Json);
     /// Rust: `\u{a0}`, the body of a normal (non-raw) string literal.
+    ///
+    /// ```
+    /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// assert_eq!(
+    ///     RU.typeset("да - нет", Output::Escaped(EscapeStyle::RUST)),
+    ///     "да\\u{a0}\\u{2014} нет"
+    /// );
+    /// ```
     pub const RUST: EscapeStyle = EscapeStyle::of(Syntax::Rust);
     /// CSS: `\a0` followed by a space, the body of a CSS string.
+    ///
+    /// ```
+    /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// assert_eq!(RU.typeset("да - нет", Output::Escaped(EscapeStyle::CSS)), "да\\a0 \\2014  нет");
+    /// ```
     pub const CSS: EscapeStyle = EscapeStyle::of(Syntax::Css);
 
     const fn of(syntax: Syntax) -> EscapeStyle {
@@ -181,6 +314,18 @@ impl EscapeStyle {
     }
 
     /// Escapes every non-ASCII character, not only the typographic set.
+    ///
+    /// ```
+    /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let out = Output::Escaped(EscapeStyle::RUST.non_ascii());
+    /// assert_eq!(
+    ///     RU.typeset("да - нет", out),
+    ///     "\\u{434}\\u{430}\\u{a0}\\u{2014} \\u{43d}\\u{435}\\u{442}"
+    /// );
+    /// ```
     #[must_use]
     pub const fn non_ascii(self) -> EscapeStyle {
         EscapeStyle {

@@ -31,7 +31,9 @@ pub enum Script {
 /// ```
 /// use typolish::{DashStyle, LanguageData};
 ///
-/// const EN_GB: LanguageData = LanguageData::EN_US.with_tag("en-GB").with_dash_style(DashStyle::Spaced);
+/// const EN_GB: LanguageData = LanguageData::EN_US
+///     .with_tag("en-GB")
+///     .with_dash_style(DashStyle::Spaced);
 /// assert_eq!(EN_GB.tag(), "en-GB");
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -102,6 +104,17 @@ pub struct QuotePairs {
 
 impl QuotePairs {
     /// Quote pairs from the primary and the nested `(open, close)` pair.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, QuotePairs, Rule, RuleSet, Typographer};
+    ///
+    /// const PAIRS: QuotePairs = QuotePairs::new(('„', '“'), ('‚', '‘'));
+    /// static DE: LanguageData = LanguageData::EN_US.with_tag("de").with_quotes(Some(PAIRS));
+    ///
+    /// let t = Typographer::new(Language::from_data(&DE)?, RuleSet::EMPTY.with(Rule::QuotesPairs));
+    /// assert_eq!(t.typeset("\"a 'b' c\"", Output::Unicode), "„a ‚b‘ c“");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn new(primary: (char, char), nested: (char, char)) -> QuotePairs {
         QuotePairs { primary, nested }
@@ -130,6 +143,22 @@ pub struct DashData {
 
 impl DashData {
     /// Dash data from a style and the dialogue flag.
+    ///
+    /// ```
+    /// use typolish::{
+    ///     DashData, DashStyle, Language, LanguageData, Output, Rule, RuleSet, Typographer,
+    /// };
+    ///
+    /// const DASH: DashData = DashData::new(DashStyle::Spaced, true);
+    /// static XX: LanguageData = LanguageData::EN_US.with_tag("en-GB").with_dash(Some(DASH));
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::DashDialogue),
+    /// );
+    /// assert_eq!(t.typeset("- Hello.", Output::Unicode), "—\u{a0}Hello.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn new(style: DashStyle, dialogue: bool) -> DashData {
         DashData { style, dialogue }
@@ -153,6 +182,23 @@ pub struct EllipsisForms {
 
 impl EllipsisForms {
     /// Ellipsis forms after `?`, `!` and `?!`.
+    ///
+    /// ```
+    /// use typolish::{EllipsisForms, Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// const FORMS: EllipsisForms = EllipsisForms::new("?..", "!..", "?!..");
+    /// static XX: LanguageData = LanguageData::EN_US.with_tag("en-GB").with_ellipsis(FORMS);
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::EllipsisDots),
+    /// );
+    /// assert_eq!(
+    ///     t.typeset("Really?... Wait...", Output::Unicode),
+    ///     "Really?.. Wait…"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn new(
         question: &'static str,
@@ -183,6 +229,27 @@ pub struct Abbreviation {
 
 impl Abbreviation {
     /// An abbreviation from its parts and its binding.
+    ///
+    /// ```
+    /// use typolish::{
+    ///     Abbreviation, Bind, Language, LanguageData, Output, Rule, RuleSet, Typographer,
+    /// };
+    ///
+    /// const ABBREVIATIONS: &[Abbreviation] = &[Abbreviation::new(&["approx."], Bind::Next)];
+    /// static XX: LanguageData = LanguageData::EN_US
+    ///     .with_tag("en-GB")
+    ///     .with_abbreviations(ABBREVIATIONS);
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::NbspAbbreviations),
+    /// );
+    /// assert_eq!(
+    ///     t.typeset("approx. ten", Output::Unicode),
+    ///     "approx.\u{a0}ten"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn new(parts: &'static [&'static str], bind: Bind) -> Abbreviation {
         Abbreviation { parts, bind }
@@ -194,7 +261,10 @@ impl Abbreviation {
 /// ```
 /// use typolish::NumberData;
 ///
-/// const DE: NumberData = NumberData::new().with_decimal(',').with_group('.').with_min_grouping_digits(1);
+/// const DE: NumberData = NumberData::new()
+///     .with_decimal(',')
+///     .with_group('.')
+///     .with_min_grouping_digits(1);
 /// # let _ = DE;
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -213,6 +283,16 @@ pub struct NumberData {
 impl NumberData {
     /// The values of `Language::COMMON` (design section 7.4): decimal `.`, group U+00A0, no
     /// grouping, minus U+2212, percent attached, range `–` without spaces, `NaN`, `∞`.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::new("xx").with_numbers(NumberData::new());
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY);
+    /// assert_eq!(t.format_number(-12345.5, Output::Unicode).to_string(), "\u{2212}12345.5");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn new() -> NumberData {
         NumberData {
@@ -229,6 +309,17 @@ impl NumberData {
     }
 
     /// Sets the decimal separator.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData =
+    ///     LanguageData::new("xx").with_numbers(NumberData::new().with_decimal(','));
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY);
+    /// assert_eq!(t.format_number(2.5, Output::Unicode).to_string(), "2,5");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_decimal(mut self, decimal: char) -> NumberData {
         self.decimal = decimal;
@@ -236,6 +327,17 @@ impl NumberData {
     }
 
     /// Sets the group separator.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// const NUMBERS: NumberData = NumberData::new().with_group(',').with_min_grouping_digits(1);
+    /// static XX: LanguageData = LanguageData::new("xx").with_numbers(NUMBERS);
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY);
+    /// assert_eq!(t.format_number(1234567, Output::Unicode).to_string(), "1,234,567");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_group(mut self, group: char) -> NumberData {
         self.group = group;
@@ -244,6 +346,18 @@ impl NumberData {
 
     /// Sets the minimum grouping digits: 1 to 4 in the CLDR meaning (group from `3 + n` digits),
     /// 0 never groups.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData =
+    ///     LanguageData::new("xx").with_numbers(NumberData::new().with_min_grouping_digits(2));
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY);
+    /// assert_eq!(t.format_number(1234, Output::Unicode).to_string(), "1234");
+    /// assert_eq!(t.format_number(12345, Output::Unicode).to_string(), "12\u{a0}345");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_min_grouping_digits(mut self, digits: u8) -> NumberData {
         self.min_grouping_digits = digits;
@@ -251,6 +365,17 @@ impl NumberData {
     }
 
     /// Sets the minus sign: `-` or a dash, U+2010 to U+2015 or U+2212 (design section 7.6).
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData =
+    ///     LanguageData::new("xx").with_numbers(NumberData::new().with_minus('-'));
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY);
+    /// assert_eq!(t.format_number(-5, Output::Unicode).to_string(), "-5");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_minus(mut self, minus: char) -> NumberData {
         self.minus = minus;
@@ -258,6 +383,25 @@ impl NumberData {
     }
 
     /// Sets whether the CLDR percent pattern has a space before `%`.
+    ///
+    /// ```
+    /// use typolish::{
+    ///     Language, LanguageData, NumberData, Output, PercentSpacing, Rule, RuleSet, Typographer,
+    /// };
+    ///
+    /// static XX: LanguageData = LanguageData::EN_US
+    ///     .with_tag("en-GB")
+    ///     .with_numbers(NumberData::new().with_percent_spaced(true));
+    ///
+    /// let t = Typographer::builder(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::NbspUnits),
+    /// )
+    /// .percent(PercentSpacing::Language)
+    /// .build()?;
+    /// assert_eq!(t.typeset("5%", Output::Unicode), "5\u{a0}%");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_percent_spaced(mut self, spaced: bool) -> NumberData {
         self.percent_spaced = spaced;
@@ -265,6 +409,17 @@ impl NumberData {
     }
 
     /// Sets the dash of the CLDR range pattern.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData =
+    ///     LanguageData::new("xx").with_numbers(NumberData::new().with_range_dash('\u{2014}'));
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY);
+    /// assert_eq!(t.format_range(1, 5, Output::Unicode).to_string(), "1—5");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_range_dash(mut self, dash: char) -> NumberData {
         self.range_dash = dash;
@@ -272,6 +427,17 @@ impl NumberData {
     }
 
     /// Sets whether the CLDR range pattern has spaces around the dash.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData =
+    ///     LanguageData::new("xx").with_numbers(NumberData::new().with_range_spaced(true));
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY);
+    /// assert_eq!(t.format_range(1, 5, Output::Unicode).to_string(), "1\u{a0}–\u{a0}5");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_range_spaced(mut self, spaced: bool) -> NumberData {
         self.range_spaced = spaced;
@@ -279,6 +445,20 @@ impl NumberData {
     }
 
     /// Sets the symbol of not-a-number.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData =
+    ///     LanguageData::new("xx").with_numbers(NumberData::new().with_nan("не число"));
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY);
+    /// assert_eq!(
+    ///     t.format_number(f64::NAN, Output::Unicode).to_string(),
+    ///     "не число"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_nan(mut self, nan: &'static str) -> NumberData {
         self.nan = nan;
@@ -286,6 +466,21 @@ impl NumberData {
     }
 
     /// Sets the symbol of infinity.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData =
+    ///     LanguageData::new("xx").with_numbers(NumberData::new().with_infinity("inf"));
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY);
+    /// assert_eq!(
+    ///     t.format_number(f64::NEG_INFINITY, Output::Unicode)
+    ///         .to_string(),
+    ///     "\u{2212}inf"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_infinity(mut self, infinity: &'static str) -> NumberData {
         self.infinity = infinity;
@@ -311,7 +506,9 @@ impl Default for NumberData {
 /// ```
 /// use typolish::{DashStyle, Language, LanguageData};
 ///
-/// const EN_GB: LanguageData = LanguageData::EN_US.with_tag("en-GB").with_dash_style(DashStyle::Spaced);
+/// const EN_GB: LanguageData = LanguageData::EN_US
+///     .with_tag("en-GB")
+///     .with_dash_style(DashStyle::Spaced);
 /// static EN_GB_DATA: LanguageData = EN_GB;
 ///
 /// let lang = Language::from_data(&EN_GB_DATA)?;
@@ -347,10 +544,31 @@ pub struct LanguageData {
 
 impl LanguageData {
     /// Russian (Russia), design section 7.2.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData};
+    ///
+    /// assert_eq!(LanguageData::RU_RU.tag(), "ru-RU");
+    /// assert_eq!(Language::from_static(&LanguageData::RU_RU), Language::RU_RU);
+    /// ```
     pub const RU_RU: LanguageData = super::ru_ru::RU_RU;
     /// English (United States), design section 7.3.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData};
+    ///
+    /// assert_eq!(LanguageData::EN_US.tag(), "en-US");
+    /// assert_eq!(Language::from_static(&LanguageData::EN_US), Language::EN_US);
+    /// ```
     pub const EN_US: LanguageData = super::en_us::EN_US;
     /// No language: the values of design section 7.4, tag `und`.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData};
+    ///
+    /// assert_eq!(LanguageData::COMMON.tag(), "und");
+    /// assert_eq!(Language::from_static(&LanguageData::COMMON), Language::COMMON);
+    /// ```
     pub const COMMON: LanguageData = super::common::COMMON;
 
     /// An empty table with the given tag: the values of `COMMON` (design section 7.4) with every
@@ -403,6 +621,17 @@ impl LanguageData {
     }
 
     /// Sets the tag; it must be canonical (`ll`, `ll-RR`, `ll-DDD` or `und`, design section 7.6).
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData};
+    ///
+    /// static EN_GB: LanguageData = LanguageData::EN_US.with_tag("en-GB");
+    /// static BAD: LanguageData = LanguageData::EN_US.with_tag("english");
+    ///
+    /// assert_eq!(Language::from_data(&EN_GB)?.tag(), "en-GB");
+    /// assert!(Language::from_data(&BAD).is_err());
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_tag(mut self, tag: &'static str) -> LanguageData {
         self.tag = tag;
@@ -410,6 +639,15 @@ impl LanguageData {
     }
 
     /// Sets the CLDR version the values were checked against.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData};
+    ///
+    /// static EN_GB: LanguageData = LanguageData::EN_US.with_tag("en-GB").with_cldr_version("49");
+    ///
+    /// assert_eq!(Language::from_data(&EN_GB)?.tag(), "en-GB");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_cldr_version(mut self, version: &'static str) -> LanguageData {
         self.cldr_version = version;
@@ -417,6 +655,25 @@ impl LanguageData {
     }
 
     /// Sets the script of the language's words.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Script, Typographer};
+    ///
+    /// static LATIN: LanguageData = LanguageData::new("xx")
+    ///     .with_short_words(&["a"])
+    ///     .with_script(Script::Latin);
+    /// static GREEK: LanguageData = LanguageData::new("xx")
+    ///     .with_short_words(&["a"])
+    ///     .with_script(Script::Greek);
+    ///
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspShortWords);
+    /// let latin = Typographer::new(Language::from_data(&LATIN)?, rules);
+    /// let greek = Typographer::new(Language::from_data(&GREEK)?, rules);
+    /// assert_eq!(latin.typeset("a cat", Output::Unicode), "a\u{a0}cat");
+    /// // The short words are filtered by the script of the language.
+    /// assert_eq!(greek.typeset("a cat", Output::Unicode), "a cat");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_script(mut self, script: Script) -> LanguageData {
         self.script = script;
@@ -424,6 +681,16 @@ impl LanguageData {
     }
 
     /// Sets the quote pairs; `None` makes `quotes.pairs` inert.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Rule};
+    ///
+    /// static XX: LanguageData = LanguageData::EN_US.with_tag("en-GB").with_quotes(None);
+    ///
+    /// assert!(Language::EN_US.supports(Rule::QuotesPairs));
+    /// assert!(!Language::from_data(&XX)?.supports(Rule::QuotesPairs));
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_quotes(mut self, quotes: Option<QuotePairs>) -> LanguageData {
         self.quotes = quotes;
@@ -431,6 +698,24 @@ impl LanguageData {
     }
 
     /// Sets the elisions (`'cause`): sorted by code point, lowercase.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::EN_US
+    ///     .with_tag("en-GB")
+    ///     .with_elisions(&["'cause"]);
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::QuotesApostrophe),
+    /// );
+    /// assert_eq!(
+    ///     t.typeset("'cause I said so", Output::Unicode),
+    ///     "’cause I said so"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_elisions(mut self, elisions: &'static [&'static str]) -> LanguageData {
         self.elisions = elisions;
@@ -438,6 +723,21 @@ impl LanguageData {
     }
 
     /// Sets whether `'90s` takes an apostrophe.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::EN_US
+    ///     .with_tag("en-GB")
+    ///     .with_decade_apostrophe(false);
+    ///
+    /// let rules = RuleSet::EMPTY.with(Rule::QuotesApostrophe);
+    /// let en = Typographer::new(Language::EN_US, rules);
+    /// let xx = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(en.typeset("the '90s", Output::Unicode), "the ’90s");
+    /// assert_eq!(xx.typeset("the '90s", Output::Unicode), "the '90s");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_decade_apostrophe(mut self, on: bool) -> LanguageData {
         self.decade_apostrophe = on;
@@ -445,6 +745,27 @@ impl LanguageData {
     }
 
     /// Sets whether a trailing possessive (`dogs'`) takes an apostrophe.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::EN_US
+    ///     .with_tag("en-GB")
+    ///     .with_trailing_possessive(false);
+    ///
+    /// let rules = RuleSet::EMPTY.with(Rule::QuotesApostrophe);
+    /// let en = Typographer::new(Language::EN_US, rules);
+    /// let xx = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(
+    ///     en.typeset("the dogs' toys", Output::Unicode),
+    ///     "the dogs’ toys"
+    /// );
+    /// assert_eq!(
+    ///     xx.typeset("the dogs' toys", Output::Unicode),
+    ///     "the dogs' toys"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_trailing_possessive(mut self, on: bool) -> LanguageData {
         self.trailing_possessive = on;
@@ -452,6 +773,15 @@ impl LanguageData {
     }
 
     /// Sets the dash data; `None` makes the `dash.*` rules and `nbsp.dash` inert.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Rule};
+    ///
+    /// static XX: LanguageData = LanguageData::EN_US.with_tag("en-GB").with_dash(None);
+    ///
+    /// assert!(!Language::from_data(&XX)?.supports(Rule::DashSpacedHyphen));
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_dash(mut self, dash: Option<DashData>) -> LanguageData {
         self.dash = dash;
@@ -460,6 +790,27 @@ impl LanguageData {
 
     /// Sets the dash style; on a table whose dash data is `None` it makes it
     /// `Some(DashData::new(style, false))`.
+    ///
+    /// ```
+    /// use typolish::{DashStyle, Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static EN_GB: LanguageData = LanguageData::EN_US
+    ///     .with_tag("en-GB")
+    ///     .with_dash_style(DashStyle::Spaced);
+    ///
+    /// let rules = RuleSet::EMPTY.with(Rule::DashSpacedHyphen);
+    /// let us = Typographer::new(Language::EN_US, rules);
+    /// let gb = Typographer::new(Language::from_data(&EN_GB)?, rules);
+    /// assert_eq!(
+    ///     us.typeset("Moscow - the capital", Output::Unicode),
+    ///     "Moscow—the capital"
+    /// );
+    /// assert_eq!(
+    ///     gb.typeset("Moscow - the capital", Output::Unicode),
+    ///     "Moscow — the capital"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_dash_style(mut self, style: DashStyle) -> LanguageData {
         self.dash = match self.dash {
@@ -470,6 +821,21 @@ impl LanguageData {
     }
 
     /// Sets the ellipsis forms after `?` and `!`.
+    ///
+    /// ```
+    /// use typolish::{EllipsisForms, Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::EN_US
+    ///     .with_tag("en-GB")
+    ///     .with_ellipsis(EllipsisForms::new("?..", "!..", "?!.."));
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::EllipsisDots),
+    /// );
+    /// assert_eq!(t.typeset("Stop!...", Output::Unicode), "Stop!..");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_ellipsis(mut self, ellipsis: EllipsisForms) -> LanguageData {
         self.ellipsis = ellipsis;
@@ -477,6 +843,24 @@ impl LanguageData {
     }
 
     /// Sets the short words: sorted by code point, lowercase.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Script, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_script(Script::Latin)
+    ///     .with_short_words(&["a", "of"]);
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::NbspShortWords),
+    /// );
+    /// assert_eq!(
+    ///     t.typeset("a cup of tea", Output::Unicode),
+    ///     "a\u{a0}cup of\u{a0}tea"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_short_words(mut self, words: &'static [&'static str]) -> LanguageData {
         self.short_words = words;
@@ -485,6 +869,24 @@ impl LanguageData {
 
     /// Sets the length up to which any word of the language's script is short; 0 makes
     /// `nbsp.short-length` inert.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Script, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_script(Script::Latin)
+    ///     .with_short_word_length(2);
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::NbspShortLength),
+    /// );
+    /// assert_eq!(
+    ///     t.typeset("an owl and me", Output::Unicode),
+    ///     "an\u{a0}owl and me"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_short_word_length(mut self, max_chars: u8) -> LanguageData {
         self.short_word_length = max_chars;
@@ -492,6 +894,24 @@ impl LanguageData {
     }
 
     /// Sets the particles: sorted by code point, lowercase.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::RU_RU
+    ///     .with_tag("ru-KZ")
+    ///     .with_particles(&["ли"]);
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::NbspParticles),
+    /// );
+    /// assert_eq!(
+    ///     t.typeset("Знаешь ли ты", Output::Unicode),
+    ///     "Знаешь\u{a0}ли ты"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_particles(mut self, particles: &'static [&'static str]) -> LanguageData {
         self.particles = particles;
@@ -499,6 +919,23 @@ impl LanguageData {
     }
 
     /// Sets the abbreviations: sorted by their parts, as printed.
+    ///
+    /// ```
+    /// use typolish::{
+    ///     Abbreviation, Bind, Language, LanguageData, Output, Rule, RuleSet, Typographer,
+    /// };
+    ///
+    /// static XX: LanguageData = LanguageData::RU_RU
+    ///     .with_tag("ru-KZ")
+    ///     .with_abbreviations(&[Abbreviation::new(&["т.", "е."], Bind::Inner)]);
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::NbspAbbreviations),
+    /// );
+    /// assert_eq!(t.typeset("т. е. так", Output::Unicode), "т.\u{a0}е. так");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_abbreviations(
         mut self,
@@ -509,6 +946,30 @@ impl LanguageData {
     }
 
     /// Sets the dotted words that are not technical (`e.g.`): sorted by code point, lowercase.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::EN_US
+    ///     .with_tag("en-GB")
+    ///     .with_atom_exceptions(&["ph.d"]);
+    ///
+    /// // Without the exception `Ph.D` is a dotted technical fragment, like a host name.
+    /// let us = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    /// let xx = Typographer::new(Language::from_data(&XX)?, RuleSet::PROSE);
+    /// assert_eq!(
+    ///     us.report("a Ph.D student", Output::Unicode)
+    ///         .protected()
+    ///         .len(),
+    ///     1
+    /// );
+    /// assert!(
+    ///     xx.report("a Ph.D student", Output::Unicode)
+    ///         .protected()
+    ///         .is_empty()
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_atom_exceptions(mut self, words: &'static [&'static str]) -> LanguageData {
         self.atom_exceptions = words;
@@ -516,6 +977,18 @@ impl LanguageData {
     }
 
     /// Sets the units: sorted by code point, compared with case.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::new("xx").with_units(&["kB"]);
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY.with(Rule::NbspUnits));
+    /// assert_eq!(t.typeset("5 kB", Output::Unicode), "5\u{a0}kB");
+    /// // Units are compared with case.
+    /// assert_eq!(t.typeset("5 KB", Output::Unicode), "5 KB");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_units(mut self, units: &'static [&'static str]) -> LanguageData {
         self.units = units;
@@ -523,6 +996,19 @@ impl LanguageData {
     }
 
     /// Sets the units that are also words: sorted by code point, each also in the units.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData};
+    ///
+    /// static OK: LanguageData = LanguageData::new("xx")
+    ///     .with_units(&["in"])
+    ///     .with_ambiguous_units(&["in"]);
+    /// static BAD: LanguageData = LanguageData::new("xx").with_ambiguous_units(&["in"]);
+    ///
+    /// assert!(Language::from_data(&OK).is_ok());
+    /// // An ambiguous unit must also be a unit.
+    /// assert!(Language::from_data(&BAD).is_err());
+    /// ```
     #[must_use]
     pub const fn with_ambiguous_units(mut self, units: &'static [&'static str]) -> LanguageData {
         self.ambiguous_units = units;
@@ -530,6 +1016,16 @@ impl LanguageData {
     }
 
     /// Sets the month forms used next to a day number: sorted by code point, as printed.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::new("xx").with_months(&["Mai"]);
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY.with(Rule::NbspDates));
+    /// assert_eq!(t.typeset("am 21 Mai", Output::Unicode), "am 21\u{a0}Mai");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_months(mut self, months: &'static [&'static str]) -> LanguageData {
         self.months = months;
@@ -537,6 +1033,21 @@ impl LanguageData {
     }
 
     /// Sets where a month name stands relative to the day number.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, MonthPosition, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_months(&["May"])
+    ///     .with_month_position(MonthPosition::BeforeDay);
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::NbspDates),
+    /// );
+    /// assert_eq!(t.typeset("on May 21", Output::Unicode), "on May\u{a0}21");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_month_position(mut self, position: MonthPosition) -> LanguageData {
         self.month_position = position;
@@ -544,6 +1055,16 @@ impl LanguageData {
     }
 
     /// Sets the words after a year: sorted by code point, lowercase.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::new("xx").with_year_words(&["r."]);
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY.with(Rule::NbspDates));
+    /// assert_eq!(t.typeset("w 2026 r.", Output::Unicode), "w 2026\u{a0}r.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_year_words(mut self, words: &'static [&'static str]) -> LanguageData {
         self.year_words = words;
@@ -551,6 +1072,16 @@ impl LanguageData {
     }
 
     /// Sets the words after a century: sorted by code point, lowercase.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::new("xx").with_century_words(&["w."]);
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY.with(Rule::NbspDates));
+    /// assert_eq!(t.typeset("XX w.", Output::Unicode), "XX\u{a0}w.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_century_words(mut self, words: &'static [&'static str]) -> LanguageData {
         self.century_words = words;
@@ -558,6 +1089,19 @@ impl LanguageData {
     }
 
     /// Sets the words before a range (`стр.`, `pp.`): sorted by code point, lowercase.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::new("xx").with_range_lead_words(&["s."]);
+    ///
+    /// let t = Typographer::new(
+    ///     Language::from_data(&XX)?,
+    ///     RuleSet::EMPTY.with(Rule::RangeContext),
+    /// );
+    /// assert_eq!(t.typeset("s. 10-20", Output::Unicode), "s. 10–20");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_range_lead_words(mut self, words: &'static [&'static str]) -> LanguageData {
         self.range_lead_words = words;
@@ -565,6 +1109,16 @@ impl LanguageData {
     }
 
     /// Sets the signs that name a number (`№`, `§`, `¶`): sorted by code point.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    ///
+    /// static XX: LanguageData = LanguageData::new("xx").with_signs(&['#']);
+    ///
+    /// let t = Typographer::new(Language::from_data(&XX)?, RuleSet::EMPTY.with(Rule::NbspSigns));
+    /// assert_eq!(t.typeset("# 5", Output::Unicode), "#\u{a0}5");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_signs(mut self, signs: &'static [char]) -> LanguageData {
         self.signs = signs;
@@ -572,6 +1126,23 @@ impl LanguageData {
     }
 
     /// Sets the number symbols and patterns.
+    ///
+    /// ```
+    /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
+    ///
+    /// const NUMBERS: NumberData = NumberData::new()
+    ///     .with_decimal(',')
+    ///     .with_group('.')
+    ///     .with_min_grouping_digits(1);
+    /// static DE: LanguageData = LanguageData::EN_US.with_tag("de-DE").with_numbers(NUMBERS);
+    ///
+    /// let t = Typographer::new(Language::from_data(&DE)?, RuleSet::EMPTY);
+    /// assert_eq!(
+    ///     t.format_number(1234.5, Output::Unicode).to_string(),
+    ///     "1.234,5"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     #[must_use]
     pub const fn with_numbers(mut self, numbers: NumberData) -> LanguageData {
         self.numbers = numbers;

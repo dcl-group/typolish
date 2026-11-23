@@ -80,17 +80,74 @@ pub struct NarrowGlue {
 
 impl NarrowGlue {
     /// The default: U+00A0 everywhere.
+    ///
+    /// ```
+    /// use typolish::{Language, NarrowGlue, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .narrow_glue(NarrowGlue::NONE)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("№ 5", Output::Unicode), "№\u{a0}5");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub const NONE: NarrowGlue = NarrowGlue { bits: 0 };
     /// `nbsp.abbreviations`: the spaces between the parts of an entry.
+    ///
+    /// ```
+    /// use typolish::{Language, NarrowGlue, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .narrow_glue(NarrowGlue::ABBREVIATIONS)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("т. е.", Output::Unicode), "т.\u{202f}е.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub const ABBREVIATIONS: NarrowGlue = NarrowGlue { bits: 1 };
     /// `nbsp.initials`: every space it glues.
+    ///
+    /// ```
+    /// use typolish::{Language, NarrowGlue, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .narrow_glue(NarrowGlue::INITIALS)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("А. С. Пушкин", Output::Unicode), "А.\u{202f}С.\u{202f}Пушкин");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub const INITIALS: NarrowGlue = NarrowGlue { bits: 1 << 1 };
     /// `nbsp.signs`: the space after `№`, `§`, `¶`.
+    ///
+    /// ```
+    /// use typolish::{Language, NarrowGlue, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .narrow_glue(NarrowGlue::SIGNS)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("№ 5", Output::Unicode), "№\u{202f}5");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub const SIGNS: NarrowGlue = NarrowGlue { bits: 1 << 2 };
     /// Every place.
+    ///
+    /// ```
+    /// use typolish::{Language, NarrowGlue, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .narrow_glue(NarrowGlue::ALL)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("№ 5, т. е.", Output::Unicode), "№\u{202f}5, т.\u{202f}е.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub const ALL: NarrowGlue = NarrowGlue { bits: 0b111 };
 
     /// The places of both sets.
+    ///
+    /// ```
+    /// use typolish::NarrowGlue;
+    ///
+    /// let places = NarrowGlue::SIGNS.union(NarrowGlue::INITIALS);
+    /// assert_eq!(places.union(NarrowGlue::ABBREVIATIONS), NarrowGlue::ALL);
+    /// ```
     #[must_use]
     pub const fn union(self, other: NarrowGlue) -> NarrowGlue {
         NarrowGlue {
@@ -99,6 +156,14 @@ impl NarrowGlue {
     }
 
     /// Whether every place of `other` is in the set.
+    ///
+    /// ```
+    /// use typolish::NarrowGlue;
+    ///
+    /// assert!(NarrowGlue::ALL.contains(NarrowGlue::SIGNS));
+    /// assert!(!NarrowGlue::SIGNS.contains(NarrowGlue::ALL));
+    /// assert!(NarrowGlue::SIGNS.contains(NarrowGlue::NONE));
+    /// ```
     #[must_use]
     pub const fn contains(self, other: NarrowGlue) -> bool {
         self.bits & other.bits == other.bits
@@ -658,7 +723,11 @@ impl Typographer {
     ///
     /// let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
     /// let mut scratch = Scratch::new();
-    /// let out = t.typeset_template_with(&mut scratch, [Piece::Slot(7u8, Slot::OTHER)], Output::Unicode);
+    /// let out = t.typeset_template_with(
+    ///     &mut scratch,
+    ///     [Piece::Slot(7u8, Slot::OTHER)],
+    ///     Output::Unicode,
+    /// );
     /// assert_eq!(out.texts(), ["", ""]);
     /// ```
     #[must_use]
@@ -681,16 +750,27 @@ impl Typographer {
     /// section 3.2). It uses the thread-local working memory and makes no allocation promise.
     ///
     /// ```
-    /// use typolish::{DiagnosticKind, Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// use typolish::{
+    ///     DiagnosticKind, Language, Output, ProtectedKind, RuleSet, TechKind, Typographer,
+    /// };
     ///
     /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
     ///
     /// let r = RU.report("Порт host:8080, см. `--config`", Output::Unicode);
     /// let kinds: Vec<_> = r.protected().iter().map(|s| s.kind()).collect();
-    /// assert_eq!(kinds, [ProtectedKind::Technical(TechKind::Colon), ProtectedKind::Delimited]);
+    /// assert_eq!(
+    ///     kinds,
+    ///     [
+    ///         ProtectedKind::Technical(TechKind::Colon),
+    ///         ProtectedKind::Delimited
+    ///     ]
+    /// );
     ///
     /// let r = RU.report("don`t", Output::Unicode);
-    /// assert_eq!(r.diagnostics()[0].kind(), &DiagnosticKind::UnclosedDelimiter);
+    /// assert_eq!(
+    ///     r.diagnostics()[0].kind(),
+    ///     &DiagnosticKind::UnclosedDelimiter
+    /// );
     /// ```
     pub fn report<'a>(&self, text: &'a str, output: Output) -> Report<'a> {
         let (result, records) = engine::scratch::with_thread_scratch(|scratch| {
@@ -708,10 +788,21 @@ impl Typographer {
     ///
     /// static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
     ///
-    /// let r = EN.report_template::<()>([Piece::Text("Run `ls"), Piece::Text(" -la`")], Output::Unicode);
-    /// let records: Vec<_> = r.protected().iter().map(|s| (s.piece(), s.range())).collect();
+    /// let r = EN.report_template::<()>(
+    ///     [Piece::Text("Run `ls"), Piece::Text(" -la`")],
+    ///     Output::Unicode,
+    /// );
+    /// let records: Vec<_> = r
+    ///     .protected()
+    ///     .iter()
+    ///     .map(|s| (s.piece(), s.range()))
+    ///     .collect();
     /// assert_eq!(records, [(0, 4..7), (1, 0..5)]);
-    /// assert!(r.protected().iter().all(|s| s.kind() == ProtectedKind::Delimited));
+    /// assert!(
+    ///     r.protected()
+    ///         .iter()
+    ///         .all(|s| s.kind() == ProtectedKind::Delimited)
+    /// );
     /// ```
     pub fn report_template<'t, S>(
         &self,
@@ -898,12 +989,32 @@ pub struct TypographerBuilder {
 
 impl TypographerBuilder {
     /// Adds a rule to the base set.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+    ///     .enable(Rule::SymbolsCopyright)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("(c) 2026", Output::Unicode), "© 2026");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn enable(mut self, rule: Rule) -> Self {
         self.enabled = self.enabled.with(rule);
         self
     }
 
     /// Removes a rule from the base set.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .disable(Rule::NbspShortWords)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("Файл не найден", Output::Unicode), "Файл не найден");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn disable(mut self, rule: Rule) -> Self {
         self.disabled = self.disabled.with(rule);
         self
@@ -913,6 +1024,16 @@ impl TypographerBuilder {
     /// `QuotePairs::new(('«', '»'), ('„', '“'))`.
     ///
     /// Affects the rule `quotes.pairs`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, QuotePairs, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .quote_pairs(QuotePairs::new(('„', '“'), ('‚', '‘')))
+    ///     .build()?;
+    /// assert_eq!(t.typeset("\"да\"", Output::Unicode), "„да“");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn quote_pairs(mut self, pairs: QuotePairs) -> Self {
         self.settings.quote_pairs = Some(pairs);
         self
@@ -921,6 +1042,19 @@ impl TypographerBuilder {
     /// Sets where straight single quotes become quotes; [`SingleQuotes::NestedOnly`] by default.
     ///
     /// Affects the rule `quotes.pairs`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, SingleQuotes, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+    ///     .single_quotes(SingleQuotes::Everywhere)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("Press 'OK'", Output::Unicode), "Press “OK”");
+    /// // By default only nested single quotes are quotes.
+    /// let default = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// assert_eq!(default.typeset("Press 'OK'", Output::Unicode), "Press 'OK'");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn single_quotes(mut self, mode: SingleQuotes) -> Self {
         self.settings.single_quotes = mode;
         self
@@ -929,6 +1063,16 @@ impl TypographerBuilder {
     /// Sets the dash style instead of the language's.
     ///
     /// Affects the rules `dash.double-hyphen`, `dash.spaced-hyphen` and `nbsp.dash`.
+    ///
+    /// ```
+    /// use typolish::{DashStyle, Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+    ///     .dash_style(DashStyle::Spaced)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("yes - no", Output::Unicode), "yes — no");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn dash_style(mut self, style: DashStyle) -> Self {
         self.settings.dash_style = Some(style);
         self
@@ -937,6 +1081,16 @@ impl TypographerBuilder {
     /// Sets the space before `%` and `‰`; [`PercentSpacing::AsWritten`] by default.
     ///
     /// Affects the rule `nbsp.units`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, PercentSpacing, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .percent(PercentSpacing::Spaced)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("Скидка 5%", Output::Unicode), "Скидка 5\u{a0}%");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn percent(mut self, spacing: PercentSpacing) -> Self {
         self.settings.percent = spacing;
         self
@@ -945,6 +1099,16 @@ impl TypographerBuilder {
     /// Adds units to the language's list (compared with case).
     ///
     /// Affects the rules `range.context` and `nbsp.units`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+    ///     .add_units(["vCPU"])
+    ///     .build()?;
+    /// assert_eq!(t.typeset("4 vCPU", Output::Unicode), "4\u{a0}vCPU");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn add_units<I>(mut self, units: I) -> Self
     where
         I: IntoIterator,
@@ -957,6 +1121,17 @@ impl TypographerBuilder {
     /// Removes units from the language's list.
     ///
     /// Affects the rules `range.context` and `nbsp.units`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+    ///     .remove_units(["kg"])
+    ///     .build()?;
+    /// assert_eq!(t.typeset("5 kg", Output::Unicode), "5 kg");
+    /// assert_eq!(t.typeset("5 MB", Output::Unicode), "5\u{a0}MB");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn remove_units<I>(mut self, units: I) -> Self
     where
         I: IntoIterator,
@@ -969,6 +1144,16 @@ impl TypographerBuilder {
     /// Adds short words to the language's list (compared without case).
     ///
     /// Affects the rule `nbsp.short-words`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+    ///     .add_short_words(["via"])
+    ///     .build()?;
+    /// assert_eq!(t.typeset("sent via email", Output::Unicode), "sent via\u{a0}email");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn add_short_words<I>(mut self, words: I) -> Self
     where
         I: IntoIterator,
@@ -981,6 +1166,16 @@ impl TypographerBuilder {
     /// Removes short words from the language's list.
     ///
     /// Affects the rule `nbsp.short-words`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .remove_short_words(["не"])
+    ///     .build()?;
+    /// assert_eq!(t.typeset("Файл не найден", Output::Unicode), "Файл не найден");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn remove_short_words<I>(mut self, words: I) -> Self
     where
         I: IntoIterator,
@@ -994,6 +1189,16 @@ impl TypographerBuilder {
     /// inert.
     ///
     /// Affects the rule `nbsp.short-length`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+    ///     .short_word_length(3)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("Дом был там", Output::Unicode), "Дом\u{a0}был\u{a0}там");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn short_word_length(mut self, max_chars: u8) -> Self {
         self.settings.short_word_length = Some(max_chars);
         self
@@ -1002,6 +1207,17 @@ impl TypographerBuilder {
     /// Sets whether short words of other scripts than the language's are glued too.
     ///
     /// Affects the rules `nbsp.short-words` and `nbsp.short-length`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .add_short_words(["at"])
+    ///     .short_words_any_script(true)
+    ///     .build()?;
+    /// assert_eq!(t.typeset("Встреча at noon", Output::Unicode), "Встреча at\u{a0}noon");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn short_words_any_script(mut self, yes: bool) -> Self {
         self.settings.short_words_any_script = yes;
         self
@@ -1012,6 +1228,16 @@ impl TypographerBuilder {
     /// Affects the rule `nbsp.particles`, which glues a particle to the word or slot before it,
     /// and the rules `nbsp.short-words` and `nbsp.short-length`, which glue nothing after a
     /// particle so placed (`Знаешь ли ты` → `Знаешь\u{a0}ли ты`).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspParticles))
+    ///     .add_particles(["де"])
+    ///     .build()?;
+    /// assert_eq!(t.typeset("Он де ушёл", Output::Unicode), "Он\u{a0}де ушёл");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn add_particles<I>(mut self, words: I) -> Self
     where
         I: IntoIterator,
@@ -1026,6 +1252,17 @@ impl TypographerBuilder {
     /// Affects the rule `nbsp.particles`, which glues a particle to the word or slot before it,
     /// and the rules `nbsp.short-words` and `nbsp.short-length`, which glue nothing after a
     /// particle so placed (`Знаешь ли ты` → `Знаешь\u{a0}ли ты`).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspParticles))
+    ///     .remove_particles(["ли"])
+    ///     .build()?;
+    /// assert_eq!(t.typeset("Знаешь ли ты", Output::Unicode), "Знаешь ли ты");
+    /// assert_eq!(t.typeset("Он же знал", Output::Unicode), "Он\u{a0}же знал");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn remove_particles<I>(mut self, words: I) -> Self
     where
         I: IntoIterator,
@@ -1038,6 +1275,16 @@ impl TypographerBuilder {
     /// Sets where glue is written as U+202F instead of U+00A0; [`NarrowGlue::NONE`] by default.
     ///
     /// Affects the rules `nbsp.abbreviations`, `nbsp.initials` and `nbsp.signs`.
+    ///
+    /// ```
+    /// use typolish::{Language, NarrowGlue, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .narrow_glue(NarrowGlue::SIGNS.union(NarrowGlue::ABBREVIATIONS))
+    ///     .build()?;
+    /// assert_eq!(t.typeset("§ 3, т. е.", Output::Unicode), "§\u{202f}3, т.\u{202f}е.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn narrow_glue(mut self, places: NarrowGlue) -> Self {
         self.settings.narrow_glue = places;
         self
@@ -1045,12 +1292,36 @@ impl TypographerBuilder {
 
     /// Sets the minimum grouping digits of `format_number` and `format_range`: from 1 to 4,
     /// numbers are grouped from `3 + digits` digits; 0 never groups.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .min_grouping_digits(2)
+    ///     .build()?;
+    /// assert_eq!(t.format_number(1234, Output::Unicode).to_string(), "1234");
+    /// assert_eq!(t.format_number(12345, Output::Unicode).to_string(), "12\u{a0}345");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn min_grouping_digits(mut self, digits: u8) -> Self {
         self.settings.min_grouping_digits = Some(digits);
         self
     }
 
     /// Sets the group separator of `format_number` and `format_range`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .group_separator('\u{202f}')
+    ///     .build()?;
+    /// assert_eq!(
+    ///     t.format_number(1234567, Output::Unicode).to_string(),
+    ///     "1\u{202f}234\u{202f}567"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn group_separator(mut self, separator: char) -> Self {
         self.settings.group_separator = Some(separator);
         self
@@ -1061,18 +1332,57 @@ impl TypographerBuilder {
     /// Affects the rule `number.minus`. The sign is `-` or a dash, U+2010 to U+2015 or U+2212:
     /// the signs that the second pass reads as the sign of a number again; `build` rejects any
     /// other one with `Error::InvalidSetting` (design section 2.11).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .minus_sign('-')
+    ///     .build()?;
+    /// assert_eq!(t.format_number(-5, Output::Unicode).to_string(), "-5");
+    /// let bad = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE).minus_sign('~').build();
+    /// assert!(bad.is_err());
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn minus_sign(mut self, minus: char) -> Self {
         self.settings.minus_sign = Some(minus);
         self
     }
 
     /// Turns protection by backticks on or off; on by default (design section 10.1).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    ///
+    /// let on = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let off = Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+    ///     .protect_backticks(false)
+    ///     .build()?;
+    /// let kind = |t: &Typographer| t.report("Run `make`", Output::Unicode).protected()[0].kind();
+    /// assert_eq!(kind(&on), ProtectedKind::Delimited);
+    /// // Without the protection, the classifier still freezes the fragment.
+    /// assert_eq!(kind(&off), ProtectedKind::Technical(TechKind::Unclassified));
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn protect_backticks(mut self, on: bool) -> Self {
         self.settings.protect_backticks = on;
         self
     }
 
     /// Adds a pair of protection delimiters, for example `("{{", "}}")` (design section 10.1).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .protect_between("{{", "}}")
+    ///     .build()?;
+    /// assert_eq!(
+    ///     t.typeset("Он сказал {{\"да\" - нет}}", Output::Unicode),
+    ///     "Он сказал {{\"да\" - нет}}"
+    /// );
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub fn protect_between(mut self, open: impl Into<String>, close: impl Into<String>) -> Self {
         self.settings
             .protect_between
