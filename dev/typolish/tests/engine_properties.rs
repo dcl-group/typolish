@@ -33,6 +33,21 @@ use typolish::{DiagnosticKind, Language, Output, ProtectedKind, RuleSet, Typogra
 
 const LANGUAGES: [Language; 3] = [Language::RU_RU, Language::EN_US, Language::COMMON];
 
+/// Compound words of design section 8.2: their hyphens and letters stand byte for byte (design
+/// section 13.5, property 5).
+const COMPOUNDS: &[&str] = &[
+    "кто-то",
+    "tls-server",
+    "agent-ca",
+    "pre-commit",
+    "db-01",
+    "25-й",
+    "123-45-67",
+    "mother-in-law",
+    "a-b-c",
+    "IT-отдел",
+];
+
 fn typographer(lang: usize, set: RuleSet) -> Typographer {
     Typographer::new(LANGUAGES[lang % 3].clone(), set)
 }
@@ -294,6 +309,23 @@ proptest! {
         check_clusters(&typographer(lang, set), "property", &text);
     }
 
+    /// 5. Compound words (design section 8.2) stand in the output byte for byte, between any
+    /// risky texts, in every language and set.
+    #[test]
+    fn compound_words_stand_byte_for_byte(
+        before in risky_text(), after in risky_text(), w in prop::sample::select(COMPOUNDS),
+        lang in 0usize..3, set in rule_set(),
+    ) {
+        let text = format!("{before} {w} {after}");
+        let out = typographer(lang, set).typeset(&text, Output::Unicode);
+        prop_assert!(
+            out.matches(w).count() >= text.matches(w).count(),
+            "{} -> {}",
+            show(&text),
+            show(&out)
+        );
+    }
+
     /// Diagnostics of the classifier and of protection come from `report`, never from a trigger
     /// byte: the diagnostics of a string do not depend on the set.
     #[test]
@@ -463,12 +495,11 @@ fn deeply_nested_input_finishes() {
     // Quote nesting 10 000 deep and a long run of open brackets (section 3.12).
     let input = format!("{}x{}", "\"a ".repeat(10_000), "\" ".repeat(10_000));
     for t in all_typographers() {
-        let report = t.report(&input, Output::Unicode);
-        let _ = report.result();
+        assert_report(&t, &input).unwrap();
     }
     let input = format!("{}x{}", "(".repeat(50_000), ")".repeat(50_000));
     for t in all_typographers() {
-        let _ = t.report(&input, Output::Unicode);
+        assert_report(&t, &input).unwrap();
     }
 }
 
