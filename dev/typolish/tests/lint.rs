@@ -665,6 +665,10 @@ fn typographic_characters_that_no_enabled_rule_produces_are_not_reported() {
         .build()
         .unwrap();
     assert_eq!(found(&no_quotes, "Он сказал «привет»."), []);
+    // A closed `—` next to a number is no product of the dash rules (design section 12.1).
+    assert_eq!(found(&prose(EN), "in 2020—the year"), []);
+    assert_eq!(found(&prose(RU), "в 2020—году"), []);
+    assert_eq!(found(&prose(EN), "word—word"), ['—']);
 }
 
 #[test]

@@ -28,8 +28,8 @@ use common::corpus::{
 use common::{configs, interface, parse_tmpl, prose, show, vis, without_rule};
 use proptest::prelude::*;
 use typolish::{
-    DashStyle, Language, Output, PercentSpacing, Piece, QuotePairs, Rule, RuleSet, SingleQuotes,
-    Slot, SlotKind, Template, Typographer,
+    DashStyle, Language, LanguageData, NumberData, Output, PercentSpacing, Piece, QuotePairs, Rule,
+    RuleSet, SingleQuotes, Slot, SlotKind, Template, Typographer,
 };
 
 fn ru() -> Language {
@@ -387,6 +387,38 @@ fn dash_style_of_the_builder() {
 }
 
 #[test]
+fn a_closed_dash_next_to_a_non_letter_stays() {
+    // Design sections 8.4 and 12.1: a closed `—` next to a number, a sign or a protected span is
+    // no product of the dash rules, so it has no reading with spaces and stays.
+    run(
+        &sets_of(&en()),
+        &[
+            ("word—5", "word—5"),
+            ("in 2020—the year", "in 2020—the year"),
+            ("Run `ls`—now", "Run `ls`—now"),
+        ],
+    );
+    run(
+        &sets_of(&ru()),
+        &[("слово—5", "слово—5"), ("в 2020—году", "в 2020—году")],
+    );
+    // A letter with a combining mark is a letter of a word.
+    check_plain(
+        "en Prose",
+        &prose(en()),
+        ("cafe\u{301}—word", "cafe\u{301} - word"),
+    );
+    // Before a slot: no reading with spaces either.
+    let t = prose(en());
+    let back = t.to_plain_template([Piece::Text("total—"), Piece::Slot("n", Slot::NUMBER)]);
+    assert_eq!(back.texts(), ["total—", ""]);
+    assert!(!back.changed());
+    let back = t.to_plain_template([Piece::Text("word—"), Piece::Slot("w", Slot::WORD)]);
+    assert_eq!(back.texts(), ["word—", ""]);
+    assert!(!back.changed());
+}
+
+#[test]
 fn dash_dialogue() {
     run(
         &configs(&ru(), Rule::DashDialogue),
@@ -440,6 +472,18 @@ fn ranges() {
         &configs(&en(), Rule::RangeDigits),
         &[("1941–1945", "1941-1945"), ("pages 10–20", "pages 10-20")],
     );
+    // Design sections 7.6 and 8.5: a language whose range dash is `—` gets it back as `-`.
+    static EM_RANGE: LanguageData =
+        LanguageData::new("xx").with_numbers(NumberData::new().with_range_dash('\u{2014}'));
+    let t = Typographer::new(Language::from_data(&EM_RANGE).unwrap(), RuleSet::ALL);
+    check_plain("xx em-dash range", &t, ("5—7", "5-7"));
+    check_plain("xx em-dash range", &t, ("pages 10—20", "pages 10-20"));
+    let back = t.to_plain_template([
+        Piece::Slot("a", Slot::NUMBER),
+        Piece::Text("—"),
+        Piece::Slot("b", Slot::NUMBER),
+    ]);
+    assert_eq!(back.texts(), ["", "-", ""]);
     // Interface has no range rule for literal numbers.
     check_plain(
         "ru Interface",

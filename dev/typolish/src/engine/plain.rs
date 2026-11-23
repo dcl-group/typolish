@@ -3,7 +3,9 @@
 //!
 //! The inverse tables of section 12.1 give a reading (the plain text it came from) for every
 //! typographic character outside the spans of `protected()`; a closed or spaced dash has a second
-//! reading with `--`. Quote glyphs and apostrophes are undone by the tables and the rule for `’`
+//! reading with `--`. A closed dash reads with spaces only between two letters of words; between
+//! other non-blank neighbors its only reading is `-`, the range dash of a language whose range dash
+//! is `—`. Quote glyphs and apostrophes are undone by the tables and the rule for `’`
 //! alone. Every other character is undone only where the enabled rules produce it: the engine runs
 //! forward on the text with the readings in place, and a reading that does not come back as its
 //! character, or that makes a rule edit the text next to it, is put aside. Readings put aside are
@@ -12,6 +14,8 @@
 //! themselves, with no second copy of their patterns.
 
 use std::borrow::Cow;
+
+use unicode_segmentation::UnicodeSegmentation;
 
 use super::Input;
 use super::ingest::Atom;
@@ -736,7 +740,8 @@ fn settle_quotes(check: &Check<'_, '_>, scratch: &mut Scratch, cands: &mut [Cand
 
 /// Whether the forward run gave the character of a candidate back. Glue of either width counts
 /// as glue (design section 12.1: glue, U+00A0 or U+202F, set by a rule becomes a space); for a dash
-/// the spaces around it do not count, since the dash style of the typographer decides them.
+/// the spaces around it do not count, since the dash style of the typographer decides them;
+/// `candidates` gives the reading with spaces only between two letters.
 fn same(dash: bool, got: &str, want: &str) -> bool {
     let norm = |c: char| if c == '\u{202f}' { '\u{a0}' } else { c };
     let keep = |c: &char| !(dash && (*c == ' ' || *c == '\u{a0}'));
@@ -898,11 +903,6 @@ impl Flat<'_> {
     /// What stands before `at`, skipping format characters and the characters `skip` accepts.
     fn before(&self, at: usize, skip: impl Fn(char) -> bool) -> Near {
         self.before_at(at, skip).0
-    }
-
-    /// What stands after `at`, skipping format characters and the characters `skip` accepts.
-    fn after(&self, at: usize, skip: impl Fn(char) -> bool) -> Near {
-        self.after_at(at, skip).0
     }
 
     /// `before`, with the start of the character found.
@@ -1141,11 +1141,30 @@ fn candidates(
             // The reading is decided below, with the pairs.
             &[]
         } else if c == '\u{2014}' {
-            let left = blank(text.before(at, |_| false));
-            let right = blank(text.after(end, |_| false));
+            let (before, left_at) = text.before_at(at, |_| false);
+            let (after, right_at) = text.after_at(end, |_| false);
+            // A letter of a word (design section 8.4): the first character of its cluster, so
+            // that a letter with a combining mark counts, outside the protected spans.
+            let letter_before = match before {
+                Near::Char(c) => {
+                    !text.is_frozen(left_at)
+                        && text
+                            .text
+                            .get(..left_at.saturating_add(c.len_utf8()))
+                            .and_then(|s| s.graphemes(true).next_back())
+                            .and_then(|g| g.chars().next())
+                            .is_some_and(char::is_alphabetic)
+                }
+                Near::Edge | Near::Wall => false,
+            };
+            let letter_after =
+                matches!(after, Near::Char(c) if c.is_alphabetic()) && !text.is_frozen(right_at);
             // `--` is the reading when only `dash.double-hyphen` produces the dash.
-            if !left && !right {
-                &[" - ", " -- ", "-"]
+            if letter_before && letter_after {
+                &[" - ", " -- "]
+            } else if !blank(before) && !blank(after) {
+                // The range dash of a language whose range dash is `—` (design section 8.5).
+                &["-"]
             } else {
                 &["-", "--"]
             }
