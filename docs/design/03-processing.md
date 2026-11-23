@@ -370,9 +370,12 @@ checks read a core:
 
 - A lone fragment `x`, `X`, `х`, `Х` or `×` between two number fragments (`10 x 5`: the fragments
   directly before and after it in the window have kind `Number`) has kind `Times`, in both forms, so
-  the kind survives the replacement. The lexer gives `×` the token kind `Times` in every position; a
-  lone `×` fragment that does not stand between two number fragments falls through the table to
-  check 24 (`Unclassified`, frozen).
+  the kind survives the replacement. On the left a sign of the language with a number attached
+  (`№10 x 5`) counts as a number fragment too: it is the label number that `nbsp.signs` splits off
+  (`№⍽10 x 5`), and a label counts as a number for `number.times` (section 8.2), so the split
+  changes nothing for the rule (invariant I2). The lexer gives `×` the token kind `Times` in every
+  position; a lone `×` fragment that does not stand between two number fragments falls through the
+  table to check 24 (`Unclassified`, frozen).
 - A core that is a single `Dash` token in any form (`-`, `--`, `---`, `–`, `—`) is an `OperatorRun`
   ("dash fragment"; its wrapper stays editable, so `"-"` is one too), so a lone `-` and the `—` that
   replaces it have one kind; dash rules decide its fate by context. A typed `—` or `–` is matched by

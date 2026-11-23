@@ -16,9 +16,11 @@ pub(crate) const TIMES: Triggers = Triggers::of(b"xX")
 
 const TIMES_SIGN: char = '\u{d7}';
 
-/// `number.minus` (Prose): the hyphen of a core `-D+` or `-D+[.,]D+` whose fragment starts after
-/// a pattern space, a line start or `(` becomes the minus sign of the settings (design section
-/// 8.8). A fragment that already has the sign, typed or produced, matches with an empty edit.
+/// `number.minus` (Prose): the hyphen of a core `-D+` or `-D+[.,]D+`, with an optional `%` or `‰`
+/// attached, whose fragment starts after a pattern space, a line start or `(` becomes the minus
+/// sign of the settings (design section 8.8). A percentage reads alike in both of its forms
+/// (section 8.2), so the space that the percent setting inserts changes nothing for the rule. A
+/// fragment that already has the sign, typed or produced, matches with an empty edit.
 pub(crate) fn minus(cx: &Cx<'_>, i: usize) -> Option<Match> {
     if cx.kind(i) != Some(Kind::Dash) {
         return None;
@@ -27,8 +29,9 @@ pub(crate) fn minus(cx: &Cx<'_>, i: usize) -> Option<Match> {
     if f.kind != FragKind::Number || f.core_start as usize != i {
         return None;
     }
-    // The shape of the core: the sign, digits, and an optional separator and digits.
-    let mut core = cx.core(f);
+    // The shape of the core: the sign, digits, an optional separator and digits, and an optional
+    // percent sign.
+    let mut core = cx.core(f).peekable();
     if core.next() != Some(i) {
         return None;
     }
@@ -36,15 +39,21 @@ pub(crate) fn minus(cx: &Cx<'_>, i: usize) -> Option<Match> {
     if !digits(core.next()) {
         return None;
     }
-    match core.next() {
-        None => {}
-        Some(sep) => {
-            let separator = cx.kind(sep) == Some(Kind::Punct(','))
-                || (cx.kind(sep) == Some(Kind::Dots) && cx.is(sep, "."));
-            if !separator || !digits(core.next()) || core.next().is_some() {
-                return None;
-            }
+    let percent = |j: usize| matches!(cx.kind(j), Some(Kind::Punct('%' | '‰')));
+    if let Some(&sep) = core.peek()
+        && !percent(sep)
+    {
+        let separator = cx.kind(sep) == Some(Kind::Punct(','))
+            || (cx.kind(sep) == Some(Kind::Dots) && cx.is(sep, "."));
+        core.next();
+        if !separator || !digits(core.next()) {
+            return None;
         }
+    }
+    match (core.next(), core.next()) {
+        (None, _) => {}
+        (Some(sign), None) if percent(sign) => {}
+        _ => return None,
     }
     // The fragment starts after a pattern space or a line start, with `(` or nothing before the
     // sign.
@@ -88,11 +97,12 @@ pub(crate) fn times(cx: &Cx<'_>, i: usize) -> Option<Match> {
     match f.kind {
         FragKind::Dimensions => {}
         FragKind::Times => {
-            // The left factor of a lone sign: a number fragment without a leading zero; a
-            // `Number` slot is a number (design section 8.2) whose digits are unknown.
+            // The left factor of a lone sign, as the classifier found it (a number fragment, or
+            // a label number attached to its sign, `№10`), without a leading zero; a `Number`
+            // slot is a number (design section 8.2) whose digits are unknown.
             let left = cx.prev(f.start as usize).and_then(|s| cx.prev(s))?;
             let lf = cx.frag_of(left)?;
-            if lf.kind != FragKind::Number {
+            if !matches!(lf.kind, FragKind::Number | FragKind::Word) {
                 return None;
             }
             let first = cx.core(lf).find(|&j| {

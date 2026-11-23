@@ -204,7 +204,7 @@ pub(crate) fn classify<R: Recorder>(
         let frag = classify_fragment(t, &data, text, tokens, s, e, cs, sink);
         cs.frags.push(frag);
     }
-    lone_times(text, tokens, &mut cs.frags);
+    lone_times(data.signs, text, tokens, &mut cs.frags);
     labels(text, tokens, &mut cs.frags);
     // Every token names its fragment, and the tokens of a core carry `CORE`: the phases find the
     // classification of the pass through them after an edit inserted or removed a space (design
@@ -1229,16 +1229,41 @@ fn sign_with_numeral(data: &Table<'_>, text: &str, u: &[Unit]) -> bool {
     }
 }
 
+/// Whether a fragment ends in a number for `lone_times`: a `Number` core, or a sign of the
+/// language with a number attached (`№10`), which `nbsp.signs` splits into the sign and a label
+/// number (invariant I2 of design section 4.3: a label counts as a number for `number.times` in
+/// both forms, section 8.2).
+fn ends_in_number(signs: &[char], tokens: &[Tok], f: &Frag) -> bool {
+    if f.kind == FragKind::Number {
+        return true;
+    }
+    if f.kind != FragKind::Word {
+        return false;
+    }
+    let mut core = tokens
+        .get(f.core_start as usize..f.core_end as usize)
+        .unwrap_or_default()
+        .iter()
+        .filter(|t| !t.kind.is_transparent())
+        .map(|t| t.kind);
+    let sign = |k: Option<Kind>| matches!(k, Some(Kind::Punct(c)) if signs.contains(&c));
+    let number = |k: Option<Kind>| matches!(k, Some(Kind::Number | Kind::Slot(SlotKind::Number)));
+    let (first, second, third, fourth) = (core.next(), core.next(), core.next(), core.next());
+    sign(first)
+        && ((number(second) && third.is_none())
+            || (second == first && number(third) && fourth.is_none()))
+}
+
 /// The special case of a lone `x`, `X`, `х`, `Х` or `×` fragment between two number fragments:
 /// kind `Times`, never frozen (design section 3.6).
-fn lone_times(text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
+fn lone_times(signs: &[char], text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
     for i in 1..frags.len().saturating_sub(1) {
         let (Some(prev), Some(cur), Some(next)) =
             (frags.get(i - 1), frags.get(i), frags.get(i + 1))
         else {
             continue;
         };
-        if prev.kind != FragKind::Number
+        if !ends_in_number(signs, tokens, prev)
             || next.kind != FragKind::Number
             || cur.end != cur.start + 1
         {

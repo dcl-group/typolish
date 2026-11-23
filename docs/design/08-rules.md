@@ -24,7 +24,7 @@ of the table is the execution order (section 4.1).
 | `range.digits`       | a core `D+-D+`: exactly two numbers, no leading zeros, left smaller than right → range dash                                                                                                         | all                                    |                                                                   |   +   |     -     |
 | `range.context`      | `N-N` (integers, decimals, Roman numerals, `YYYY-YY`) with a unit, year or century word after it, or a page word before it → range dash                                                             | ru, en                                 | `add_units`, `remove_units`                                       |   +   |     -     |
 | `range.time`         | `HH:MM-HH:MM` → `HH:MM–HH:MM`                                                                                                                                                                       | all                                    |                                                                   |   +   |     -     |
-| `number.minus`       | a core `-D+` (with an optional decimal part) after a space, a line start or `(` → minus sign                                                                                                        | all                                    | `minus_sign`                                                      |   +   |     -     |
+| `number.minus`       | a core `-D+` (with an optional decimal part and percent sign) after a space, a line start or `(` → minus sign                                                                                       | all                                    | `minus_sign`                                                      |   +   |     -     |
 | `number.times`       | `1920x1080` → `1920×1080`; `10 x 5` → `10 × 5` (`x`, `X`, `х`, `Х`; first factor without a leading zero)                                                                                            | all                                    |                                                                   |   +   |     -     |
 | `quotes.apostrophe`  | `'` between letters, after a digit or a slot before a letter, elisions, `'90s`, trailing possessive (`dogs'`) → `’`                                                                                 | all (elisions, decade, possessive: en) |                                                                   |   +   |     +     |
 | `quotes.pairs`       | straight quotes → pairs by level, quotes around slots; an unpaired quote stays and is reported                                                                                                      | ru, en                                 | `quote_pairs`, `single_quotes`                                    |   +   |     +     |
@@ -425,13 +425,17 @@ row on initials after any word).
 Text rules do not rewrite numbers: separators, decimal marks and groups in text belong to the author
 (they are often codes, years, ports, versions). `format_number` formats values (section 2.7).
 
-- **`number.minus`** (Prose): a core `-D+` or `-D+[.,]D+` whose fragment starts after a space, a
-  line start or `(` → minus sign: `Минус -5 градусов` → `Минус −5 градусов`, `-12 °C` → `−12⍽°C`.
-  Not in Interface (`head -1`, `tail -5`); in Prose such commands are protected with backticks.
+- **`number.minus`** (Prose): a core `-D+` or `-D+[.,]D+`, with an optional `%` or `‰` attached,
+  whose fragment starts after a space, a line start or `(` → minus sign: `Минус -5 градусов` →
+  `Минус −5 градусов`, `-12 °C` → `−12⍽°C`, `-5%` → `−5%`. A percentage reads alike in both of its
+  forms (section 8.2), so the space that the percent setting inserts (`-5%` → `-5⍽%`) changes
+  nothing for the rule (invariant I2). Not in Interface (`head -1`, `tail -5`); in Prose such
+  commands are protected with backticks.
 - **`number.times`** (Prose): a `Dimensions` core (check 16) → `×` in place of the letter
   (`1920x1080` → `1920×1080`, Cyrillic `х` too); a lone `x`, `X`, `х` or `Х` fragment between two
-  number fragments, the left one without a leading zero → `×` with the author's spaces kept
-  (`10 x 5` → `10 × 5`). `0x1F` (hex, check 10) and `x86` (identifier) never change.
+  number fragments (on the left also a label number attached to its sign, `№10`, section 3.6), the
+  left one without a leading zero → `×` with the author's spaces kept (`10 x 5` → `10 × 5`). `0x1F`
+  (hex, check 10) and `x86` (identifier) never change.
 - Digit grouping in text (`1000000` → `1⍽000⍽000`) is not a rule of version 1. A run of digits is
   one `Number` token, rules insert spaces only between tokens, and English groups with a comma,
   which is not a space at all; numbers in text are also often ports, years and codes (`port 65535`).

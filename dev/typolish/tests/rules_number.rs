@@ -96,6 +96,25 @@ fn minus() {
 }
 
 #[test]
+fn minus_of_a_percentage() {
+    // A percentage is a number in both of its forms (sections 8.2 and 8.8): the space that the
+    // percent setting inserts changes nothing for `number.minus`.
+    for language in languages() {
+        let t = only(language, &[MINUS]);
+        check_exact("alone", &t, ("-5%", "−5%"));
+        check_exact("alone", &t, ("-1,5‰", "−1,5‰"));
+        check_exact("alone", &t, ("-5 %", "−5 %"));
+        check_unchanged("alone", &t, "-5%%");
+    }
+    let t = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+        .percent(typolish::PercentSpacing::Language)
+        .build()
+        .unwrap();
+    check_exact("ru Prose, Language", &t, ("-1,5100%.", "−1,5100⍽%."));
+    check_exact("ru Prose, Language", &t, ("−1,5100⍽%.", "−1,5100⍽%."));
+}
+
+#[test]
 fn minus_alone_leaves_a_spaced_hyphen() {
     // In Prose `- 5` at a line start is a dialogue dash (`dash.dialogue`), so the row is alone.
     for language in languages() {
@@ -327,6 +346,21 @@ fn times_is_not_in_interface_and_is_an_opt_in() {
         ("Screen 1920x1080.", "Screen 1920×1080."),
     );
     check_exact("Interface with number.times", &t, ("10 x 5", "10 × 5"));
+}
+
+#[test]
+fn times_after_a_label_number() {
+    // A label number counts as a number for `number.times` (section 8.2) in both of its forms, so
+    // the space that `nbsp.signs` inserts into `№10` changes nothing for the rule (I2 of section
+    // 4.3): the sign comes in the same pass as the glue.
+    let t = only(Language::RU_RU, &[TIMES]);
+    check_exact("alone", &t, ("№10 x 5", "№10 × 5"));
+    check_exact("alone", &t, ("№ 10 x 5", "№ 10 × 5"));
+    check_exact("alone", &t, ("№010 x 5", "№010 x 5"));
+    let t = prose(Language::RU_RU);
+    check_exact("ru Prose", &t, ("№10 x 5", "№⍽10 × 5"));
+    check_exact("ru Prose", &t, ("№ 10 x 5", "№⍽10 × 5"));
+    check_exact("ru Prose", &t, ("№⍽10 × 5", "№⍽10 × 5"));
 }
 
 #[test]
