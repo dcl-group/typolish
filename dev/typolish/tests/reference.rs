@@ -46,7 +46,10 @@ fn pieces(input: &str) -> Vec<Piece<'_, &str>> {
     let mut pieces = Vec::new();
     let mut rest = input;
     while let Some(open) = rest.find('{') {
-        let close = rest[open..].find('}').unwrap() + open;
+        let close = rest[open..]
+            .find('}')
+            .unwrap_or_else(|| panic!("unclosed slot in {input:?}"))
+            + open;
         if open > 0 {
             pieces.push(Piece::Text(&rest[..open]));
         }
@@ -195,6 +198,19 @@ fn the_tables_hold_the_820_cases_once() {
     assert_eq!(ids.len(), 820, "case ids are unique");
     assert!(ru::ROWS.iter().all(|r| r.id.contains(".ru.")));
     assert!(en_us::ROWS.iter().all(|r| r.id.contains(".en-US.")));
+    // A `{` marks a template input (`ours`); only the template families of design section 13.4
+    // hold one, so a literal `{` elsewhere is not read as a slot by mistake.
+    for row in ru::ROWS.iter().chain(en_us::ROWS) {
+        if row.input.contains('{') {
+            assert!(
+                ["quote.subst.", "quote.already.", "mix."]
+                    .iter()
+                    .any(|p| row.id.starts_with(p)),
+                "{}: a slot outside the template families of design section 13.4",
+                row.id
+            );
+        }
+    }
 }
 
 #[test]
