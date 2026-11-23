@@ -482,22 +482,16 @@ fn slot_glue() {
     };
     // A `Number` slot glued to letters: a warning.
     assert_eq!(
-        glue(vec![Piece::Slot("n", Slot::NUMBER), Piece::Text("МБ")])
-            .iter()
-            .map(|g| g.0)
-            .collect::<Vec<_>>(),
-        [Severity::Warning]
+        glue(vec![Piece::Slot("n", Slot::NUMBER), Piece::Text("МБ")]),
+        [(Severity::Warning, 0)]
     );
     // Two slots glued together: info.
     assert_eq!(
         glue(vec![
             Piece::Slot("a", Slot::WORD),
             Piece::Slot("b", Slot::WORD)
-        ])
-        .iter()
-        .map(|g| g.0)
-        .collect::<Vec<_>>(),
-        [Severity::Info]
+        ]),
+        [(Severity::Info, 0)]
     );
     // With a space, or with punctuation between them, nothing is glued.
     assert!(glue(vec![Piece::Slot("n", Slot::NUMBER), Piece::Text(" МБ")]).is_empty());
