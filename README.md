@@ -154,7 +154,8 @@ static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE
 let report = RU_UI.report("Он сказал \"привет\" - и ушёл...", Output::Unicode);
 let rules: Vec<Rule> = report.changes().iter().map(|c| c.rule()).collect();
 assert_eq!(rules[0], Rule::QuotesPairs);
-println!("{report}"); // one line per edit: rule, piece:range, before -> after
+// One line per edit (rule, piece:range, before -> after), then one per protected span.
+println!("{report}");
 
 // An unpaired quote is left as it is and reported, never guessed.
 let report = RU_UI.report("Ошибка: \"x", Output::Unicode);
