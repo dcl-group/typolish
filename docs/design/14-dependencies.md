@@ -189,15 +189,18 @@ dev/
     Cargo.toml  LICENSE-MIT  LICENSE-APACHE  README.md -> ../../README.md
     src/
       lib.rs  error.rs  typographer.rs  language.rs  rule.rs  piece.rs  number.rs  output.rs
-      report.rs  plain.rs  lint.rs
+      report.rs
       lang/    mod.rs  data.rs  ru_ru.rs  en_us.rs  common.rs
-      engine/  mod.rs  ingest.rs  window.rs  lex.rs  classify.rs  phase.rs  render.rs  record.rs  scratch.rs
+      engine/  mod.rs  ingest.rs  window.rs  lex.rs  classify.rs  phase.rs  plain.rs  render.rs  record.rs  scratch.rs
       rules/   mod.rs  symbols.rs  ellipsis.rs  dash.rs  range.rs  number.rs  quotes.rs  nbsp.rs
     tests/
-      common/{mod,strategies,load_inputs}.rs  rules_*.rs  negative.rs  parts.rs  numbers.rs  output.rs  fluent_isolation.rs
+      common/{mod,strategies,load_inputs,probe,canonical,corpus,decode,set_glue,cldr49}.rs
+      rules_*.rs  negative.rs  parts.rs  numbers.rs  output.rs  fluent_isolation.rs
       reference.rs  reference/{ru,en_us}.rs  deliberate_differences.rs  properties.rs  graphemes.rs  roundtrip.rs  corpus.rs  alloc.rs
       load.rs  conformance.rs  data.rs  api.rs  lint.rs
       builder.rs  language.rs  traits.rs  typeset_api.rs  rules.rs  helpers.rs
+      language_builder.rs  classifier.rs  protection.rs  pieces_report.rs  lexer.rs  negative_report.rs  engine_properties.rs  ingest_rules.rs
+      documentation.rs  package.rs
       corpus/  fixtures/unicode/  fixtures/whatwg-entities.txt
     benches/load.rs
     examples/fluent_generator.rs  examples/per_request.rs  examples/numbers.rs
@@ -228,6 +231,16 @@ The tables of ingest, windows, the lexer and the classifier (stage 2) observe th
 `tests/common/probe.rs`, which these targets include through `#[path]`. `ingest_rules.rs` reads the
 same decisions in the output of the stage 2 rules (`quotes.*`, `dash.*`, `range.*`, `ellipsis.*`)
 and is added in the same change as those rules, so that the gates stay green.
+
+`language_builder.rs` holds the `LanguageBuilder` rows of sections 7.1 and 7.6. The other helpers of
+`tests/common/` are `canonical.rs` (the generators of property 13, section 13.5), `corpus.rs` (the
+corpus of section 13.7), `decode.rs` (the decoders of sections 11.8 and 13.5), `set_glue.rs` (the
+glue of the set-level rows, section 13.2) and `cldr49.rs` (the CLDR extract of `tests/data.rs`,
+section 13.9). `documentation.rs` checks the documentation (section 13.10) and `package.rs` the
+package and this layout (section 13.9); both are stage 5 targets and ship in the package, where
+their checks of the repository skip. `Typographer::lint` and `Typographer::to_plain` are methods in
+`src/typographer.rs`; the lint pass is part of the engine (`src/engine/mod.rs`) and the reverse
+transformation is `src/engine/plain.rs`, so neither has a module at the top of `src/`.
 
 `AGENTS.md` follows the skeleton of zonewright and adds two hard rules: the name of the reference
 implementation never appears in the repository, and commits end with

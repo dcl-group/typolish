@@ -80,6 +80,28 @@ fn table(toml: &str, name: &str) -> Vec<String> {
     out
 }
 
+/// The `.rs` files under a directory, as paths relative to it with `/` separators.
+fn rust_files_under(dir: &Path) -> BTreeSet<String> {
+    fn walk(root: &Path, dir: &Path, out: &mut BTreeSet<String>) {
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                walk(root, &path, out);
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                let relative = path.strip_prefix(root).unwrap();
+                let parts: Vec<String> = relative
+                    .components()
+                    .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                    .collect();
+                out.insert(parts.join("/"));
+            }
+        }
+    }
+    let mut out = BTreeSet::new();
+    walk(dir, dir, &mut out);
+    out
+}
+
 fn manifest() -> String {
     read(&crate_dir().join("Cargo.toml"))
 }
@@ -324,6 +346,8 @@ fn repository_layout_matches_section_14_6() {
     ] {
         assert!(repo.join(file).exists(), "{file} is missing");
     }
+    // The files of `src/`, `tests/*.rs` and `tests/common/` are exactly those of the lists below,
+    // and section 14.6 names each of them, so that the layout and the design cannot drift apart.
     let src = [
         "lib.rs",
         "error.rs",
@@ -345,6 +369,7 @@ fn repository_layout_matches_section_14_6() {
         "engine/lex.rs",
         "engine/classify.rs",
         "engine/phase.rs",
+        "engine/plain.rs",
         "engine/render.rs",
         "engine/record.rs",
         "engine/scratch.rs",
@@ -357,12 +382,11 @@ fn repository_layout_matches_section_14_6() {
         "rules/quotes.rs",
         "rules/nbsp.rs",
     ];
-    for file in src {
-        assert!(
-            crate_dir().join("src").join(file).exists(),
-            "src/{file} is missing"
-        );
-    }
+    assert_eq!(
+        rust_files_under(&crate_dir().join("src")),
+        src.iter().map(|f| f.to_string()).collect::<BTreeSet<_>>(),
+        "the files of src/ differ from section 14.6"
+    );
     let tests = [
         "rules_symbols.rs",
         "rules_ellipsis.rs",
@@ -394,11 +418,110 @@ fn repository_layout_matches_section_14_6() {
         "typeset_api.rs",
         "rules.rs",
         "helpers.rs",
+        "language_builder.rs",
+        "classifier.rs",
+        "protection.rs",
+        "pieces_report.rs",
+        "lexer.rs",
+        "negative_report.rs",
+        "engine_properties.rs",
+        "ingest_rules.rs",
+        "documentation.rs",
+        "package.rs",
     ];
+    let targets: BTreeSet<String> = fs::read_dir(crate_dir().join("tests"))
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.is_file() && p.extension().is_some_and(|e| e == "rs"))
+        .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(
+        targets,
+        tests.iter().map(|f| f.to_string()).collect::<BTreeSet<_>>(),
+        "the targets of tests/ differ from section 14.6"
+    );
+    let common = [
+        "mod.rs",
+        "strategies.rs",
+        "load_inputs.rs",
+        "probe.rs",
+        "canonical.rs",
+        "corpus.rs",
+        "decode.rs",
+        "set_glue.rs",
+        "cldr49.rs",
+    ];
+    assert_eq!(
+        rust_files_under(&crate_dir().join("tests/common")),
+        common
+            .iter()
+            .map(|f| f.to_string())
+            .collect::<BTreeSet<_>>(),
+        "the files of tests/common/ differ from section 14.6"
+    );
+    let design = read(&repo.join("docs/design/14-dependencies.md"));
+    let layout = design
+        .split("### 14.6 Repository layout")
+        .nth(1)
+        .and_then(|rest| rest.split("### 14.7").next())
+        .unwrap();
+    let block = layout.split("```").nth(1).unwrap();
+    let line_of = |dir: &str| {
+        block
+            .lines()
+            .find(|l| l.trim_start().starts_with(dir))
+            .unwrap_or_else(|| panic!("section 14.6 has no line for {dir}"))
+            .split_whitespace()
+            .map(str::to_string)
+            .collect::<Vec<_>>()
+    };
+    for file in src {
+        let named = match file.split_once('/') {
+            Some((dir, name)) => line_of(&format!("{dir}/")).iter().any(|w| w == name),
+            None => block.split_whitespace().any(|w| w == file),
+        };
+        assert!(named, "section 14.6 does not name src/{file}");
+    }
+    // The lines of `src/` up to `tests/`: the words of those that do not start with a directory
+    // are the files at the top of `src/`.
+    let src_lines = block
+        .lines()
+        .map(str::trim)
+        .skip_while(|l| *l != "src/")
+        .skip(1)
+        .take_while(|l| *l != "tests/");
+    for line in src_lines {
+        if line
+            .split_whitespace()
+            .next()
+            .is_some_and(|w| w.ends_with('/'))
+        {
+            continue;
+        }
+        for word in line.split_whitespace() {
+            assert!(
+                src.contains(&word),
+                "section 14.6 names src/{word}, which does not exist"
+            );
+        }
+    }
+    let common_line = block
+        .lines()
+        .find(|l| l.trim_start().starts_with("common/{"))
+        .unwrap();
+    for file in common {
+        let stem = file.trim_end_matches(".rs");
+        assert!(
+            common_line.contains(&format!("{{{stem},"))
+                || common_line.contains(&format!(",{stem}")),
+            "section 14.6 does not name tests/common/{file}"
+        );
+    }
+    let words: BTreeSet<&str> = block.split_whitespace().collect();
     for file in tests {
         assert!(
-            crate_dir().join("tests").join(file).exists(),
-            "tests/{file} is missing"
+            words.contains(file) || (file.starts_with("rules_") && words.contains("rules_*.rs")),
+            "section 14.6 does not name tests/{file}"
         );
     }
     assert!(crate_dir().join("tests/corpus").is_dir());
