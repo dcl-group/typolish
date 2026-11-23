@@ -2113,7 +2113,7 @@ pub const ROWS: &[RefRow] = &[
         "Скидка {pct} %.",
         "Скидка {pct} %.",
         "Скидка {pct}\u{a0}%.",
-        &[R::PercentAsWritten],
+        &[R::Slots],
     ),
     agree(
         "mix.ru.808",

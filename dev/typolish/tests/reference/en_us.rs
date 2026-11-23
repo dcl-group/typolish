@@ -2085,7 +2085,7 @@ pub const ROWS: &[RefRow] = &[
         "Discount {pct} %.",
         "Discount {pct} %.",
         "Discount {pct}\u{a0}%.",
-        &[R::PercentAsWritten],
+        &[R::Slots],
     ),
     agree(
         "mix.en-US.818",
