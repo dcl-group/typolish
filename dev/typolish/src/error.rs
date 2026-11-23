@@ -16,14 +16,14 @@
 #[non_exhaustive]
 pub enum Error {
     /// The tag is malformed or names a language that has no built-in data.
-    #[error("unknown language tag `{tag}`")]
+    #[error("unknown language tag `{}`", crate::report::Raw(.tag))]
     #[non_exhaustive]
     UnknownLanguage {
         /// The tag as given.
         tag: String,
     },
     /// Language data failed a check of design section 7.6.
-    #[error("invalid language data for `{tag}`: {reason}")]
+    #[error("invalid language data for `{}`: {reason}", crate::report::Raw(.tag))]
     #[non_exhaustive]
     InvalidLanguageData {
         /// The tag of the table.
@@ -32,14 +32,14 @@ pub enum Error {
         reason: &'static str,
     },
     /// No rule has this id.
-    #[error("unknown rule id `{id}`")]
+    #[error("unknown rule id `{}`", crate::report::Raw(.id))]
     #[non_exhaustive]
     UnknownRule {
         /// The id as given.
         id: String,
     },
     /// A rule set string breaks the grammar of design section 2.3.
-    #[error("invalid rule set `{input}`: {reason}")]
+    #[error("invalid rule set `{}`: {reason}", crate::report::Raw(.input))]
     #[non_exhaustive]
     InvalidRuleSet {
         /// The whole string as given.
@@ -55,7 +55,7 @@ pub enum Error {
         id: &'static str,
     },
     /// A string is not an ASCII decimal number of design section 2.7.
-    #[error("invalid number `{input}`: {reason}")]
+    #[error("invalid number `{}`: {reason}", crate::report::Raw(.input))]
     #[non_exhaustive]
     InvalidNumber {
         /// The string as given.

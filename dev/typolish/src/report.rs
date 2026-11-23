@@ -221,7 +221,7 @@ impl<T> fmt::Display for Report<'_, T> {
 
 /// Whether a character is invisible in a table: a space other than U+0020, a control or a format
 /// character (design section 5.4).
-fn invisible(c: char) -> bool {
+pub(crate) fn invisible(c: char) -> bool {
     (c.is_whitespace() && c != ' ')
         || c.is_control()
         || crate::engine::lex::is_format_char(c)
@@ -252,9 +252,9 @@ impl fmt::Display for Shown<'_> {
     }
 }
 
-/// A protected text in the table: as it is, with invisible characters escaped, so that a record
-/// stays on one line.
-struct Raw<'s>(&'s str);
+/// A protected text in the table or a caller's string in an error message: as it is, with
+/// invisible characters escaped, so that a record or a message stays on one line.
+pub(crate) struct Raw<'s>(pub(crate) &'s str);
 
 impl fmt::Display for Raw<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

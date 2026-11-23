@@ -392,6 +392,35 @@ fn inert_rules_are_not_active() {
     assert_eq!(ru.active_rules(), RuleSet::PROSE);
 }
 
+#[test]
+fn error_messages_stay_on_one_line() {
+    // Design section 2.11: the `Display` of an error writes the caller's string with invisible
+    // characters as `\u{…}`; the fields hold the string as given.
+    let builder = || Typographer::builder(Language::RU_RU, RuleSet::PROSE);
+    let errors = [
+        Language::from_tag("a\r\nb").unwrap_err(),
+        "a\r\nb".parse::<Rule>().unwrap_err(),
+        "prose,\r\nprose".parse::<RuleSet>().unwrap_err(),
+        Number::decimal("1\r\n2").unwrap_err(),
+        builder().add_units(["a\r\nb"]).build().unwrap_err(),
+        builder().protect_between("\r\nx", "y").build().unwrap_err(),
+    ];
+    for err in &errors {
+        let message = err.to_string();
+        assert!(
+            !message.contains('\n') && !message.contains('\r'),
+            "{err:?}: {message:?}"
+        );
+        assert!(message.contains("\\u{d}\\u{a}"), "{err:?}: {message:?}");
+    }
+    assert!(matches!(&errors[0], Error::UnknownLanguage { tag, .. } if tag == "a\r\nb"));
+    assert!(matches!(&errors[1], Error::UnknownRule { id, .. } if id == "a\r\nb"));
+    assert!(
+        matches!(&errors[2], Error::InvalidRuleSet { input, .. } if input == "prose,\r\nprose")
+    );
+    assert!(matches!(&errors[3], Error::InvalidNumber { input, .. } if input == "1\r\n2"));
+}
+
 /// An iterator whose `size_hint` lower bound is above its length (a caller bug).
 struct LyingPieces(Option<Piece<'static, u8>>, usize);
 

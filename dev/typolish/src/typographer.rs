@@ -1507,7 +1507,7 @@ fn check_delimiters(pairs: &[(String, String)]) -> Result<(), Error> {
             if let Some(reason) = reason {
                 offending.push((
                     delimiter.clone(),
-                    format!("delimiter `{delimiter}` {reason}"),
+                    format!("delimiter `{}` {reason}", crate::report::Raw(delimiter)),
                 ));
             }
         }
@@ -1568,7 +1568,10 @@ fn normalize_list(edit: &mut ListEdit, setting: &'static str, fold: bool) -> Res
             } else {
                 return None;
             };
-            Some((word.clone(), format!("`{word}` {reason}")))
+            Some((
+                word.clone(),
+                format!("`{}` {reason}", crate::report::Raw(word)),
+            ))
         });
     if let Some((_, reason)) = smallest(offending) {
         return Err(invalid(setting, reason));

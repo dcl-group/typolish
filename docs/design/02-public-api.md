@@ -949,17 +949,17 @@ enabled rules.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
-    #[error("unknown language tag `{tag}`")]
+    #[error("unknown language tag `{}`", Raw(.tag))]
     #[non_exhaustive] UnknownLanguage { tag: String },
-    #[error("invalid language data for `{tag}`: {reason}")]
+    #[error("invalid language data for `{}`: {reason}", Raw(.tag))]
     #[non_exhaustive] InvalidLanguageData { tag: String, reason: &'static str },
-    #[error("unknown rule id `{id}`")]
+    #[error("unknown rule id `{}`", Raw(.id))]
     #[non_exhaustive] UnknownRule { id: String },
-    #[error("invalid rule set `{input}`: {reason}")]
+    #[error("invalid rule set `{}`: {reason}", Raw(.input))]
     #[non_exhaustive] InvalidRuleSet { input: String, reason: &'static str },
     #[error("rule `{id}` is both enabled and disabled")]
     #[non_exhaustive] RuleConflict { id: &'static str },
-    #[error("invalid number `{input}`: {reason}")]
+    #[error("invalid number `{}`: {reason}", Raw(.input))]
     #[non_exhaustive] InvalidNumber { input: String, reason: &'static str },
     #[error("invalid setting `{setting}`: {reason}")]
     #[non_exhaustive] InvalidSetting { setting: &'static str, reason: String },
@@ -996,6 +996,9 @@ Choices:
   `char::is_alphanumeric` holds. A unit's leading digit, by contrast, is an ASCII digit (0-9),
   matching `Kind::Number` (section 3.5): a unit that starts with another digit, such as `٣px`, is
   accepted.
+- The `Display` of an error writes the caller's string with invisible characters (controls, line
+  separators, format characters) as `\u{…}` (`Raw` in the sketch, the escaping of the report table,
+  section 12.5), so a message stays on one line; the fields hold the string as given.
 
 ### 2.12 Allocation, Cow and scratch memory
 
