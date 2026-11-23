@@ -337,8 +337,9 @@ cannot reach a user.
 - A unit equal to a short word or a particle (compared with case: `с` must be listed, `В` need not)
   must be listed in `ambiguous_units`.
 - `decimal != group`; `min_grouping_digits <= 4`; `minus`, `group` and signs are not letters or
-  digits; `group` is U+00A0, U+202F or not whitespace; `minus` is not whitespace, `"` or `'`;
-  ellipsis forms consist of `?`, `!`, `.` and `…` only.
+  digits; `group` is U+00A0, U+202F or not whitespace; `minus` is `-` or a dash (U+2010 to U+2015,
+  U+2212), the signs that check 15 of section 3.6 reads as the sign of a number; ellipsis forms
+  consist of `?`, `!`, `.` and `…` only.
 
 ### 7.7 Adding a language
 

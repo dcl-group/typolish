@@ -739,6 +739,8 @@ fn the_builder_rejects_separators_and_signs_that_break_the_text() {
     invalid(base().minus_sign('\''), "minus_sign");
     invalid(base().minus_sign('5'), "minus_sign");
     invalid(base().minus_sign('x'), "minus_sign");
+    invalid(base().minus_sign('~'), "minus_sign");
+    invalid(base().minus_sign('('), "minus_sign");
     invalid(base().min_grouping_digits(5), "min_grouping_digits");
     invalid(base().min_grouping_digits(255), "min_grouping_digits");
 }
@@ -757,7 +759,7 @@ fn the_builder_accepts_the_glue_characters_and_the_whole_scale() {
             "{digits}"
         );
     }
-    for minus in ['-', '\u{2212}', '\u{2013}', '~'] {
+    for minus in ['-', '\u{2212}', '\u{2013}', '\u{2012}'] {
         assert!(base().minus_sign(minus).build().is_ok(), "{minus:?}");
     }
 }

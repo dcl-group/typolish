@@ -873,7 +873,9 @@ impl TypographerBuilder {
 
     /// Sets the minus sign of `format_number` and `format_range`.
     ///
-    /// Affects the rule `number.minus`.
+    /// Affects the rule `number.minus`. The sign is `-` or a dash, U+2010 to U+2015 or U+2212:
+    /// the signs that the second pass reads as the sign of a number again; `build` rejects any
+    /// other one with `Error::InvalidSetting` (design section 2.11).
     pub fn minus_sign(mut self, minus: char) -> Self {
         self.settings.minus_sign = Some(minus);
         self
@@ -939,7 +941,7 @@ impl TypographerBuilder {
         if let Some(c) = settings.minus_sign.filter(|c| !is_valid_minus(*c)) {
             return Err(invalid(
                 "minus_sign",
-                format!("{c:?} is a digit, a letter, whitespace, \" or '"),
+                format!("{c:?} is not `-` or a dash, U+2010 to U+2015 or U+2212"),
             ));
         }
         if let Some(digits) = settings.min_grouping_digits.filter(|d| *d > 4) {

@@ -127,17 +127,19 @@ fn small(cx: &Cx<'_>, f: &Frag, left: bool) -> bool {
     is_number(f) || is_range(cx, f) || single_letter(cx, f, left)
 }
 
-/// A flag or another fragment that starts with `-`; a signed number also with `−`, the form that
-/// `number.minus` gives its sign, so that the minus changes nothing the dash rules read (design
-/// sections 4.3, I4, and 8.4).
+/// A flag or another fragment that starts with `-`; a signed number also with `−` or with the
+/// minus sign of the settings, the form that `number.minus` gives its sign, so that the minus
+/// changes nothing the dash rules read (design sections 4.3, I4, and 8.4).
 fn flag_like(cx: &Cx<'_>, f: &Frag) -> bool {
     f.kind == FragKind::Flag
         || (f.start as usize..f.end as usize)
             .find(|&j| !cx.kind(j).is_some_and(Kind::is_transparent))
             .is_some_and(|j| {
+                let src = cx.src(j);
                 cx.kind(j) == Some(Kind::Dash)
-                    && (cx.src(j).starts_with('-')
-                        || (f.kind == FragKind::Number && cx.src(j).starts_with('\u{2212}')))
+                    && (src.starts_with('-')
+                        || (f.kind == FragKind::Number
+                            && (src.starts_with('\u{2212}') || src.starts_with(cx.t.minus_sign()))))
             })
 }
 

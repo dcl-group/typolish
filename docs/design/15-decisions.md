@@ -133,6 +133,7 @@ that the maintainer settled in section 15.5 name the item.
 | C26 | A number after `№`, `§`, `¶` is a label in both its attached and spaced forms; labels and percentages are not quantities for unit and date rules              | treating every digit run as a quantity                                                          | 3.6, 8.2  |
 | C27 | No digit grouping in text; values are grouped by `format_number` (settled, 15.5 item 17)                                                                      | a `number.grouping` rule                                                                        | 8.8       |
 | C28 | `LanguageBuilder` owns its lists, and the engine reads static and owned data through one private view; `build()` validates the lists and does not repair them | leaking the builder's strings into `&'static` data; dropping entries that fail a check silently | 7.1       |
+| C29 | A minus sign is `-` or a dash (U+2010 to U+2015, U+2212): the signs check 15 reads as the sign of a number again                                              | any non-letter, non-digit, non-space, non-quote sign: the second pass breaks idempotence        | 2.11, 7.6 |
 
 ### 15.4 Stage plan
 

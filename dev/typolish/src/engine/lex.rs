@@ -255,7 +255,7 @@ pub(crate) const fn is_quote_char(c: char) -> bool {
 }
 
 /// The single-character dashes of `Kind::Dash`.
-const fn is_dash_char(c: char) -> bool {
+pub(crate) const fn is_dash_char(c: char) -> bool {
     matches!(
         c,
         '\u{2010}' | '\u{2011}' | '\u{2012}' | '\u{2013}' | '\u{2014}' | '\u{2015}' | '\u{2212}'

@@ -182,6 +182,53 @@ fn minus_follows_the_setting() {
     );
 }
 
+/// Every minus sign the builder accepts is read as the sign of a number by the second pass, so a
+/// dash next to the signed number is refused on both passes and the output is a fixed point
+/// (design sections 2.11, 3.6 check 15, 4.3 I4 and 8.4).
+#[test]
+fn a_minus_of_the_settings_reads_as_a_sign_on_the_second_pass() {
+    const SIGNS: [char; 8] = [
+        '-', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}', '\u{2015}', '\u{2212}',
+    ];
+    for minus in SIGNS {
+        for language in [Language::RU_RU, Language::EN_US] {
+            let t = Typographer::builder(language.clone(), RuleSet::PROSE)
+                .minus_sign(minus)
+                .build()
+                .unwrap();
+            let rows = [
+                ("Было -5 - стало", format!("Было {minus}5 - стало")),
+                ("range 5 - -5", format!("range 5 - {minus}5")),
+                ("a - -5", format!("a - {minus}5")),
+            ];
+            for (source, expected) in rows {
+                let once = t.typeset(source, Output::Unicode).into_owned();
+                assert_eq!(once, expected, "{minus:?} {language:?}: {source:?}");
+                let twice = t.typeset(&once, Output::Unicode).into_owned();
+                assert_eq!(
+                    twice, once,
+                    "{minus:?} {language:?}: second pass of {source:?}"
+                );
+            }
+            for source in [
+                "Было -5 - 3",
+                "a -5 -- b",
+                "в -5 °C",
+                "c -5 до -10",
+                "до -5 - до 3",
+                "Температура -5 и (-3), -1,5 и -5% в 10 x -5",
+            ] {
+                let once = t.typeset(source, Output::Unicode).into_owned();
+                let twice = t.typeset(&once, Output::Unicode).into_owned();
+                assert_eq!(
+                    twice, once,
+                    "{minus:?} {language:?}: second pass of {source:?}"
+                );
+            }
+        }
+    }
+}
+
 #[test]
 fn minus_disabled() {
     for language in languages() {

@@ -423,10 +423,17 @@ fn group_separators() {
 
 #[test]
 fn minus_signs() {
-    for ok in ['-', '\u{2212}', '\u{2013}', '~'] {
+    // `-` and the dashes the second pass reads as the sign of a number (design sections 2.11 and
+    // 3.6, check 15).
+    for ok in [
+        '-', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}', '\u{2015}', '\u{2212}',
+    ] {
         assert!(base().minus_sign(ok).build().is_ok(), "{ok:?}");
     }
-    for bad in [' ', '\t', '\u{a0}', '\u{202f}', '5', 'a', 'я', '"', '\''] {
+    for bad in [
+        ' ', '\t', '\u{a0}', '\u{202f}', '5', 'a', 'я', '"', '\'', '~', '*', '_', '+', '(', '.',
+        ',', '%', '`', '<', '·', '÷', '\u{ad}', '\u{200b}', '\u{301}', '\u{fe63}', '\u{ff0d}',
+    ] {
         assert_eq!(setting_of(base().minus_sign(bad)), "minus_sign", "{bad:?}");
     }
 }

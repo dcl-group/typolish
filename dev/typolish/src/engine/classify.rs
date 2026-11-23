@@ -306,7 +306,7 @@ fn classify_fragment<R: Recorder>(
         None if dictionary(t, data, text, tokens, &frag, cs) => {
             (FragKind::Dictionary, Freeze::Nothing)
         }
-        None => checks(data, text, &cs.units, frag.stop),
+        None => checks(data, t.minus_sign(), text, &cs.units, frag.stop),
     };
     frag.kind = kind;
     // The core of a sign attached to a number or a Roman numeral is a label (`№5`).
@@ -580,8 +580,9 @@ fn folded_in(list: crate::lang::data::List<'_>, key: &str) -> bool {
         .is_ok()
 }
 
-/// The checks 1 to 24 of design section 3.6, in order.
-fn checks(data: &Table<'_>, text: &str, u: &[Unit], stop: bool) -> (FragKind, Freeze) {
+/// The checks 1 to 24 of design section 3.6, in order; `minus` is the minus sign of the settings,
+/// which check 15 reads as a sign.
+fn checks(data: &Table<'_>, minus: char, text: &str, u: &[Unit], stop: bool) -> (FragKind, Freeze) {
     let whole = |kind| (kind, Freeze::Nothing);
     if is_url(text, u) {
         return whole(FragKind::Url);
@@ -622,7 +623,7 @@ fn checks(data: &Table<'_>, text: &str, u: &[Unit], stop: bool) -> (FragKind, Fr
     if stop && is_abbreviation(text, u) {
         return whole(FragKind::Abbreviation);
     }
-    if is_number(u) {
+    if is_number(u, minus) {
         return whole(FragKind::Number);
     }
     if let Some(index) = dimensions(text, u) {
@@ -643,7 +644,7 @@ fn checks(data: &Table<'_>, text: &str, u: &[Unit], stop: bool) -> (FragKind, Fr
     if is_compound(u) {
         return (FragKind::Compound, Freeze::Hyphens);
     }
-    if is_joined(data, text, u) {
+    if is_joined(data, minus, text, u) {
         return whole(FragKind::Joined);
     }
     if is_word(data, text, u) {
@@ -1007,18 +1008,22 @@ fn is_abbreviation(text: &str, u: &[Unit]) -> bool {
         })
 }
 
-/// Check 15: a number with an optional sign, decimal part and `%` or `‰`.
-fn is_number(u: &[Unit]) -> bool {
-    number_end(u) == Some(u.len())
+/// Check 15: a number with an optional sign, decimal part and `%` or `‰`. The sign is `-`, `+`,
+/// `±`, `−` or `minus`, the minus sign of the settings that `number.minus` writes, so that the
+/// minus of the first pass changes nothing for the second (invariant I4 of design section 4.3).
+fn is_number(u: &[Unit], minus: char) -> bool {
+    number_end(u, minus) == Some(u.len())
 }
 
 /// The index after a number at the start of `u`.
-fn number_end(u: &[Unit]) -> Option<usize> {
+fn number_end(u: &[Unit], minus: char) -> Option<usize> {
     let mut i = 0;
-    if matches!(
-        u.first()?.u,
-        U::Hy(1) | U::Punct('+') | U::Op(Op::PlusMinus) | U::Dash('−')
-    ) {
+    let sign = match u.first()?.u {
+        U::Hy(1) | U::Punct('+') | U::Op(Op::PlusMinus) | U::Dash('−') => true,
+        U::Dash(c) => c == minus,
+        _ => false,
+    };
+    if sign {
         i = 1;
     }
     if !matches!(u.get(i)?.u, U::Num | U::SlotNum) {
@@ -1158,13 +1163,13 @@ fn is_compound(u: &[Unit]) -> bool {
 
 /// Check 22: two or more parts joined by single `—`, `–` or `…`, or by `...`, each a word by
 /// check 23 or a number by check 15.
-fn is_joined(data: &Table<'_>, text: &str, u: &[Unit]) -> bool {
+fn is_joined(data: &Table<'_>, minus: char, text: &str, u: &[Unit]) -> bool {
     let joint = |unit: &Unit| matches!(unit.u, U::Dash('—' | '–') | U::Ell | U::Dots(3));
     if !u.iter().any(joint) {
         return false;
     }
     u.split(joint)
-        .all(|part| !part.is_empty() && (is_number(part) || is_word(data, text, part)))
+        .all(|part| !part.is_empty() && (is_number(part, minus) || is_word(data, text, part)))
 }
 
 /// Check 23: letters with their marks and digits, with the quotes, signs and legal marks it

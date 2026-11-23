@@ -250,7 +250,7 @@ impl NumberData {
         self
     }
 
-    /// Sets the minus sign.
+    /// Sets the minus sign: `-` or a dash, U+2010 to U+2015 or U+2212 (design section 7.6).
     #[must_use]
     pub const fn with_minus(mut self, minus: char) -> NumberData {
         self.minus = minus;
@@ -1084,7 +1084,7 @@ impl Table<'_> {
             );
         }
         if !is_valid_minus(n.minus) {
-            return Err("numbers: the minus must not be a letter, a digit, whitespace, \" or '");
+            return Err("numbers: the minus must be `-` or a dash, U+2010 to U+2015 or U+2212");
         }
         let e = &self.ellipsis;
         if [e.question, e.exclamation, e.both].iter().any(|form| {
@@ -1155,7 +1155,9 @@ pub(crate) fn is_valid_group(c: char) -> bool {
     !c.is_alphanumeric() && (!c.is_whitespace() || c == '\u{a0}' || c == '\u{202f}')
 }
 
-/// A minus sign of design section 7.6.
+/// A minus sign of design section 7.6: `-` or a dash character of the lexer (U+2010 to U+2015,
+/// U+2212), the signs that check 15 of design section 3.6 reads as the sign of a number, so that
+/// the minus that `number.minus` writes changes nothing for the second pass (invariant I4).
 pub(crate) fn is_valid_minus(c: char) -> bool {
-    !c.is_alphanumeric() && !c.is_whitespace() && c != '"' && c != '\''
+    c == '-' || crate::engine::lex::is_dash_char(c)
 }

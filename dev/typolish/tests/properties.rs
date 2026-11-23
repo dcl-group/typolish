@@ -36,17 +36,20 @@ fn typographer(lang: usize, set: RuleSet, quotes: u8, percent: u8) -> Typographe
         1 => SingleQuotes::Everywhere,
         _ => SingleQuotes::Never,
     };
-    let spacing = match percent % 4 {
+    Typographer::builder(LANGUAGES[lang % 3].clone(), set)
+        .single_quotes(mode)
+        .percent(spacing(percent))
+        .build()
+        .unwrap()
+}
+
+fn spacing(percent: u8) -> PercentSpacing {
+    match percent % 4 {
         0 => PercentSpacing::AsWritten,
         1 => PercentSpacing::Language,
         2 => PercentSpacing::Attached,
         _ => PercentSpacing::Spaced,
-    };
-    Typographer::builder(LANGUAGES[lang % 3].clone(), set)
-        .single_quotes(mode)
-        .percent(spacing)
-        .build()
-        .unwrap()
+    }
 }
 
 fn outputs() -> Vec<Output> {
@@ -216,6 +219,25 @@ proptest! {
             current = next;
         }
         prop_assert_eq!(&current, &once);
+    }
+
+    /// 1. Idempotence with every minus sign the builder accepts (design section 2.11): the sign
+    /// that `number.minus` writes is read as the sign of a number by the second pass.
+    #[test]
+    fn idempotence_with_any_accepted_minus_sign(
+        text in any_text(), lang in 0usize..2, set in rule_set(), percent in 0u8..4,
+        minus in prop::sample::select(vec![
+            '-', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}', '\u{2015}', '\u{2212}',
+        ]),
+    ) {
+        let t = Typographer::builder(LANGUAGES[lang].clone(), set.with(Rule::NumberMinus))
+            .minus_sign(minus)
+            .percent(spacing(percent))
+            .build()
+            .unwrap();
+        let once = t.typeset(&text, Output::Unicode).into_owned();
+        let twice = t.typeset(&once, Output::Unicode).into_owned();
+        prop_assert_eq!(&once, &twice, "{:?} -> {:?}", text, once);
     }
 
     /// 8. Cow: borrowed exactly when the output equals the input, for every output kind.

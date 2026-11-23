@@ -1275,11 +1275,15 @@ fn number_data_is_checked() {
         with(NumberData::new().with_min_grouping_digits(255)),
         "numbers",
     );
-    // The minus sign is not a letter, a digit, whitespace, `"` or `'`.
-    for bad in ['a', 'я', '5', ' ', '\t', '\u{a0}', '"', '\''] {
+    // The minus sign is `-` or a dash, U+2010 to U+2015 or U+2212 (design section 7.6).
+    for bad in [
+        'a', 'я', '5', ' ', '\t', '\u{a0}', '"', '\'', '~', '*', '(', '.', '\u{ad}',
+    ] {
         rejected(with(NumberData::new().with_minus(bad)), "numbers");
     }
-    for good in ['-', '\u{2212}', '\u{2013}', '~'] {
+    for good in [
+        '-', '\u{2010}', '\u{2011}', '\u{2013}', '\u{2014}', '\u{2015}', '\u{2212}',
+    ] {
         accepted(with(NumberData::new().with_minus(good)));
     }
     // The group separator is U+00A0, U+202F or not whitespace; not a letter or a digit.
