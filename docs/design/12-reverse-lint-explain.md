@@ -71,8 +71,12 @@ them, so the number of runs does not grow with the length of the text. The whole
 own output until nothing changes, so `to_plain` is stable by construction. There is no second copy
 of the rule patterns to drift from them. The price is up to about (readings within 256 bytes) ×
 (readings of a character) forward runs per pass, each over the whole text: on dense typographic text
-that is hundreds of runs, so the time is linear in the length of the text but about 100 to 200 times
-that of `typeset`, which the tooling path allows (section 2.12).
+that is hundreds of runs. On ordinary text the time is linear in its length and about 100 to 200
+times that of `typeset`, which the tooling path allows (section 2.12); a pass may settle only a few
+readings of a long run of ambiguous characters (`’`, nested quotes) in one paragraph, so the number
+of passes can grow with that paragraph and the worst case is quadratic in the length of the longest
+paragraph (96 KB of `’` in one paragraph: about 4 s; split into paragraphs: 15 ms). Callers that
+check untrusted text split it into paragraphs or limit its length.
 
 **Which `’` is an apostrophe** (English, where `’` is both the apostrophe and the nested closing
 quote). A `’` in a fixed apostrophe context of section 6.2 (between letters, after a digit before a

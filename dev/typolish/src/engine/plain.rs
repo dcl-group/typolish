@@ -189,7 +189,8 @@ fn passes(
             })
             .collect();
         // Every round that changes something turns at least one non-ASCII character into ASCII
-        // text, so the loop ends.
+        // text, so the loop ends; the number of rounds is bounded by the number of non-ASCII
+        // characters, so the worst case is quadratic (design section 12.3).
         let Some((changed, undone)) = round(typographer, scratch, &current) else {
             break;
         };
