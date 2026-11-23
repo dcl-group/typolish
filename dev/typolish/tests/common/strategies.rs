@@ -120,6 +120,8 @@ pub const RISKY: &[&str] = &[
     "10 % x 5",
     "(c) 2026 %",
     " %",
+    "%",
+    "‰",
     "№10",
     "Brand (r)",
     "Brand(tm)",
