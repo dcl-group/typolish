@@ -16,12 +16,56 @@
 #[non_exhaustive]
 pub enum Script {
     /// Cyrillic letters.
+    ///
+    /// ```
+    /// # use typolish::{Language, LanguageData, Output, Rule, RuleSet, Script, Typographer};
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_script(Script::Cyrillic)
+    ///     .with_short_words(&["в"]);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspShortWords);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("в дом", Output::Unicode), "в\u{a0}дом");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Cyrillic,
     /// Latin letters.
+    ///
+    /// ```
+    /// # use typolish::{Language, LanguageData, Output, Rule, RuleSet, Script, Typographer};
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_script(Script::Latin)
+    ///     .with_short_words(&["a"]);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspShortWords);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("a cat", Output::Unicode), "a\u{a0}cat");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Latin,
     /// Greek letters.
+    ///
+    /// ```
+    /// # use typolish::{Language, LanguageData, Output, Rule, RuleSet, Script, Typographer};
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_script(Script::Greek)
+    ///     .with_short_words(&["ο"]);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspShortWords);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("ο λόγος", Output::Unicode), "ο\u{a0}λόγος");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Greek,
-    /// Any other script, or none (`Language::COMMON`).
+    /// Any other script, or none (`Language::COMMON`); no short word matches.
+    ///
+    /// ```
+    /// # use typolish::{Language, LanguageData, Output, Rule, RuleSet, Script, Typographer};
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_script(Script::Other)
+    ///     .with_short_words(&["a"]);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspShortWords);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("a cat", Output::Unicode), "a cat");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Other,
 }
 
@@ -40,10 +84,43 @@ pub enum Script {
 #[non_exhaustive]
 pub enum DashStyle {
     /// No spaces around the dash between two plain words: `word—word` (en-US).
+    ///
+    /// ```
+    /// # use typolish::{DashStyle, Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    /// static XX: LanguageData = LanguageData::EN_US
+    ///     .with_tag("xx")
+    ///     .with_dash_style(DashStyle::Closed);
+    /// let rules = RuleSet::EMPTY.with(Rule::DashSpacedHyphen);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("one - two", Output::Unicode), "one—two");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Closed,
     /// The author's spaces stay: `word — word`.
+    ///
+    /// ```
+    /// # use typolish::{DashStyle, Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    /// static XX: LanguageData = LanguageData::EN_US
+    ///     .with_tag("xx")
+    ///     .with_dash_style(DashStyle::Spaced);
+    /// let rules = RuleSet::EMPTY.with(Rule::DashSpacedHyphen);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("one - two", Output::Unicode), "one — two");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Spaced,
     /// The author's spaces stay, and the one before the dash is glued: `слово⍽— слово` (ru-RU).
+    ///
+    /// ```
+    /// # use typolish::{DashStyle, Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    /// static XX: LanguageData = LanguageData::EN_US
+    ///     .with_tag("xx")
+    ///     .with_dash_style(DashStyle::SpacedGlued);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspDash);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("one — two", Output::Unicode), "one\u{a0}— two");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     SpacedGlued,
 }
 
@@ -59,10 +136,40 @@ pub enum DashStyle {
 #[non_exhaustive]
 pub enum Bind {
     /// Glue only between the parts of the entry (`т.⍽е.`).
+    ///
+    /// ```
+    /// # use typolish::{Abbreviation, Bind, Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_abbreviations(&[Abbreviation::new(&["i.", "e."], Bind::Inner)]);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspAbbreviations);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("i. e. so", Output::Unicode), "i.\u{a0}e. so");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Inner,
     /// Glue also to the next word (`ул.⍽Ленина`, `Mr.⍽Smith`).
+    ///
+    /// ```
+    /// # use typolish::{Abbreviation, Bind, Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_abbreviations(&[Abbreviation::new(&["Mr."], Bind::Next)]);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspAbbreviations);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("Mr. smith", Output::Unicode), "Mr.\u{a0}smith");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Next,
     /// Glue to the next word only when it is capitalized (`г.⍽Москва`).
+    ///
+    /// ```
+    /// # use typolish::{Abbreviation, Bind, Language, LanguageData, Output, Rule, RuleSet, Typographer};
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_abbreviations(&[Abbreviation::new(&["Mr."], Bind::NextCapitalized)]);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspAbbreviations);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("Mr. Smith, Mr. smith", Output::Unicode), "Mr.\u{a0}Smith, Mr. smith");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     NextCapitalized,
 }
 
@@ -78,10 +185,43 @@ pub enum Bind {
 #[non_exhaustive]
 pub enum MonthPosition {
     /// After the day: `21⍽ноября`.
+    ///
+    /// ```
+    /// # use typolish::{Language, LanguageData, MonthPosition, Output, Rule, RuleSet, Typographer};
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_months(&["May"])
+    ///     .with_month_position(MonthPosition::AfterDay);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspDates);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("on 21 May and May 21", Output::Unicode), "on 21\u{a0}May and May 21");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     AfterDay,
     /// Before the day: `November⍽21`.
+    ///
+    /// ```
+    /// # use typolish::{Language, LanguageData, MonthPosition, Output, Rule, RuleSet, Typographer};
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_months(&["May"])
+    ///     .with_month_position(MonthPosition::BeforeDay);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspDates);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("on 21 May and May 21", Output::Unicode), "on 21 May and May\u{a0}21");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     BeforeDay,
     /// Either.
+    ///
+    /// ```
+    /// # use typolish::{Language, LanguageData, MonthPosition, Output, Rule, RuleSet, Typographer};
+    /// static XX: LanguageData = LanguageData::new("xx")
+    ///     .with_months(&["May"])
+    ///     .with_month_position(MonthPosition::Both);
+    /// let rules = RuleSet::EMPTY.with(Rule::NbspDates);
+    /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("on 21 May and May 21", Output::Unicode), "on 21\u{a0}May and May\u{a0}21");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Both,
 }
 

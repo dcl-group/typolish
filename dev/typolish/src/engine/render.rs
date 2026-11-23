@@ -681,8 +681,10 @@ impl Writer {
     }
 }
 
-/// The result for string input in an encoded output kind: borrowed when the encoded text equals
-/// the input; otherwise counted, then allocated once (design section 2.12).
+/// The result for string input in an encoded output kind: borrowed when there is no edit and the
+/// encoded text equals the input; otherwise counted, then allocated once (design section 2.12).
+/// Rules propose no edit for a pattern already in its target form (design section 3.8, item 3),
+/// so a result with an edit differs from the input and design section 2.5 holds.
 pub(crate) fn render_text_encoded<'a>(
     text: &'a str,
     v: &View<'_, '_>,

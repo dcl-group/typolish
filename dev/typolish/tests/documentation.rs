@@ -168,7 +168,7 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 
 /// The `pub` items of a source file (types, functions, methods, constants, associated constants)
 /// with their doc blocks. Enum variants and struct fields do not start with `pub` plus an item
-/// keyword, so they are not items here, as section 13.10 says.
+/// keyword, so they are not items here; `public_variants` reads the variants of public enums.
 struct Item {
     file: String,
     line: usize,
@@ -243,6 +243,81 @@ fn every_public_item_has_an_example() {
     );
 }
 
+/// The variants of the `pub enum`s of `src/` with their doc blocks. A variant is a line of code at
+/// brace depth 1 of the enum's body; doc lines, comments and attributes do not count braces, so
+/// `{n}` in a doc or `{}` in an `#[error]` string does not shift the depth.
+fn public_variants() -> Vec<Item> {
+    let mut files = Vec::new();
+    rust_files(&crate_dir().join("src"), &mut files);
+    let mut variants = Vec::new();
+    for file in files {
+        let src = read(&file);
+        let name = file
+            .strip_prefix(crate_dir())
+            .unwrap()
+            .display()
+            .to_string();
+        let mut depth: Option<usize> = None;
+        let mut doc: Vec<String> = Vec::new();
+        for (i, line) in src.lines().enumerate() {
+            let t = line.trim();
+            let Some(d) = depth else {
+                if t.starts_with("pub enum ") && t.ends_with('{') {
+                    depth = Some(1);
+                    doc.clear();
+                }
+                continue;
+            };
+            if let Some(text) = t.strip_prefix("///") {
+                doc.push(text.to_string());
+                continue;
+            }
+            if t.is_empty() || t.starts_with("//") || t.starts_with("#[") {
+                continue;
+            }
+            if d == 1 && t.starts_with(|c: char| c.is_ascii_uppercase()) {
+                variants.push(Item {
+                    file: name.clone(),
+                    line: i + 1,
+                    kind: "variant",
+                    name: t
+                        .chars()
+                        .take_while(|c| c.is_alphanumeric() || *c == '_')
+                        .collect(),
+                    doc: std::mem::take(&mut doc),
+                });
+            }
+            doc.clear();
+            let opens = t.matches('{').count();
+            let closes = t.matches('}').count();
+            depth = (d + opens).checked_sub(closes).filter(|&d| d > 0);
+        }
+    }
+    variants
+}
+
+#[test]
+fn every_public_enum_variant_has_an_example() {
+    // Design sections 13.10 and 15.2, item 29: every variant of a public enum has an example of
+    // its own.
+    let variants = public_variants();
+    assert!(
+        variants.len() >= 99,
+        "only {} public enum variants found",
+        variants.len()
+    );
+    let missing: Vec<String> = variants
+        .iter()
+        .filter(|v| !v.doc.iter().any(|l| l.trim_start().starts_with("```")))
+        .map(|v| format!("{}:{} {} {}", v.file, v.line, v.kind, v.name))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "public enum variants without an example:\n{}",
+        missing.join("\n")
+    );
+}
+
 #[test]
 fn every_example_runs_as_a_doctest() {
     // An example marked `ignore`, `no_run`, `compile_fail` or with another language is not run.
@@ -278,6 +353,13 @@ fn the_crate_has_its_own_example_and_the_readme_is_run() {
         "lib.rs has no example in its crate docs"
     );
     assert!(lib.contains("#![forbid(unsafe_code)]"));
+    // Design section 5.5: the crate docs say that the crate does not normalize Unicode.
+    assert!(
+        lib.lines()
+            .filter(|l| l.starts_with("//!"))
+            .any(|l| l.contains("does not normalize Unicode")),
+        "the crate docs of lib.rs do not state that there is no normalization"
+    );
     // Section 13.10: the code blocks of the README run through a `#[cfg(doctest)]` item.
     let compact: String = lib.split_whitespace().collect();
     assert!(

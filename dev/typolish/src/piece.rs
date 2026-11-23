@@ -15,14 +15,69 @@ use std::borrow::Cow;
 #[non_exhaustive]
 pub enum Piece<'t, S> {
     /// Text to typeset.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template([Piece::<()>::Text("Файл не найден")], Output::Unicode);
+    /// assert_eq!(t.texts(), ["Файл не\u{a0}найден"]);
+    /// ```
     Text(&'t str),
     /// An opaque placeholder whose value is unknown; rules see only its kind.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Text("Файл \""), Piece::Slot(7, Slot::WORD), Piece::Text("\"")],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.texts(), ["Файл «", "»"]);
+    /// assert_eq!(t.slots(), [(7, Slot::WORD)]);
+    /// ```
     Slot(S, Slot),
     /// Visible text that is never typeset (a command, a path, code). Acts as one word for its
     /// neighbors; encoded for the output kind.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [
+    ///         Piece::<()>::Text("Запустите "),
+    ///         Piece::Protected("--no-cache -x"),
+    ///         Piece::Text(" - и ждите"),
+    ///     ],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.texts(), ["Запустите --no-cache -x\u{a0}— и\u{a0}ждите"]);
+    /// ```
     Protected(&'t str),
     /// Invisible markup (for example a tag supplied by an HTML splitter). Transparent for rules;
     /// written as is in Unicode and HTML output, escaped in escaped output.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [
+    ///         Piece::<()>::Text("Файл "),
+    ///         Piece::Markup("<b>"),
+    ///         Piece::Text("не найден"),
+    ///         Piece::Markup("</b>"),
+    ///     ],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.texts(), ["Файл <b>не\u{a0}найден</b>"]);
+    /// ```
     Markup(&'t str),
 }
 
@@ -135,12 +190,72 @@ impl Slot {
 #[non_exhaustive]
 pub enum SlotKind {
     /// A number formatted by `format_number` of the same typographer (count, size, port).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, SlotKind, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Slot("x", Slot::new(SlotKind::Number)), Piece::Text(" дн.")],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.slots(), [("x", Slot::new(SlotKind::Number))]);
+    /// assert_eq!(t.texts(), ["", "\u{a0}дн."]);
+    /// ```
     Number,
     /// A word or a name.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, SlotKind, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [
+    ///         Piece::Text("Файл \""),
+    ///         Piece::Slot("x", Slot::new(SlotKind::Word)),
+    ///         Piece::Text("\" удалён"),
+    ///     ],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.slots(), [("x", Slot::new(SlotKind::Word))]);
+    /// assert_eq!(t.texts(), ["Файл «", "» удалён"]);
+    /// ```
     Word,
     /// A date or a time, in words or digits.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, SlotKind, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [
+    ///         Piece::Slot("x", Slot::new(SlotKind::Date)),
+    ///         Piece::Text("-"),
+    ///         Piece::Slot("x", Slot::new(SlotKind::Date)),
+    ///     ],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.slots(), [("x", Slot::DATE), ("x", Slot::DATE)]);
+    /// assert_eq!(t.texts(), ["", "–", ""]);
+    /// ```
     Date,
     /// Anything else: a path, a URL, code, a string of unknown length.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, SlotKind, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [Piece::Text("в "), Piece::Slot("x", Slot::new(SlotKind::Other))],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(t.slots(), [("x", Slot::new(SlotKind::Other))]);
+    /// assert_eq!(t.texts(), ["в ", ""]);
+    /// ```
     Other,
 }
 
@@ -189,8 +304,31 @@ pub struct Template<'t, S> {
 #[non_exhaustive]
 pub enum TemplatePart<'a, S> {
     /// A typeset text.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, TemplatePart, Typographer};
+    ///
+    /// static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    ///
+    /// let pieces = [Piece::Slot(1u8, Slot::NUMBER), Piece::Text(" files")];
+    /// let t = EN.typeset_template(pieces, Output::Unicode);
+    /// let mut parts = t.iter();
+    /// assert_eq!(parts.next(), Some(TemplatePart::Slot(&1, Slot::NUMBER)));
+    /// assert_eq!(parts.next(), Some(TemplatePart::Text(" files")));
+    /// ```
     Text(&'a str),
     /// A slot with the caller's payload.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, TemplatePart, Typographer};
+    ///
+    /// static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    ///
+    /// let pieces = [Piece::Slot(1u8, Slot::NUMBER), Piece::Text(" files")];
+    /// let t = EN.typeset_template(pieces, Output::Unicode);
+    /// let mut parts = t.iter();
+    /// assert_eq!(parts.next(), Some(TemplatePart::Slot(&1, Slot::NUMBER)));
+    /// ```
     Slot(&'a S, Slot),
 }
 

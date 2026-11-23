@@ -22,58 +22,225 @@ use crate::Error;
 #[non_exhaustive]
 pub enum Rule {
     /// `symbols.copyright`: `(c)` next to a year, `(r)` and `(tm)` after a brand name.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::SymbolsCopyright));
+    /// assert_eq!(t.typeset("(c) 2024 Acme", Output::Unicode), "© 2024 Acme");
+    /// ```
     SymbolsCopyright,
     /// `symbols.arrows`: a lone `->`, `<-`, `<->` between spaces.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::SymbolsArrows));
+    /// assert_eq!(t.typeset("a -> b", Output::Unicode), "a → b");
+    /// ```
     SymbolsArrows,
     /// `symbols.math`: a lone `>=`, `<=`, `!=`, and `+-`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::SymbolsMath));
+    /// assert_eq!(t.typeset("a >= b", Output::Unicode), "a ≥ b");
+    /// ```
     SymbolsMath,
     /// `ellipsis.dots`: `...` at a word end or alone, and after `?` and `!`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::EllipsisDots));
+    /// assert_eq!(t.typeset("Wait...", Output::Unicode), "Wait…");
+    /// ```
     EllipsisDots,
     /// `ellipsis.inner`: `...` at a word start or between words.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::EllipsisInner));
+    /// assert_eq!(t.typeset("Wait...what", Output::Unicode), "Wait…what");
+    /// ```
     EllipsisInner,
     /// `dash.dialogue`: a hyphen at a line start that opens a line of dialogue.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::DashDialogue));
+    /// assert_eq!(t.typeset("- Привет!", Output::Unicode), "—\u{a0}Привет!");
+    /// ```
     DashDialogue,
     /// `dash.double-hyphen`: a lone `--` or `---` between operands.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::DashDoubleHyphen));
+    /// assert_eq!(t.typeset("да -- нет", Output::Unicode), "да — нет");
+    /// ```
     DashDoubleHyphen,
     /// `dash.spaced-hyphen`: a lone `-` between operands.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::DashSpacedHyphen));
+    /// assert_eq!(t.typeset("да - нет", Output::Unicode), "да — нет");
+    /// ```
     DashSpacedHyphen,
     /// `range.placeholders`: a hyphen between two number slots or two date slots.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Piece, Rule, RuleSet, Slot, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::RangePlaceholders));
+    /// let out = t.typeset_template(
+    ///     [Piece::Slot("a", Slot::NUMBER), Piece::Text("-"), Piece::Slot("b", Slot::NUMBER)],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(out.texts(), ["", "–", ""]);
+    /// ```
     RangePlaceholders,
     /// `range.digits`: a hyphen between two ascending numbers.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::RangeDigits));
+    /// assert_eq!(t.typeset("pages 10-20", Output::Unicode), "pages 10–20");
+    /// ```
     RangeDigits,
     /// `range.context`: a hyphen between numbers next to a unit, year, century or page word.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::RangeContext));
+    /// assert_eq!(t.typeset("10-20 km", Output::Unicode), "10–20 km");
+    /// ```
     RangeContext,
     /// `range.time`: a hyphen between two times of day.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::RangeTime));
+    /// assert_eq!(t.typeset("9:00-17:30", Output::Unicode), "9:00–17:30");
+    /// ```
     RangeTime,
     /// `number.minus`: a hyphen before a number that stands alone.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::NumberMinus));
+    /// assert_eq!(t.typeset("Temp -5 today", Output::Unicode), "Temp −5 today");
+    /// ```
     NumberMinus,
     /// `number.times`: `x` between two numbers.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::NumberTimes));
+    /// assert_eq!(t.typeset("3 x 4", Output::Unicode), "3 × 4");
+    /// ```
     NumberTimes,
     /// `quotes.apostrophe`: apostrophes inside and around words.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::QuotesApostrophe));
+    /// assert_eq!(t.typeset("don't", Output::Unicode), "don’t");
+    /// ```
     QuotesApostrophe,
     /// `quotes.pairs`: straight quotes to the language's pairs by nesting level.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::QuotesPairs));
+    /// assert_eq!(t.typeset("\"hi\"", Output::Unicode), "“hi”");
+    /// ```
     QuotesPairs,
     /// `quotes.primes`: a quote after a number that is not a closing quote.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::EN_US, RuleSet::EMPTY.with(Rule::QuotesPrimes));
+    /// assert_eq!(t.typeset("5'10\"", Output::Unicode), "5′10″");
+    /// ```
     QuotesPrimes,
     /// `nbsp.abbreviations`: glue inside and after listed abbreviations.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspAbbreviations));
+    /// assert_eq!(t.typeset("и т. д.", Output::Unicode), "и\u{a0}т.\u{a0}д.");
+    /// ```
     NbspAbbreviations,
     /// `nbsp.initials`: glue between initials and a surname.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspInitials));
+    /// assert_eq!(t.typeset("А. С. Пушкин", Output::Unicode), "А.\u{a0}С.\u{a0}Пушкин");
+    /// ```
     NbspInitials,
     /// `nbsp.dates`: glue between a day and a month, and after a year or a century.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspDates));
+    /// assert_eq!(t.typeset("5 мая 2024 г.", Output::Unicode), "5\u{a0}мая 2024\u{a0}г.");
+    /// ```
     NbspDates,
     /// `nbsp.units`: glue between a number and a unit.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspUnits));
+    /// assert_eq!(t.typeset("5 кг", Output::Unicode), "5\u{a0}кг");
+    /// ```
     NbspUnits,
     /// `nbsp.signs`: glue after `№`, `§` and `¶`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspSigns));
+    /// assert_eq!(t.typeset("№ 5", Output::Unicode), "№\u{a0}5");
+    /// ```
     NbspSigns,
     /// `nbsp.phone`: glue inside a telephone number.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspPhone));
+    /// assert_eq!(t.typeset("+7 495 123-45-67", Output::Unicode), "+7\u{a0}495\u{a0}123-45-67");
+    /// ```
     NbspPhone,
     /// `nbsp.short-words`: glue after a short word of the language's list.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspShortWords));
+    /// assert_eq!(t.typeset("в доме", Output::Unicode), "в\u{a0}доме");
+    /// ```
     NbspShortWords,
     /// `nbsp.short-length`: glue after any short word of the language's script.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspShortLength));
+    /// assert_eq!(t.typeset("он идёт", Output::Unicode), "он\u{a0}идёт");
+    /// ```
     NbspShortLength,
     /// `nbsp.particles`: glue before a particle of the language's list.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::NbspParticles));
+    /// assert_eq!(t.typeset("что ли", Output::Unicode), "что\u{a0}ли");
+    /// ```
     NbspParticles,
     /// `nbsp.dash`: glue before a spaced dash.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    /// let rules = RuleSet::EMPTY.with(Rule::DashSpacedHyphen).with(Rule::NbspDash);
+    /// let t = Typographer::new(Language::RU_RU, rules);
+    /// assert_eq!(t.typeset("да - нет", Output::Unicode), "да\u{a0}— нет");
+    /// ```
     NbspDash,
 }
 
@@ -201,7 +368,8 @@ impl Rule {
         }
     }
 
-    /// Looks a rule up by id; also accepts the retired ids of renamed rules (version 1 has none).
+    /// Looks a rule up by id. A rule renamed in a later version keeps its old id here as an alias
+    /// (design section 2.3); version 1 has none.
     ///
     /// ```
     /// use typolish::Rule;

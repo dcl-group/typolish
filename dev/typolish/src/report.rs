@@ -459,12 +459,41 @@ impl ProtectedSpan {
 pub enum ProtectedKind {
     /// Between protection delimiters: backticks, a fenced block or an own pair, the delimiters
     /// included (design section 10.1).
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("Run `make` now", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Delimited);
+    /// assert_eq!(r.protected()[0].range(), 4..10);
+    /// ```
     Delimited,
     /// A `Piece::Protected`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Piece, ProtectedKind, RuleSet, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report_template([Piece::<&str>::Text("Run "), Piece::Protected("make")], Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::ProtectedPiece);
+    /// ```
     ProtectedPiece,
     /// A slot.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, Piece, ProtectedKind, RuleSet, Slot, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report_template([Piece::Text("Got "), Piece::Slot("n", Slot::NUMBER)], Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Slot);
+    /// ```
     Slot,
     /// A fragment that the classifier froze (design section 3.6).
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("https://example.com", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Url));
+    /// ```
     Technical(TechKind),
 }
 
@@ -484,38 +513,174 @@ pub enum ProtectedKind {
 #[non_exhaustive]
 pub enum TechKind {
     /// Check 1: `https://example.com`, `www.example.com`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("https://example.com", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Url));
+    /// assert_eq!(r.protected()[0].range(), 0..19);
+    /// ```
     Url,
     /// Check 2: `user@example.com`, `@user`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("user@example.com", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Email));
+    /// assert_eq!(r.protected()[0].range(), 0..16);
+    /// ```
     Email,
     /// Check 3: `-v`, `--force`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("--force", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Flag));
+    /// assert_eq!(r.protected()[0].range(), 0..7);
+    /// ```
     Flag,
     /// Check 4: `/etc/hosts`, `C:\Users`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("/etc/hosts", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Path));
+    /// assert_eq!(r.protected()[0].range(), 0..10);
+    /// ```
     Path,
     /// Check 5: the two times of `10:00-12:00`, without the separator.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("10:00-12:00", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::TimeRange));
+    /// assert_eq!(r.protected()[0].range(), 0..5);
+    /// ```
     TimeRange,
     /// Check 6: `host:8080`, `::1`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("host:8080", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Colon));
+    /// assert_eq!(r.protected()[0].range(), 0..9);
+    /// ```
     Colon,
     /// Check 8: `a>>b`, `a=b`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("a>>b", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Operator));
+    /// assert_eq!(r.protected()[0].range(), 0..4);
+    /// ```
     Operator,
     /// Check 8 for `_` (`kv_lang`) and check 20 (`x86`).
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("kv_lang", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Identifier));
+    /// assert_eq!(r.protected()[0].range(), 0..7);
+    /// ```
     Identifier,
     /// Check 8: `<word>`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("<word>", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Angle));
+    /// assert_eq!(r.protected()[0].range(), 0..6);
+    /// ```
     Angle,
     /// Check 9.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("550e8400-e29b-41d4-a716-446655440000", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Uuid));
+    /// assert_eq!(r.protected()[0].range(), 0..36);
+    /// ```
     Uuid,
     /// Checks 10 and 11: `0x1F`, `deadbeef0123`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("0x1F", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Hex));
+    /// assert_eq!(r.protected()[0].range(), 0..4);
+    /// ```
     Hex,
     /// Check 12: `2026-11-21`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("2026-11-21", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::IsoDate));
+    /// assert_eq!(r.protected()[0].range(), 0..10);
+    /// ```
     IsoDate,
     /// Check 13: `0.2.27`, `10.0.0.1`, `21.11.2026`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("0.2.27", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Version));
+    /// assert_eq!(r.protected()[0].range(), 0..6);
+    /// ```
     Version,
     /// Check 18: `example.com`, `file.txt`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("file.txt", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Dotted));
+    /// assert_eq!(r.protected()[0].range(), 0..8);
+    /// ```
     Dotted,
     /// Check 19: `a,b,c`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("a,b,c", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::List));
+    /// assert_eq!(r.protected()[0].range(), 0..5);
+    /// ```
     List,
     /// Check 21: the hyphens of `tls-server`.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("tls-server", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::CompoundHyphens));
+    /// assert_eq!(r.protected()[0].range(), 3..4);
+    /// ```
     CompoundHyphens,
     /// Check 24: anything the classifier does not recognize as a word or a number.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, ProtectedKind, RuleSet, TechKind, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("×", Output::Unicode);
+    /// assert_eq!(r.protected()[0].kind(), ProtectedKind::Technical(TechKind::Unclassified));
+    /// assert_eq!(r.protected()[0].range(), 0..2);
+    /// ```
     Unclassified,
 }
 
@@ -698,8 +863,22 @@ impl fmt::Display for Diagnostic {
 #[non_exhaustive]
 pub enum Severity {
     /// For information; the output is as intended.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, RuleSet, Severity, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("a - b", Output::Unicode);
+    /// assert_eq!(r.diagnostics()[0].severity(), Severity::Info);
+    /// ```
     Info,
     /// Something in the input could not be resolved and was left as it is.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, RuleSet, Severity, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("He said \"hi", Output::Unicode);
+    /// assert_eq!(r.diagnostics()[0].severity(), Severity::Warning);
+    /// ```
     Warning,
 }
 
@@ -716,22 +895,87 @@ pub enum Severity {
 #[non_exhaustive]
 pub enum DiagnosticKind {
     /// A quote without a pair (`quotes.pairs`).
+    ///
+    /// ```
+    /// # use typolish::{DiagnosticKind, Language, Output, RuleSet, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("He said \"hi", Output::Unicode);
+    /// assert!(r.diagnostics().iter().any(|d| d.kind() == &DiagnosticKind::UnmatchedQuote));
+    /// ```
     UnmatchedQuote,
     /// Quote pairs would cross each other or a typed pair (`quotes.pairs`).
+    ///
+    /// ```
+    /// # use typolish::{DiagnosticKind, Language, Output, RuleSet, Typographer};
+    /// # let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    /// let r = t.report("«a \"b» c\"", Output::Unicode);
+    /// assert!(r.diagnostics().iter().any(|d| d.kind() == &DiagnosticKind::CrossingQuotes));
+    /// ```
     CrossingQuotes,
     /// A straight quote without a role (`quotes.pairs`).
+    ///
+    /// ```
+    /// # use typolish::{DiagnosticKind, Language, Output, RuleSet, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("He said - \" a cat\"", Output::Unicode);
+    /// assert!(r.diagnostics().iter().any(|d| d.kind() == &DiagnosticKind::AmbiguousQuote));
+    /// ```
     AmbiguousQuote,
     /// An opening protection delimiter without its closing one; it was treated as text.
+    ///
+    /// ```
+    /// # use typolish::{DiagnosticKind, Language, Output, RuleSet, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("don`t", Output::Unicode);
+    /// assert!(r.diagnostics().iter().any(|d| d.kind() == &DiagnosticKind::UnclosedDelimiter));
+    /// ```
     UnclosedDelimiter,
     /// A hyphen that the dash rules refuse (`dash.spaced-hyphen`, `dash.double-hyphen`).
+    ///
+    /// ```
+    /// # use typolish::{DiagnosticKind, Language, Output, RuleSet, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("a - b", Output::Unicode);
+    /// assert!(r.diagnostics().iter().any(|d| d.kind() == &DiagnosticKind::AmbiguousHyphen));
+    /// ```
     AmbiguousHyphen,
     /// A word with letters of two scripts (`Мoсква` with a Latin `o`).
+    ///
+    /// ```
+    /// # use typolish::{DiagnosticKind, Language, Output, RuleSet, Typographer};
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("Мoсква", Output::Unicode);
+    /// assert!(r.diagnostics().iter().any(|d| d.kind() == &DiagnosticKind::MixedScript));
+    /// ```
     MixedScript,
     /// A `Number` slot glued to letters (warning) or two slots glued together (info).
+    ///
+    /// ```
+    /// # use typolish::{DiagnosticKind, Language, Output, Piece, RuleSet, Slot, Typographer};
+    /// # let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    /// let r = t.report_template([Piece::Slot("n", Slot::NUMBER), Piece::Text("МБ")], Output::Unicode);
+    /// assert!(r.diagnostics().iter().any(|d| d.kind() == &DiagnosticKind::SlotGlue));
+    /// ```
     SlotGlue,
     /// A nowrap group split at a `Markup` piece; the glue at the split written as an entity.
+    ///
+    /// ```
+    /// # use typolish::{DiagnosticKind, HtmlStyle, Language, Output, Piece, RuleSet, Typographer};
+    /// # let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    /// let pieces = [Piece::<&str>::Text("в "), Piece::Markup("<b>"), Piece::Text("доме")];
+    /// let html = Output::Html(HtmlStyle::NAMED.nowrap_class("nw"));
+    /// let r = t.report_template(pieces, html);
+    /// assert_eq!(r.diagnostics()[0].kind(), &DiagnosticKind::NowrapFallback);
+    /// ```
     NowrapFallback,
     /// A character that `to_plain` would change (`lint` only).
+    ///
+    /// ```
+    /// # use typolish::{DiagnosticKind, Language, RuleSet, Typographer};
+    /// # let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    /// let d = t.lint("Файл «a» не найден");
+    /// assert!(matches!(d[0].kind(), DiagnosticKind::TypographicChar { found: '«', .. }));
+    /// ```
     #[non_exhaustive]
     TypographicChar {
         /// The character found.

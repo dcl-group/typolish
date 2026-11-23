@@ -48,6 +48,12 @@ use crate::rules::Triggers;
 #[non_exhaustive]
 pub enum Output {
     /// Characters as they are (UTF-8). Nothing is escaped.
+    ///
+    /// ```
+    /// # use typolish::{Language, Output, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    /// assert_eq!(t.typeset("да - нет", Output::Unicode), "да\u{a0}— нет");
+    /// ```
     Unicode,
     /// HTML text: `& < > " '` escaped, typographic characters as entities, no-break groups as
     /// entities or as nowrap elements (design sections 11.4 and 11.5). Safe as element content.
@@ -56,9 +62,23 @@ pub enum Output {
     /// `nowrap_style` write `<span>` tags. `Piece::Markup` is written as it is and is the caller's.
     /// Controls are written as they are: an HTML parser drops U+0000 in element content and reads
     /// CR and CR LF as LF (design section 11.8).
+    ///
+    /// ```
+    /// # use typolish::{HtmlStyle, Language, Output, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    /// let out = Output::Html(HtmlStyle::NAMED);
+    /// assert_eq!(t.typeset("да - <нет>", out), "да&nbsp;&mdash; &lt;нет&gt;");
+    /// ```
     Html(HtmlStyle),
     /// The body of a string literal of a given syntax, ready to paste between its quotes (design
     /// section 11.6).
+    ///
+    /// ```
+    /// # use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    /// let out = Output::Escaped(EscapeStyle::JS);
+    /// assert_eq!(t.typeset("да - нет", out), "да\\u00A0\\u2014 нет");
+    /// ```
     Escaped(EscapeStyle),
 }
 

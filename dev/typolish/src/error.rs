@@ -16,6 +16,12 @@
 #[non_exhaustive]
 pub enum Error {
     /// The tag is malformed or names a language that has no built-in data.
+    ///
+    /// ```
+    /// # use typolish::{Error, Language};
+    /// let err = Language::from_tag("de-DE").unwrap_err();
+    /// assert!(matches!(err, Error::UnknownLanguage { ref tag, .. } if tag == "de-DE"));
+    /// ```
     #[error("unknown language tag `{}`", crate::report::Raw(.tag))]
     #[non_exhaustive]
     UnknownLanguage {
@@ -23,6 +29,12 @@ pub enum Error {
         tag: String,
     },
     /// Language data failed a check of design section 7.6.
+    ///
+    /// ```
+    /// # use typolish::{Error, Language, LanguageBuilder};
+    /// let err = LanguageBuilder::new("russian").build().unwrap_err();
+    /// assert!(matches!(err, Error::InvalidLanguageData { .. }));
+    /// ```
     #[error("invalid language data for `{}`: {reason}", crate::report::Raw(.tag))]
     #[non_exhaustive]
     InvalidLanguageData {
@@ -32,6 +44,12 @@ pub enum Error {
         reason: &'static str,
     },
     /// No rule has this id.
+    ///
+    /// ```
+    /// # use typolish::{Error, RuleSet};
+    /// let err = "interface,+nbsp.everything".parse::<RuleSet>().unwrap_err();
+    /// assert!(matches!(err, Error::UnknownRule { ref id, .. } if id == "nbsp.everything"));
+    /// ```
     #[error("unknown rule id `{}`", crate::report::Raw(.id))]
     #[non_exhaustive]
     UnknownRule {
@@ -39,6 +57,12 @@ pub enum Error {
         id: String,
     },
     /// A rule set string breaks the grammar of design section 2.3.
+    ///
+    /// ```
+    /// # use typolish::{Error, RuleSet};
+    /// let err = "interface,prose".parse::<RuleSet>().unwrap_err();
+    /// assert!(matches!(err, Error::InvalidRuleSet { .. }));
+    /// ```
     #[error("invalid rule set `{}`: {reason}", crate::report::Raw(.input))]
     #[non_exhaustive]
     InvalidRuleSet {
@@ -48,6 +72,16 @@ pub enum Error {
         reason: &'static str,
     },
     /// A rule is both enabled and disabled in a builder.
+    ///
+    /// ```
+    /// # use typolish::{Error, Language, Rule, RuleSet, Typographer};
+    /// let err = Typographer::builder(Language::EN_US, RuleSet::PROSE)
+    ///     .enable(Rule::NumberTimes)
+    ///     .disable(Rule::NumberTimes)
+    ///     .build()
+    ///     .unwrap_err();
+    /// assert!(matches!(err, Error::RuleConflict { id: "number.times", .. }));
+    /// ```
     #[error("rule `{id}` is both enabled and disabled")]
     #[non_exhaustive]
     RuleConflict {
@@ -55,6 +89,12 @@ pub enum Error {
         id: &'static str,
     },
     /// A string is not an ASCII decimal number of design section 2.7.
+    ///
+    /// ```
+    /// # use typolish::{Error, Number};
+    /// let err = Number::decimal("1e3").unwrap_err();
+    /// assert!(matches!(err, Error::InvalidNumber { .. }));
+    /// ```
     #[error("invalid number `{}`: {reason}", crate::report::Raw(.input))]
     #[non_exhaustive]
     InvalidNumber {
@@ -64,6 +104,15 @@ pub enum Error {
         reason: &'static str,
     },
     /// A setting of the typographer builder has an invalid value.
+    ///
+    /// ```
+    /// # use typolish::{Error, Language, RuleSet, Typographer};
+    /// let err = Typographer::builder(Language::RU_RU, RuleSet::INTERFACE)
+    ///     .minus_sign('~')
+    ///     .build()
+    ///     .unwrap_err();
+    /// assert!(matches!(err, Error::InvalidSetting { setting: "minus_sign", .. }));
+    /// ```
     #[error("invalid setting `{setting}`: {reason}")]
     #[non_exhaustive]
     InvalidSetting {

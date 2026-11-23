@@ -15,6 +15,10 @@
 //! JavaScript, JSON, Rust and CSS. Commands and code are protected with backticks, delimiters of
 //! the caller's own or [`Piece::Protected`]; the README lists the known limits.
 //!
+//! The crate does not normalize Unicode. A word in NFD, such as `и` followed by U+0306 COMBINING
+//! BREVE in place of `й`, does not match a language list and gets no no-break space; nothing else
+//! changes. Callers that need the lists to match normalize the text to NFC before typesetting.
+//!
 //! ```
 //! use typolish::{Language, Output, RuleSet, Typographer};
 //!

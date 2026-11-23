@@ -31,10 +31,43 @@ use crate::{Error, Language, Output, Piece, Rule, RuleSet, Template};
 #[non_exhaustive]
 pub enum SingleQuotes {
     /// Only inside double quotes (the default).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, SingleQuotes, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::EN_US, RuleSet::PROSE)
+    ///     .single_quotes(SingleQuotes::NestedOnly)
+    ///     .build()?;
+    /// let out = t.typeset("He said 'hello' to me.", Output::Unicode);
+    /// assert_eq!(out, "He said 'hello' to\u{a0}me.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     NestedOnly,
     /// At every level.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, SingleQuotes, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::EN_US, RuleSet::PROSE)
+    ///     .single_quotes(SingleQuotes::Everywhere)
+    ///     .build()?;
+    /// let out = t.typeset("He said 'hello' to me.", Output::Unicode);
+    /// assert_eq!(out, "He said “hello” to\u{a0}me.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Everywhere,
     /// Never; straight single quotes stay.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, SingleQuotes, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::EN_US, RuleSet::PROSE)
+    ///     .single_quotes(SingleQuotes::Never)
+    ///     .build()?;
+    /// let out = t.typeset("He said 'hello' to me.", Output::Unicode);
+    /// assert_eq!(out, "He said 'hello' to\u{a0}me.");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Never,
 }
 
@@ -53,12 +86,56 @@ pub enum SingleQuotes {
 #[non_exhaustive]
 pub enum PercentSpacing {
     /// An existing space is glued, an attached sign stays (the default).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, PercentSpacing, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+    ///     .percent(PercentSpacing::AsWritten)
+    ///     .build()?;
+    /// let out = t.typeset("5 % и 5%", Output::Unicode);
+    /// assert_eq!(out, "5\u{a0}% и\u{a0}5%");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     AsWritten,
     /// The CLDR pattern of the language: `5⍽%` in Russian, `5%` in English.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, PercentSpacing, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::EN_US, RuleSet::PROSE)
+    ///     .percent(PercentSpacing::Language)
+    ///     .build()?;
+    /// let out = t.typeset("5 %", Output::Unicode);
+    /// assert_eq!(out, "5%");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Language,
     /// The sign is attached: `5%`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, PercentSpacing, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+    ///     .percent(PercentSpacing::Attached)
+    ///     .build()?;
+    /// let out = t.typeset("5 % и 5%", Output::Unicode);
+    /// assert_eq!(out, "5% и\u{a0}5%");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Attached,
     /// A glued space before the sign: `5⍽%`.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, PercentSpacing, RuleSet, Typographer};
+    ///
+    /// let t = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+    ///     .percent(PercentSpacing::Spaced)
+    ///     .build()?;
+    /// let out = t.typeset("5 % и 5%", Output::Unicode);
+    /// assert_eq!(out, "5\u{a0}% и\u{a0}5\u{a0}%");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     Spaced,
 }
 
