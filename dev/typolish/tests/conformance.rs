@@ -151,8 +151,8 @@ fn replacement_tables_produce_no_letter_and_no_digit() {
         "ох дом",
         "пришёл бы",
     ];
-    // The signs of design section 11.2 that rules write in every language, primes and apostrophe
-    // included.
+    // The signs of design section 11.2 that rules write in every language: the legal marks, arrows,
+    // math signs, times sign, primes and apostrophe.
     const SIGNS: [char; 14] = [
         '©', '™', '®', '→', '←', '↔', '≥', '≤', '≠', '±', '×', '′', '″', '’',
     ];

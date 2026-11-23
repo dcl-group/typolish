@@ -586,14 +586,14 @@ attributes of every `tests/*.rs` list exactly the lints of section 14.5 (`tests/
 the replacements that rules write in every built-in language and `COMMON` with `RuleSet::ALL` on a
 fixed set of texts, with one template for `range.placeholders`, contain no letter and no digit; the
 test checks that the set reaches every active rule of the language, and that the writes include the
-signs of section 11.2 (primes and apostrophe among them) and, in a language with dash data, the dash
-(the fields of language data themselves are checked by `tests/data.rs`); every character the lexer
-reads as `Quote` (section 3.5) other than `"` and `'` is in the table of section 11.2, `′` and `″`
-in the primes row and the others in the quotes row; built-in languages × built-in sets build without
-error. A unit test next to the prefilter checks, for every built-in set and language, that the
-trigger set equals the union of the trigger constants of the active rules. Checks that read
-`docs/design/` skip when the directory is absent (the published package has no design); a missing
-file or heading inside the repository fails.
+legal marks, arrows, math signs, times sign, primes and apostrophe of section 11.2 and, in a
+language with dash data, the dash (the fields of language data themselves are checked by
+`tests/data.rs`); every character the lexer reads as `Quote` (section 3.5) other than `"` and `'` is
+in the table of section 11.2, `′` and `″` in the primes row and the others in the quotes row;
+built-in languages × built-in sets build without error. A unit test next to the prefilter checks,
+for every built-in set and language, that the trigger set equals the union of the trigger constants
+of the active rules. Checks that read `docs/design/` skip when the directory is absent (the
+published package has no design); a missing file or heading inside the repository fails.
 
 `tests/package.rs` checks the package (stage 5, section 15.4): the manifests and `dev/deny.toml`
 against section 14.5, the tree of `Cargo.lock` against section 14.1, the layout of section 14.6, the
