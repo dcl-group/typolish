@@ -555,6 +555,48 @@ protected  Technical(Colon)  0:25..34  host:8080
 }
 
 #[test]
+fn the_display_escapes_every_format_character_of_section_5_4() {
+    // Design sections 12.5 and 5.4: a protected text keeps its record on one line and shows
+    // every format character escaped, so that an override such as U+202E cannot reorder the
+    // printed line.
+    let rows = [
+        ('\u{ad}', "\\u{ad}"),
+        ('\u{200b}', "\\u{200b}"),
+        ('\u{200c}', "\\u{200c}"),
+        ('\u{200d}', "\\u{200d}"),
+        ('\u{200e}', "\\u{200e}"),
+        ('\u{200f}', "\\u{200f}"),
+        ('\u{202a}', "\\u{202a}"),
+        ('\u{202b}', "\\u{202b}"),
+        ('\u{202c}', "\\u{202c}"),
+        ('\u{202d}', "\\u{202d}"),
+        ('\u{202e}', "\\u{202e}"),
+        ('\u{2060}', "\\u{2060}"),
+        ('\u{2064}', "\\u{2064}"),
+        ('\u{2066}', "\\u{2066}"),
+        ('\u{2069}', "\\u{2069}"),
+        ('\u{feff}', "\\u{feff}"),
+    ];
+    for (c, escaped) in rows {
+        let input = format!("Он - врач `a{c}b - c`");
+        let r = UI.report(&input, Output::Unicode);
+        let printed = r.to_string();
+        let protected: Vec<&str> = printed
+            .lines()
+            .filter(|line| line.starts_with("protected"))
+            .collect();
+        let expected = format!("`a{escaped}b - c`");
+        assert_eq!(protected.len(), 1, "{c:?}: {printed:?}");
+        assert!(
+            protected[0].ends_with(&expected),
+            "{c:?}: {:?}",
+            protected[0]
+        );
+        assert!(!printed.contains(c), "{c:?}: {printed:?}");
+    }
+}
+
+#[test]
 fn a_report_without_records_prints_nothing() {
     let r = UI.report("Привет, мир.", Output::Unicode);
     assert!(r.changes().is_empty() && r.protected().is_empty() && r.diagnostics().is_empty());

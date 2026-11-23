@@ -224,14 +224,8 @@ impl<T> fmt::Display for Report<'_, T> {
 fn invisible(c: char) -> bool {
     (c.is_whitespace() && c != ' ')
         || c.is_control()
-        || matches!(
-            c,
-            '\u{ad}'
-                | '\u{200b}'..='\u{200f}'
-                | '\u{2060}'..='\u{2064}'
-                | '\u{2066}'..='\u{2069}'
-                | '\u{feff}'
-        )
+        || crate::engine::lex::is_format_char(c)
+        || crate::engine::lex::is_joiner(c)
 }
 
 /// A text of the change table: `U+XXXX` for a single invisible character, otherwise quoted.
