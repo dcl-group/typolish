@@ -60,7 +60,7 @@ pub const RISKY: &[&str] = &[
     "12 дн.",
     "т. е.",
     "т.е.",
-    // A compact abbreviation after a spaced dash (sections 4.3, I2, and 8.2).
+    // A compact abbreviation after a spaced dash (design sections 4.3, I2, and 8.2).
     " - т.е.",
     " – т.д.",
     " -- т.е.",
@@ -108,7 +108,8 @@ pub const RISKY: &[&str] = &[
     "10 Х 5",
     "(c) 2026",
     "2026 (c)",
-    // A percentage after spaces next to the number and symbol rules (sections 8.2, 8.8, 8.9).
+    // A percentage after spaces next to the number and symbol rules (design sections 8.2, 8.8,
+    // 8.9).
     "10 % x 5",
     "(c) 2026 %",
     " %",

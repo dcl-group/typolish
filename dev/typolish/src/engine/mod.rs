@@ -635,7 +635,7 @@ mod tests {
 
     /// Whether a dash match on x has an operand that a removed space merged into a `Joined`
     /// fragment of f(x). A `Joined` core is not an operand (design section 8.4), so such a match
-    /// does not recur: its edit stays (section 4.3, I3 and I4), and a refusal stays refused.
+    /// does not recur: its edit stays (design section 4.3, I3 and I4), and a refusal stays refused.
     fn beside_a_merge(tx: &Trace, ty: &Trace, sy: &[Interval], m: &Matched) -> bool {
         if !matches!(m.0, Rule::DashSpacedHyphen | Rule::DashDoubleHyphen) {
             return false;
@@ -698,14 +698,14 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(1024))]
 
-        /// I2 and I4 of design section 4.3 (section 13.5, property 3), with the stage 2 rules
-        /// (no `nbsp.*`). I2: outside the fragments that an inserted or a removed space split or
-        /// merged, the fragments of f(x) have the kinds, flags and extents of those of x. I4: no
+        /// I2 and I4 of design section 4.3 (design section 13.5, property 3), with the stage 2
+        /// rules (no `nbsp.*`). I2: outside the fragments that an inserted or a removed space split
+        /// or merged, the fragments of f(x) have the kinds, flags and extents of those of x. I4: no
         /// match on f(x) has an edit, and every match on x outside those fragments recurs on f(x)
         /// with the same rule (`dash.double-hyphen` as `dash.spaced-hyphen`) and `consume`, except
-        /// a dash match whose operand a removed space merged into a `Joined` fragment (section
-        /// 8.4: a `Joined` core is not an operand); the quote phase has its own proof (section
-        /// 6.11) and is left out of the recurrence.
+        /// a dash match whose operand a removed space merged into a `Joined` fragment (design
+        /// section 8.4: a `Joined` core is not an operand); the quote phase has its own proof
+        /// (design section 6.11) and is left out of the recurrence.
         #[test]
         fn i2_and_i4_hold_on_the_classification_and_the_matches(
             text in strategies::any_text(), lang in 0usize..3, set in strategies::rule_set(),
@@ -741,7 +741,8 @@ mod tests {
             }
             let quotes = [Rule::QuotesApostrophe, Rule::QuotesPairs, Rule::QuotesPrimes];
             // The dash that `dash.double-hyphen` writes is matched by `dash.spaced-hyphen`, never by
-            // itself (section 8.4): with `dash.spaced-hyphen` off, no rule matches it on f(x).
+            // itself (design section 8.4): with `dash.spaced-hyphen` off, no rule matches it on
+            // f(x).
             let spaced = set.contains(Rule::DashSpacedHyphen);
             for m in tx
                 .matches
@@ -767,9 +768,9 @@ mod tests {
     #[test]
     fn a_dash_beside_a_merged_fragment_does_not_recur() {
         // I4 of design section 4.3: the closed style merges `details - a` into the `Joined`
-        // fragment `details—a`, which is not an operand (section 8.4), so the next dash is matched
-        // on x and by no rule on f(x). Its edit stays and a refusal stays refused; the output is a
-        // fixed point. The first input is the one the property once shrank to.
+        // fragment `details—a`, which is not an operand (design section 8.4), so the next dash is
+        // matched on x and by no rule on f(x). Its edit stays and a refusal stays refused; the
+        // output is a fixed point. The first input is the one the property once shrank to.
         let set: RuleSet = RuleSet::ALL
             .iter()
             .filter(|r| !r.id().starts_with("nbsp."))
@@ -827,8 +828,8 @@ mod tests {
     #[test]
     fn dashes_next_to_a_prime_and_a_minus_recur_on_the_second_pass() {
         // I4 of design section 4.3: the prime that `quotes.primes` writes reads as the closing
-        // quote it was typed as, and `−` as the sign `-` of a number (section 8.4); both inputs
-        // once failed the property above.
+        // quote it was typed as, and `−` as the sign `-` of a number (design section 8.4); both
+        // inputs once failed the property above.
         let set: RuleSet = RuleSet::ALL
             .iter()
             .filter(|r| !r.id().starts_with("nbsp."))

@@ -3,8 +3,8 @@
 //!
 //! A row that names no configuration runs with the one rule of its file section, alone
 //! (`RuleSet::EMPTY.with(rule)`), and, where a set holds the rule, in Prose and Interface without
-//! the `nbsp.*` rules (stage 2 of section 15.4; stage 3 switches the set-level tables to the full
-//! sets, where `nbsp.dash` and `nbsp.short-words` add their glue). So a Russian dash keeps the
+//! the `nbsp.*` rules (stage 2 of design section 15.4; stage 3 switches the set-level tables to the
+//! full sets, where `nbsp.dash` and `nbsp.short-words` add their glue). So a Russian dash keeps the
 //! author's spaces here (`Москва — столица`) and an English one is closed (`Moscow—the capital`).
 //! Rows that name Prose or Interface give the output of the whole set.
 
@@ -87,26 +87,27 @@ const RU_SPACED: &[(&str, &str)] = &[
     ),
     ("5–10 - 20", "5–10 - 20"),
     // A hyphen range with its percent sign attached is a percentage range, as with the sign after
-    // spaces (section 8.2).
+    // spaces (design section 8.2).
     ("5 - 10-20%", "5 - 10-20%"),
     ("10-20% - 5", "10-20% - 5"),
     ("5 - 1,5-2,5%", "5 - 1,5-2,5%"),
     ("Use - --force", "Use - --force"),
     ("tar -cf - -C dir", "tar -cf - -C dir"),
-    // Not a pattern: no single space on each side, or a `--` run (section 8.2).
+    // Not a pattern: no single space on each side, or a `--` run (design section 8.2).
     ("слово  -  слово", "слово  -  слово"),
     ("слово\t-\tслово", "слово\t-\tслово"),
     ("слово -\nслово", "слово -\nслово"),
     ("слово -", "слово -"),
     ("слово - ", "слово - "),
-    // A `Dimensions` core is not an operand: matched by no dash rule, no diagnostic (section 8.4).
+    // A `Dimensions` core is not an operand: matched by no dash rule, no diagnostic (design section
+    // 8.4).
     ("1920x1080 - монитор", "1920x1080 - монитор"),
     ("1920x1080 — монитор", "1920x1080 — монитор"),
 ];
 
 // Rows that the sets change with other rules of their own: Prose sets `-- ` and `- ` at a line
 // start (`dash.double-hyphen`, `dash.dialogue`). `dash.spaced-hyphen` alone and in Interface
-// leaves them, and does not match a `--` run, not even with an empty edit (section 8.4).
+// leaves them, and does not match a `--` run, not even with an empty edit (design section 8.4).
 const RU_SPACED_NOT_PROSE: &[(&str, &str)] = &[
     ("слово\n- слово", "слово\n- слово"),
     ("- слово", "- слово"),
@@ -199,8 +200,8 @@ fn spaced_hyphen_in_english() {
 
 #[test]
 fn spaced_hyphen_with_a_quote_after_it() {
-    // Section 8.4: a quote with an opening role keeps the spaces and the dash is set; a quote
-    // without a role is not an opening quote, so there is no dash and no diagnostic.
+    // Design section 8.4: a quote with an opening role keeps the spaces and the dash is set; a
+    // quote without a role is not an opening quote, so there is no dash and no diagnostic.
     let t = only(Language::EN_US, &[SPACED]);
     check_in("alone", &t, ("He said - \"a cat\"", "He said — \"a cat\""));
     for set in [prose(Language::EN_US), interface(Language::EN_US)] {
@@ -227,8 +228,9 @@ fn spaced_hyphen_with_a_quote_after_it() {
 
 #[test]
 fn a_sign_only_pair_is_a_quote_for_the_dash_rules() {
-    // Sections 6.3 and 8.2: the local rule includes the sign-only pair, so the dash rules read
-    // `""` as an opening (or closing) quote on the first pass as on the second (section 4.3, I4).
+    // Design sections 6.3 and 8.2: the local rule includes the sign-only pair, so the dash rules
+    // read `""` as an opening (or closing) quote on the first pass as on the second (design section
+    // 4.3, I4).
     let ru_ui = interface(Language::RU_RU);
     let ru_prose = prose(Language::RU_RU);
     check_in("ru Interface", &ru_ui, ("Слово - \"\" да", "Слово — «» да"));
@@ -254,8 +256,8 @@ fn a_sign_only_pair_is_a_quote_for_the_dash_rules() {
 
 #[test]
 fn spaced_hyphen_next_to_the_apostrophe_rule() {
-    // `Sign in - it's free` and `Sign up - it's free` (section 8.4): the rule alone leaves the
-    // apostrophe, the sets also give `it’s`.
+    // `Sign in - it's free` and `Sign up - it's free` (design section 8.4): the rule alone leaves
+    // the apostrophe, the sets also give `it’s`.
     let alone = only(Language::EN_US, &[SPACED]);
     check_in(
         "alone",
@@ -296,7 +298,7 @@ fn an_apostrophe_of_step_1_is_no_quote_for_the_dash_rules() {
 
 #[test]
 fn spaced_hyphen_and_the_ellipsis_rule() {
-    // Section 13.2: `Ждите - ...` stays with `dash.spaced-hyphen` alone, with no
+    // Design section 13.2: `Ждите - ...` stays with `dash.spaced-hyphen` alone, with no
     // `AmbiguousHyphen` and no protected span; the sets also set the ellipsis.
     let t = only(Language::RU_RU, &[SPACED]);
     check_unchanged("alone", &t, "Ждите - ...");
@@ -394,7 +396,7 @@ fn ambiguous_hyphens_are_reported_at_the_hyphen() {
 
 #[test]
 fn a_slot_is_an_operand_of_the_spaced_hyphen() {
-    // The slot participation table of section 2.6, last row but one.
+    // The slot participation table of design section 2.6, last row but one.
     let t = only(Language::RU_RU, &[SPACED]);
     let dash = |a: Slot, tail: &'static str| -> Vec<String> {
         t.typeset_template([Piece::Slot("x", a), Piece::Text(tail)], Output::Unicode)
@@ -526,7 +528,7 @@ const RU_DOUBLE: &[(&str, &str)] = &[
 const EN_DOUBLE: &[(&str, &str)] = &[
     ("Moscow -- the capital", "Moscow—the capital"),
     ("Moscow --- the capital", "Moscow—the capital"),
-    // Section 10.8: a command that is not protected becomes a dash in English text.
+    // Design section 10.8: a command that is not protected becomes a dash in English text.
     ("git checkout -- file", "git checkout—file"),
     ("npm test -- --watch", "npm test -- --watch"),
     ("Use -- --force", "Use -- --force"),
@@ -587,7 +589,7 @@ fn double_hyphen_refusals_are_reported() {
 
 #[test]
 fn double_hyphen_is_not_in_interface() {
-    // Section 10.5, row 3: in Interface a lone `--` stays, and `dash.spaced-hyphen` does not
+    // Design section 10.5, row 3: in Interface a lone `--` stays, and `dash.spaced-hyphen` does not
     // match it, not even with an empty edit.
     for language in [Language::RU_RU, Language::EN_US] {
         let t = interface(language.clone());
@@ -684,9 +686,9 @@ fn dialogue_is_not_in_interface_nor_in_english() {
             check_unchanged("en", &t, text);
         }
     }
-    // `-- file` at a line start: ru Prose is a dialogue line, en stays (section 13.2).
+    // `-- file` at a line start: ru Prose is a dialogue line, en stays (design section 13.2).
     check_in("ru Prose", &prose(Language::RU_RU), ("-- file", "—⍽file"));
-    // `Language::COMMON` has no dash data: the dash rules are inert (section 7.4).
+    // `Language::COMMON` has no dash data: the dash rules are inert (design section 7.4).
     for set in [RuleSet::PROSE, RuleSet::INTERFACE] {
         let t = common::without_nbsp(Language::COMMON, set);
         for text in [
@@ -702,8 +704,8 @@ fn dialogue_is_not_in_interface_nor_in_english() {
 
 #[test]
 fn a_typed_dialogue_dash_passes_the_prefilter() {
-    // Sections 3.2 and 8.4: a typed dash at a line start has its space glued; the prefilter lets
-    // it through, so `typeset` and `report` agree with `dash.dialogue` alone.
+    // Design sections 3.2 and 8.4: a typed dash at a line start has its space glued; the prefilter
+    // lets it through, so `typeset` and `report` agree with `dash.dialogue` alone.
     let t = only(Language::RU_RU, &[DIALOGUE]);
     for (input, expected) in [
         ("— Привет", "—⍽Привет"),

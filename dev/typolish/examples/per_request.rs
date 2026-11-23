@@ -18,11 +18,11 @@ use std::sync::LazyLock;
 
 use typolish::{DashStyle, HtmlStyle, Language, Output, Rule, RuleSet, Typographer};
 
-// Defaults: true statics with no initialization cost (section 2.15).
+// Defaults: true statics with no initialization cost (design section 2.15).
 static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
 static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::PROSE);
 
-// Custom settings: built once, on first use (section 2.4).
+// Custom settings: built once, on first use (design section 2.4).
 static EN_DOCS: LazyLock<Typographer> = LazyLock::new(|| {
     Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
         .enable(Rule::NumberTimes)

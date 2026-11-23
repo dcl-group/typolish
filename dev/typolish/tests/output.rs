@@ -1,12 +1,13 @@
 //! The output kinds (design sections 2.8, 11 and 13.2): the typographic set and its table, HTML
 //! text and its styles, the nowrap groups, the escaped string bodies of every syntax and scope,
 //! the inputs that no rule touches but the style must encode (never borrowed), templates, and the
-//! comparison of the table of section 11.2 with `tests/fixtures/whatwg-entities.txt`.
+//! comparison of the table of design section 11.2 with `tests/fixtures/whatwg-entities.txt`.
 //!
-//! The expectations come from the tables of sections 11.2, 11.4 and 11.6 and from the examples of
-//! sections 2.5, 2.8 and 11.5. A fixed set of inputs is run through every kind and compared with
-//! the reference encoder of `tests/common/decode.rs`, which is written from the same tables and
-//! knows no nowrap element; the nowrap kinds are checked by decoding (section 11.8).
+//! The expectations come from the tables of design sections 11.2, 11.4 and 11.6 and from the
+//! examples of design sections 2.5, 2.8 and 11.5. A fixed set of inputs is run through every kind
+//! and compared with the reference encoder of `tests/common/decode.rs`, which is written from the
+//! same tables and knows no nowrap element; the nowrap kinds are checked by decoding (design
+//! section 11.8).
 
 #![allow(
     clippy::unwrap_used,
@@ -62,7 +63,7 @@ fn eq(what: &str, got: &str, expected: &str) {
     );
 }
 
-/// Section 11.2: the characters of the typographic set and their `NAMED` form.
+/// Design section 11.2: the characters of the typographic set and their `NAMED` form.
 const SET: &[(char, &str)] = &[
     ('\u{a0}', "&nbsp;"),
     ('\u{202f}', "&#x202F;"),
@@ -170,7 +171,7 @@ fn escaped_writes_the_typographic_set_in_every_syntax() {
             );
         }
     }
-    // The design's own examples of the table of section 11.2.
+    // The design's own examples of the table of design section 11.2.
     eq("JS nbsp", &t.typeset("\u{a0}", JS), "\\u00A0");
     eq("JS narrow", &t.typeset("\u{202f}", JS), "\\u202F");
     eq("JS dashes", &t.typeset("–—", JS), "\\u2013\\u2014");
@@ -194,7 +195,7 @@ fn html_escapes_markup_in_every_style() {
             &t.typeset("a & b < c > d \"e\" 'f'", output),
             "a &amp; b &lt; c &gt; d &quot;e&quot; &#39;f&#39;",
         );
-        // A literal `&nbsp;` in the text is a literal ampersand (section 11.4).
+        // A literal `&nbsp;` in the text is a literal ampersand (design section 11.4).
         eq(
             "literal entity",
             &t.typeset("&nbsp; &amp;", output),
@@ -214,7 +215,7 @@ fn html_escapes_markup_in_every_style() {
 
 #[test]
 fn protected_spans_are_encoded_too() {
-    // Protection means "not typeset", not "not encoded" (section 11.1).
+    // Protection means "not typeset", not "not encoded" (design section 11.1).
     let t = ru_ui();
     let text = "Запустите `a<b && c>d \\ \"x\"` сейчас";
     eq(
@@ -242,7 +243,7 @@ fn protected_spans_are_encoded_too() {
         &t.typeset(text, CSS),
         "Запустите `a\\3c b && c>d \\\\ \\\"x\\\"` сейчас",
     );
-    // A backslash path in a protected span, the case section 11.6 names.
+    // A backslash path in a protected span, the case design section 11.6 names.
     eq(
         "path",
         &t.typeset("Путь `C:\\temp\\new` готов", RUST),
@@ -250,7 +251,7 @@ fn protected_spans_are_encoded_too() {
     );
 }
 
-// Section 11.6: every row of the table, for the six syntaxes, with no rule running.
+// Design section 11.6: every row of the table, for the six syntaxes, with no rule running.
 // `[JS, JS_HEX, JS_CODE_POINT, JSON, RUST, CSS]`.
 const ESCAPES: &[(&str, [&str; 6])] = &[
     ("\\", ["\\\\", "\\\\", "\\\\", "\\\\", "\\\\", "\\\\"]),
@@ -389,7 +390,7 @@ fn escaped_bodies_follow_the_table() {
         for (style, expected) in syntaxes().into_iter().zip(expected) {
             let got = t.typeset(input, Output::Escaped(style));
             eq(&format!("{style:?} {input:?}"), &got, expected);
-            // Borrowed exactly when the text needs no escape (section 2.5).
+            // Borrowed exactly when the text needs no escape (design section 2.5).
             assert_eq!(
                 matches!(got, Cow::Borrowed(_)),
                 got == *input,
@@ -871,9 +872,9 @@ fn quote_pairs_set_by_the_caller_are_encoded_like_the_built_in_ones() {
 
 #[test]
 fn quote_glyphs_a_caller_may_choose_are_in_the_set() {
-    // Section 11.2: the quotes row holds every glyph that section 7.6 allows, so a caller's pairs
-    // are covered: each of the ten quote glyphs is written by name in `NAMED`, as a reference in
-    // `DECIMAL` and `HEX`, and as an escape in every syntax.
+    // Design section 11.2: the quotes row holds every glyph that design section 7.6 allows, so a
+    // caller's pairs are covered: each of the ten quote glyphs is written by name in `NAMED`, as a
+    // reference in `DECIMAL` and `HEX`, and as an escape in every syntax.
     let t = empty(Language::EN_US);
     for c in ['«', '»', '„', '“', '”', '‘', '’', '‚', '‹', '›'] {
         let text = c.to_string();
@@ -968,9 +969,9 @@ fn nowrap_groups_in_text() {
 
 #[test]
 fn nowrap_groups_in_the_design_example() {
-    // Section 2.5: the Unicode result is `Файл «report.pdf» не⍽найден⍽— проверьте путь в⍽`--config`.`;
-    // the group of three fragments is one element, and the glue before a protected span is an
-    // entity (section 11.5).
+    // Design section 2.5: the Unicode result is `Файл «report.pdf» не⍽найден⍽— проверьте путь
+    // в⍽`--config`.`; the group of three fragments is one element, and the glue before a protected
+    // span is an entity (design section 11.5).
     let t = ru_ui();
     let text = "Файл \"report.pdf\" не найден - проверьте путь в `--config`.";
     eq(
@@ -1022,7 +1023,7 @@ fn the_class_is_escaped_as_an_attribute_value() {
 fn nowrap_in_templates() {
     let t = ru_ui();
     let c = open("class=\"nowrap\"");
-    // Section 11.5: `в {city}` → texts `["<span class=\"nowrap\">в ", "</span>"]`.
+    // Design section 11.5: `в {city}` → texts `["<span class=\"nowrap\">в ", "</span>"]`.
     let out = t.typeset_template(
         [Piece::Text("в "), Piece::Slot("city", Slot::WORD)],
         nowrap(),
@@ -1035,7 +1036,7 @@ fn nowrap_in_templates() {
         nowrap(),
     );
     assert_eq!(out.texts(), [c.clone(), " МБ</span>".to_owned()]);
-    // The example of section 2.6.
+    // The example of design section 2.6.
     let out = t.typeset_template(
         [
             Piece::Text("Файл \""),
@@ -1073,7 +1074,7 @@ fn a_group_is_split_at_markup_with_a_diagnostic() {
         .collect();
     assert_eq!(fallback.len(), 1, "{:?}", report.diagnostics());
     assert_eq!(fallback[0].severity(), Severity::Info);
-    // At the `Markup` piece, with its whole range (section 11.5).
+    // At the `Markup` piece, with its whole range (design section 11.5).
     assert_eq!((fallback[0].piece(), fallback[0].range()), (1, 0..3));
     // A group with its joint on the left of the markup only is split there too.
     let pieces_left = [
@@ -1146,7 +1147,7 @@ fn a_template_text_is_changed_when_the_encoding_changed_it() {
     assert!(out.changed());
     assert_eq!(out.texts(), ["a &amp; b"]);
     // Nothing to encode: borrowed with the input lifetime, not changed. With `non_ascii()` the
-    // Cyrillic is encoded (section 11.6), so the text is changed and owned.
+    // Cyrillic is encoded (design section 11.6), so the text is changed and owned.
     for output in all_outputs() {
         let out = t.typeset_template::<()>([Piece::Text("Сохранить")], output);
         let non_ascii = matches!(output, Output::Escaped(s) if s == s.non_ascii());
@@ -1168,7 +1169,7 @@ fn a_template_text_is_changed_when_the_encoding_changed_it() {
 
 #[test]
 fn the_filled_template_is_the_encoded_text() {
-    // Section 11.1: values are inserted as they are, so a value for an HTML template is
+    // Design section 11.1: values are inserted as they are, so a value for an HTML template is
     // HTML-escaped by the caller; the number formatted with the same output is already encoded.
     let t = ru_ui();
     let out = t.typeset_template(

@@ -2,7 +2,8 @@
 //!
 //! A row that names no configuration runs with the one rule of its table, alone
 //! (`RuleSet::EMPTY.with(rule)`), and in Prose, the only built-in set that holds either rule
-//! (section 9.2: Interface has neither). A row that names a set gives the output of the whole set.
+//! (design section 9.2: Interface has neither). A row that names a set gives the output of the
+//! whole set.
 
 #![allow(
     clippy::unwrap_used,
@@ -35,7 +36,7 @@ fn languages() -> [Language; 3] {
 }
 
 // number.minus: a core `-D+` or `-D+[.,]D+` whose fragment starts after a pattern space, a line
-// start or `(`. The rows hold in every language, including COMMON (section 7.4).
+// start or `(`. The rows hold in every language, including COMMON (design section 7.4).
 const MINUS_ROWS: &[(&str, &str)] = &[
     ("Минус -5 градусов", "Минус −5 градусов"),
     ("Minus -5 degrees", "Minus −5 degrees"),
@@ -99,8 +100,8 @@ fn minus() {
 
 #[test]
 fn minus_of_a_percentage() {
-    // A percentage is a number in both of its forms (sections 8.2 and 8.8): the space that the
-    // percent setting inserts changes nothing for `number.minus`.
+    // A percentage is a number in both of its forms (design sections 8.2 and 8.8): the space that
+    // the percent setting inserts changes nothing for `number.minus`.
     for language in languages() {
         let t = only(language, &[MINUS]);
         check_exact("alone", &t, ("-5%", "−5%"));
@@ -139,7 +140,8 @@ fn minus_in_prose_next_to_a_unit() {
 
 #[test]
 fn minus_is_not_in_interface() {
-    // Section 9.2 and 10.6: commands such as `head -1` and `ls -1` never change in Interface.
+    // Design sections 9.2 and 10.6: commands such as `head -1` and `ls -1` never change in
+    // Interface.
     for language in languages() {
         let t = interface(language);
         for text in [
@@ -299,7 +301,8 @@ const TIMES_ROWS: &[(&str, &str)] = &[
     ("10 х 5", "10 × 5"),
     ("10 Х 5", "10 × 5"),
     ("10 x 5 x 3", "10 × 5 × 3"),
-    // The author's spaces are kept (a run of spaces is no pattern space for this rule, section 8.2).
+    // The author's spaces are kept (a run of spaces is no pattern space for this rule, design
+    // section 8.2).
     ("10  x 5", "10  × 5"),
     ("10 x  5", "10 ×  5"),
     ("1920x1080\n10 x 5", "1920×1080\n10 × 5"),
@@ -376,7 +379,8 @@ fn times_next_to_a_unit_that_is_a_letter() {
 
 #[test]
 fn times_leaves_the_typed_sign_a_technical_fragment() {
-    // `a × b` stays: the typed sign is an unclassified fragment, frozen whole (section 13.2).
+    // `a × b` stays: the typed sign is an unclassified fragment, frozen whole (design section
+    // 13.2).
     for (what, t) in configs(&Language::RU_RU, TIMES) {
         check_in(&what, &t, ("a × b", "a × b"));
         assert_eq!(
@@ -407,9 +411,9 @@ fn times_is_not_in_interface_and_is_an_opt_in() {
 
 #[test]
 fn times_after_a_label_number() {
-    // A label number counts as a number for `number.times` (section 8.2) in both of its forms, so
-    // the space that `nbsp.signs` inserts into `№10` changes nothing for the rule (I2 of section
-    // 4.3): the sign comes in the same pass as the glue.
+    // A label number counts as a number for `number.times` (design section 8.2) in both of its
+    // forms, so the space that `nbsp.signs` inserts into `№10` changes nothing for the rule (I2 of
+    // design section 4.3): the sign comes in the same pass as the glue.
     let t = only(Language::RU_RU, &[TIMES]);
     check_exact("alone", &t, ("№10 x 5", "№10 × 5"));
     check_exact("alone", &t, ("№ 10 x 5", "№ 10 × 5"));
@@ -426,9 +430,9 @@ fn times_after_a_label_number() {
 
 #[test]
 fn times_after_a_percentage_after_spaces() {
-    // A percentage counts as a number for `number.times` in both of its forms (sections 3.6, 8.2
-    // and 8.8), so the space that the percent setting inserts or removes changes nothing for the
-    // rule (I2 of section 4.3).
+    // A percentage counts as a number for `number.times` in both of its forms (design sections 3.6,
+    // 8.2 and 8.8), so the space that the percent setting inserts or removes changes nothing for
+    // the rule (I2 of design section 4.3).
     for language in languages() {
         let t = only(language, &[TIMES]);
         check_exact("alone", &t, ("10 % x 5", "10 % × 5"));
@@ -512,7 +516,7 @@ fn times_disabled() {
 
 #[test]
 fn times_with_slots() {
-    // The slot participation table of section 2.6: `{w}x{h}` in Prose, `Number` slots only.
+    // The slot participation table of design section 2.6: `{w}x{h}` in Prose, `Number` slots only.
     for (what, t) in configs(&Language::RU_RU, TIMES) {
         let number = |a: Slot, middle: &'static str, b: Slot| {
             t.typeset_template(
@@ -549,8 +553,8 @@ fn times_with_slots() {
 
 #[test]
 fn times_between_number_slots_with_spaces() {
-    // A number is a `Number` fragment or a `Number` slot (section 8.2), so `{w} x {h}` is as much
-    // a lone letter between two numbers as `10 x 5` is.
+    // A number is a `Number` fragment or a `Number` slot (design section 8.2), so `{w} x {h}` is as
+    // much a lone letter between two numbers as `10 x 5` is.
     for (what, t) in configs(&Language::RU_RU, TIMES) {
         for (middle, expected) in [(" x ", " × "), (" Х ", " × "), (" X ", " × ")] {
             let out = t.typeset_template(

@@ -1,5 +1,5 @@
-//! `Typographer` and its builder (design section 2.4) and the application methods (sections 2.5
-//! and 2.6).
+//! `Typographer` and its builder (design section 2.4) and the application methods (design sections
+//! 2.5 and 2.6).
 
 use std::borrow::Cow;
 use std::fmt;

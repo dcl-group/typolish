@@ -593,7 +593,8 @@ fn number_errors_compare_by_value() {
 
 #[test]
 fn numbers_do_not_depend_on_the_rules_of_the_typographer() {
-    // Section 2.4: settings do not depend on rule sets, and a language supplies the defaults.
+    // Design section 2.4: settings do not depend on rule sets, and a language supplies the
+    // defaults.
     for language in [Language::RU_RU, Language::EN_US, Language::COMMON] {
         let a = Typographer::new(language.clone(), RuleSet::EMPTY);
         let b = Typographer::new(language.clone(), RuleSet::ALL);
@@ -702,7 +703,7 @@ fn a_report_without_records_prints_nothing() {
 #[test]
 fn the_display_of_a_template_report_names_the_piece() {
     // One record per edit; the column widths are not fixed here, so compare the fields. The
-    // range is in bytes of the piece (section 2.9): `Он ` is five bytes.
+    // range is in bytes of the piece (design section 2.9): `Он ` is five bytes.
     let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::DashSpacedHyphen));
     let r = t.report_template::<()>(
         [Piece::Markup("<b>"), Piece::Text("Он - врач")],
@@ -746,7 +747,7 @@ fn the_accessors_of_change() {
 
 #[test]
 fn a_change_holds_unicode_whatever_the_output_kind() {
-    // Section 2.9: the replacement is in Unicode, before output encoding.
+    // Design section 2.9: the replacement is in Unicode, before output encoding.
     let input = "Цена - 5 руб.";
     let unicode = UI.report(input, Output::Unicode);
     for output in [
@@ -772,7 +773,7 @@ fn a_change_holds_unicode_whatever_the_output_kind() {
 
 #[test]
 fn the_accessors_of_protected_span() {
-    // Section 12.5: `kind() == Technical(Colon)`, `piece() == 0`, `range() == 25..34`.
+    // Design section 12.5: `kind() == Technical(Colon)`, `piece() == 0`, `range() == 25..34`.
     let r = PROSE.report("Он - \"врач\", см. host:8080", Output::Unicode);
     let spans: &[ProtectedSpan] = r.protected();
     assert_eq!(spans.len(), 1);
@@ -898,8 +899,8 @@ fn original_of_a_template_change_is_the_slice_of_its_piece() {
 
 #[test]
 fn mixed_script_over_two_pieces_is_one_diagnostic_in_both_calls() {
-    // Section 13.2: `Text("Мо")`, `Text("sква")` → one diagnostic, `piece() == 0`, `range() == 0..4`,
-    // equal in `report_template` and `lint_template`.
+    // Design section 13.2: `Text("Мо")`, `Text("sква")` → one diagnostic, `piece() == 0`, `range()
+    // == 0..4`, equal in `report_template` and `lint_template`.
     let pieces = || [Piece::Text("Мо"), Piece::Text("sква")];
     let r = UI.report_template::<()>(pieces(), Output::Unicode);
     let linted = UI.lint_template::<()>(pieces());

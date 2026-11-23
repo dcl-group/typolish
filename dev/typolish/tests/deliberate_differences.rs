@@ -211,7 +211,7 @@ fn unchanged_rows_of_the_table() {
 #[test]
 fn unmatched_quotes_are_not_guessed() {
     // NoGuess: the quotes stay as written, with UnmatchedQuote; the first row is glued after the
-    // short word `Он` (section 8.7), the second is unchanged.
+    // short word `Он` (design section 8.7), the second is unchanged.
     for (input, expected) in [
         ("Он сказал \"привет.", "Он⍽сказал \"привет."),
         ("\"Один \"два три\"", "\"Один \"два три\""),

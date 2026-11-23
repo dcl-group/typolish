@@ -101,7 +101,7 @@ pub(crate) fn is_word(cx: &Cx<'_>, f: &Frag) -> bool {
 /// A compact abbreviation (design section 8.2): a `Dictionary` core of two or more consecutive
 /// parts of an abbreviation of the language that all end in a full stop, written together
 /// (`т.е.`, `т.д.`, `Т.е.`). `nbsp.abbreviations` splits it into its parts, each a one-word
-/// `Dictionary` core, so it reads as a word in both forms (invariant I2 of section 4.3).
+/// `Dictionary` core, so it reads as a word in both forms (invariant I2 of design section 4.3).
 pub(crate) fn compact_abbreviation(cx: &Cx<'_>, f: &Frag) -> bool {
     if f.kind != FragKind::Dictionary || !f.stop {
         return false;

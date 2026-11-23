@@ -99,7 +99,7 @@ fn ours(t: &Typographer, row: &RefRow) -> (String, String, Vec<DiagnosticKind>) 
     }
 }
 
-/// The diagnostic that section 8.12 names for a reason, if any.
+/// The diagnostic that design section 8.12 names for a reason, if any.
 fn named_diagnostic(reason: Reason) -> Option<DiagnosticKind> {
     match reason {
         Reason::NoGuess => Some(DiagnosticKind::UnmatchedQuote),
@@ -154,7 +154,7 @@ fn run(
                 }
                 for reason in reasons {
                     *counts.entry(*reason).or_default() += 1;
-                    // The diagnostic that section 8.12 names for a reason of the row.
+                    // The diagnostic that design section 8.12 names for a reason of the row.
                     if let Some(kind) = named_diagnostic(*reason)
                         && !diagnostics.contains(&kind)
                     {

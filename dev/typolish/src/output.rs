@@ -3,8 +3,8 @@
 //! Rules work in Unicode and never see the output kind; the encoder writes the result in the
 //! requested kind while rendering, straight into the output, with no intermediate Unicode string
 //! (design section 11.1). The renderer (`engine::render`) feeds it the characters of the result
-//! with where each comes from; the nowrap groups of section 11.5 are found there, and this module
-//! writes their tags.
+//! with where each comes from; the nowrap groups of design section 11.5 are found there, and this
+//! module writes their tags.
 
 use core::fmt;
 
@@ -419,7 +419,7 @@ const SET_BYTES: Triggers = {
     set
 };
 
-/// The control characters of the table of section 11.6: U+0000 to U+001F and U+007F.
+/// The control characters of the table of design section 11.6: U+0000 to U+001F and U+007F.
 const CONTROLS: Triggers = byte_range(0, 0x1f).with(0x7f);
 
 const fn byte_range(first: u8, last: u8) -> Triggers {

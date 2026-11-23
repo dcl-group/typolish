@@ -80,7 +80,7 @@ fn parse(source: &str) -> Vec<Case> {
 
 #[test]
 fn the_fixture_is_for_the_unicode_version_of_the_dependency() {
-    // The version of the fixture and of `unicode-segmentation` 1.13.3 (section 13.6).
+    // The version of the fixture and of `unicode-segmentation` 1.13.3 (design section 13.6).
     assert_eq!(unicode_segmentation::UNICODE_VERSION, (17, 0, 0));
     if let Some(source) = fixture() {
         let first = source.lines().next().unwrap_or("");
@@ -190,7 +190,7 @@ fn every_line_of_the_fixture_inside_sentence_frames() {
 
 #[test]
 fn every_line_of_the_fixture_as_a_part_of_ascii_text() {
-    // The ASCII fast path of section 3.5 hands the ASCII bytes on both sides of a non-ASCII
+    // The ASCII fast path of design section 3.5 hands the ASCII bytes on both sides of a non-ASCII
     // character to the segmenter: a mark after `"` or a digit, a `Prepend` before a letter.
     let Some(source) = fixture() else {
         eprintln!("GraphemeBreakTest.txt is absent: skipped");
@@ -218,9 +218,9 @@ fn every_line_of_the_fixture_as_a_part_of_ascii_text() {
     }
 }
 
-// The tables of section 13.6 for clusters led by a non-letter: they come out unchanged and are
-// neither numbers, signs nor quotes. A frozen `Symbol` fragment is `Unclassified` (check 24 of
-// section 3.6); a number would not be listed by `protected()`.
+// The tables of design section 13.6 for clusters led by a non-letter: they come out unchanged and
+// are neither numbers, signs nor quotes. A frozen `Symbol` fragment is `Unclassified` (check 24 of
+// design section 3.6); a number would not be listed by `protected()`.
 
 const CLUSTERS_LED_BY_A_NON_LETTER: &[&str] = &[
     "1\u{fe0f}\u{20e3}",

@@ -1,4 +1,4 @@
-//! The format of language data (design section 7.1) and its validation (section 7.6).
+//! The format of language data (design section 7.1) and its validation (design section 7.6).
 //!
 //! Fields are `pub(crate)`: the tables of `src/lang/` are struct literals and the engine reads
 //! them, while downstream crates see private fields and use the `const fn` constructors and
@@ -1687,7 +1687,7 @@ impl OwnedTable {
     }
 
     /// The normalization of `LanguageBuilder::build` (design section 7.1): the word lists of
-    /// section 7.6 lowercased; every list sorted by code point and free of duplicates.
+    /// design section 7.6 lowercased; every list sorted by code point and free of duplicates.
     pub(crate) fn normalize(&mut self) {
         for list in [
             &mut self.elisions,

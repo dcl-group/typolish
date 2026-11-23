@@ -1,4 +1,4 @@
-//! The compile-time commitments of design section 2.13 and the auto traits of section 2.4:
+//! The compile-time commitments of design section 2.13 and the auto traits of design section 2.4:
 //! `Send + Sync`, `Copy`, `Clone`, `Debug`, `Eq`, `Hash` and `const` use.
 
 #![allow(
@@ -60,7 +60,7 @@ fn copy_types() {
     copy::<EscapeStyle>();
     copy::<Piece<'static, u8>>();
     copy::<TemplatePart<'static, u8>>();
-    // The value types of section 2.1.
+    // The value types of design section 2.1.
     copy::<QuotePairs>();
     copy::<SingleQuotes>();
     copy::<DashStyle>();
@@ -77,7 +77,7 @@ fn copy_types() {
 
 #[test]
 fn report_kinds_are_copy_debug_and_eq() {
-    // Section 2.9 lists these derives and no `Hash` (section 2.13).
+    // Design section 2.9 lists these derives and no `Hash` (design section 2.13).
     kind::<typolish::ProtectedKind>();
     kind::<typolish::TechKind>();
 }
@@ -229,8 +229,8 @@ fn language_is_clone_but_not_copy() {
     const { assert!(Probe::<RuleSet>::COPY) };
 }
 
-// Section 2.13: `Number` holds floats and is `PartialEq` only; it is `Copy`. The lazy displays of
-// section 2.7 implement `Display`.
+// Design section 2.13: `Number` holds floats and is `PartialEq` only; it is `Copy`. The lazy
+// displays of design section 2.7 implement `Display`.
 #[test]
 fn number_and_its_displays() {
     fn plain<T: Clone + Copy + Debug + PartialEq>() {}
@@ -239,7 +239,7 @@ fn number_and_its_displays() {
     send_sync::<Number<'static>>();
     display::<NumberDisplay<'static, 'static>>();
     display::<RangeDisplay<'static, 'static>>();
-    // Every type of section 2.7 converts, and the formatting entry points take any of them.
+    // Every type of design section 2.7 converts, and the formatting entry points take any of them.
     fn takes<'n>(_: impl Into<Number<'n>>) {}
     takes(1i8);
     takes(1i16);

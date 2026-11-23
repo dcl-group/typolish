@@ -65,7 +65,7 @@ fn of_kind(
 
 #[test]
 fn a_delimited_span_over_pieces_gives_one_record_per_piece() {
-    // Section 13.2, `tests/api.rs`: two `Delimited` records, `0:4..7` and `1:0..5`.
+    // Design section 13.2, `tests/api.rs`: two `Delimited` records, `0:4..7` and `1:0..5`.
     let t = interface();
     let got = report_records(&t, vec![Piece::Text("Run `ls"), Piece::Text(" -la`")]);
     assert_eq!(of_kind(&got, D), [(0, 4..7), (1, 0..5)]);
@@ -73,7 +73,8 @@ fn a_delimited_span_over_pieces_gives_one_record_per_piece() {
 
 #[test]
 fn delimiters_are_matched_across_a_slot() {
-    // Section 10.1: the command is protected with the slot inside, and the slot stays a slot.
+    // Design section 10.1: the command is protected with the slot inside, and the slot stays a
+    // slot.
     let t = interface();
     let got = report_records(
         &t,
@@ -219,8 +220,8 @@ fn windows_with_slots() {
 
 #[test]
 fn empty_markup_and_protected_pieces_are_atoms() {
-    // Sections 2.6 and 3.3: a markup or protected piece is content and ends a token whether or not
-    // its text is empty; only empty `Text` pieces are skipped.
+    // Design sections 2.6 and 3.3: a markup or protected piece is content and ends a token whether
+    // or not its text is empty; only empty `Text` pieces are skipped.
     let t = interface();
     for piece in [Piece::Markup(""), Piece::Protected("")] {
         let got = report_records(&t, vec![Piece::Text("`a\n"), piece, Piece::Text("\nb`")]);
@@ -296,7 +297,7 @@ fn unclosed_delimiters_are_reported_at_the_first_piece() {
     assert_eq!(got, [(0, 2..3), (2, 3..4)]);
 }
 
-// Classifier: slots belong to fragments like text (section 3.6).
+// Classifier: slots belong to fragments like text (design section 3.6).
 
 fn technical(t: &Typographer, pieces: Pieces<'_>) -> Vec<(usize, Range<usize>, ProtectedKind)> {
     report_records(t, pieces)
@@ -449,7 +450,7 @@ fn glue_before_markup_and_a_slot_is_recorded_in_the_text_on_the_left() {
     }
 }
 
-// Diagnostics of the classifier for pieces (sections 5.7, 12.4).
+// Diagnostics of the classifier for pieces (design sections 5.7, 12.4).
 
 #[test]
 fn mixed_script_across_pieces_is_one_diagnostic_at_the_first_piece() {
@@ -513,8 +514,8 @@ fn slot_glue() {
     );
 }
 
-// Pieces and strings (property 10 of section 13.5, protection part): the same protected spans as
-// those of the concatenation, in absolute offsets.
+// Pieces and strings (property 10 of design section 13.5, protection part): the same protected
+// spans as those of the concatenation, in absolute offsets.
 
 fn absolute(
     records: &[(usize, Range<usize>, ProtectedKind)],

@@ -1,8 +1,8 @@
 //! Ingest and explicit protection of a whole string (design sections 3.4, 10.1) and windows
-//! (section 3.3), observed through `report`: the `Delimited` records of `protected()`, the
+//! (design section 3.3), observed through `report`: the `Delimited` records of `protected()`, the
 //! `UnclosedDelimiter` diagnostics, and the borrowed output.
 //!
-//! An unclosed delimiter is an ordinary character (section 10.1), so a stray backtick is
+//! An unclosed delimiter is an ordinary character (design section 10.1), so a stray backtick is
 //! classified like any other character and may make its fragment a technical span. The tables
 //! here therefore compare the `Delimited` records only; the technical spans have their tables in
 //! `tests/classifier.rs`.
@@ -71,7 +71,7 @@ type Row = (
 );
 
 const INLINE: &[Row] = &[
-    // Runs of N backticks, closed by the next run of exactly N (section 10.1).
+    // Runs of N backticks, closed by the next run of exactly N (design section 10.1).
     ("`a`", &["`a`"], &[]),
     ("x `a b` y `c` z", &["`a b`", "`c`"], &[]),
     ("` `", &["` `"], &[]),
@@ -138,7 +138,7 @@ fn unclosed_delimiters_are_warnings_at_the_run() {
     let (kind, severity, rule, piece, range) = &diagnostics[0];
     assert_eq!(kind, &DiagnosticKind::UnclosedDelimiter);
     assert_eq!(*severity, Severity::Warning);
-    assert_eq!(*rule, None, "protection is no rule (section 12.4)");
+    assert_eq!(*rule, None, "protection is no rule (design section 12.4)");
     assert_eq!(*piece, 0);
     assert_eq!(range, &nth(input, "`", 0));
 }
@@ -269,7 +269,7 @@ fn spans_keep_their_exact_ranges() {
     assert_eq!(probe::records(report.protected()), [(0, 3..7, D)]);
 }
 
-// Own pairs (section 10.1).
+// Own pairs (design section 10.1).
 
 fn with_pairs(pairs: &[(&str, &str)]) -> Typographer {
     let mut builder = Typographer::builder(Language::EN_US, RuleSet::INTERFACE);
@@ -353,7 +353,7 @@ fn own_pairs_are_scoped_to_a_window() {
     assert_eq!(unclosed(&t, input), [at(0, 2)]);
 }
 
-// Windows (section 3.3): observed through the scope of a delimiter pair.
+// Windows (design section 3.3): observed through the scope of a delimiter pair.
 
 /// Separators that end a window: two or more line breaks with only horizontal whitespace
 /// between them, or U+2029.
@@ -449,7 +449,7 @@ fn fragments_never_cross_a_separator() {
 
 #[test]
 fn boundary_characters_are_written_back_unchanged() {
-    // The renderer writes the characters of a boundary between the windows (section 3.3).
+    // The renderer writes the characters of a boundary between the windows (design section 3.3).
     for language in [Language::RU_RU, Language::EN_US, Language::COMMON] {
         for set in SETS {
             let t = Typographer::new(language.clone(), set);

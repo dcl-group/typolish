@@ -1,12 +1,12 @@
-//! The mandatory negative cases of design section 10.5 and the stress strings of section 10.7
-//! through `report` (design section 13.3): each case gets the expected fragment kind and
+//! The mandatory negative cases of design section 10.5 and the stress strings of design section
+//! 10.7 through `report` (design section 13.3): each case gets the expected fragment kind and
 //! freezing, listed by `protected()`; its tokens stay byte for byte; and no edit other than glue
 //! falls inside a frozen span. `tests/negative.rs` holds the same rows at the level of `typeset`.
 //!
 //! The rows run alone and in the two sentence frames of each language, in the full sets (stage 3):
 //! in Interface no edit occurs, except the glue that row 24's `if a<b and c>d` gets in English
-//! (`if` and `and` are listed short words, `if⍽a<b and⍽c>d`, section 10.5); row 25 (short Latin
-//! words in Russian text, short Cyrillic words in English text) gets none.
+//! (`if` and `and` are listed short words, `if⍽a<b and⍽c>d`, design section 10.5); row 25 (short
+//! Latin words in Russian text, short Cyrillic words in English text) gets none.
 //!
 //! The reference tables with the 405 corpus cases are generated outside this change and join
 //! `tests/negative.rs` with their stage (design sections 13.3, 13.4).
@@ -50,7 +50,7 @@ const EMAIL: ProtectedKind = tech(TechKind::Email);
 
 type Spans = &'static [(ProtectedKind, &'static str)];
 
-/// A case: row of section 10.5, its text and the spans it is listed with.
+/// A case: row of design section 10.5, its text and the spans it is listed with.
 struct Case {
     row: u8,
     text: &'static str,
@@ -327,8 +327,8 @@ fn row_25_short_words_are_words_of_their_script() {
     }
 }
 
-/// Stress strings of section 10.7 with the spans they are listed with; `None` where the design
-/// does not pin the kind down.
+/// Stress strings of design section 10.7 with the spans they are listed with; `None` where the
+/// design does not pin the kind down.
 const STRESS: &[(&str, Option<Spans>)] = &[
     (
         "rm -rf --no-preserve-root /",
@@ -414,7 +414,7 @@ fn stress_strings_have_their_kinds_and_stay_unchanged_in_interface() {
 
 #[test]
 fn mentions_are_listed_as_emails() {
-    // Section 10.8: `@user` is frozen whole as an `Email`; `@user` and `@here` come out
+    // Design section 10.8: `@user` is frozen whole as an `Email`; `@user` and `@here` come out
     // unchanged in Interface.
     for (language, _) in languages() {
         let t = interface(language);

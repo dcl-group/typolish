@@ -2,10 +2,10 @@
 //! 3.2 to 3.7, 10.3, 13.5): no panic on arbitrary strings, well-formed spans and diagnostics,
 //! protection independent of the rule set, `report` equal to `typeset` (the prefilter changes
 //! nothing), protected and frozen text intact in the output, graphemes, and the pathological
-//! inputs of section 3.12 at a size that a normal run affords.
+//! inputs of design section 3.12 at a size that a normal run affords.
 //!
 //! `report` always runs the whole pipeline, so unlike `typeset` it reaches the lexer and the
-//! classifier on strings that carry no trigger byte (section 3.2).
+//! classifier on strings that carry no trigger byte (design section 3.2).
 
 #![allow(
     clippy::unwrap_used,
@@ -136,7 +136,7 @@ fn in_order(haystack: &str, needles: &[&str]) -> bool {
 fn assert_report(t: &Typographer, text: &str) -> Result<(), TestCaseError> {
     let report = t.report(text, Output::Unicode);
 
-    // Section 9 of 13.5: `report` and `typeset` are one engine.
+    // Property 9 of design section 13.5: `report` and `typeset` are one engine.
     let typeset = t.typeset(text, Output::Unicode);
     prop_assert_eq!(report.result().as_ref(), typeset.as_ref());
     prop_assert_eq!(
@@ -291,7 +291,7 @@ proptest! {
         prop_assert!(report.changes().is_empty());
     }
 
-    /// Section 10.2: protection does not depend on the set.
+    /// Design section 10.2: protection does not depend on the set.
     #[test]
     fn protection_does_not_depend_on_the_set(text in any_text(), lang in 0usize..3) {
         let first = spans_of(&typographer(lang, SETS[0]), &text);
@@ -367,8 +367,8 @@ proptest! {
     }
 }
 
-// Pathological inputs of section 3.12 (the load tests of section 13.8 measure them; here they
-// must finish, with a sane report).
+// Pathological inputs of design section 3.12 (the load tests of design section 13.8 measure them;
+// here they must finish, with a sane report).
 
 fn big(unit: &str, bytes: usize) -> String {
     unit.repeat(bytes / unit.len().max(1))
@@ -451,8 +451,8 @@ fn pathological_runs_finish() {
 
 #[test]
 fn unclosed_delimiter_runs_of_growing_length_finish() {
-    // Section 3.12: if the closing delimiter of a pair is not found from position p, it is not
-    // found further on either; the search stops. Runs of every length from 1 to 440 are all
+    // Design section 3.12: if the closing delimiter of a pair is not found from position p, it is
+    // not found further on either; the search stops. Runs of every length from 1 to 440 are all
     // unclosed, and a quadratic search would not finish.
     let mut input = String::new();
     for n in 1..=440 {
@@ -492,7 +492,7 @@ fn unclosed_delimiter_runs_of_growing_length_finish() {
 
 #[test]
 fn deeply_nested_input_finishes() {
-    // Quote nesting 10 000 deep and a long run of open brackets (section 3.12).
+    // Quote nesting 10 000 deep and a long run of open brackets (design section 3.12).
     let input = format!("{}x{}", "\"a ".repeat(10_000), "\" ".repeat(10_000));
     for t in all_typographers() {
         assert_report(&t, &input).unwrap();
@@ -505,7 +505,7 @@ fn deeply_nested_input_finishes() {
 
 #[test]
 fn a_one_megabyte_line_without_spaces_is_one_fragment() {
-    // Section 3.12: the classifier is linear, freezing is one pass.
+    // Design section 3.12: the classifier is linear, freezing is one pass.
     let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
     let input = big("a:b/c", 1 << 20);
     let spans = spans_of(&t, &input);

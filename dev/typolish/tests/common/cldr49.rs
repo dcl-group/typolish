@@ -3,8 +3,8 @@
 //! The values were copied by a script kept outside the repository from the `cldr-misc-full`
 //! (`delimiters`), `cldr-numbers-full` (`numbers`), `cldr-dates-full` (`ca-gregorian`) and
 //! `cldr-units-full` (`units`) files of cldr-json 49.0.0, read on 2026-11-21 (design section
-//! 14.8). `en-US` has no file of its own and inherits `en` (section 7.3), so the `en` values stand
-//! for it. A unit is listed by its CLDR id with the `unitPattern-count-other` string of its
+//! 14.8). `en-US` has no file of its own and inherits `en` (design section 7.3), so the `en` values
+//! stand for it. A unit is listed by its CLDR id with the `unitPattern-count-other` string of its
 //! short (and, for three English units, narrow) form; a CLDR update is a visible change here.
 //! The module is declared by `tests/data.rs` with `#[path]`.
 
@@ -20,7 +20,7 @@ pub struct Locale {
     pub group: &'static str,
     /// `minimumGroupingDigits`.
     pub minimum_grouping_digits: u8,
-    /// The entry `minusSign` (typolish deviates, section 7.5).
+    /// The entry `minusSign` (typolish deviates, design section 7.5).
     pub minus_sign: &'static str,
     /// `percentFormats-numberSystem-latn` `standard`.
     pub percent_pattern: &'static str,

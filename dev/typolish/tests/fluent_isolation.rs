@@ -44,9 +44,9 @@ fn check_iso(what: &str, t: &Typographer, row: (&str, &str)) {
     check_in(what, t, (&input, &expected));
 }
 
-/// The two properties of section 5.4 for one input with isolates: the isolates are where they
-/// were, and the typesetting equals that of the input without them (the isolates removed from the
-/// output).
+/// The two properties of design section 5.4 for one input with isolates: the isolates are where
+/// they were, and the typesetting equals that of the input without them (the isolates removed from
+/// the output).
 #[track_caller]
 fn same_as_without_isolates(what: &str, t: &Typographer, with_isolates: &str) {
     let input = iso(with_isolates);
@@ -85,7 +85,7 @@ fn sets(language: &Language) -> [(String, Typographer); 2] {
 
 /// Rows that read the same in both sets.
 const RU_ROWS: &[(&str, &str)] = &[
-    // Quotes around an isolated word (section 5.4).
+    // Quotes around an isolated word (design section 5.4).
     ("Файл \"‹report›\" не найден", "Файл «‹report›» не⍽найден"),
     // Glue after `в`: the isolate is skipped, the word is seen.
     ("в ‹Москве›", "в⍽‹Москве›"),
@@ -99,7 +99,7 @@ const RU_ROWS: &[(&str, &str)] = &[
     ("№ ‹5›", "№⍽‹5›"),
     // A dash next to an isolated word.
     ("‹Москва› - столица", "‹Москва›⍽— столица"),
-    // An empty value: an empty isolate pair is a sign-only pair, as `""` is (section 13.2).
+    // An empty value: an empty isolate pair is a sign-only pair, as `""` is (design section 13.2).
     ("\"‹›\"", "«‹›»"),
     ("Имя: \"‹›\"", "Имя: «‹›»"),
     ("\"\"", "«»"),
@@ -132,7 +132,7 @@ fn the_empty_isolate_pair_is_like_the_empty_string() {
 #[test]
 fn an_inch_mark_after_an_isolated_number() {
     // Prose: the quote after the number is a prime, the later pair is a pair of quotes.
-    // `и` is a short word before an opening quote, so the glue joins them (section 8.7).
+    // `и` is a short word before an opening quote, so the glue joins them (design section 8.7).
     let p = prose(Language::RU_RU);
     check_iso(
         "ru Prose",
@@ -145,7 +145,7 @@ fn an_inch_mark_after_an_isolated_number() {
         &p,
         ("Экран 27\" и \"ручка\"", "Экран 27″ и⍽«ручка»"),
     );
-    // Interface has no primes (section 9.3): the quotes are paired as they stand.
+    // Interface has no primes (design section 9.3): the quotes are paired as they stand.
     let ui = interface(Language::RU_RU);
     same_as_without_isolates("ru Interface", &ui, "Экран ‹27›\" и \"ручка\"");
 }
@@ -181,14 +181,14 @@ const SAME_AS_PLAIN: &[&str] = &[
     "10 ‹x› 5",
     "Open \"‹a›\" and \"‹b›\" now",
     // An empty value between a sign and its number does not hide the sign: the number stays a
-    // label, not a quantity (sections 3.6 and 5.4).
+    // label, not a quantity (design sections 3.6 and 5.4).
     "№ ‹› ‹5› т. е.",
     "№‹› ‹› ‹100› ‹%›",
 ];
 
 #[test]
 fn an_empty_value_between_a_sign_and_its_number() {
-    // The label of section 3.6 looks past a fragment of isolates only (section 5.4).
+    // The label of design section 3.6 looks past a fragment of isolates only (design section 5.4).
     for (what, t) in sets(&Language::RU_RU) {
         check_iso(&what, &t, ("№ ‹› 5 т.", "№ ‹› 5 т."));
         check_in(&what, &t, ("№  5 т.", "№  5 т."));

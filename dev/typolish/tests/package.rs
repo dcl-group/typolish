@@ -3,8 +3,8 @@
 //! examples.
 //!
 //! Nothing here publishes anything: `cargo package` only builds the tarball and checks it, and the
-//! check of the name on crates.io is a single query that the lead makes by hand (section 15.5, item
-//! 3), not a test, because tests need no network.
+//! check of the name on crates.io is a single query that the lead makes by hand (design section
+//! 15.5, item 3), not a test, because tests need no network.
 //!
 //! The checks of the repository (the manifests as written, `deny.toml`, `Cargo.lock`, the layout,
 //! the design) and of the package (`cargo package` refuses to run inside an unpacked package) skip
@@ -121,7 +121,7 @@ fn lossy(bytes: &[u8]) -> String {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The manifest (section 14.1, 14.5).
+// The manifest (design section 14.1, 14.5).
 
 #[test]
 fn package_manifest_matches_section_14_5() {
@@ -189,7 +189,7 @@ fn dependencies_are_those_of_section_14_1() {
         table(&toml, "dev-dependencies"),
         ["proptest = { version = \"1.12.0\", default-features = false, features = [\"std\"] }"]
     );
-    // The bench harness is the crate's own (section 13.8).
+    // The bench harness is the crate's own (design section 13.8).
     assert!(toml.contains("[[bench]]\nname = \"load\"\nharness = false"));
 }
 
@@ -306,7 +306,7 @@ fn lockfile_has_the_tree_of_section_14_1() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The layout of the repository (section 14.6).
+// The layout of the repository (design section 14.6).
 
 #[test]
 fn repository_layout_matches_section_14_6() {
@@ -347,7 +347,8 @@ fn repository_layout_matches_section_14_6() {
         assert!(repo.join(file).exists(), "{file} is missing");
     }
     // The files of `src/`, `tests/*.rs` and `tests/common/` are exactly those of the lists below,
-    // and section 14.6 names each of them, so that the layout and the design cannot drift apart.
+    // and design section 14.6 names each of them, so that the layout and the design cannot drift
+    // apart.
     let src = [
         "lib.rs",
         "error.rs",
@@ -385,7 +386,7 @@ fn repository_layout_matches_section_14_6() {
     assert_eq!(
         rust_files_under(&crate_dir().join("src")),
         src.iter().map(|f| f.to_string()).collect::<BTreeSet<_>>(),
-        "the files of src/ differ from section 14.6"
+        "the files of src/ differ from design section 14.6"
     );
     let tests = [
         "rules_symbols.rs",
@@ -438,7 +439,7 @@ fn repository_layout_matches_section_14_6() {
     assert_eq!(
         targets,
         tests.iter().map(|f| f.to_string()).collect::<BTreeSet<_>>(),
-        "the targets of tests/ differ from section 14.6"
+        "the targets of tests/ differ from design section 14.6"
     );
     let common = [
         "mod.rs",
@@ -457,7 +458,7 @@ fn repository_layout_matches_section_14_6() {
             .iter()
             .map(|f| f.to_string())
             .collect::<BTreeSet<_>>(),
-        "the files of tests/common/ differ from section 14.6"
+        "the files of tests/common/ differ from design section 14.6"
     );
     let design = read(&repo.join("docs/design/14-dependencies.md"));
     let layout = design
@@ -470,7 +471,7 @@ fn repository_layout_matches_section_14_6() {
         block
             .lines()
             .find(|l| l.trim_start().starts_with(dir))
-            .unwrap_or_else(|| panic!("section 14.6 has no line for {dir}"))
+            .unwrap_or_else(|| panic!("design section 14.6 has no line for {dir}"))
             .split_whitespace()
             .map(str::to_string)
             .collect::<Vec<_>>()
@@ -480,7 +481,7 @@ fn repository_layout_matches_section_14_6() {
             Some((dir, name)) => line_of(&format!("{dir}/")).iter().any(|w| w == name),
             None => block.split_whitespace().any(|w| w == file),
         };
-        assert!(named, "section 14.6 does not name src/{file}");
+        assert!(named, "design section 14.6 does not name src/{file}");
     }
     // The lines of `src/` up to `tests/`: the words of those that do not start with a directory
     // are the files at the top of `src/`.
@@ -501,7 +502,7 @@ fn repository_layout_matches_section_14_6() {
         for word in line.split_whitespace() {
             assert!(
                 src.contains(&word),
-                "section 14.6 names src/{word}, which does not exist"
+                "design section 14.6 names src/{word}, which does not exist"
             );
         }
     }
@@ -514,14 +515,14 @@ fn repository_layout_matches_section_14_6() {
         assert!(
             common_line.contains(&format!("{{{stem},"))
                 || common_line.contains(&format!(",{stem}")),
-            "section 14.6 does not name tests/common/{file}"
+            "design section 14.6 does not name tests/common/{file}"
         );
     }
     let words: BTreeSet<&str> = block.split_whitespace().collect();
     for file in tests {
         assert!(
             words.contains(file) || (file.starts_with("rules_") && words.contains("rules_*.rs")),
-            "section 14.6 does not name tests/{file}"
+            "design section 14.6 does not name tests/{file}"
         );
     }
     assert!(crate_dir().join("tests/corpus").is_dir());
@@ -539,7 +540,7 @@ fn claude_md_is_a_pointer_to_agents_md() {
     assert!(claude.contains("@AGENTS.md"));
     assert!(claude.contains("AGENTS.md"));
     let agents = read(&repo.join("AGENTS.md"));
-    // The two hard rules that section 14.6 adds to the skeleton.
+    // The two hard rules that design section 14.6 adds to the skeleton.
     assert!(agents.contains("Co-Authored-By: Claude <noreply@anthropic.com>"));
     assert!(agents.contains("reference implementation"));
 }
@@ -631,8 +632,8 @@ fn non_library_targets_carry_the_allow_list_of_section_14_5() {
 
 #[test]
 fn name_check_is_recorded_in_the_design() {
-    // Section 15.4: "the report gives its result"; the record of the one query is kept in the
-    // design (the lead made it in stage 5).
+    // Design section 15.4: "the report gives its result"; the record of the one query is kept in
+    // the design (the lead made it in stage 5).
     let Some(repo) = repository() else {
         return;
     };
@@ -649,7 +650,7 @@ fn name_check_is_recorded_in_the_design() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The contents of the package and the build from its own tarball (section 15.4).
+// The contents of the package and the build from its own tarball (design section 15.4).
 
 fn package_list() -> Vec<String> {
     let out = run_cargo(&["package", "--list", "--offline", "--allow-dirty"]);
@@ -824,7 +825,7 @@ fn package_builds_from_its_own_tarball() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The examples run without error (section 15.4, stages 3 and 5).
+// The examples run without error (design section 15.4, stages 3 and 5).
 
 fn run_example(name: &str) -> (String, String) {
     let out = run_cargo(&["run", "--quiet", "--offline", "--example", name]);
@@ -839,7 +840,7 @@ fn run_example(name: &str) -> (String, String) {
 #[test]
 fn example_numbers_runs() {
     let (stdout, _) = run_example("numbers");
-    // Section 2.7: the same number by the language.
+    // Design section 2.7: the same number by the language.
     assert!(show(&stdout).contains("−1⍽234⍽567,5"), "{stdout}");
     assert!(stdout.contains("−1,234,567.5"), "{stdout}");
     assert!(show(&stdout).contains("1⍽234"), "{stdout}");
@@ -851,7 +852,7 @@ fn example_numbers_runs() {
 #[test]
 fn example_per_request_runs() {
     let (stdout, _) = run_example("per_request");
-    // Section 2.15: statics for ru and en, a borrowed result for an unchanged string, and a
+    // Design section 2.15: statics for ru and en, a borrowed result for an unchanged string, and a
     // typographer built at run time.
     assert!(stdout.contains("ru-RU"), "{stdout}");
     assert!(stdout.contains("en-US"), "{stdout}");
@@ -864,7 +865,7 @@ fn example_per_request_runs() {
 #[test]
 fn example_fluent_generator_runs() {
     let (stdout, _) = run_example("fluent_generator");
-    // Section 2.14: one line per message, the pieces in a Rust string body, and the number
+    // Design section 2.14: one line per message, the pieces in a Rust string body, and the number
     // formatting helper.
     assert!(stdout.lines().count() >= 3, "{stdout}");
     assert!(stdout.contains("format_number"), "{stdout}");

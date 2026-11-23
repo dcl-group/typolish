@@ -1,7 +1,7 @@
 //! The reverse transformation (design sections 2.10 and 12.1): typeset Unicode text back to the
 //! canonical plain form of the typographer.
 //!
-//! The inverse tables of section 12.1 give a reading (the plain text it came from) for every
+//! The inverse tables of design section 12.1 give a reading (the plain text it came from) for every
 //! typographic character outside the spans of `protected()`; a closed or spaced dash has a second
 //! reading with `--`. A closed dash reads with spaces only between two letters of words, and then
 //! `-` is its last reading (the range dash `—` of a language between Roman numerals); between
@@ -377,10 +377,10 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
         }
         // An edit outside every candidate that the text as it was does not get: the plain text
         // of a neighboring candidate made a rule fire, so it is not the plain text the character
-        // came from (the round trip of section 12.2 would break). The nearest candidates on both
-        // sides are put aside; one that was innocent comes back below. The spaces of a closed
+        // came from (the round trip of design section 12.2 would break). The nearest candidates on
+        // both sides are put aside; one that was innocent comes back below. The spaces of a closed
         // dash are exempt: the closed form joins two words into one fragment, which by design
-        // changes the rules around it, and `to_plain` restores them (section 8.4).
+        // changes the rules around it, and `to_plain` restores them (design section 8.4).
         let mut blamed = false;
         for &(window, ys, yt) in &verdict.stray {
             let suspect = |c: &Cand| c.on && !c.fixed && !c.closed() && c.window == window;
@@ -949,7 +949,7 @@ impl Flat<'_> {
 
     /// The class of the left neighbor of the series of quotes that ends at `at` (design section
     /// 6.3). A character inside a protected span is of class `Word`, as a neighbor inside a
-    /// frozen core or a protected span is in the forward algorithm (sections 6.3 and 6.9).
+    /// frozen core or a protected span is in the forward algorithm (design sections 6.3 and 6.9).
     fn class_before(&self, reading: &Reading, at: usize) -> Class {
         match self.before_at(at, |q| is_quote(reading, q)) {
             (Near::Char(_), pos) if self.is_frozen(pos) => Class::Word,
@@ -1233,7 +1233,7 @@ fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<&'static [&'stat
             let nested = c == close2;
             let closer = if nested { NESTED } else { QUOTE };
             if q.sign_only && stack.last() == Some(&true) && nested {
-                // The mirror of a sign-only pair (section 6.3): `‘’`, `‘-’`.
+                // The mirror of a sign-only pair (design section 6.3): `‘’`, `‘-’`.
                 stack.pop();
                 out.push(closer);
             } else if q.closing && stack.last() == Some(&nested) {

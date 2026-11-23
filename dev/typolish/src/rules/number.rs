@@ -19,8 +19,8 @@ const TIMES_SIGN: char = '\u{d7}';
 /// `number.minus` (Prose): the hyphen of a core `-D+` or `-D+[.,]D+`, with an optional `%` or `‰`
 /// attached, whose fragment starts after a pattern space, a line start or `(` becomes the minus
 /// sign of the settings (design section 8.8). A percentage reads alike in both of its forms
-/// (section 8.2), so the space that the percent setting inserts changes nothing for the rule. A
-/// fragment that already has the sign, typed or produced, matches with an empty edit.
+/// (design section 8.2), so the space that the percent setting inserts changes nothing for the
+/// rule. A fragment that already has the sign, typed or produced, matches with an empty edit.
 pub(crate) fn minus(cx: &Cx<'_>, i: usize) -> Option<Match> {
     if cx.kind(i) != Some(Kind::Dash) {
         return None;
@@ -99,7 +99,7 @@ pub(crate) fn times(cx: &Cx<'_>, i: usize) -> Option<Match> {
         FragKind::Times => {
             // The left factor of a lone sign, as the classifier found it (a number fragment, or
             // a label number attached to its sign, `№10`; before a percent sign after spaces,
-            // the number that owns it, `10 % x 5`, section 8.2), without a leading zero; a
+            // the number that owns it, `10 % x 5`, design section 8.2), without a leading zero; a
             // `Number` slot is a number (design section 8.2) whose digits are unknown.
             let left = cx.prev(f.start as usize).and_then(|s| cx.prev(s))?;
             let mut lf = cx.frag_of(left)?;

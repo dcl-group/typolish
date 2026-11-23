@@ -92,8 +92,8 @@ pub(crate) fn inner(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
     let prev = cx.prev(i);
     let next = cx.next(i);
-    // `Word` and `Other` slots count as words (section 8.10), a protected span acts as one word
-    // (section 2.6).
+    // `Word` and `Other` slots count as words (design section 8.10), a protected span acts as one
+    // word (design section 2.6).
     let word = |j: Option<usize>| {
         j.is_some_and(|j| {
             matches!(

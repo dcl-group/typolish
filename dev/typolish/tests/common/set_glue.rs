@@ -6,7 +6,7 @@
 //! expectation. For the others this table gives the expectation in a full set: each entry is the
 //! language tag, the set (`prose` or `interface`), the input, the expectation of the quote, dash,
 //! range and ellipsis rules alone, and the expectation of the full set. The glue of the last
-//! column was derived from section 8.7 for each row and read by hand; `⍽` is U+00A0 and `⎵`
+//! column was derived from design section 8.7 for each row and read by hand; `⍽` is U+00A0 and `⎵`
 //! U+202F as everywhere. The module is declared by `tests/common/mod.rs`.
 
 #![allow(dead_code)]
@@ -1169,8 +1169,9 @@ pub const TABLE: &[(&str, &str, &str, &str, &str)] = &[
     ),
     ("ru-RU", "prose", "стр. 9-12", "стр. 9–12", "стр.⍽9–12"),
     ("und", "prose", "5-10 kg", "5–10 kg", "5–10⍽kg"),
-    // A short word behind a start wrapper of dots (section 3.6: runs of dots belong to the
-    // wrapper), and a closing quote of a sign-only pair before a dash (section 8.7, `nbsp.dash`).
+    // A short word behind a start wrapper of dots (design section 3.6: runs of dots belong to the
+    // wrapper), and a closing quote of a sign-only pair before a dash (design section 8.7,
+    // `nbsp.dash`).
     ("ru-RU", "prose", "...и тогда", "…и тогда", "…и⍽тогда"),
     ("ru-RU", "prose", "...и тогда", "...и тогда", "...и⍽тогда"),
     (

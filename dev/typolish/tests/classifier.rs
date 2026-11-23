@@ -1,6 +1,6 @@
 //! The fragment classifier of design section 3.6 as a black box: tables of inputs and the
-//! protected spans that `report().protected()` lists for them (section 12.5), and the
-//! `MixedScript` diagnostic of the classifier (sections 5.2, 5.7).
+//! protected spans that `report().protected()` lists for them (design section 12.5), and the
+//! `MixedScript` diagnostic of the classifier (design sections 5.2, 5.7).
 //!
 //! A frozen fragment is listed with the kind of its check (`Technical(TechKind)`); an unfrozen one
 //! (`Dictionary`, `Abbreviation`, `Number`, `Range`, `Dimensions`, `Joined`, `Word`, `Sign`,
@@ -10,8 +10,8 @@
 //! checked by the unit tests of `src/engine/classify.rs` and, through the rules that read them, by
 //! the tables of stage 3 (design sections 13.2 and 15.4).
 //!
-//! Protection does not depend on the rule set (section 10.2), so every row runs under the empty
-//! set, Interface, Prose and `ALL`, and for the languages the row names.
+//! Protection does not depend on the rule set (design section 10.2), so every row runs under the
+//! empty set, Interface, Prose and `ALL`, and for the languages the row names.
 
 #![allow(
     clippy::unwrap_used,
@@ -130,7 +130,7 @@ fn run_rows(group: &str, rows: &[Row]) {
     }
 }
 
-// Check 0: the dictionaries come before everything (section 3.6, "Order matters").
+// Check 0: the dictionaries come before everything (design section 3.6, "Order matters").
 const DICTIONARY: &[Row] = &[
     // Units with `/` would be paths; the dictionary of the language of the call decides.
     ru("км/ч", &[]),
@@ -164,7 +164,7 @@ const DICTIONARY: &[Row] = &[
     ru("км2", &[]),
     en("₽", &[(UNCL, "₽")]),
     common("°", &[(UNCL, "°")]),
-    // The Greek mu and the micro sign of the English units (section 5.2).
+    // The Greek mu and the micro sign of the English units (design section 5.2).
     en("\u{3bc}s", &[]),
     en("\u{b5}s", &[]),
     // Atom exceptions and abbreviations: an entry that ends in `.` matches a core with a stop.
@@ -258,7 +258,7 @@ fn check_0_user_units_come_first() {
 
 #[test]
 fn check_0_has_no_length_limit() {
-    // Section 3.6 gives check 0 no bound: a long unit added by the caller is a unit.
+    // Design section 3.6 gives check 0 no bound: a long unit added by the caller is a unit.
     let long = "килобайтвсекундунаядро/час";
     assert!(long.len() > 48);
     let plain = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
@@ -627,7 +627,8 @@ const NUMBERS_AND_SHAPES: &[Row] = &[
     // The separator of the language decides, so the other form is a dotted name or a list.
     ru("1.5-2.5", &[(DOTTED, "1.5-2.5")]),
     en("1,5-2,5", &[(LIST, "1,5-2,5")]),
-    // Not Roman numerals: compound words with frozen hyphens (section 3.6, "Roman numerals").
+    // Not Roman numerals: compound words with frozen hyphens (design section 3.6, "Roman
+    // numerals").
     any("IIII-V", &[(HYPHEN, "-")]),
     any("IC-V", &[(HYPHEN, "-")]),
     any("VV-X", &[(HYPHEN, "-")]),
@@ -854,7 +855,7 @@ fn frozen_cores_inside_sentences() {
 
 #[test]
 fn the_span_of_a_frozen_fragment_is_its_core_with_exact_ranges() {
-    // Section 12.5: `Он - "врач", см. host:8080` has `Technical(Colon)` at `0:25..34`.
+    // Design section 12.5: `Он - "врач", см. host:8080` has `Technical(Colon)` at `0:25..34`.
     let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
     let input = "Он - \"врач\", см. host:8080";
     let spans = probe::spans_of(&t, input);
@@ -882,7 +883,7 @@ fn the_span_of_a_frozen_fragment_is_its_core_with_exact_ranges() {
 
 #[test]
 fn the_same_fragment_gets_the_same_kind_wherever_it_stands() {
-    // Frames of section 10.5 and the start and the end of the text.
+    // Frames of design section 10.5 and the start and the end of the text.
     let cases: &[(&str, ProtectedKind)] = &[
         ("host:8080", COLON),
         ("--force", FLAG),
@@ -937,7 +938,7 @@ fn the_same_fragment_gets_the_same_kind_wherever_it_stands() {
     }
 }
 
-// MixedScript: raised by the classifier, no rule (sections 5.2, 5.7, 12.4).
+// MixedScript: raised by the classifier, no rule (design sections 5.2, 5.7, 12.4).
 
 const MIXED: &[(&str, &[&str])] = &[
     // A Latin letter among Cyrillic ones.
@@ -1008,7 +1009,7 @@ fn mixed_script_words_raise_a_warning() {
 
 #[test]
 fn a_dictionary_entry_raises_no_mixed_script() {
-    // `μs` (Greek mu) and `µs` (micro sign) are units of the English table (section 5.2).
+    // `μs` (Greek mu) and `µs` (micro sign) are units of the English table (design section 5.2).
     let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
     for text in [
         "\u{3bc}s",
@@ -1029,7 +1030,7 @@ fn a_dictionary_entry_raises_no_mixed_script() {
 
 #[test]
 fn mixed_script_is_reported_without_a_trigger_byte() {
-    // Section 3.2: `report` always runs the whole pipeline, and `typeset` skips it.
+    // Design section 3.2: `report` always runs the whole pipeline, and `typeset` skips it.
     let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
     let input = "\u{41c}o\u{441}\u{43a}\u{432}\u{430}";
     let report = t.report(input, typolish::Output::Unicode);

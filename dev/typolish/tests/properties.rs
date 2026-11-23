@@ -90,13 +90,13 @@ fn outputs() -> Vec<Output> {
     ]
 }
 
-/// The seeds of the idempotence property of section 13.5 that need no `LanguageBuilder`.
+/// The seeds of the idempotence property of design section 13.5 that need no `LanguageBuilder`.
 const SEEDS: &[&str] = &[
     "Школа №5 г. Москвы",
     "§5 ч. 2",
     "т.е.",
     "и т.д...",
-    // A compact abbreviation next to a dash reads as a word in both forms (section 8.2).
+    // A compact abbreviation next to a dash reads as a word in both forms (design section 8.2).
     "Он пришёл - т.е. опоздал",
     "Слово - т.е.",
     "Москва – т.е. столица",
@@ -106,7 +106,7 @@ const SEEDS: &[&str] = &[
     "Moscow - the capital",
     "See https://example.com/docs - the guide",
     "He said - \"a cat\"",
-    // A dash next to a fragment that the closed style merged (section 4.3, I4).
+    // A dash next to a fragment that the closed style merged (design section 4.3, I4).
     "details - a - т.е.sk",
     "5 - x - Moscow",
     "5'10\"",
@@ -126,24 +126,25 @@ const SEEDS: &[&str] = &[
     "100‰",
     "100 %",
     "100\u{a0}%",
-    // A percentage range and a percent sign after spaces next to a dash (section 8.2).
+    // A percentage range and a percent sign after spaces next to a dash (design section 8.2).
     "5–10%",
     "5–10 %",
     "100 % - норма",
     "5–10% - норма",
     "Рост - 5–10%",
-    // A hyphen range with its percent sign attached or after spaces (section 8.2).
+    // A hyphen range with its percent sign attached or after spaces (design section 8.2).
     "5 - 10-20 %",
     "5 - 10-20%",
     "10-20 % - 5",
     "5 - 1,5-2,5 %",
     "5 - 1.5-2.5 %",
-    // A label number owns its percent sign after spaces too (section 8.2).
+    // A label number owns its percent sign after spaces too (design section 8.2).
     "№5 % — т.е.",
     "№10 % — -5% +",
     "№5 %\u{a0}-- `x`",
     "§5 % - x",
-    // A percentage after spaces as the left factor of a lone `x` and next to `(c)` (8.8, 8.9).
+    // A percentage after spaces as the left factor of a lone `x` and next to `(c)` (design sections
+    // 8.8 and 8.9).
     "10 % x 5",
     "10 %... X\u{a0}10 %",
     "(c) 2026 %",
@@ -153,15 +154,16 @@ const SEEDS: &[&str] = &[
     "Sign in - it's free",
     "Подождите...\nДальше",
     "Экран \u{2068}27\u{2069}\" и \"ручка\"",
-    // A sign-only pair next to a dash (sections 6.3 and 8.2).
+    // A sign-only pair next to a dash (design sections 6.3 and 8.2).
     "Слово - \"\" да",
     "\"\" - 5",
     "- \"\" да",
     "-- \"\"",
     "Введите \"-\" или \"—\"",
-    // A series of three or more quotes of any form has no sign-only pair inside it (section 6.3).
+    // A series of three or more quotes of any form has no sign-only pair inside it (design section
+    // 6.3).
     "\"--\"\"\"",
-    // A neutral typed closer inside a new pair of its family (section 6.6).
+    // A neutral typed closer inside a new pair of its family (design section 6.6).
     "x '\"»b 5' c\"",
     "'\"»90'\"",
     "’'\"”»90'„\"",
@@ -201,8 +203,9 @@ fn idempotence_of_the_seeds() {
 
 #[test]
 fn idempotence_of_the_seed_with_a_built_language() {
-    // The seed `‚Wort‘` of section 13.5, with a `LanguageBuilder` language whose pairs are `„“` and
-    // `‚‘`: a typed nested pair, and around it straight quotes that take the language's glyphs.
+    // The seed `‚Wort‘` of design section 13.5, with a `LanguageBuilder` language whose pairs are
+    // `„“` and `‚‘`: a typed nested pair, and around it straight quotes that take the language's
+    // glyphs.
     let de = LanguageBuilder::from_language(&Language::EN_US, "de-DE")
         .quotes(Some(QuotePairs::new(('„', '“'), ('‚', '‘'))))
         .build()
@@ -446,11 +449,12 @@ fn no_panic_on_hand_picked_hard_strings() {
     let _ = strategies::RISKY.len();
 }
 
-// The invariants of section 4.3 (properties 3 of section 13.5), observed through `report`.
+// The invariants of design section 4.3 (properties 3 of design section 13.5), observed through
+// `report`.
 //
-// Before stage 3 the sets run without the `nbsp.*` rules, as the set-level tables do (section
-// 15.4); stage 3 lifts the filter where the invariant allows it (I2 with a percent sign that a
-// space splits, section 4.3, keeps it).
+// Before stage 3 the sets run without the `nbsp.*` rules, as the set-level tables do (design
+// section 15.4); stage 3 lifts the filter where the invariant allows it (I2 with a percent sign
+// that a space splits, design section 4.3, keeps it).
 
 /// A rule set without the `nbsp.*` rules.
 fn stage2_set() -> impl Strategy<Value = RuleSet> {
@@ -711,8 +715,8 @@ fn is_html(output: Output) -> bool {
     matches!(output, Output::Html(_))
 }
 
-/// Section 11.8: for `CSS` every U+0000 of the generated text is replaced by U+FFFD before both
-/// equations.
+/// Design section 11.8: for `CSS` every U+0000 of the generated text is replaced by U+FFFD before
+/// both equations.
 fn for_output(output: Output, text: &str) -> String {
     if is_css(output) {
         text.replace('\u{0}', "\u{fffd}")
@@ -763,8 +767,8 @@ proptest! {
 
     /// 12 and 17 for the texts of a template: joined with slot values that need no encoding, the
     /// texts decode to the Unicode template filled the same way (an element may open in one text
-    /// and close in another, section 11.5). `Markup` is written as it is in HTML, so the HTML kinds
-    /// run on templates without it.
+    /// and close in another, design section 11.5). `Markup` is written as it is in HTML, so the
+    /// HTML kinds run on templates without it.
     #[test]
     fn template_texts_decode_to_the_unicode_texts(
         parts in pieces(), lang in 0usize..3, set in rule_set(),
@@ -958,7 +962,7 @@ fn symbols(lang: usize, digits: u8) -> (char, char, char, usize) {
 }
 
 /// The number as core wrote it (`text`, an optional `-`, digits, an optional `.` and digits)
-/// grouped by the symbols: an independent model of section 2.7.
+/// grouped by the symbols: an independent model of design section 2.7.
 fn model(text: &str, lang: usize, digits: u8, zero_unsigned: bool) -> String {
     let (group, decimal, minus, threshold) = symbols(lang, digits);
     let (negative, rest) = match text.strip_prefix('-') {
@@ -1287,7 +1291,7 @@ fn kind_order(kind: &DiagnosticKind) -> usize {
     }
 }
 
-/// Diagnostics are ordered by piece, byte start, byte end, then kind (section 12.4).
+/// Diagnostics are ordered by piece, byte start, byte end, then kind (design section 12.4).
 fn assert_ordered(diagnostics: &[Diagnostic]) -> Result<(), TestCaseError> {
     let key = |d: &Diagnostic| {
         let r = d.range();

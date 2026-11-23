@@ -2,9 +2,9 @@
 //! (design sections 2.9, 12.3, 12.4 and 13.2, `tests/lint.rs`).
 //!
 //! Every diagnostic kind has a firing and a non-firing row. Each row runs through `lint` and
-//! through `report`, which must agree on everything but `TypographicChar` (section 12.3). The
-//! rows of `TypographicChar` follow the list of section 13.2. Rows are written with the markers of
-//! `vis`: `⍽` is U+00A0 and `⎵` is U+202F.
+//! through `report`, which must agree on everything but `TypographicChar` (design section 12.3).
+//! The rows of `TypographicChar` follow the list of design section 13.2. Rows are written with the
+//! markers of `vis`: `⍽` is U+00A0 and `⎵` is U+202F.
 
 #![allow(
     clippy::unwrap_used,
@@ -161,12 +161,13 @@ fn check_in_sets(language: &Language, text: &str, expected: &[Exp]) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The diagnostics of section 12.4, one firing and one non-firing row each.
+// The diagnostics of design section 12.4, one firing and one non-firing row each.
 // ---------------------------------------------------------------------------------------------
 
 #[test]
 fn unmatched_quote_warning() {
-    // Firing (section 12.4, the example of section 2.9): a straight quote without a pair.
+    // Firing (design section 12.4, the example of design section 2.9): a straight quote without a
+    // pair.
     let text = "Он сказал \"привет.";
     check_in_sets(
         &RU,
@@ -210,7 +211,7 @@ fn unmatched_quote_info() {
 
 #[test]
 fn unmatched_quote_needs_its_rule() {
-    // Raised by `quotes.pairs` (section 12.4): with the rule off there is no diagnostic.
+    // Raised by `quotes.pairs` (design section 12.4): with the rule off there is no diagnostic.
     for (what, t) in [
         ("empty", Typographer::new(RU, RuleSet::EMPTY)),
         (
@@ -224,13 +225,13 @@ fn unmatched_quote_needs_its_rule() {
 
 #[test]
 fn crossing_quotes() {
-    // Firing: pairs would cross; the diagnostic sits at the covering entry (section 6.4).
+    // Firing: pairs would cross; the diagnostic sits at the covering entry (design section 6.4).
     check_in_sets(
         &RU,
         "«a \"b» c\"",
         &[(CrossingQuotes, Warning, Some(Rule::QuotesPairs), 4..5)],
     );
-    // A neutral typed closer inside a new pair of its family (section 6.6).
+    // A neutral typed closer inside a new pair of its family (design section 6.6).
     check_in_sets(
         &RU,
         "Он сказал \"a » b\"",
@@ -272,7 +273,7 @@ fn ambiguous_quote() {
     check_in_sets(&RU, text, &expected);
     // Not firing: the quote has a role.
     check_in_sets(&RU, "Слово \"в\" тексте.", &[]);
-    // An empty sign-only pair is a pair (section 6.3).
+    // An empty sign-only pair is a pair (design section 6.3).
     check_in_sets(&RU, "Он сказал \"\" и ушёл.", &[]);
 }
 
@@ -288,7 +289,7 @@ fn unclosed_delimiter() {
             &[(UnclosedDelimiter, Warning, None, at(text, "`"))],
         );
     }
-    // Two stray backticks in different paragraphs do not pair (section 10.1).
+    // Two stray backticks in different paragraphs do not pair (design section 10.1).
     let text = "Don`t.\n\nОн сказал \"да\".\n\nIt`s ok.";
     check(
         "ru interface",
@@ -408,7 +409,7 @@ fn mixed_script() {
 
 #[test]
 fn inputs_without_a_trigger_byte_keep_their_diagnostics() {
-    // Section 3.2, no prefilter: `Мoсква` has no byte that a rule reacts to.
+    // Design section 3.2, no prefilter: `Мoсква` has no byte that a rule reacts to.
     let moskva = "\u{41c}o\u{441}\u{43a}\u{432}\u{430}";
     let t = interface(RU);
     let linted = t.lint(moskva);
@@ -563,7 +564,7 @@ fn nowrap_fallback_comes_from_report_template_only() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// TypographicChar (sections 12.3 and 13.2).
+// TypographicChar (design sections 12.3 and 13.2).
 // ---------------------------------------------------------------------------------------------
 
 /// The entries of `TypographicChar` of a string with their texts.
@@ -608,9 +609,9 @@ fn a_typographic_character_is_reported_once_at_its_place() {
 
 #[test]
 fn the_typed_dash_with_spaces_is_not_reported_but_its_glue_is() {
-    // Section 13.2: a typed `–` with spaces is not a product of the range rules, so `to_plain`
-    // returns the input and `lint` is silent; only the glue that `nbsp.dash` set before it is
-    // reported, once, on the U+00A0.
+    // Design section 13.2: a typed `–` with spaces is not a product of the range rules, so
+    // `to_plain` returns the input and `lint` is silent; only the glue that `nbsp.dash` set before
+    // it is reported, once, on the U+00A0.
     let t = prose(RU);
     for text in ["Москва – столица", "10 – 20"] {
         assert_eq!(t.to_plain(text), text);
@@ -625,7 +626,7 @@ fn the_typed_dash_with_spaces_is_not_reported_but_its_glue_is() {
 
 #[test]
 fn glue_set_by_a_rule_is_reported_where_the_rule_is_on() {
-    // Section 12.1: with `nbsp.units` alone, `5⍽МБ в⍽доме` → `5 МБ в⍽доме`.
+    // Design section 12.1: with `nbsp.units` alone, `5⍽МБ в⍽доме` → `5 МБ в⍽доме`.
     let t = Typographer::new(RU, RuleSet::EMPTY.with(Rule::NbspUnits));
     let text = vis("5⍽МБ в⍽доме");
     assert_eq!(t.to_plain(&text), vis("5 МБ в⍽доме"));
@@ -708,7 +709,7 @@ fn legal_marks_follow_their_rule_and_their_context() {
             assert_eq!(found(&t, text), [], "{what}: {text}");
         }
     }
-    // The other marks and the arrows of section 12.1.
+    // The other marks and the arrows of design section 12.1.
     let t = prose(EN);
     assert_eq!(found(&t, "Brand™"), ['™']);
     assert_eq!(found(&t, "x → y"), ['→']);
@@ -808,8 +809,8 @@ fn typographic_char_is_reported_for_templates_by_piece() {
 fn typographic_char_finds_its_piece_in_a_long_template() {
     // Many `Text` pieces between `Markup` pieces, some empty and some without a candidate: every
     // entry names its own piece and the bytes of its character there, and the plain texts follow
-    // (sections 12.1 and 12.4). The lookup of the piece of a candidate walks both lists once
-    // (section 3.12), so the length is not a problem.
+    // (design sections 12.1 and 12.4). The lookup of the piece of a candidate walks both lists once
+    // (design section 3.12), so the length is not a problem.
     let t = prose(RU);
     let mut pieces: Vec<Piece<'_, ()>> = Vec::new();
     for n in 0..3000 {
@@ -841,7 +842,7 @@ fn typographic_char_finds_its_piece_in_a_long_template() {
 // The order, the equality with `report`, `Display`.
 // ---------------------------------------------------------------------------------------------
 
-/// The position of a kind in the declaration of `DiagnosticKind` (section 12.4).
+/// The position of a kind in the declaration of `DiagnosticKind` (design section 12.4).
 fn kind_order(kind: &DiagnosticKind) -> usize {
     match kind {
         UnmatchedQuote => 0,
@@ -937,7 +938,7 @@ fn diagnostics_are_ordered_by_piece_start_end_and_kind() {
 
 #[test]
 fn display_of_a_diagnostic() {
-    // Section 12.4: `warning quotes.pairs 0:10..11: straight quote has no pair; left as is`.
+    // Design section 12.4: `warning quotes.pairs 0:10..11: straight quote has no pair; left as is`.
     let t = interface(RU);
     let text = "Он сказал \"привет.";
     let expected = "warning quotes.pairs 0:18..19: straight quote has no pair; left as is";
@@ -1048,8 +1049,8 @@ fn lint_of_nothing_is_empty() {
 
 #[test]
 fn mixed_script_across_text_pieces() {
-    // Section 13.2: `Text("Мо")`, `Text("sква")` → one diagnostic at piece 0, `0..4`, equal in
-    // `report_template` and `lint_template`.
+    // Design section 13.2: `Text("Мо")`, `Text("sква")` → one diagnostic at piece 0, `0..4`, equal
+    // in `report_template` and `lint_template`.
     for (what, t) in all_sets(&RU) {
         let pieces = || [Piece::Text("Мо"), Piece::Text("sква")];
         let linted = t.lint_template::<()>(pieces());
@@ -1138,7 +1139,7 @@ fn lint_template_equals_report_template() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The corpus (section 13.7): plain sources have nothing to repair; typeset ones have.
+// The corpus (design section 13.7): plain sources have nothing to repair; typeset ones have.
 // ---------------------------------------------------------------------------------------------
 
 #[test]
@@ -1147,7 +1148,7 @@ fn the_plain_corpus_has_no_typographic_char_and_the_typeset_one_has() {
         for (set_name, _) in SETS {
             let t = typographer(lang, set_name);
             for file in FILES {
-                // `tech.txt` is plain for Interface only (section 12.2).
+                // `tech.txt` is plain for Interface only (design section 12.2).
                 if file == "tech.txt" && set_name == "prose" {
                     continue;
                 }

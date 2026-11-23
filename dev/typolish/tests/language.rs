@@ -136,7 +136,7 @@ fn debug_names_the_tag() {
     }
 }
 
-/// The rules that the data of each language does not activate, section 7.4.
+/// The rules that the data of each language does not activate, design section 7.4.
 fn inert(lang: &Language) -> Vec<&'static str> {
     Rule::ALL
         .iter()

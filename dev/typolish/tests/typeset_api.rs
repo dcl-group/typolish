@@ -171,7 +171,8 @@ fn a_scratch_moves_between_threads() {
 
 #[test]
 fn a_large_input_does_not_break_the_next_call() {
-    // The thread-local scratch is replaced after a call that grew it past 64 KiB (section 2.12).
+    // The thread-local scratch is replaced after a call that grew it past 64 KiB (design section
+    // 2.12).
     let big = "Слово \"слово\" - и ещё... ".repeat(20_000);
     let first = RU_UI.typeset(&big, Output::Unicode).into_owned();
     assert!(first.len() >= big.len() / 2);

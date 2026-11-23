@@ -1,13 +1,13 @@
 //! Decoders, strict parsers and a reference encoder for the output kinds (design sections 11.8
 //! and 13.5).
 //!
-//! The decoders are the inverse of the encoders of section 11 and read their input strictly: an
-//! escape that the syntax does not define, a raw character that the kind must not write, a
-//! reference that is not in the table of section 11.2 and an element that is not a nowrap element
-//! are errors, so the same functions serve the decoder properties (property 12) and the safe
-//! alphabet property (property 17). The reference encoder is written from the tables of sections
-//! 11.2, 11.4 and 11.6 alone and does not group nowrap elements; it checks the fixed tables of
-//! `tests/output.rs` against the Unicode result of the typographer.
+//! The decoders are the inverse of the encoders of design section 11 and read their input strictly:
+//! an escape that the syntax does not define, a raw character that the kind must not write, a
+//! reference that is not in the table of design section 11.2 and an element that is not a nowrap
+//! element are errors, so the same functions serve the decoder properties (property 12) and the
+//! safe alphabet property (property 17). The reference encoder is written from the tables of design
+//! sections 11.2, 11.4 and 11.6 alone and does not group nowrap elements; it checks the fixed
+//! tables of `tests/output.rs` against the Unicode result of the typographer.
 //!
 //! The module is declared by `tests/common/mod.rs`.
 
@@ -15,13 +15,14 @@
 
 use typolish::{EscapeStyle, HtmlStyle, Output};
 
-/// The typographic set of section 11.2, every character the rules produce.
+/// The typographic set of design section 11.2, every character the rules produce.
 pub const TYPOGRAPHIC: &[char] = &[
     '\u{a0}', '\u{202f}', '\u{2009}', '\u{2011}', '–', '—', '…', '«', '»', '„', '“', '”', '‘', '’',
     '‚', '‹', '›', '−', '×', '′', '″', '©', '®', '™', '→', '←', '↔', '≥', '≤', '≠', '±',
 ];
 
-/// The named references of section 11.2 as `(name, character)`. U+202F and U+2011 have no name.
+/// The named references of design section 11.2 as `(name, character)`. U+202F and U+2011 have no
+/// name.
 pub const NAMES: &[(&str, char)] = &[
     ("nbsp", '\u{a0}'),
     ("thinsp", '\u{2009}'),
@@ -54,7 +55,7 @@ pub const NAMES: &[(&str, char)] = &[
     ("plusmn", '±'),
 ];
 
-/// The references that escape markup in HTML text (section 11.4).
+/// The references that escape markup in HTML text (design section 11.4).
 const MARKUP_NAMES: &[(&str, char)] = &[("amp", '&'), ("lt", '<'), ("gt", '>'), ("quot", '"')];
 
 /// The name of a character of the typographic set, if HTML has one.
@@ -125,7 +126,8 @@ pub fn syntax_of(style: EscapeStyle) -> (Syntax, bool) {
     panic!("an escape style that is none of the built-in ones: {style:?}")
 }
 
-/// The raw characters a syntax never writes (section 13.5, property 17): `c` followed by `next`.
+/// The raw characters a syntax never writes (design section 13.5, property 17): `c` followed by
+/// `next`.
 pub fn raw_forbidden(syntax: Syntax, c: char, next: Option<char>) -> bool {
     let control = c <= '\u{1f}' || c == '\u{7f}';
     match syntax {
@@ -287,10 +289,10 @@ fn reference(name: &str) -> Result<char, String> {
 }
 
 /// Decodes HTML text, reading it as strictly as the encoder writes it: no raw `<`, `>`, `"` or `'`
-/// outside the nowrap elements, no `&` that does not start a reference of the table of section
-/// 11.2 or a numeric one, and no element other than `<span class="…">` and
+/// outside the nowrap elements, no `&` that does not start a reference of the table of design
+/// section 11.2 or a numeric one, and no element other than `<span class="…">` and
 /// `<span style="white-space:nowrap">`, which do not nest. Inside an element an ordinary space is
-/// U+00A0 glue (section 11.5).
+/// U+00A0 glue (design section 11.5).
 pub fn decode_html(s: &str) -> Result<String, String> {
     let mut out = String::new();
     let mut rest = s;
@@ -400,8 +402,8 @@ fn utf16(c: char) -> Vec<u16> {
     c.encode_utf16(&mut buf).to_vec()
 }
 
-/// The reference encoder of sections 11.4 and 11.6: the Unicode result written in the kind, for
-/// every kind except the nowrap styles of HTML.
+/// The reference encoder of design sections 11.4 and 11.6: the Unicode result written in the kind,
+/// for every kind except the nowrap styles of HTML.
 pub fn encode_reference(output: Output, unicode: &str) -> String {
     match output {
         Output::Unicode => unicode.to_owned(),

@@ -4,7 +4,8 @@
 //!
 //! The expectations are written with the markers of `common::vis` (`⍽` is U+00A0, `⎵` is U+202F).
 //! Values of the widest types and of `f32::MAX` are built from the digits that core's `{}` writes,
-//! since the design says `f32` and `f64` use the shortest representation of core (section 2.7).
+//! since the design says `f32` and `f64` use the shortest representation of core (design section
+//! 2.7).
 
 #![allow(
     clippy::unwrap_used,
@@ -387,7 +388,7 @@ fn decimal_rejects_what_section_2_11_lists() {
 #[test]
 fn the_invalid_number_error_names_the_input() {
     let err = Number::decimal("1e3").unwrap_err();
-    // The text of the message is not a contract (section 2.13); it names the input.
+    // The text of the message is not a contract (design section 2.13); it names the input.
     assert!(err.to_string().contains("1e3"), "{err}");
 }
 
@@ -517,7 +518,8 @@ fn min_grouping_digits_moves_the_threshold() {
 
 #[test]
 fn common_does_not_group() {
-    // `COMMON` has `min_grouping_digits = 0`, decimal `.` and the minus U+2212 (design section 7.4).
+    // `COMMON` has `min_grouping_digits = 0`, decimal `.` and the minus U+2212 (design section
+    // 7.4).
     same("COMMON 1234567", num(&COMMON, 1234567), "1234567");
     same("COMMON -1234567.5", num(&COMMON, -1234567.5), "−1234567.5");
     same("COMMON decimal", dec(&COMMON, "1234567.50"), "1234567.50");
@@ -529,7 +531,8 @@ fn common_does_not_group() {
 
 #[test]
 fn the_rule_set_does_not_change_numbers() {
-    // Settings do not depend on rule sets (section 2.4): a set only switches rules on and off.
+    // Settings do not depend on rule sets (design section 2.4): a set only switches rules on and
+    // off.
     for set in [
         RuleSet::EMPTY,
         RuleSet::INTERFACE,
@@ -953,7 +956,7 @@ fn every_output_kind_writes_a_range_and_the_symbols() {
 fn nowrap_writes_one_element_around_a_number_with_glue() {
     let class = Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"));
     let style = Output::Html(HtmlStyle::NAMED.nowrap_style());
-    // Design section 2.7 and 11.5.
+    // Design sections 2.7 and 11.5.
     same(
         "ru -12345",
         RU.format_number(-12345, class).to_string(),
@@ -1074,8 +1077,8 @@ fn samples() -> Vec<Number<'static>> {
 
 #[test]
 fn decoding_every_kind_gives_the_unicode_number() {
-    // Section 11.8: decode(out) equals the Unicode result, nowrap styles included (an ordinary
-    // space inside an element is U+00A0).
+    // Design section 11.8: decode(out) equals the Unicode result, nowrap styles included (an
+    // ordinary space inside an element is U+00A0).
     let narrow = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
         .group_separator('\u{202f}')
         .build()

@@ -164,7 +164,7 @@ pub(crate) struct Cx<'a> {
     pub(crate) sides: core::cell::Cell<Option<(usize, Sides)>>,
 }
 
-/// The tokens on both sides of a pattern space, if the rules of section 8.2 may glue it.
+/// The tokens on both sides of a pattern space, if the rules of design section 8.2 may glue it.
 pub(crate) type Sides = Option<(usize, usize)>;
 
 impl<'a> Cx<'a> {
@@ -413,8 +413,8 @@ pub(crate) struct Outcome {
 }
 
 /// One phase (design section 3.8): at each position the active rules of the phase are tried in
-/// the order of section 4.1; the first that matches takes the anchor and `consume` tokens, which
-/// are not considered again. The output goes to `out` once a match has edits (`written`); the
+/// the order of design section 4.1; the first that matches takes the anchor and `consume` tokens,
+/// which are not considered again. The output goes to `out` once a match has edits (`written`); the
 /// source ranges of removed tokens go to `removed`.
 pub(crate) fn run_phase<R: Recorder>(
     cx: &Cx<'_>,

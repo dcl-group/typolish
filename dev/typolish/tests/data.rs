@@ -1,10 +1,12 @@
-//! Built-in language tables against design sections 7.2 to 7.4 (design section 13.9, `tests/data.rs`).
+//! Built-in language tables against design sections 7.2 to 7.4 (design section 13.9,
+//! `tests/data.rs`).
 //!
 //! `LanguageData` has no accessors except `tag`, so the stored values are read from its derived
-//! `Debug` output (the field names are those of section 7.1). The expected lists below were
+//! `Debug` output (the field names are those of design section 7.1). The expected lists below were
 //! generated from the tables of the design by a script kept outside the repository. The check of
 //! the CLDR values against an extract of cldr-json (`tests/common/cldr49.rs`) and the validation
-//! rows of section 7.6 joined in stage 3 (section 15.4); they stand at the end of the file.
+//! rows of design section 7.6 joined in stage 3 (design section 15.4); they stand at the end of the
+//! file.
 
 #![allow(
     clippy::unwrap_used,
@@ -426,7 +428,8 @@ fn expect_abbreviations(
     for part in capitalized {
         want.push((vec![(*part).to_owned()], "NextCapitalized".to_owned()));
     }
-    // Sorted by parts, first part then the next (section 7.6), and no two with the same parts.
+    // Sorted by parts, first part then the next (design section 7.6), and no two with the same
+    // parts.
     let keys: Vec<&Vec<String>> = got.iter().map(|(p, _)| p).collect();
     let mut sorted = keys.clone();
     sorted.sort();
@@ -731,12 +734,12 @@ fn built_in_tables_pass_validation() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The CLDR 49 extract (section 13.9): quote pairs, decimal, group, minimum grouping digits,
+// The CLDR 49 extract (design section 13.9): quote pairs, decimal, group, minimum grouping digits,
 // percent pattern, range pattern, `nan`, `infinity`, month names and the units marked "CLDR 49".
 // ---------------------------------------------------------------------------------------------
 
 /// The built-in tables with the CLDR locale they take their values from (`en-US` inherits `en`,
-/// section 7.3).
+/// design section 7.3).
 fn cldr_pairs() -> [(&'static LanguageData, &'static cldr49::Locale); 2] {
     [
         (&LanguageData::RU_RU, &cldr49::RU),
@@ -801,7 +804,7 @@ fn numbers_are_the_cldr_symbols() {
 
 #[test]
 fn the_minus_sign_is_the_documented_deviation_from_cldr() {
-    // Section 7.5: CLDR 49 gives U+002D, typolish U+2212 (the task).
+    // Design section 7.5: CLDR 49 gives U+002D, typolish U+2212 (the task).
     for (data, cldr) in cldr_pairs() {
         assert_eq!(cldr.minus_sign, "-", "{}", data.tag());
         let n = numbers(&fields(data));
@@ -827,7 +830,7 @@ fn months_are_the_union_of_the_cldr_wide_and_abbreviated_forms() {
     let ru = list(&fields(&LanguageData::RU_RU), "months");
     assert_eq!(ru, cldr_months(&cldr49::RU));
     assert_eq!(ru.len(), 23);
-    // en: the union plus the dotted forms of the project (section 7.5).
+    // en: the union plus the dotted forms of the project (design section 7.5).
     let en = list(&fields(&LanguageData::EN_US), "months");
     let union = cldr_months(&cldr49::EN);
     assert_eq!(union.len(), 23);
@@ -851,7 +854,7 @@ fn unit_symbol(pattern: &str) -> String {
         .to_owned()
 }
 
-/// The units that the tables of sections 7.2 and 7.3 mark "project".
+/// The units that the tables of design sections 7.2 and 7.3 mark "project".
 const RU_PROJECT_UNITS: &[&str] = &[
     "КБ",
     "КиБ",
@@ -942,8 +945,8 @@ fn units_marked_cldr_are_the_short_symbols_of_the_extract() {
 
 #[test]
 fn the_cldr_units_spell_the_symbols_of_the_design() {
-    // A few symbols with their separators: CLDR writes `{0} МБ` with U+0020 in ru (section 7.5,
-    // glue is the task's, not CLDR's) and `{0}°C` or `{0} °C` as the extract says.
+    // A few symbols with their separators: CLDR writes `{0} МБ` with U+0020 in ru (design section
+    // 7.5, glue is the task's, not CLDR's) and `{0}°C` or `{0} °C` as the extract says.
     let ru: Vec<(&str, String)> = cldr49::RU
         .units_short
         .iter()
@@ -977,7 +980,7 @@ fn the_cldr_units_spell_the_symbols_of_the_design() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Validation (section 7.6): `Language::from_data`
+// Validation (design section 7.6): `Language::from_data`
 // ---------------------------------------------------------------------------------------------
 
 /// A table that lives for the whole test run.
@@ -1043,7 +1046,7 @@ fn leak_str(text: &str) -> &'static str {
 
 #[test]
 fn the_tag_en_gb_in_wrong_case_is_rejected_by_from_data() {
-    // Section 13.9: `Language::from_data` with the tag `EN-gb` gives `InvalidLanguageData`.
+    // Design section 13.9: `Language::from_data` with the tag `EN-gb` gives `InvalidLanguageData`.
     let data: &'static LanguageData = leak(LanguageData::EN_US.with_tag("EN-gb"));
     match Language::from_data(data) {
         Err(Error::InvalidLanguageData { tag, .. }) => assert_eq!(tag, "EN-gb"),
@@ -1053,7 +1056,7 @@ fn the_tag_en_gb_in_wrong_case_is_rejected_by_from_data() {
 
 #[test]
 fn quote_glyphs() {
-    // A table whose pairs hold `「」` is rejected (section 13.9).
+    // A table whose pairs hold `「」` is rejected (design section 13.9).
     rejected(
         base().with_quotes(Some(QuotePairs::new(('「', '」'), ('«', '»')))),
         "quotes",
@@ -1091,7 +1094,7 @@ fn quote_glyphs() {
 
 type Setter = fn(LanguageData, &'static [&'static str]) -> LanguageData;
 
-/// The word lists of section 7.6: lowercase entries.
+/// The word lists of design section 7.6: lowercase entries.
 const WORD_LISTS: &[(&str, Setter)] = &[
     ("elisions", |d, l| d.with_elisions(l)),
     ("short_words", |d, l| d.with_short_words(l)),
@@ -1165,7 +1168,7 @@ fn units_do_not_start_with_an_ascii_digit() {
     rejected(base().with_units(&["0x"]), "units");
     accepted(base().with_units(&["px5"]));
     accepted(base().with_units(&["m2", "m²"]));
-    // A digit of another system is a letter for the lexer (section 2.11): accepted.
+    // A digit of another system is a letter for the lexer (design section 2.11): accepted.
     accepted(base().with_units(&["٣px"]));
 }
 
@@ -1191,7 +1194,7 @@ fn ambiguous_units_are_also_units() {
 
 #[test]
 fn a_unit_that_is_a_short_word_or_a_particle_is_listed_as_ambiguous() {
-    // Compared with case: `с` must be listed, `В` need not (section 7.6).
+    // Compared with case: `с` must be listed, `В` need not (design section 7.6).
     rejected(
         base().with_units(&["с"]).with_short_words(&["с"]),
         "ambiguous_units",
@@ -1390,7 +1393,7 @@ fn ellipsis_forms_consist_of_question_exclamation_and_dots_only() {
 
 #[test]
 fn from_static_does_not_validate_and_never_panics() {
-    // Invalid data never panics, but rules may misbehave (section 2.2).
+    // Invalid data never panics, but rules may misbehave (design section 2.2).
     let bad = leak(
         base()
             .with_tag("EN-gb")
@@ -1419,7 +1422,7 @@ fn from_static_is_const() {
         Language::from_data(&DATA).as_ref().map(Language::tag),
         Ok("en-GB")
     );
-    // The design example (section 7.7): British English with spaced dashes needs no code.
+    // The design example (design section 7.7): British English with spaced dashes needs no code.
     static GB: LanguageData = LanguageData::EN_US
         .with_tag("en-GB")
         .with_dash_style(DashStyle::Spaced);
@@ -1434,7 +1437,7 @@ fn from_static_is_const() {
 
 #[test]
 fn the_built_in_tables_validate_through_the_typographer_builder_too() {
-    // Section 13.9: built-in languages x built-in sets build without error.
+    // Design section 13.9: built-in languages x built-in sets build without error.
     for language in Language::builtin().chain([Language::COMMON]) {
         for set in [
             RuleSet::EMPTY,
@@ -1449,7 +1452,7 @@ fn the_built_in_tables_validate_through_the_typographer_builder_too() {
 
 #[test]
 fn the_quote_pairs_of_a_typographer_builder_are_checked_with_invalid_setting() {
-    // Section 13.9: the same pairs that make `LanguageBuilder::build` fail with
+    // Design section 13.9: the same pairs that make `LanguageBuilder::build` fail with
     // `InvalidLanguageData` give `InvalidSetting` in the typographer builder.
     let pairs = QuotePairs::new(('«', '»'), ('«', '„'));
     let err = LanguageBuilder::new("xx")
@@ -1465,7 +1468,7 @@ fn the_quote_pairs_of_a_typographer_builder_are_checked_with_invalid_setting() {
         matches!(&err, Error::InvalidSetting { setting, .. } if *setting == "quote_pairs"),
         "{err:?}"
     );
-    // The pair `(«, »)` and `(«, „)` of section 13.9 for the builder of languages.
+    // The pair `(«, »)` and `(«, „)` of design section 13.9 for the builder of languages.
     let err = LanguageBuilder::new("xx")
         .quotes(Some(QuotePairs::new(('«', '»'), ('«', '„'))))
         .build()
@@ -1475,7 +1478,8 @@ fn the_quote_pairs_of_a_typographer_builder_are_checked_with_invalid_setting() {
 
 #[test]
 fn the_language_builder_normalizes_the_case_of_the_tag() {
-    // Section 13.9: `LanguageBuilder::new("EN-gb").build()` gives a language with tag `en-GB`.
+    // Design section 13.9: `LanguageBuilder::new("EN-gb").build()` gives a language with tag
+    // `en-GB`.
     let lang = LanguageBuilder::new("EN-gb").build().unwrap();
     assert_eq!(lang.tag(), "en-GB");
     for (given, canonical) in [

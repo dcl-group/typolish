@@ -1,12 +1,13 @@
 //! The tables of `quotes.apostrophe`, `quotes.pairs` and `quotes.primes` (design sections 6, 8.3
 //! and 13.2).
 //!
-//! A row that names no configuration runs with the three quote rules (section 13.2), and the rows
-//! marked as set-level also run inside the full Prose and Interface (stage 3 of section 15.4; the
-//! stage 2 tables ran them without the `nbsp.*` rules). As in section 6.12 the outputs show only
-//! the edits of the rules that run; in the full sets the glue of the `nbsp.*` rules is added to the
-//! rows that it touches (`common::set_glue`, `common::expected_in_set`). Rows of 6.12 that sit next
-//! to another stage 2 rule (an ellipsis, a spaced hyphen) run with the three quote rules only.
+//! A row that names no configuration runs with the three quote rules (design section 13.2), and the
+//! rows marked as set-level also run inside the full Prose and Interface (stage 3 of design section
+//! 15.4; the stage 2 tables ran them without the `nbsp.*` rules). As in design section 6.12 the
+//! outputs show only the edits of the rules that run; in the full sets the glue of the `nbsp.*`
+//! rules is added to the rows that it touches (`common::set_glue`, `common::expected_in_set`). Rows
+//! of design section 6.12 that sit next to another stage 2 rule (an ellipsis, a spaced hyphen) run
+//! with the three quote rules only.
 
 #![allow(
     clippy::unwrap_used,
@@ -78,7 +79,7 @@ fn rows(language: &Language, rows: &[(&str, &str)]) {
     }
 }
 
-// Section 6.12, Russian; each row holds with the quote rules alone and in both sets.
+// Design section 6.12, Russian; each row holds with the quote rules alone and in both sets.
 const RU_ROWS: &[(&str, &str)] = &[
     ("Он сказал \"привет\" и ушёл.", "Он сказал «привет» и ушёл."),
     ("\"Он сказал \"привет\"\"", "«Он сказал „привет“»"),
@@ -97,7 +98,7 @@ const RU_ROWS: &[(&str, &str)] = &[
     // Sign-only pairs whose second quote is in a series of its own.
     ("Введите \"-\" или \"—\"", "Введите «-» или «—»"),
     ("Введите \"-\"", "Введите «-»"),
-    // A series of three quotes of any form has no sign-only pair inside it (section 6.3).
+    // A series of three quotes of any form has no sign-only pair inside it (design section 6.3).
     ("a \"--\"\"\" b", "a «--»\"\" b"),
     ("a «--»\"\" b", "a «--»\"\" b"),
     ("\"?\"", "«?»"),
@@ -129,18 +130,18 @@ const RU_ROWS: &[(&str, &str)] = &[
         "Токен «SGVsbG8gd29ybGQ=» и «имя».",
     ),
     ("a\"\"b", "a\"\"b"),
-    // Section 6.7: typed pairs count in the levels.
+    // Design section 6.7: typed pairs count in the levels.
     ("«Он сказал \"да\"»", "«Он сказал „да“»"),
     ("\"a \"b \"c\" d\" e\"", "«a „b «c» d“ e»"),
-    // Section 6.5: a weak quote pairs with an opener that pass 1 left unpaired.
+    // Design section 6.5: a weak quote pairs with an opener that pass 1 left unpaired.
     ("Он сказал \"диагональ 27\".", "Он сказал «диагональ 27»."),
-    // Section 13.2: an empty isolate pair is a sign-only pair; neutral glyphs never change.
+    // Design section 13.2: an empty isolate pair is a sign-only pair; neutral glyphs never change.
     ("Имя: \"\u{2068}\u{2069}\"", "Имя: «\u{2068}\u{2069}»"),
     ("Он сказал ”привет” и ушёл.", "Он сказал ”привет” и ушёл."),
-    // Section 6.10: the scope is the window.
+    // Design section 6.10: the scope is the window.
     ("\"a\" b \"c\n\n\"d\"", "\"a\" b \"c\n\n«d»"),
     ("\"a\n\n\"b\" c", "\"a\n\n«b» c"),
-    // Section 6.6: an unpaired straight single quote stays.
+    // Design section 6.6: an unpaired straight single quote stays.
     ("Он сказал 'привет", "Он сказал 'привет"),
     // Design section 5.1: an emoji is a `Symbol` token that neighboring quotes treat as a word.
     ("\"🙂\"", "«🙂»"),
@@ -155,7 +156,8 @@ fn russian_rows_of_section_6_12() {
     rows(&Language::RU_RU, RU_ROWS);
 }
 
-// Section 6.12, English, `NestedOnly`; the rows hold with the quote rules alone and in both sets.
+// Design section 6.12, English, `NestedOnly`; the rows hold with the quote rules alone and in both
+// sets.
 const EN_ROWS: &[(&str, &str)] = &[
     (
         "He said, \"I read \"War and Peace\"\".",
@@ -189,10 +191,10 @@ const EN_ROWS: &[(&str, &str)] = &[
     ),
     ("\"She said \"no.\"\"", "“She said ‘no.’”"),
     ("He said ‘x’(see note)", "He said ‘x’(see note)"),
-    // Section 13.2.
+    // Design section 13.2.
     ("the 90's", "the 90’s"),
     ("1'000'000", "1'000'000"),
-    // Section 6.2, step 1.
+    // Design section 6.2, step 1.
     ("O'Brien", "O’Brien"),
     ("Д'Артаньян", "Д’Артаньян"),
     ("rock'n'roll", "rock’n’roll"),
@@ -200,18 +202,18 @@ const EN_ROWS: &[(&str, &str)] = &[
     ("Give 'em a hand", "Give ’em a hand"),
     ("Do it 'cause I said", "Do it ’cause I said"),
     ("It's already typeset: don’t", "It’s already typeset: don’t"),
-    // Section 6.6: the trailing possessive and the decade.
+    // Design section 6.6: the trailing possessive and the decade.
     ("the Joneses' house", "the Joneses’ house"),
     ("the dogs' bowls", "the dogs’ bowls"),
     ("He said 'hi", "He said 'hi"),
-    // Section 6.4: a closer covered only by straight single quotes unpairs them.
+    // Design section 6.4: a closer covered only by straight single quotes unpairs them.
     ("\"a 'b\" c'", "“a 'b” c'"),
-    // Section 6.10.
+    // Design section 6.10.
     ("\"a\" b \"c\n\n\"d\"", "\"a\" b \"c\n\n“d”"),
-    // Section 6.6: the edits of step 1 stay in a window that does not converge.
+    // Design section 6.6: the edits of step 1 stay in a window that does not converge.
     ("Don't \"x", "Don’t \"x"),
     ("\"x\" and \"y don't", "\"x\" and \"y don’t"),
-    // Section 6.1: a typed glyph of another language is neutral.
+    // Design section 6.1: a typed glyph of another language is neutral.
     ("He said «hi» there", "He said «hi» there"),
 ];
 
@@ -220,7 +222,8 @@ fn english_rows_of_section_6_12() {
     rows(&Language::EN_US, EN_ROWS);
 }
 
-// The rows of 6.12 that need `quotes.primes`: Prose (section 6.5), and what Interface does.
+// The rows of design section 6.12 that need `quotes.primes`: Prose (design section 6.5), and what
+// Interface does.
 #[test]
 fn rows_with_primes_in_prose_and_interface() {
     let ru: &[(&str, &str, &str)] = &[
@@ -292,7 +295,7 @@ fn rows_with_primes_in_prose_and_interface() {
 #[test]
 fn the_three_rules_alone() {
     // Classification does not depend on which rules are enabled; a disabled rule suppresses its
-    // own edits only (section 6).
+    // own edits only (design section 6).
     let source = "\"Say don't\" 5'10\"";
     let cases = [
         // The rule alone, and Prose without it.
@@ -323,7 +326,7 @@ fn the_three_rules_alone() {
             (source, prose_without),
         );
     }
-    // `quotes.apostrophe` disabled: `don't` still does not take part in pairing (section 6).
+    // `quotes.apostrophe` disabled: `don't` still does not take part in pairing (design section 6).
     let t = only(Language::EN_US, &[Rule::QuotesPairs, Rule::QuotesPrimes]);
     check_in(
         "no apostrophe",
@@ -382,7 +385,7 @@ fn diagnostics_of_section_6_12() {
         ("«a \"b» c\"", vec![(CrossingQuotes, Warning)]),
         ("Он сказал \"\"\" и ушёл.", vec![(AmbiguousQuote, Info); 3]),
         ("Цена 27»", vec![(UnmatchedQuote, Info)]),
-        // Section 6.6: a neutral closer inside a new pair of its family.
+        // Design section 6.6: a neutral closer inside a new pair of its family.
         (
             "Он сказал \"a » b\"",
             vec![(UnmatchedQuote, Info), (CrossingQuotes, Warning)],
@@ -431,7 +434,7 @@ fn diagnostics_of_section_6_12() {
 
 #[test]
 fn diagnostics_name_the_rule_and_the_place() {
-    // The example of section 2.9: the unmatched quote is the one at byte 18.
+    // The example of design section 2.9: the unmatched quote is the one at byte 18.
     let t = interface(Language::RU_RU);
     let d = diagnostics_of(&t, "Он сказал \"привет.");
     assert_eq!(d.len(), 1);
@@ -442,7 +445,7 @@ fn diagnostics_name_the_rule_and_the_place() {
     // The leftover opener of `"Один "два три"` is the first quote.
     let d = diagnostics_of(&t, "\"Один \"два три\"");
     assert_eq!(d[0].4, 0..1);
-    // The covering entry of `«a "b» c"` is the straight quote (section 6.4).
+    // The covering entry of `«a "b» c"` is the straight quote (design section 6.4).
     let d = diagnostics_of(&t, "«a \"b» c\"");
     assert_eq!(d[0].0, DiagnosticKind::CrossingQuotes);
     assert_eq!(d[0].4, 4..5);
@@ -453,7 +456,7 @@ fn diagnostics_name_the_rule_and_the_place() {
 
 #[test]
 fn protected_spans_of_quote_rows_are_empty() {
-    // Section 13.2: the quotes in these rows belong to no frozen fragment.
+    // Design section 13.2: the quotes in these rows belong to no frozen fragment.
     let t = prose(Language::RU_RU);
     for text in [
         "\"?\"",
@@ -474,7 +477,7 @@ fn protected_spans_of_quote_rows_are_empty() {
 
 #[test]
 fn single_quote_modes() {
-    // Section 6.8. `NestedOnly` is the default.
+    // Design section 6.8. `NestedOnly` is the default.
     let en = |mode| quotes_with(Language::EN_US, mode);
     let ru = |mode| quotes_with(Language::RU_RU, mode);
     let nested = quotes(Language::EN_US);
@@ -504,8 +507,8 @@ fn single_quote_modes() {
     }
     let t = ru(SingleQuotes::Everywhere);
     check_in("Everywhere", &t, ("'hi'", "«hi»"));
-    // Section 6.6: a neutral `»` inside the new pair `"…c"` would pair with its `«` on a second
-    // pass and let `5'` close the first `'`; the window does not converge, in every mode.
+    // Design section 6.6: a neutral `»` inside the new pair `"…c"` would pair with its `«` on a
+    // second pass and let `5'` close the first `'`; the window does not converge, in every mode.
     for mode in [
         SingleQuotes::Everywhere,
         SingleQuotes::NestedOnly,
@@ -563,8 +566,8 @@ fn custom_quote_pairs() {
 
 #[test]
 fn the_apostrophe_follows_the_language_data() {
-    // Section 6.2 and the table of section 8.1: elisions, the decade and the trailing possessive
-    // are English data; `don't` between letters is an apostrophe in every language.
+    // Design section 6.2 and the table of design section 8.1: elisions, the decade and the trailing
+    // possessive are English data; `don't` between letters is an apostrophe in every language.
     let apostrophe = |language| only(language, &[Rule::QuotesApostrophe]);
     let ru = apostrophe(Language::RU_RU);
     let common = apostrophe(Language::COMMON);
@@ -604,7 +607,8 @@ fn the_apostrophe_follows_the_language_data() {
         );
     }
     check_unchanged("en", &en, "He said 'causeway it");
-    // A decade without `s` waits for pairing (section 6.2) and is an apostrophe only unpaired.
+    // A decade without `s` waits for pairing (design section 6.2) and is an apostrophe only
+    // unpaired.
     check_unchanged("en", &en, "Press '42' to confirm");
     // A digit before a letter: the possessive of a number.
     check_in("en", &en, ("the 1990's", "the 1990’s"));
@@ -612,7 +616,7 @@ fn the_apostrophe_follows_the_language_data() {
 
 #[test]
 fn primes_follow_a_number() {
-    // Section 6.2: one to three digits on the left, one or two on the right ending the core.
+    // Design section 6.2: one to three digits on the left, one or two on the right ending the core.
     let primes = |language| only(language, &[Rule::QuotesPrimes]);
     for language in [Language::RU_RU, Language::EN_US, Language::COMMON] {
         let t = primes(language.clone());
@@ -634,7 +638,7 @@ fn primes_follow_a_number() {
 
 #[test]
 fn common_has_no_pairs() {
-    // `Language::COMMON` has no quote pairs: `quotes.pairs` is inert (section 7.4).
+    // `Language::COMMON` has no quote pairs: `quotes.pairs` is inert (design section 7.4).
     let t = Typographer::new(Language::COMMON, RuleSet::ALL);
     let off = common::without_nbsp(Language::COMMON, RuleSet::ALL);
     for t in [&t, &off] {
@@ -653,7 +657,7 @@ fn a_straight_quote_next_to_digits_in_a_frozen_fragment_stays() {
 
 #[test]
 fn slots_next_to_quotes() {
-    // Section 6.9: a slot is of class `Word`; the glyphs go into the neighboring texts.
+    // Design section 6.9: a slot is of class `Word`; the glyphs go into the neighboring texts.
     for (what, t) in all_three(&Language::RU_RU) {
         let out = t.typeset_template(
             [

@@ -1,10 +1,11 @@
-//! Templates: pieces, slots and the output contract of design sections 2.6 and 2.14 (section 13.2).
+//! Templates: pieces, slots and the output contract of design sections 2.6 and 2.14 (design section
+//! 13.2).
 //!
-//! The rows run in the full Prose and Interface (stage 3 of section 15.4): the expectations carry
-//! the glue of the `nbsp.*` rules, which also makes the slot participation rows of `nbsp.units`,
-//! `nbsp.dates`, glue before and after a slot, abbreviations after a slot, labels and percent next
-//! to slots, `{a}-5 кг` and `{d} г. Затем` testable. The row of `number.times` (`{w}x{h}`) and the
-//! flow of section 2.14 for `EscapeStyle::RUST`, `EscapeStyle::JSON` and
+//! The rows run in the full Prose and Interface (stage 3 of design section 15.4): the expectations
+//! carry the glue of the `nbsp.*` rules, which also makes the slot participation rows of
+//! `nbsp.units`, `nbsp.dates`, glue before and after a slot, abbreviations after a slot, labels and
+//! percent next to slots, `{a}-5 кг` and `{d} г. Затем` testable. The row of `number.times`
+//! (`{w}x{h}`) and the flow of design section 2.14 for `EscapeStyle::RUST`, `EscapeStyle::JSON` and
 //! `HtmlStyle::NAMED.nowrap_class` (the last tests of the file) use `format_number` and the
 //! encoders; the nowrap groups at slots are in `tests/output.rs`.
 
@@ -47,7 +48,7 @@ const KINDS: [(Slot, &str); 4] = [
     (Slot::OTHER, "Other"),
 ];
 
-// The output contract of section 2.6.
+// The output contract of design section 2.6.
 
 #[test]
 fn an_empty_list_of_pieces() {
@@ -88,8 +89,8 @@ fn slots_come_out_in_order_with_their_payloads() {
         );
         assert_eq!(out.texts().len(), 5, "{what}");
         // `и` is a short word and glue sticks before a `Date` slot, but the fragment after the
-        // space is `{d}{o}`, which holds an `Other` slot: no glue sticks to it (sections 2.6 and
-        // 8.2), so the space stays.
+        // space is `{d}{o}`, which holds an `Other` slot: no glue sticks to it (design sections 2.6
+        // and 8.2), so the space stays.
         assert_eq!(texts(&out), ["", "", " и ", "", ""], "{what}");
     }
 }
@@ -135,7 +136,7 @@ fn a_changed_text_is_marked_changed() {
             ],
             Output::Unicode,
         );
-        // Prose glues the two-letter `Он` (`nbsp.short-length`, section 8.7).
+        // Prose glues the two-letter `Он` (`nbsp.short-length`, design section 8.7).
         let first = if t.rules().contains(Rule::NbspShortLength) {
             "Он\u{a0}сказал «да» "
         } else {
@@ -164,7 +165,7 @@ fn typeset_template_with_equals_typeset_template() {
     }
 }
 
-// Section 6.9 and 6.12: a quote opened in one text closes in another.
+// Design sections 6.9 and 6.12: a quote opened in one text closes in another.
 
 #[test]
 fn a_quote_pairs_across_a_slot() {
@@ -192,15 +193,15 @@ fn a_quote_pairs_across_a_slot() {
             Output::Unicode,
         );
         // `and` is a listed short word before an opening quote, but the fragment after the space
-        // is `“{other}”.`, whose core is the `Other` slot: no glue sticks to it (sections 2.6 and
-        // 8.2), so the space after `and` stays an ordinary space.
+        // is `“{other}”.`, whose core is the `Other` slot: no glue sticks to it (design sections
+        // 2.6 and 8.2), so the space after `and` stays an ordinary space.
         assert_eq!(texts(&out), ["Open “", "” and “", "”."], "{what}");
     }
 }
 
 #[test]
 fn one_window_across_a_slot_and_line_breaks() {
-    // Section 3.3: `Text("a\n")`, `Slot`, `Text("\nb")` is one window.
+    // Design section 3.3: `Text("a\n")`, `Slot`, `Text("\nb")` is one window.
     for (what, t) in sets(&Language::RU_RU) {
         let out = t.typeset_template(
             [
@@ -286,7 +287,7 @@ fn glue_before_markup_and_a_slot_stays_in_the_text_on_the_left() {
     }
 }
 
-// Tokens across pieces (section 3.4).
+// Tokens across pieces (design section 3.4).
 
 #[test]
 fn tokens_span_adjacent_text_pieces() {
@@ -355,7 +356,7 @@ fn backticks_protect_across_pieces() {
         );
         assert!(out.changed(), "{what}");
     }
-    // The same words without protection are typeset in Prose (section 10.8).
+    // The same words without protection are typeset in Prose (design section 10.8).
     let t = prose(Language::EN_US);
     let out = t.typeset_template(
         [
@@ -368,11 +369,12 @@ fn backticks_protect_across_pieces() {
     assert!(out.changed());
 }
 
-// The slot participation table of section 2.6, row by row, as far as the stage 2 rules go.
+// The slot participation table of design section 2.6, row by row, as far as the stage 2 rules go.
 
 #[test]
 fn row_quotes_around_a_slot() {
-    // `"{x}"`: a slot of every kind is a word for the roles of quotes (sections 6.9 and 2.6).
+    // `"{x}"`: a slot of every kind is a word for the roles of quotes (design sections 6.9 and
+    // 2.6).
     for language in [Language::RU_RU, Language::EN_US] {
         let expected = if language == Language::RU_RU {
             ["«", "»"]
@@ -393,7 +395,7 @@ fn row_quotes_around_a_slot() {
 
 #[test]
 fn row_apostrophe_after_a_slot() {
-    // `{x}'s`: yes after `Number` and `Word`, no after `Date` and `Other` (section 6.2).
+    // `{x}'s`: yes after `Number` and `Word`, no after `Date` and `Other` (design section 6.2).
     for language in [Language::EN_US, Language::RU_RU] {
         for (what, t) in sets(&language) {
             for (slot, name) in KINDS {
@@ -448,7 +450,7 @@ fn row_prime_after_a_slot() {
     // Interface has no primes; the quote stays, and `и` before `всё` gets its glue.
     assert_eq!(texts(&out), ["Экран ", "\" и\u{a0}всё"]);
     assert!(out.changed());
-    // A paired quote after a `Number` slot is not a prime: `"{n}"` → `«{n}»` (section 6.9).
+    // A paired quote after a `Number` slot is not a prime: `"{n}"` → `«{n}»` (design section 6.9).
     for (what, t) in sets(&Language::RU_RU) {
         let out = t.typeset_template(
             [
@@ -563,7 +565,7 @@ fn row_slot_glue_has_no_effect_on_the_output() {
     }
 }
 
-// The Fluent mapping of section 2.14, each row as a piece list.
+// The Fluent mapping of design section 2.14, each row as a piece list.
 
 #[test]
 fn fluent_mapping_table() {
@@ -610,7 +612,7 @@ fn fluent_mapping_table() {
         ],
         Output::Unicode,
     );
-    // The example of section 2.6: the glue before the unit and before the dash lands in the
+    // The example of design section 2.6: the glue before the unit and before the dash lands in the
     // text after the slot.
     assert_eq!(
         texts(&out)[..4].to_vec(),
@@ -632,7 +634,7 @@ fn fluent_mapping_table() {
 fn select_variants_are_typeset_as_templates_of_their_own() {
     // `{ $n -> [one] … *[other] … }`: one `Word` slot in the outer template, every variant its
     // own template. A quote opened outside and closed inside a variant produces `UnmatchedQuote`
-    // in both places (section 2.14), and nothing is paired.
+    // in both places (design section 2.14), and nothing is paired.
     let t = interface(Language::RU_RU);
     let outer = t.report_template(
         [Piece::Text("Он сказал \""), Piece::Slot("n", Slot::WORD)],
@@ -679,8 +681,9 @@ fn other_slots_are_words_for_quotes_and_dashes() {
 
 #[test]
 fn word_and_other_slots_and_protected_pieces_are_words_for_the_dialogue_dash() {
-    // Sections 8.4, 8.10 and 2.6: `Word` and `Other` slots count as words, a protected piece acts
-    // as one word; no glue sticks to an `Other` slot (section 8.2), so there the space stays.
+    // Design sections 8.4, 8.10 and 2.6: `Word` and `Other` slots count as words, a protected piece
+    // acts as one word; no glue sticks to an `Other` slot (design section 8.2), so there the space
+    // stays.
     let t = prose(Language::RU_RU);
     let out = t.typeset_template(
         [
@@ -733,7 +736,7 @@ fn word_and_other_slots_and_protected_pieces_are_words_for_the_dialogue_dash() {
 
 #[test]
 fn word_and_other_slots_and_protected_pieces_are_words_for_the_inner_ellipsis() {
-    // Sections 8.6, 8.10 and 2.6 (Prose only: `ellipsis.inner` is not in Interface).
+    // Design sections 8.6, 8.10 and 2.6 (Prose only: `ellipsis.inner` is not in Interface).
     let t = prose(Language::EN_US);
     for slot in [Slot::WORD, Slot::OTHER] {
         let out = t.typeset_template(
@@ -766,8 +769,8 @@ fn word_and_other_slots_and_protected_pieces_are_words_for_the_inner_ellipsis() 
 
 #[test]
 fn fill_inserts_values_unchanged() {
-    // Section 11.1: values are inserted as they are, also with `Output::Html`: the caller escapes
-    // them.
+    // Design section 11.1: values are inserted as they are, also with `Output::Html`: the caller
+    // escapes them.
     for output in [Output::Unicode, Output::Html(HtmlStyle::NAMED)] {
         let t = interface(Language::RU_RU);
         let out = t.typeset_template(
@@ -798,7 +801,7 @@ fn fill_inserts_values_unchanged() {
 
 #[test]
 fn an_empty_isolate_pair_is_a_value_that_is_quoted() {
-    // Section 5.4 and `tests/fluent_isolation.rs`: isolates around a value are transparent.
+    // Design section 5.4 and `tests/fluent_isolation.rs`: isolates around a value are transparent.
     for (what, t) in sets(&Language::RU_RU) {
         let out =
             t.typeset_template::<()>([Piece::Text("Имя: \"\u{2068}\u{2069}\"")], Output::Unicode);
@@ -808,8 +811,8 @@ fn an_empty_isolate_pair_is_a_value_that_is_quoted() {
 
 #[test]
 fn the_tmpl_helper_reads_what_the_tests_feed_it() {
-    // The test-only syntax of section 13.7: a template with every kind of slot runs through both
-    // sets without touching its slots.
+    // The test-only syntax of design section 13.7: a template with every kind of slot runs through
+    // both sets without touching its slots.
     let source = "ui.size = Файл \"{name:word}\" весит {n:number} МБ - {when:date} {x}...\n";
     let messages = parse_tmpl(source);
     assert_eq!(messages.len(), 1);
@@ -836,7 +839,7 @@ fn the_tmpl_helper_reads_what_the_tests_feed_it() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The slot participation table of section 2.6: the rows of the `nbsp.*` rules and the glue
+// The slot participation table of design section 2.6: the rows of the `nbsp.*` rules and the glue
 // (stage 3). One test per row; each slot kind is a column.
 // ---------------------------------------------------------------------------------------------
 
@@ -920,7 +923,7 @@ fn row_a_next_abbreviation_after_a_slot() {
             assert_eq!(out, ["", expected.as_str()], "{name} {abbr}");
         }
     }
-    // Section 13.2: `{d} г. Затем` gets no glue after `г.` in the sets either.
+    // Design section 13.2: `{d} г. Затем` gets no glue after `г.` in the sets either.
     for (what, t) in sets(&Language::RU_RU) {
         let out = run(
             &t,
@@ -963,7 +966,7 @@ fn row_glue_before_and_after_a_slot() {
         assert_eq!(out, ["", "\u{a0}же"], "{what}");
     }
     // A quoted or bracketed slot is the core of its fragment: the glue before the fragment sticks
-    // to the slot, so an `Other` slot gets none there either (sections 2.6 and 8.2).
+    // to the slot, so an `Other` slot gets none there either (design sections 2.6 and 8.2).
     for (slot, name) in KINDS {
         let glued = slot.kind() != SlotKind::Other;
         for (open, close) in [("\"", "\""), ("(", ")")] {
@@ -987,7 +990,7 @@ fn row_glue_before_and_after_a_slot() {
 
 #[test]
 fn row_number_times_with_slots() {
-    // `{w}x{h}` in Prose: `Number` slots only (`number.times`, section 8.8).
+    // `{w}x{h}` in Prose: `Number` slots only (`number.times`, design section 8.8).
     let t = prose(Language::RU_RU);
     let out = run(
         &t,
@@ -1014,14 +1017,14 @@ fn row_number_times_with_slots() {
 
 #[test]
 fn labels_next_to_slots() {
-    // Section 8.2: a `Number` slot after a sign is a label: `№ {n}` and `№{n}` are glued to the
-    // sign, the unit and date rules leave it alone, and `г.` after it is a city.
+    // Design section 8.2: a `Number` slot after a sign is a label: `№ {n}` and `№{n}` are glued to
+    // the sign, the unit and date rules leave it alone, and `г.` after it is a city.
     let t = alone(Language::RU_RU, Rule::NbspSigns);
     let out = run(&t, vec![Piece::Text("№ "), Piece::Slot("n", Slot::NUMBER)]);
     assert_eq!(out, ["№\u{a0}", ""]);
     let out = run(&t, vec![Piece::Text("№"), Piece::Slot("n", Slot::NUMBER)]);
     assert_eq!(out, ["№\u{a0}", ""]);
-    // `¶{n}` → `¶⍽{n}` (13.2), not borrowed.
+    // `¶{n}` → `¶⍽{n}` (design section 13.2), not borrowed.
     let out = t.typeset_template(
         [Piece::Text("¶"), Piece::Slot("n", Slot::NUMBER)],
         Output::Unicode,
@@ -1029,7 +1032,7 @@ fn labels_next_to_slots() {
     assert_eq!(texts(&out), ["¶\u{a0}", ""]);
     assert!(out.changed());
     assert!(matches!(out.texts()[0], Cow::Owned(_)));
-    // `№{n} г. Москвы` (13.2, both sets): `г.` is a city.
+    // `№{n} г. Москвы` (design section 13.2, both sets): `г.` is a city.
     for (what, t) in sets(&Language::RU_RU) {
         let out = run(
             &t,
@@ -1128,7 +1131,7 @@ fn ranges_with_a_literal_next_to_a_slot() {
 
 #[test]
 fn the_flow_of_a_template_with_a_unit_and_a_dash() {
-    // The example of section 2.4: `Файл "{name}" весит {size} МБ - удалить?` in Interface.
+    // The example of design section 2.4: `Файл "{name}" весит {size} МБ - удалить?` in Interface.
     let t = interface(Language::RU_RU);
     let out = run(
         &t,
@@ -1154,8 +1157,8 @@ fn the_flow_of_a_template_with_a_unit_and_a_dash() {
     assert_eq!(out, ["", "\u{2013}", "\u{a0}дн."]);
 }
 
-// The flow of section 2.14: texts written by a generator as the bodies of string literals, values
-// formatted at run time with `format_number` and `Output::Unicode`.
+// The flow of design section 2.14: texts written by a generator as the bodies of string literals,
+// values formatted at run time with `format_number` and `Output::Unicode`.
 fn flow_template() -> Vec<Piece<'static, &'static str>> {
     vec![Piece::Slot("n", Slot::NUMBER), Piece::Text(" руб.")]
 }
@@ -1199,7 +1202,7 @@ fn the_generator_flow_for_rust_and_json_bodies() {
 fn the_generator_flow_for_html_texts_as_debug_literals() {
     // With `Output::Html` the texts are HTML, not bodies of literals: each is written as a complete
     // literal with `{t:?}`, and the decoder of `EscapeStyle::RUST` reads the body of every such
-    // literal back to the text unchanged (section 2.14).
+    // literal back to the text unchanged (design section 2.14).
     let t = interface(Language::RU_RU);
     let output = Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"));
     let pieces = || {
@@ -1244,8 +1247,8 @@ fn the_generator_flow_for_html_texts_as_debug_literals() {
 
 #[test]
 fn run_time_numbers_agree_with_the_template() {
-    // Section 2.7: one typographer sets the template at build time and formats the numbers at run
-    // time, so `{n} МБ` and the value fit together, in the output kind of the template.
+    // Design section 2.7: one typographer sets the template at build time and formats the numbers
+    // at run time, so `{n} МБ` and the value fit together, in the output kind of the template.
     let t = prose(Language::RU_RU);
     for output in [
         Output::Unicode,

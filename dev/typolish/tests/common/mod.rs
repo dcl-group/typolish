@@ -51,10 +51,10 @@ pub fn input(text: &str) -> String {
 }
 
 /// The expectation of a table row in a full built-in set. The stage 2 tables give the output of
-/// the quote, dash, range and ellipsis rules; in the full `PROSE` and `INTERFACE` the `nbsp.*` rules
-/// add their glue (design section 15.4), which `set_glue::TABLE` lists for the rows it touches. A
-/// typographer without the short-word rule, and a row that the table does not list, keep the
-/// expectation as written.
+/// the quote, dash, range and ellipsis rules; in the full `PROSE` and `INTERFACE` the `nbsp.*`
+/// rules add their glue (design section 15.4), which `set_glue::TABLE` lists for the rows it
+/// touches. A typographer without the short-word rule, and a row that the table does not list, keep
+/// the expectation as written.
 pub fn expected_in_set(t: &Typographer, source: &str, alone: String) -> String {
     let kind = if t.rules().contains(Rule::NbspShortLength) {
         "prose"
@@ -94,8 +94,8 @@ pub fn check(typographer: &Typographer, row: (&str, &str)) {
 }
 
 /// A typographer with the rules of `set` except the `nbsp.*` rules. Stage 2 ran its set-level
-/// tables with it (section 15.4); stage 3 runs them in the full sets (`prose`, `interface`), and
-/// this helper stays for the tests that look at the other rules of a set on their own.
+/// tables with it (design section 15.4); stage 3 runs them in the full sets (`prose`, `interface`),
+/// and this helper stays for the tests that look at the other rules of a set on their own.
 pub fn without_nbsp(language: Language, set: RuleSet) -> Typographer {
     let mut builder = Typographer::builder(language, set);
     for rule in Rule::ALL.iter().filter(|r| r.id().starts_with("nbsp.")) {
@@ -363,7 +363,7 @@ pub fn assert_changed_by(what: &str, t: &Typographer, text: &str, rule: Rule) {
 
 /// Asserts that `report` lists an edit by `rule` for the string and that every other edit is a
 /// glue mark of an `nbsp.*` rule: in a full built-in set the no-break rules add their glue to the
-/// edits of the rule a row exercises (sections 8.4 and 8.7).
+/// edits of the rule a row exercises (design sections 8.4 and 8.7).
 #[track_caller]
 pub fn assert_changed_by_with_glue(what: &str, t: &Typographer, text: &str, rule: Rule) {
     let source = vis(text);

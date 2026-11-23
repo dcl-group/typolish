@@ -1,5 +1,5 @@
 //! The own corpus of design section 13.7: loading, the settings of `roundtrip-known.tsv`
-//! (section 12.2), the output kinds of the snapshots and their rendering.
+//! (design section 12.2), the output kinds of the snapshots and their rendering.
 //!
 //! The corpus files are read from `tests/corpus/` at run time.
 

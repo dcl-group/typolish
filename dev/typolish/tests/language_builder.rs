@@ -2,7 +2,7 @@
 //! and 7.6, `tests/language_builder.rs`).
 //!
 //! The design names `quotes`, `dash_style`, `short_words` and `units` and says "one method per
-//! field"; the other methods are read as the field names of section 7.1 (`elisions`,
+//! field"; the other methods are read as the field names of design section 7.1 (`elisions`,
 //! `decade_apostrophe`, `trailing_possessive`, `ellipsis`, `short_word_length`, `particles`,
 //! `atom_exceptions`, `ambiguous_units`, `months`, `month_position`, `year_words`,
 //! `century_words`, `range_lead_words`, `signs`, `numbers`, `script`, `cldr_version`). The test
@@ -63,7 +63,8 @@ fn word_lists_are_lowercased_sorted_and_deduplicated() {
         .unwrap();
     let data = LanguageData::new("xx").with_short_words(&["а", "б", "в"]);
     assert_eq!(built, Language::from_data(leak(data)).unwrap());
-    // Every word list of section 7.6, not `months`, `abbreviations`, `units` or `ambiguous_units`.
+    // Every word list of design section 7.6, not `months`, `abbreviations`, `units` or
+    // `ambiguous_units`.
     let built = LanguageBuilder::new("xx")
         .elisions(["'Tis", "'em", "'em"])
         .particles(["ЖЕ", "бы"])
@@ -362,7 +363,7 @@ fn a_built_language_replaces_the_list_it_started_from() {
 
 #[test]
 fn the_design_example_builds_british_english() {
-    // Section 7.7: `LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+    // Design section 7.7: `LanguageBuilder::from_language(&Language::EN_US, "en-GB")
     //     .dash_style(DashStyle::Spaced).build()`.
     let gb = LanguageBuilder::from_language(&Language::EN_US, "en-GB")
         .dash_style(DashStyle::Spaced)
@@ -405,7 +406,7 @@ fn the_builder_is_clone_and_debug() {
 
 #[test]
 fn a_custom_language_with_a_month_position_and_units_glues_by_its_data() {
-    // The ambiguous units of en-US (`in`) must stay units, or be replaced too (section 7.6).
+    // The ambiguous units of en-US (`in`) must stay units, or be replaced too (design section 7.6).
     let lang = LanguageBuilder::from_language(&Language::EN_US, "en-XB")
         .month_position(MonthPosition::BeforeDay)
         .units(["zz"])

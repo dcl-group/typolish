@@ -132,7 +132,7 @@ fn without_nbsp_drops_the_nbsp_rules_only() {
 
 #[test]
 fn the_glue_of_a_set_row_comes_from_the_table_of_set_glue() {
-    // A row of a stage 2 table is completed with the glue of the full set (section 15.4).
+    // A row of a stage 2 table is completed with the glue of the full set (design section 15.4).
     let prose = prose(Language::RU_RU);
     let interface = interface(Language::RU_RU);
     let alone = only(Language::RU_RU, &[Rule::QuotesPairs]);
@@ -171,7 +171,7 @@ fn configs_name_the_rule_alone_and_the_sets_that_hold_it() {
 
 // The decoders and the reference encoder of `tests/common/decode.rs` (design sections 11.8 and
 // 13.5): they are the oracle of the output tests, so each is checked on rows written from the
-// tables of sections 11.2, 11.4 and 11.6.
+// tables of design sections 11.2, 11.4 and 11.6.
 
 #[test]
 fn the_html_decoder_reads_references_and_elements() {

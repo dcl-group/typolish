@@ -2,7 +2,7 @@
 //!
 //! A row that names no configuration runs with the one rule of its table, alone
 //! (`RuleSet::EMPTY.with(rule)`), and in the built-in sets that hold it, without the `nbsp.*`
-//! rules while stage 3 is not delivered (section 15.4).
+//! rules while stage 3 is not delivered (design section 15.4).
 
 #![allow(
     clippy::unwrap_used,
@@ -50,7 +50,7 @@ const RU_DOTS: &[(&str, &str)] = &[
     ("Что?...\nДа", "Что?..\nДа"),
     ("Что!...", "Что!.."),
     ("Что?!...", "Что?!.."),
-    // The quote is closing by its role, so the ellipsis fires (section 6.3).
+    // The quote is closing by its role, so the ellipsis fires (design section 6.3).
     ("Подождите...\" дальше", "Подождите…\" дальше"),
     // The dots attach to a number or a sign as well as to a word (design section 8.6).
     ("Осталось 5...", "Осталось 5…"),
@@ -130,7 +130,8 @@ fn dots_in_english() {
 
 #[test]
 fn dots_in_common() {
-    // `Language::COMMON`: the forms after `?`, `!` and `?!` are `?…`, `!…` and `?!…` (section 7.4).
+    // `Language::COMMON`: the forms after `?`, `!` and `?!` are `?…`, `!…` and `?!…` (design
+    // section 7.4).
     for (what, t) in configs(&Language::COMMON, DOTS) {
         for row in [
             ("Wait...", "Wait…"),
@@ -186,7 +187,7 @@ fn inner() {
 
 #[test]
 fn inner_is_not_in_interface() {
-    // Section 8.6: `...args` and `a...b` occur in code.
+    // Design section 8.6: `...args` and `a...b` occur in code.
     for language in [Language::RU_RU, Language::EN_US] {
         let t = interface(language);
         for text in [
@@ -221,8 +222,8 @@ fn prose_runs_both_rules() {
 
 #[test]
 fn quotes_and_ellipsis() {
-    // Section 13.2: the quote after the dots is closing by its role, so `ellipsis.dots` fires; the
-    // quote has no opener, so the sets report `UnmatchedQuote` and keep it straight.
+    // Design section 13.2: the quote after the dots is closing by its role, so `ellipsis.dots`
+    // fires; the quote has no opener, so the sets report `UnmatchedQuote` and keep it straight.
     let text = "Подождите...\" дальше";
     for t in [prose(Language::RU_RU), interface(Language::RU_RU)] {
         check_in("set", &t, (text, "Подождите…\" дальше"));
@@ -239,8 +240,8 @@ fn quotes_and_ellipsis() {
 
 #[test]
 fn the_ellipsis_is_not_an_operand() {
-    // `Ждите - ...` has no dash (a `Punctuation` fragment is not an operand, section 8.2); the
-    // sets set the ellipsis and report no `AmbiguousHyphen` and freeze nothing.
+    // `Ждите - ...` has no dash (a `Punctuation` fragment is not an operand, design section 8.2);
+    // the sets set the ellipsis and report no `AmbiguousHyphen` and freeze nothing.
     for t in [prose(Language::RU_RU), interface(Language::RU_RU)] {
         check_in("set", &t, ("Ждите - ...", "Ждите - …"));
         let r = t.report("Ждите - ...", Output::Unicode);

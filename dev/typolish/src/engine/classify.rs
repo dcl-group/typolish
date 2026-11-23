@@ -16,7 +16,7 @@ use crate::report::{ProtectedKind, TechKind};
 use crate::{DiagnosticKind, Severity, SlotKind, Typographer};
 
 /// The kind of a fragment (design section 3.6, the Kind column, plus `Times`, `Sign` and
-/// `Punctuation`). Not the token `Kind` of section 3.5.
+/// `Punctuation`). Not the token `Kind` of design section 3.5.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum FragKind {
     Dictionary,
@@ -98,8 +98,8 @@ pub(crate) struct Frag {
     pub(crate) stop: bool,
     /// The core counts as a label number (design section 3.6, "Label numbers").
     pub(crate) label: bool,
-    /// The fragment holds a slot of kind `Other` (section 8.2: no glue sticks to it). Slots are
-    /// never edited, so this holds for every phase of the pass.
+    /// The fragment holds a slot of kind `Other` (design section 8.2: no glue sticks to it). Slots
+    /// are never edited, so this holds for every phase of the pass.
     pub(crate) other_slot: bool,
 }
 
@@ -570,7 +570,8 @@ fn entry(
     let months = held(WordList::Months);
     let abbreviations = held(WordList::Abbreviations);
     // Entries compared with case, an entry that starts with a lowercase letter also matching the
-    // text with that letter in uppercase, except a single letter with a full stop (section 7.1).
+    // text with that letter in uppercase, except a single letter with a full stop (design section
+    // 7.1).
     cs.lowered.clear();
     let mut chars = key.chars();
     if let Some(c) = chars.next()
@@ -1308,7 +1309,7 @@ fn sign_with_numeral(data: &Table<'_>, text: &str, u: &[Unit]) -> bool {
 /// Whether a fragment ends in a number for `lone_times`: a `Number` core, or a sign of the
 /// language with a number attached (`№10`), which `nbsp.signs` splits into the sign and a label
 /// number (invariant I2 of design section 4.3: a label counts as a number for `number.times` in
-/// both forms, section 8.2).
+/// both forms, design section 8.2).
 fn ends_in_number(signs: &[char], tokens: &[Tok], f: &Frag) -> bool {
     if f.kind == FragKind::Number {
         return true;
@@ -1332,8 +1333,8 @@ fn ends_in_number(signs: &[char], tokens: &[Tok], f: &Frag) -> bool {
 
 /// Whether `f` is a lone `%` or `‰` after spaces that the fragment `owner` before the spaces
 /// owns: a percentage in its spaced form (`10 % x 5`), which reads as the attached form `10% x 5`
-/// for `lone_times` (invariant I2 of design section 4.3, section 8.2). The core of `f` is the
-/// sign alone and nothing visible comes before it; the owner's core runs up to the spaces and
+/// for `lone_times` (invariant I2 of design section 4.3, design section 8.2). The core of `f` is
+/// the sign alone and nothing visible comes before it; the owner's core runs up to the spaces and
 /// holds no percent sign of its own.
 fn spaced_percent(tokens: &[Tok], owner: &Frag, f: &Frag) -> bool {
     let range = |a: u32, b: u32| tokens.get(a as usize..b as usize).unwrap_or_default();

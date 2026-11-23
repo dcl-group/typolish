@@ -1,7 +1,7 @@
-//! The lexer of design sections 3.5, 5.1 and 5.3 to 5.5 as a black box (the tables of section
-//! 13.6): which characters separate fragments, which clusters are words, which are `Symbol`s
-//! (and so frozen as `Unclassified`), and how format characters and marks behave. The lexer
-//! produces tokens, not text, so each row is observed through the fragments they make:
+//! The lexer of design sections 3.5, 5.1 and 5.3 to 5.5 as a black box (the tables of design
+//! section 13.6): which characters separate fragments, which clusters are words, which are
+//! `Symbol`s (and so frozen as `Unclassified`), and how format characters and marks behave. The
+//! lexer produces tokens, not text, so each row is observed through the fragments they make:
 //! `report().protected()`, and through the output, which no mark, space or cluster may change.
 //!
 //! The grapheme conformance of the lexer is in `tests/graphemes.rs`; the cluster boundaries of
@@ -138,7 +138,7 @@ fn spaces_with_marks_come_out_unchanged() {
 
 #[test]
 fn format_characters_do_not_make_a_word_unclassified() {
-    // Section 5.4: `Format` tokens inside a fragment, and ZWNJ and ZWJ inside a token, are
+    // Design section 5.4: `Format` tokens inside a fragment, and ZWNJ and ZWJ inside a token, are
     // skipped by every check.
     let none: Vec<(ProtectedKind, &str)> = vec![];
     let rows: Vec<(&str, Vec<(ProtectedKind, &str)>)> = vec![
@@ -165,7 +165,7 @@ fn format_characters_do_not_make_a_word_unclassified() {
 
 #[test]
 fn format_characters_come_out_unchanged() {
-    // Section 13.6: all of them come out unchanged.
+    // Design section 13.6: all of them come out unchanged.
     for (name, t) in sweep() {
         for input in [
             "\u{200c}a",
@@ -193,8 +193,8 @@ fn format_characters_come_out_unchanged() {
 
 #[test]
 fn a_cluster_led_by_a_non_letter_is_a_symbol_and_is_frozen() {
-    // Section 3.5: a cluster of several characters whose first character is not a letter is a
-    // `Symbol`, so the fragment is `Unclassified`; it is no number, no sign and no quote (a
+    // Design section 3.5: a cluster of several characters whose first character is not a letter is
+    // a `Symbol`, so the fragment is `Unclassified`; it is no number, no sign and no quote (a
     // number or a quote wrapper would not be listed).
     let rows: Vec<(&str, Vec<(ProtectedKind, &str)>)> = vec![
         ("1\u{fe0f}\u{20e3}", vec![(UNCL, "1\u{fe0f}\u{20e3}")]),
@@ -230,8 +230,8 @@ fn a_cluster_led_by_a_non_letter_is_a_symbol_and_is_frozen() {
 
 #[test]
 fn digits_of_other_systems_are_word_characters() {
-    // Section 5.2: a non-ASCII digit is a word character, so the fragment is a word that is not
-    // frozen, and it adds no script of its own (no `MixedScript`).
+    // Design section 5.2: a non-ASCII digit is a word character, so the fragment is a word that is
+    // not frozen, and it adds no script of its own (no `MixedScript`).
     let rows: Vec<(&str, Vec<(ProtectedKind, &str)>)> = vec![
         ("abc\u{663}", vec![]),
         ("\u{663}\u{664}", vec![]),
@@ -255,7 +255,7 @@ fn digits_of_other_systems_are_word_characters() {
 #[test]
 fn clusters_led_by_a_non_letter_come_out_unchanged_next_to_ascii() {
     // The ASCII fast path hands the ASCII bytes on both sides of a non-ASCII character to the
-    // segmenter (section 3.5).
+    // segmenter (design section 3.5).
     for (name, t) in sweep() {
         for input in [
             "Шаги 1\u{fe0f}\u{20e3}-3\u{fe0f}\u{20e3}",

@@ -122,9 +122,9 @@ fn an_unchanged_string_does_not_allocate_after_warm_up() {
 
 #[test]
 fn an_unchanged_string_through_the_whole_pipeline_does_not_allocate_after_warm_up() {
-    // Section 13.8: a string with trigger bytes (`.`, `-`, digits) goes through ingest, windows,
-    // the lexer and the classifier, with protection and technical fragments, and no rule of
-    // Interface changes it.
+    // Design section 13.8: a string with trigger bytes (`.`, `-`, digits) goes through ingest,
+    // windows, the lexer and the classifier, with protection and technical fragments, and no rule
+    // of Interface changes it.
     const INPUT: &str = "Адрес host:8080, версия v1.2.3, код `a-b`\n\nПуть /usr/bin, id 0x1F";
     let _ = RU_UI.typeset(INPUT, Output::Unicode);
     let (allocs, reallocs, out) = count(|| RU_UI.typeset(INPUT, Output::Unicode));
@@ -141,13 +141,13 @@ fn an_unchanged_string_through_the_whole_pipeline_does_not_allocate_after_warm_u
 
 #[test]
 fn typeset_into_a_buffer_with_room_does_not_allocate() {
-    // Section 2.12: `typeset_into` makes no allocation when `buf` has room, for an unchanged and
-    // for a changed string; `typeset` makes one for a changed string (section 13.8).
+    // Design section 2.12: `typeset_into` makes no allocation when `buf` has room, for an unchanged
+    // and for a changed string; `typeset` makes one for a changed string (design section 13.8).
     const CHANGED: &str = "Он сказал \"привет\" и ушёл...";
     const UNCHANGED: &str = "Сохранить";
     let prose = Typographer::new(Language::RU_RU, RuleSet::PROSE);
     // Interface glues only after the listed `и`; Prose also glues the two-letter `Он`
-    // (`nbsp.short-length` is Prose only, section 8.7).
+    // (`nbsp.short-length` is Prose only, design section 8.7).
     for (t, exact) in [
         (&RU_UI, "Он сказал «привет» и\u{a0}ушёл…"),
         (&prose, "Он\u{a0}сказал «привет» и\u{a0}ушёл…"),
@@ -173,8 +173,9 @@ fn typeset_into_a_buffer_with_room_does_not_allocate() {
 
 #[test]
 fn a_changed_string_is_one_allocation_however_much_it_grows() {
-    // Section 2.12: the Unicode output string is sized exactly, so a text that the rules grow to
-    // twice its length or more (`"a"` → `“a”`, three bytes to seven) is still one allocation.
+    // Design section 2.12: the Unicode output string is sized exactly, so a text that the rules
+    // grow to twice its length or more (`"a"` → `“a”`, three bytes to seven) is still one
+    // allocation.
     let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
     // Short enough that the scratch stays under the 64 KiB it keeps between calls.
     let long = "\"a\" ".repeat(100);
@@ -203,7 +204,7 @@ fn template(n: u8) -> Vec<Piece<'static, u8>> {
 fn a_template_allocates_three_vectors_whatever_its_length() {
     for n in [1, 3, 5, 9, 17, 100] {
         // The warm-up grows the thread-local scratch to this input; the call counted below then
-        // allocates only what section 2.12 lists.
+        // allocates only what design section 2.12 lists.
         let _ = RU_UI.typeset_template(template(n), Output::Unicode);
         let pieces = template(n);
         let (allocs, reallocs, t) = count(|| RU_UI.typeset_template(pieces, Output::Unicode));
@@ -256,8 +257,8 @@ type Grown = (Vec<Piece<'static, u8>>, &'static [&'static str], usize);
 
 #[test]
 fn a_changed_template_text_is_one_allocation_however_much_it_grows() {
-    // Section 2.12: at most 3 plus one per changed text. A glued space takes two bytes for one,
-    // so a short glued text must not outgrow its string (`{n} дн.`, section 2.6).
+    // Design section 2.12: at most 3 plus one per changed text. A glued space takes two bytes for
+    // one, so a short glued text must not outgrow its string (`{n} дн.`, design section 2.6).
     let rows: [Grown; 3] = [
         (
             vec![Piece::Slot(0, Slot::NUMBER), Piece::Text(" дн.")],
@@ -293,7 +294,7 @@ fn a_changed_template_text_is_one_allocation_however_much_it_grows() {
     }
 }
 
-/// Every output kind of section 2.8, the nowrap styles and both scopes included.
+/// Every output kind of design section 2.8, the nowrap styles and both scopes included.
 fn outputs() -> Vec<Output> {
     vec![
         Output::Unicode,
@@ -403,8 +404,8 @@ fn a_decimal_string_and_a_float_cost_nothing() {
 
 #[test]
 fn an_unchanged_string_does_not_allocate_in_any_output_kind() {
-    // Section 2.12: with `Html` and `Escaped` only if nothing needs encoding. No rule changes the
-    // texts, and none of their bytes is encoded by any kind below.
+    // Design section 2.12: with `Html` and `Escaped` only if nothing needs encoding. No rule
+    // changes the texts, and none of their bytes is encoded by any kind below.
     const SHORT: &str = "Сохранить";
     const PIPELINE: &str = "Адрес host:8080, версия v1.2.3, id 0x1F, путь /usr/bin";
     let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
@@ -451,10 +452,10 @@ fn typeset_into_a_buffer_with_room_does_not_allocate_in_any_output_kind() {
 
 #[test]
 fn a_text_that_needs_encoding_is_one_allocation() {
-    // Section 2.12: one allocation, the output string, counted first, however much the encoding
-    // grows the text: one `<` in a long text, a short text that grows almost fivefold, a thousand
-    // apostrophes and Cyrillic escaped by `non_ascii()`. No rule runs, so only the encoding
-    // changes the text.
+    // Design section 2.12: one allocation, the output string, counted first, however much the
+    // encoding grows the text: one `<` in a long text, a short text that grows almost fivefold, a
+    // thousand apostrophes and Cyrillic escaped by `non_ascii()`. No rule runs, so only the
+    // encoding changes the text.
     const LONG: &str = "Сохранить изменения в файле перед закрытием окна <выйти> из программы и вернуться к списку";
     let apostrophes = "'".repeat(1000);
     let cyrillic = "Сохранить изменения в файле перед закрытием окна ".repeat(4);
@@ -486,7 +487,7 @@ fn a_text_that_needs_encoding_is_one_allocation() {
 
 #[test]
 fn a_template_text_that_needs_encoding_is_one_allocation_however_much_it_grows() {
-    // Section 2.12: at most 3 plus one per text that is changed; the encoding is a change.
+    // Design section 2.12: at most 3 plus one per text that is changed; the encoding is a change.
     let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY);
     let wide = [
         Output::Html(HtmlStyle::NAMED),
@@ -538,9 +539,9 @@ fn a_template_text_that_needs_encoding_is_one_allocation_however_much_it_grows()
 
 #[test]
 fn after_an_input_larger_than_64_kib_the_first_short_call_allocates_and_the_second_does_not() {
-    // Section 2.12: when the capacity of the thread-local scratch grew past 64 KiB, it is replaced
-    // by `Scratch::new()` after the call, so the next call allocates as a first call does; a
-    // caller's `Scratch` is never shrunk.
+    // Design section 2.12: when the capacity of the thread-local scratch grew past 64 KiB, it is
+    // replaced by `Scratch::new()` after the call, so the next call allocates as a first call does;
+    // a caller's `Scratch` is never shrunk.
     const SHORT: &str = "Адрес host:8080, версия v1.2.3, id 0x1F";
     let big = "слово - слово... \"да\" 5 МБ. ".repeat(4000);
     assert!(big.len() > 64 * 1024);

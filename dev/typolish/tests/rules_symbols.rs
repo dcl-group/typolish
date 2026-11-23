@@ -3,9 +3,9 @@
 //!
 //! A row that names no configuration runs with the one rule of its table, alone
 //! (`RuleSet::EMPTY.with(rule)`), and in Prose, the only built-in set that holds the symbol rules
-//! (section 9.2: Interface has none). Rows with a range of years run alone: Prose also turns the
-//! hyphen of `2020-2026` into an en dash (`range.digits`), which the last test of the file spells
-//! out.
+//! (design section 9.2: Interface has none). Rows with a range of years run alone: Prose also turns
+//! the hyphen of `2020-2026` into an en dash (`range.digits`), which the last test of the file
+//! spells out.
 
 #![allow(
     clippy::unwrap_used,
@@ -113,7 +113,7 @@ fn copyright() {
             let change = &report.changes()[0];
             assert_eq!(change.replacement(), "\u{a9}");
             assert_eq!(report.original(change), "(c)");
-            // `(c) 2026` and a lone `©` are not frozen (section 3.6).
+            // `(c) 2026` and a lone `©` are not frozen (design section 3.6).
             assert!(report.protected().is_empty(), "{what}");
             for text in ["© 2026", "©", "© Example Corp"] {
                 assert!(span_texts(t, text).is_empty(), "{what}: {text}");
@@ -186,9 +186,9 @@ fn copyright_after_a_number_is_a_technical_fragment() {
 
 #[test]
 fn copyright_reads_no_percentage_and_no_label_as_a_year() {
-    // A percentage and a label number are not years in either of their forms (sections 8.2 and
-    // 8.9), so the space that the percent setting or `nbsp.signs` inserts or removes changes
-    // nothing for the rule (I2 of section 4.3).
+    // A percentage and a label number are not years in either of their forms (design sections 8.2
+    // and 8.9), so the space that the percent setting or `nbsp.signs` inserts or removes changes
+    // nothing for the rule (I2 of design section 4.3).
     for language in languages() {
         let t = only(language, &[COPYRIGHT]);
         for text in [
@@ -250,8 +250,8 @@ fn copyright_in_prose_next_to_a_range() {
         let t = prose(language);
         check_exact("Prose", &t, ("2020-2026 (c)", "2020–2026 ©"));
         check_exact("Prose", &t, ("(c) 2020-2026", "© 2020–2026"));
-        // A mark attached after a range makes the fragment unclassified and frozen (sections 3.6
-        // and 13.2), so not even the range dash changes.
+        // A mark attached after a range makes the fragment unclassified and frozen (design sections
+        // 3.6 and 13.2), so not even the range dash changes.
         check_exact("Prose", &t, ("2020-2026(c)", "2020-2026(c)"));
     }
 }

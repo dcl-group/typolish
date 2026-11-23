@@ -3,8 +3,8 @@
 //!
 //! A row that names no configuration runs with the one rule of its table, alone
 //! (`RuleSet::EMPTY.with(rule)`), and in the built-in sets that hold it, in full since stage 3
-//! (section 15.4): the glue that the full sets add after a range (`2010–11⍽гг.`) is part of the
-//! outputs there (`common::set_glue`); the rows of `ranges_in_the_full_sets` spell it out.
+//! (design section 15.4): the glue that the full sets add after a range (`2010–11⍽гг.`) is part of
+//! the outputs there (`common::set_glue`); the rows of `ranges_in_the_full_sets` spell it out.
 
 #![allow(
     clippy::unwrap_used,
@@ -37,7 +37,7 @@ fn languages() -> [Language; 3] {
 }
 
 // range.digits: a core `D+-D+` with exactly two numbers, no leading zeros, left smaller than right.
-// The rows hold in every language, including COMMON (section 7.4), alone and in Prose.
+// The rows hold in every language, including COMMON (design section 7.4), alone and in Prose.
 const DIGITS_ROWS: &[(&str, &str)] = &[
     ("1941-1945", "1941–1945"),
     ("10-20", "10–20"),
@@ -66,7 +66,7 @@ const DIGITS_ROWS: &[(&str, &str)] = &[
     ("1941-45", "1941-45"),
     ("x-5", "x-5"),
     ("5-x", "5-x"),
-    // Typeset input stays, borrowed; a typed em dash is not corrected (section 4.5).
+    // Typeset input stays, borrowed; a typed em dash is not corrected (design section 4.5).
     ("5–10", "5–10"),
     ("1941–1945", "1941–1945"),
     ("10—20", "10—20"),
@@ -112,7 +112,7 @@ fn digits_refuses_decimals() {
 
 #[test]
 fn digits_is_not_in_interface() {
-    // Section 10.6: Interface has no literal path: a port range never changes there.
+    // Design section 10.6: Interface has no literal path: a port range never changes there.
     for language in languages() {
         let t = interface(language);
         for text in [
@@ -189,7 +189,7 @@ const RU_CONTEXT: &[(&str, &str)] = &[
     ("стр. 010-020", "стр. 010-020"),
     ("1,5-2,5", "1,5-2,5"),
     ("XIX-XX", "XIX-XX"),
-    // An ambiguous unit counts only where `nbsp.units` would glue it (section 8.5).
+    // An ambiguous unit counts only where `nbsp.units` would glue it (design section 8.5).
     ("Ждать 1,5-2,5 с друзьями", "Ждать 1,5-2,5 с друзьями"),
     // One pattern space: a run of spaces or a tab breaks the context.
     ("1941-45  гг.", "1941-45  гг."),
@@ -228,8 +228,8 @@ fn context() {
 
 #[test]
 fn context_names_its_rule_and_digits_wins_where_both_match() {
-    // Section 8.5: where both rules match (`1941-1945 гг.`) the edits are equal and the report
-    // names `range.digits`, the earlier rule; the shapes that only the context takes name
+    // Design section 8.5: where both rules match (`1941-1945 гг.`) the edits are equal and the
+    // report names `range.digits`, the earlier rule; the shapes that only the context takes name
     // `range.context`.
     let alone = only(Language::RU_RU, &[CONTEXT]);
     assert_changed_by("alone", &alone, "1941-1945 гг.", CONTEXT);
@@ -247,7 +247,7 @@ fn context_names_its_rule_and_digits_wins_where_both_match() {
 
 #[test]
 fn context_leaves_a_label_range_alone() {
-    // A label range takes no context (section 8.5): `§§ 5-7 г. Москвы`.
+    // A label range takes no context (design section 8.5): `§§ 5-7 г. Москвы`.
     let t = only(Language::RU_RU, &[CONTEXT]);
     check_unchanged("alone", &t, "§§ 5-7 г. Москвы");
     check_unchanged("alone", &t, "№ 5-7 кг");
@@ -272,7 +272,7 @@ fn a_cyrillic_look_alike_is_not_a_roman_numeral() {
 
 #[test]
 fn context_is_inert_for_common() {
-    // Units alone do not activate `range.context` (section 7.4).
+    // Units alone do not activate `range.context` (design section 7.4).
     let t = only(Language::COMMON, &[CONTEXT]);
     for text in ["5-10 kg", "1,5-2,5 кг", "p. 9-12", "XIX-XX вв."] {
         check_unchanged("und", &t, text);
@@ -285,7 +285,7 @@ fn context_is_inert_for_common() {
 
 #[test]
 fn context_follows_the_unit_settings() {
-    // `add_units` and `remove_units` change what counts as a unit (section 8.1).
+    // `add_units` and `remove_units` change what counts as a unit (design section 8.1).
     let added = typolish::Typographer::builder(Language::EN_US, RuleSet::EMPTY.with(CONTEXT))
         .add_units(["widgets"])
         .build()
@@ -361,7 +361,7 @@ fn time() {
 
 #[test]
 fn the_times_are_frozen_and_the_separator_is_not() {
-    // TechKind::TimeRange: "the times; the separator stays editable" (section 3.6, check 5).
+    // TechKind::TimeRange: "the times; the separator stays editable" (design section 3.6, check 5).
     for (what, t) in configs(&Language::RU_RU, TIME) {
         let spans = spans_of(&t, "10:00-12:30");
         let got: Vec<_> = spans.iter().map(|s| (s.0, s.2.clone())).collect();
@@ -386,7 +386,7 @@ fn time_disabled() {
     check_unchanged("Prose without range.time", &t, "10:00-12:30");
 }
 
-// range.placeholders: `{Number}-{Number}` and `{Date}-{Date}` without spaces (section 8.5).
+// range.placeholders: `{Number}-{Number}` and `{Date}-{Date}` without spaces (design section 8.5).
 #[test]
 fn placeholders() {
     for language in languages() {
@@ -411,7 +411,7 @@ fn placeholders() {
                 );
             }
             // The other pairs and the typed dash stay. `{a} - {b}` is a subtraction for
-            // `Number` slots (the dash rules refuse it, section 8.4).
+            // `Number` slots (the dash rules refuse it, design section 8.4).
             for (a, mid, b) in [
                 (Slot::NUMBER, "-", Slot::DATE),
                 (Slot::DATE, "-", Slot::NUMBER),
@@ -456,7 +456,8 @@ fn placeholders_next_to_literals_and_text() {
                 ],
                 Output::Unicode,
             );
-            // In a full set `nbsp.units` glues the Russian unit after the range (section 2.6).
+            // In a full set `nbsp.units` glues the Russian unit after the range (design section
+            // 2.6).
             let glued = language == Language::RU_RU && t.rules().contains(Rule::NbspUnits);
             let unit = if glued { "\u{a0}дн." } else { " дн." };
             assert_eq!(out.texts(), ["Дни ", "–", unit], "{what}");
@@ -470,7 +471,7 @@ fn placeholders_next_to_literals_and_text() {
                 ],
                 Output::Unicode,
             );
-            // `nbsp.dates` glues a year word after a range of `Date` slots (section 2.6).
+            // `nbsp.dates` glues a year word after a range of `Date` slots (design section 2.6).
             let glued = language == Language::RU_RU && t.rules().contains(Rule::NbspDates);
             let year = if glued { "\u{a0}г." } else { " г." };
             assert_eq!(out.texts(), ["", "–", year], "{what}");
@@ -500,8 +501,8 @@ fn a_placeholder_range_is_recorded_by_its_rule() {
 
 #[test]
 fn a_spaced_placeholder_pair_stays() {
-    // `{a} - {b}` may be a subtraction: nothing changes (section 8.5); the dash rules refuse it
-    // and say so in the sets.
+    // `{a} - {b}` may be a subtraction: nothing changes (design section 8.5); the dash rules refuse
+    // it and say so in the sets.
     for (what, t) in configs(&Language::RU_RU, PLACEHOLDERS) {
         let r = t.report_template(
             [
@@ -541,8 +542,8 @@ fn placeholders_disabled() {
 
 #[test]
 fn ranges_in_the_full_sets() {
-    // Prose: the literal paths; Interface: only the placeholder path (section 10.6). The glue of
-    // the `nbsp.*` rules is part of the expectations (sections 10.6 and 10.7).
+    // Prose: the literal paths; Interface: only the placeholder path (design section 10.6). The
+    // glue of the `nbsp.*` rules is part of the expectations (design sections 10.6 and 10.7).
     let p = prose(Language::RU_RU);
     let ui = interface(Language::RU_RU);
     let rows: &[(&str, &str, &str)] = &[

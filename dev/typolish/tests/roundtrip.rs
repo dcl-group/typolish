@@ -123,7 +123,7 @@ fn quotes_pairs_ru() {
             ),
             ("„Привет“", "\"Привет\""),
             ("«?» и «»", "\"?\" и \"\""),
-            // `”` is no glyph of the Russian pairs: neutral, untouched (section 6.1).
+            // `”` is no glyph of the Russian pairs: neutral, untouched (design section 6.1).
             ("Он ”привет” сказал", "Он ”привет” сказал"),
             ("Без кавычек", "Без кавычек"),
             ("", ""),
@@ -179,7 +179,7 @@ fn quotes_pairs_and_apostrophe_together() {
         &[
             ("“don’t”", "\"don't\""),
             ("“a ‘don’t’ b”", "\"a \"don't\" b\""),
-            // The examples of section 12.1.
+            // The examples of design section 12.1.
             (
                 "“He said ‘the dogs’ bowl is empty’”",
                 "\"He said \"the dogs' bowl is empty\"\"",
@@ -231,9 +231,9 @@ fn sets_and_all(language: &Language) -> Vec<(String, Typographer)> {
 
 #[test]
 fn nested_pairs_of_signs_and_possessives_round_trip() {
-    // Section 12.1: a `’` after a `‘` with nothing but signs between them closes it, the mirror of
-    // the sign-only pair of section 6.3; a possessive `’` inside a deeper pair does not end the
-    // search for the closer of its own pair.
+    // Design section 12.1: a `’` after a `‘` with nothing but signs between them closes it, the
+    // mirror of the sign-only pair of design section 6.3; a possessive `’` inside a deeper pair
+    // does not end the search for the closer of its own pair.
     let canonical_en = [
         "\"a \"\" b\"",
         "\"a \"-\" b\"",
@@ -243,7 +243,7 @@ fn nested_pairs_of_signs_and_possessives_round_trip() {
         "\"a \"the dogs' bowl\" b\"",
         "\"\"a dogs' b \"c dogs' d\" e\" f\"",
         "\"\"house the dogs' bowl \"the dogs' bowl\" house\" two words\"",
-        // A neighbor inside a frozen core is of class `Word` (section 6.3).
+        // A neighbor inside a frozen core is of class `Word` (design section 6.3).
         "\"x \"y {\"\"",
         "\"x \"y 2026{\"\"",
         "\"x \"y a/\"\"",
@@ -256,8 +256,8 @@ fn nested_pairs_of_signs_and_possessives_round_trip() {
         "\"a \"?\" b\"",
         "\"x \"y {\"\"",
     ];
-    // Section 12.1: where the double quotes of a window do not pair again, the nested pair reads
-    // as `'`; these inputs are not canonical, so only P2 holds.
+    // Design section 12.1: where the double quotes of a window do not pair again, the nested pair
+    // reads as `'`; these inputs are not canonical, so only P2 holds.
     let plain = ["\"x ''.\"", "\"May '+-'':\"", "\"x '-'.\""];
     let mut failures = Vec::new();
     for (language, canonical) in [(en(), &canonical_en[..]), (ru(), &canonical_ru[..])] {
@@ -344,8 +344,8 @@ fn dash_without_glue() {
             let mut typographers = configs(&language, rule);
             if rule == Rule::DashDoubleHyphen {
                 // `dash.double-hyphen` alone turns only `--` into a dash, so the dash goes back
-                // to `--`: with `-` the round trip of section 12.2 would not hold for this rule
-                // set on its own (section 12.1).
+                // to `--`: with `-` the round trip of design section 12.2 would not hold for this
+                // rule set on its own (design section 12.1).
                 let (what, alone) = typographers.remove(0);
                 for &(typeset, plain) in rows {
                     check_plain(&what, &alone, (typeset, &plain.replace(" - ", " -- ")));
@@ -551,7 +551,7 @@ fn ellipsis() {
             ("Подождите…", "Подождите..."),
             ("… и тогда", "... и тогда"),
             ("Подождите…\nДальше", "Подождите...\nДальше"),
-            // Plain forms stay: `?..` and `!..` are plain (section 12.1).
+            // Plain forms stay: `?..` and `!..` are plain (design section 12.1).
             ("Что?..", "Что?.."),
             ("Да!..", "Да!.."),
             ("Что?!..", "Что?!.."),
@@ -684,8 +684,8 @@ fn nbsp_rules_give_their_glue_back_as_spaces() {
 
 #[test]
 fn glue_that_no_enabled_rule_sets_stays() {
-    // Only `nbsp.units` runs: the glue after the short word is not its product (section 12.1:
-    // `to_plain` undoes exactly the rules that are enabled).
+    // Only `nbsp.units` runs: the glue after the short word is not its product (design section
+    // 12.1: `to_plain` undoes exactly the rules that are enabled).
     let (what, units) = with_rules(&ru(), &[Rule::NbspUnits]);
     check_plain(&what, &units, ("5⍽МБ в⍽доме", "5 МБ в⍽доме"));
     let (what, short) = with_rules(&ru(), &[Rule::NbspShortWords]);
@@ -818,7 +818,7 @@ fn plain_forms_are_not_normalized() {
 
 #[test]
 fn the_settings_of_the_builder_reach_to_plain() {
-    // Own quote pairs (the language data with the builder's overrides, section 12.1).
+    // Own quote pairs (the language data with the builder's overrides, design section 12.1).
     let own = Typographer::builder(en(), RuleSet::PROSE)
         .quote_pairs(QuotePairs::new(('«', '»'), ('‹', '›')))
         .build()
@@ -850,9 +850,9 @@ fn protected_text_is_not_touched() {
             "Команда `ls …` — «готово»…",
             "Команда `ls …` - \"готово\"...",
         ),
-        // An opening delimiter without its closing one is text (section 10.1); glued to the
+        // An opening delimiter without its closing one is text (design section 10.1); glued to the
         // quote and the word after it, it makes the frozen fragment "`«x"
-        // (`Technical(Unclassified)`), a protected span that stays (sections 10.5, 12.1).
+        // (`Technical(Unclassified)`), a protected span that stays (design sections 10.5, 12.1).
         ("`«x» и «y»", "`«x\" и \"y\""),
     ] {
         check_plain("ru Prose", &t, (typeset, plain));
@@ -871,7 +871,7 @@ fn protected_text_is_not_touched() {
         "no backticks",
         &no_backticks,
         // Without backtick protection, "`«x»`" is one frozen fragment (`Technical(Unclassified)`):
-        // a protected span that stays (sections 10.5, 12.1).
+        // a protected span that stays (design sections 10.5, 12.1).
         ("`«x»` и «y»", "`«x»` и \"y\""),
     );
 }
@@ -953,7 +953,7 @@ fn the_kinds_and_payloads_of_slots_are_kept_in_order() {
     );
     assert_eq!(back.texts().len(), back.slots().len() + 1);
     // A quote glued between two slots is a frozen fragment (`Technical(Unclassified)`), a
-    // protected span of section 12.5 that `to_plain` does not touch (section 12.1).
+    // protected span of design section 12.5 that `to_plain` does not touch (design section 12.1).
     assert_eq!(back.texts(), ["", "“", "”", "", ""]);
     assert!(!back.changed());
 }
@@ -995,7 +995,7 @@ fn an_empty_template_stays_empty() {
 
 #[test]
 fn a_typeset_template_comes_back_plain() {
-    // The design examples of section 1: `{n} дн.`, `{a}-{b}` and `"{name}"`.
+    // The design examples of design section 1: `{n} дн.`, `{a}-{b}` and `"{name}"`.
     let t = prose(ru());
     let pieces = || {
         vec![
@@ -1085,7 +1085,7 @@ fn protected_spans_of_the_corpus_stay() {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(400))]
 
-    /// The protected spans of a typeset string stay in `to_plain` (section 12.1).
+    /// The protected spans of a typeset string stay in `to_plain` (design section 12.1).
     #[test]
     fn protected_spans_stay_in_generated_text(
         x in common::strategies::any_text(),
@@ -1104,7 +1104,7 @@ proptest! {
 // The known losses (design section 12.2)
 // ---------------------------------------------------------------------------------------------
 
-/// The codes of the table of section 12.2.
+/// The codes of the table of design section 12.2.
 const KNOWN_CODES: [&str; 13] = [
     "DoubleHyphen",
     "CompactAbbr",
@@ -1139,7 +1139,7 @@ fn the_table_of_known_losses_holds() {
         if plain == row.input {
             problems.push("the loss vanished: to_plain(typeset(input)) == input".to_owned());
         }
-        // P2 holds for every row (section 12.2).
+        // P2 holds for every row (design section 12.2).
         let again = t.typeset(&row.plain, Output::Unicode);
         if again != row.typeset {
             problems.push(format!(
@@ -1183,7 +1183,7 @@ fn the_table_of_known_losses_holds() {
     for code in KNOWN_CODES {
         assert!(
             rows.iter().any(|r| r.code == code),
-            "roundtrip-known.tsv has no row with the code {code} (section 12.2)"
+            "roundtrip-known.tsv has no row with the code {code} (design section 12.2)"
         );
     }
     for row in &rows {
@@ -1275,7 +1275,7 @@ fn p2_template(t: &Typographer, message: &common::TmplMessage) -> Result<(), Str
 #[test]
 fn p2_on_percentage_ranges_under_every_percent_setting() {
     // A hyphen range reads as a percentage range with its sign attached or after spaces, so the
-    // space that the percent setting removes does not make a dash rule fire (section 8.2).
+    // space that the percent setting removes does not make a dash rule fire (design section 8.2).
     let mut failures = Vec::new();
     for language in [ru(), en()] {
         for set in [RuleSet::PROSE, RuleSet::INTERFACE, RuleSet::ALL] {
@@ -1317,7 +1317,7 @@ fn setup_and_template() -> impl Strategy<Value = (Setup, String)> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(600))]
 
-    /// P1 on generated canonical strings (section 13.5, property 13).
+    /// P1 on generated canonical strings (design section 13.5, property 13).
     #[test]
     fn p1_on_generated_canonical_strings(case in setup_and_text()) {
         let (setup, x) = case;

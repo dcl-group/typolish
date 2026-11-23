@@ -360,7 +360,7 @@ fn the_crate_has_its_own_example_and_the_readme_is_run() {
             .any(|l| l.contains("does not normalize Unicode")),
         "the crate docs of lib.rs do not state that there is no normalization"
     );
-    // Section 13.10: the code blocks of the README run through a `#[cfg(doctest)]` item.
+    // Design section 13.10: the code blocks of the README run through a `#[cfg(doctest)]` item.
     let compact: String = lib.split_whitespace().collect();
     assert!(
         compact.contains("#[cfg(doctest)]#[doc=include_str!(\"../README.md\")]"),
@@ -395,7 +395,7 @@ fn readme_blocks_are_run_and_there_are_some() {
 fn readme_states_what_section_13_10_requires() {
     let text = readme();
     assert!(text.starts_with("# typolish\n"));
-    // The known limits of section 10.8, and how to protect commands.
+    // The known limits of design section 10.8, and how to protect commands.
     let limits = section(&text, "## Known limits");
     assert!(limits.lines().filter(|l| l.starts_with("- ")).count() >= 8);
     assert!(
@@ -440,7 +440,7 @@ fn readme_numbers_agree_with_the_code() {
     let msrv = env!("CARGO_PKG_RUST_VERSION");
     assert_eq!(msrv, "1.100");
     assert!(text.contains(&format!("version is {msrv}")));
-    // Prose and Interface counts of the changelog (section 9.2).
+    // Prose and Interface counts of the changelog (design section 9.2).
     assert_eq!(RuleSet::PROSE.len(), 27);
     assert_eq!(RuleSet::INTERFACE.len(), 13);
 }
@@ -768,9 +768,9 @@ fn known_limits_hold() {
 
 #[test]
 fn the_closed_style_keeps_the_authors_spaces() {
-    // Section 10.8: next to anything but a plain word the dash keeps the author's spaces. The
-    // glue of the other rules (`the⍽guide`) may replace a space, so only the dash and the spaces
-    // around it are compared.
+    // Design section 10.8: next to anything but a plain word the dash keeps the author's spaces.
+    // The glue of the other rules (`the⍽guide`) may replace a space, so only the dash and the
+    // spaces around it are compared.
     for text in [
         "Hello, — he said",
         "Chapter — 5",
@@ -806,15 +806,15 @@ fn interface_has_none_of_the_prose_only_rules() {
 
 #[test]
 fn double_hyphen_is_a_dash_in_prose() {
-    // Section 10.8: in Prose `git checkout -- file` becomes a dash in English text.
+    // Design section 10.8: in Prose `git checkout -- file` becomes a dash in English text.
     let got = prose(EN.clone()).typeset("git checkout -- file", Output::Unicode);
     assert!(got.contains('—') && !got.contains("--"), "{got:?}");
 }
 
 #[test]
 fn a_flag_is_never_next_to_a_dash() {
-    // Section 10.8: next to a flag a `-` is never a dash, even where one was meant. The text keeps
-    // its hyphens; a glue character may replace a space.
+    // Design section 10.8: next to a flag a `-` is never a dash, even where one was meant. The text
+    // keeps its hyphens; a glue character may replace a space.
     let text = "флаг -v - он включает вывод";
     for (name, t) in [
         ("Prose", prose(RU.clone())),
@@ -846,7 +846,7 @@ fn glued_quotes_before_a_frozen_fragment_have_no_diagnostic() {
 #[test]
 fn an_empty_value_glued_to_a_word_leaves_the_quotes_with_a_warning() {
     // `сказал:""`, `key:""` and `Путь /etc/"" и "да".`: the paragraph keeps its straight quotes
-    // with `UnmatchedQuote` (warning, section 6.1).
+    // with `UnmatchedQuote` (warning, design section 6.1).
     for text in ["сказал:\"\"", "key:\"\"", "Путь /etc/\"\" и \"да\"."] {
         for (name, t) in [
             ("Prose", prose(RU.clone())),
@@ -968,8 +968,8 @@ fn the_table_of_limits_is_in_the_readme() {
 #[test]
 fn readme_usage_examples_match_the_crate() {
     // The first block of the README is the one the front page shows; its outputs are the
-    // examples of section 2.1. A doctest runs it; here the same strings are asserted through the
-    // public API, so that a wrong README fails this target and not only a doctest.
+    // examples of design section 2.1. A doctest runs it; here the same strings are asserted through
+    // the public API, so that a wrong README fails this target and not only a doctest.
     static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
     static EN_PROSE: Typographer = Typographer::new(Language::EN_US, RuleSet::PROSE);
     assert_eq!(

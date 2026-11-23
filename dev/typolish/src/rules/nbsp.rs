@@ -1,12 +1,13 @@
-//! The no-break rules `nbsp.*` (design section 8.7) with the common conditions of section 8.2.
+//! The no-break rules `nbsp.*` (design section 8.7) with the common conditions of design section
+//! 8.2.
 //!
 //! The rules set glue marks (design section 3.9) and never write U+00A0 into the text. Most of
 //! them anchor at the space they glue and read the fragments on both sides, so when two rules
-//! could glue the same space the first of them in the order table takes it (section 3.8). The
-//! rules that may insert a space inside a fragment anchor before it: `nbsp.abbreviations` at the
-//! first token of its entry, `nbsp.signs` at the sign, and `nbsp.units` at an attached `%` or `‰`.
-//! A rule proposes a glue only for a single U+0020; a space the author already glued (U+00A0 or
-//! U+202F) matches with an empty edit and is never rewritten (sections 4.3, I3, and 4.5).
+//! could glue the same space the first of them in the order table takes it (design section 3.8).
+//! The rules that may insert a space inside a fragment anchor before it: `nbsp.abbreviations` at
+//! the first token of its entry, `nbsp.signs` at the sign, and `nbsp.units` at an attached `%` or
+//! `‰`. A rule proposes a glue only for a single U+0020; a space the author already glued (U+00A0
+//! or U+202F) matches with an empty edit and is never rewritten (design sections 4.3, I3, and 4.5).
 
 use super::dash::{closing_punct, lone_dash};
 use super::quotes::{Role, local_role};
@@ -72,7 +73,7 @@ impl Glues {
     }
 
     /// Glues the pattern space `s`: an edit for a single U+0020, nothing for a space that is
-    /// already glued (section 4.3, I3).
+    /// already glued (design section 4.3, I3).
     fn glue(&mut self, cx: &Cx<'_>, s: usize, glue: Glue) -> Option<()> {
         let at = offset(self.anchor, s)?;
         if cx.plain_space(s) {
@@ -113,7 +114,7 @@ fn glue_of(cx: &Cx<'_>, place: NarrowGlue) -> Glue {
 
 /// Whether a token is a slot of kind `Other` or belongs to a fragment that holds one: no glue
 /// sticks to such a fragment, quoted or bracketed alike (`and "{o}"`), because a nowrap group
-/// would take the whole fragment, slot included (sections 2.6, 8.2 and 11.5).
+/// would take the whole fragment, slot included (design sections 2.6, 8.2 and 11.5).
 pub(crate) fn holds_other(cx: &Cx<'_>, i: usize) -> bool {
     cx.kind(i) == Some(Kind::Slot(SlotKind::Other)) || cx.frag_of(i).is_some_and(|f| f.other_slot)
 }
@@ -124,7 +125,7 @@ fn separator(cx: &Cx<'_>, i: usize) -> bool {
 }
 
 /// The tokens on each side of the pattern space `s` between two fragments on one line, neither
-/// of them holding an `Other` slot (section 8.2).
+/// of them holding an `Other` slot (design section 8.2).
 fn sides(cx: &Cx<'_>, s: usize) -> Option<(usize, usize)> {
     // Most rules of the phase ask for the sides of the same space in turn.
     if let Some((at, found)) = cx.sides.get()
@@ -150,7 +151,7 @@ fn sides_of(cx: &Cx<'_>, s: usize) -> Option<(usize, usize)> {
 }
 
 /// The fragment whose core ends with token `l`, the last token before a space: no closing
-/// punctuation follows the core (section 8.2: `и,` triggers nothing).
+/// punctuation follows the core (design section 8.2: `и,` triggers nothing).
 fn tail<'a>(cx: &Cx<'a>, l: usize) -> Option<&'a Frag> {
     cx.in_core(l).then(|| cx.frag_of(l)).flatten()
 }
@@ -238,14 +239,14 @@ fn letters_up_to(cx: &Cx<'_>, f: &Frag, most: usize) -> (u8, usize) {
         .fold((0, 0), |(mask, n), c| (mask | script_bit(c), n + 1))
 }
 
-/// Whether a word is in the language's script; a word of two scripts is a word of each (section
-/// 8.2).
+/// Whether a word is in the language's script; a word of two scripts is a word of each (design
+/// section 8.2).
 fn in_script(cx: &Cx<'_>, f: &Frag) -> bool {
     letters(cx, f).0 & language_bit(cx) != 0
 }
 
 /// Whether a list holds the characters of a core compared with case, with the relaxation of
-/// section 7.1: an entry that starts with a lowercase letter also matches the text with that
+/// design section 7.1: an entry that starts with a lowercase letter also matches the text with that
 /// letter in uppercase, unless the text is a single letter with a full stop.
 fn cased_in(list: List<'_>, key: impl Iterator<Item = char> + Clone) -> bool {
     if list
@@ -267,7 +268,7 @@ fn cased_in(list: List<'_>, key: impl Iterator<Item = char> + Clone) -> bool {
         .is_ok()
 }
 
-/// A percentage: a number with `%` or `‰` in its core (section 8.2).
+/// A percentage: a number with `%` or `‰` in its core (design section 8.2).
 fn percentage(cx: &Cx<'_>, f: &Frag) -> bool {
     f.kind == FragKind::Number
         && cx
@@ -275,8 +276,8 @@ fn percentage(cx: &Cx<'_>, f: &Frag) -> bool {
             .any(|j| matches!(cx.kind(j), Some(Kind::Punct('%' | '‰'))))
 }
 
-/// Whether a lone `%` or `‰` after spaces follows the fragment `f` and is read with it (section
-/// 8.2: `100 %` and `100⍽%` are the percentage `100%`).
+/// Whether a lone `%` or `‰` after spaces follows the fragment `f` and is read with it (design
+/// section 8.2: `100 %` and `100⍽%` are the percentage `100%`).
 fn percent_after(cx: &Cx<'_>, f: &Frag) -> bool {
     let Some(last) = (f.start as usize..f.end as usize)
         .rev()
@@ -315,7 +316,8 @@ fn small_value(cx: &Cx<'_>, j: usize) -> Option<u32> {
     text.parse().ok()
 }
 
-/// A date core (section 8.2): a `Version` core `D.M.YYYY` or `D.M.YY`, day 1 to 31, month 1 to 12.
+/// A date core (design section 8.2): a `Version` core `D.M.YYYY` or `D.M.YY`, day 1 to 31, month 1
+/// to 12.
 fn date_core(cx: &Cx<'_>, f: &Frag) -> bool {
     if f.kind != FragKind::Version {
         return false;
@@ -337,7 +339,7 @@ fn slot_core(cx: &Cx<'_>, f: &Frag, kind: SlotKind) -> bool {
     matches!(core_tokens(cx, f), Some(([j, ..], 1)) if cx.kind(j) == Some(Kind::Slot(kind)))
 }
 
-/// A Roman numeral core (section 3.6): words only, `Format` and `Markup` tokens skipped.
+/// A Roman numeral core (design section 3.6): words only, `Format` and `Markup` tokens skipped.
 fn roman(cx: &Cx<'_>, f: &Frag) -> bool {
     let mut core = cx.core(f);
     let Some(first) = core.next() else {
@@ -353,7 +355,7 @@ fn roman(cx: &Cx<'_>, f: &Frag) -> bool {
 }
 
 /// What a year word follows: a number, a range, a `YearMonth` core, a date core or a `Number` or
-/// `Date` slot; labels and percentages are not numbers here (section 8.2).
+/// `Date` slot; labels and percentages are not numbers here (design section 8.2).
 fn year_like(cx: &Cx<'_>, f: &Frag) -> bool {
     if f.label {
         return false;
@@ -370,8 +372,8 @@ fn year_like(cx: &Cx<'_>, f: &Frag) -> bool {
 // ---------------------------------------------------------------------------------------------
 
 /// Matches one part of an abbreviation from token `j`: the visible text of consecutive tokens of
-/// one fragment equals the part, compared with case and the relaxation of section 7.1. The full
-/// stop that ends the last part may be the first full stop of a `Dots` token in any form
+/// one fragment equals the part, compared with case and the relaxation of design section 7.1. The
+/// full stop that ends the last part may be the first full stop of a `Dots` token in any form
 /// (`и т.д…`). Returns the last token of the part.
 fn match_part(cx: &Cx<'_>, start: usize, part: &str, last: bool) -> Option<usize> {
     let mut chars = part.chars();
@@ -410,8 +412,8 @@ fn match_part(cx: &Cx<'_>, start: usize, part: &str, last: bool) -> Option<usize
 }
 
 /// Whether the token before the entry starting at `i` is, across one space, a number, a range, a
-/// `YearMonth` core, a date core or a `Number` or `Date` slot (section 8.7: the entry is then a
-/// unit or a year with a sentence full stop and does not bind forward).
+/// `YearMonth` core, a date core or a `Number` or `Date` slot (design section 8.7: the entry is
+/// then a unit or a year with a sentence full stop and does not bind forward).
 fn after_quantity(cx: &Cx<'_>, i: usize) -> bool {
     let Some(p) = cx.prev(i) else {
         return false;
@@ -507,8 +509,8 @@ pub(crate) fn abbreviations(cx: &Cx<'_>, i: usize) -> Option<Match> {
     let list = cx.data.abbreviations;
     // The first part of an entry takes the whole text of the token, so only an entry whose first
     // part starts with that text, or with that text with its first letter folded (the relaxation
-    // of section 7.1), can match there. Such entries form a range of the sorted list each; they
-    // are read in the order of the list.
+    // of design section 7.1), can match there. Such entries form a range of the sorted list each;
+    // they are read in the order of the list.
     let word = cx.visible(i, i);
     let ranges = match word.clone().next() {
         // No entry starts with the letter or its folding.
@@ -802,8 +804,8 @@ fn quantity(cx: &Cx<'_>, f: &Frag) -> bool {
 
 /// The unit that starts a fragment at token `r`: the longest entry of the unit list that is a
 /// prefix of its visible text and is followed by a character that is neither a letter nor a
-/// digit, or by the end of the fragment; a unit of any length (section 8.7). Returns whether the
-/// unit ends the fragment and whether it is an ambiguous unit.
+/// digit, or by the end of the fragment; a unit of any length (design section 8.7). Returns whether
+/// the unit ends the fragment and whether it is an ambiguous unit.
 fn unit_at(cx: &Cx<'_>, r: usize, f: &Frag) -> Option<(bool, bool)> {
     let last = last_visible(cx, f)?;
     let text = cx.visible(r, last);
@@ -857,7 +859,7 @@ fn units_at_space(cx: &Cx<'_>, s: usize) -> Option<Match> {
             Some(false) if cx.plain_space(s) => {
                 Some(Match::with(0, Edits::NONE.with(Edit::Remove { at: 0 })))
             }
-            // A U+00A0 or U+202F typed by the author stays (section 5.3).
+            // A U+00A0 or U+202F typed by the author stays (design section 5.3).
             Some(false) => Some(Match::done(0)),
         };
     }
@@ -875,7 +877,7 @@ fn units_at_space(cx: &Cx<'_>, s: usize) -> Option<Match> {
     glue_one(cx, s, Glue::NoBreak)
 }
 
-/// An attached `%` or `‰` of a number or of a percentage range (`5–10%`, section 8.2) with a
+/// An attached `%` or `‰` of a number or of a percentage range (`5–10%`, design section 8.2) with a
 /// setting that wants it spaced: a glued space is inserted before it.
 fn percent_attached(cx: &Cx<'_>, i: usize) -> Option<Match> {
     if percent_spaced(cx) != Some(true) {
@@ -933,7 +935,7 @@ pub(crate) fn signs(cx: &Cx<'_>, i: usize) -> Option<Match> {
                         && (matches!(fr.kind, FragKind::Number | FragKind::Range) || roman(cx, fr))
                 }),
             };
-            // Never before a fragment that starts with `-` (section 8.2): `№ -5` stays.
+            // Never before a fragment that starts with `-` (design section 8.2): `№ -5` stays.
             if !target || !glueable(cx, r, false) {
                 return None;
             }
@@ -983,8 +985,8 @@ fn phone_group(cx: &Cx<'_>, f: &Frag) -> Option<(usize, bool)> {
     if first_visible(cx, f) != core.first().copied() {
         return None;
     }
-    // A percentage is not a group, in both of its forms (section 8.2): `100 %` and `100⍽%` read as
-    // `100%`, so the space that the percent setting inserts changes nothing (invariant I2).
+    // A percentage is not a group, in both of its forms (design section 8.2): `100 %` and `100⍽%`
+    // read as `100%`, so the space that the percent setting inserts changes nothing (invariant I2).
     if percentage(cx, f) || percent_after(cx, f) {
         return None;
     }
@@ -1069,7 +1071,7 @@ pub(crate) fn phone(cx: &Cx<'_>, s: usize) -> Option<Match> {
 
 /// `nbsp.short-words`: a word of the list (no case), one space, then an operand, an opening
 /// quote or bracket, or a sign of the language → glue; not after a particle that belongs to the
-/// word before it (section 8.7). Anchors at the space.
+/// word before it (design section 8.7). Anchors at the space.
 pub(crate) fn short_words(cx: &Cx<'_>, s: usize) -> Option<Match> {
     let (l, r) = sides(cx, s)?;
     let f = tail(cx, l)?;
@@ -1086,7 +1088,7 @@ pub(crate) fn short_words(cx: &Cx<'_>, s: usize) -> Option<Match> {
 pub(crate) fn short_length(cx: &Cx<'_>, s: usize) -> Option<Match> {
     let (l, r) = sides(cx, s)?;
     let f = tail(cx, l)?;
-    // A compound word is a word (section 8.2): `25-й` has one letter.
+    // A compound word is a word (design section 8.2): `25-й` has one letter.
     if !is_word(cx, f) {
         return None;
     }
@@ -1113,8 +1115,8 @@ pub(crate) fn particles(cx: &Cx<'_>, s: usize) -> Option<Match> {
 
 /// Whether the tokens `l` and `r` on the two sides of a pattern space are the end of a word or a
 /// slot (not `Other`) and the start of a particle of the list: the place that `nbsp.particles`
-/// glues (section 8.7). Closing punctuation after the particle does not matter (`Что⍽ж,`,
-/// section 15.2, item 19), but a capital letter with a full stop is an initial of
+/// glues (design section 8.7). Closing punctuation after the particle does not matter (`Что⍽ж,`,
+/// design section 15.2, item 19), but a capital letter with a full stop is an initial of
 /// `nbsp.initials`, not a particle (`Иван Б.⍽Петров`).
 fn particle_after(cx: &Cx<'_>, l: usize, r: usize) -> bool {
     let left =
@@ -1126,9 +1128,9 @@ fn particle_after(cx: &Cx<'_>, l: usize, r: usize) -> bool {
 
 /// Whether the word `f` is a particle that belongs to the word or slot before it, one pattern
 /// space away (`particle_after`): such a particle glues nothing after itself (`Знаешь⍽ли ты`,
-/// section 15.2, item 18). The particle list decides, whichever rules are enabled, so
+/// design section 15.2, item 18). The particle list decides, whichever rules are enabled, so
 /// `nbsp.short-words` and `nbsp.short-length` read a text alike with `nbsp.particles` on or off
-/// (section 15.3, C33).
+/// (design section 15.3, C33).
 fn bound_particle(cx: &Cx<'_>, f: &Frag) -> bool {
     if !cx.t.has_particle(cx.core_chars(f)) {
         return false;

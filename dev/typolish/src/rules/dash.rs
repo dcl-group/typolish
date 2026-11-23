@@ -16,7 +16,7 @@ use crate::engine::lex::{Glue, Kind, NO_FRAG, Repl};
 use crate::engine::phase::{Cx, Edit, Edits, Match};
 
 /// `dash.dialogue`: a hyphen at a line start; a typed dash there is matched too, and its space
-/// glued (section 4.3, I4).
+/// glued (design section 4.3, I4).
 pub(crate) const DIALOGUE: Triggers = Triggers::of(b"-").union(Triggers::TYPOGRAPHIC);
 /// `dash.double-hyphen`: `--` and `---`.
 pub(crate) const DOUBLE_HYPHEN: Triggers = Triggers::of(b"-");
@@ -65,8 +65,8 @@ pub(crate) fn dialogue(cx: &Cx<'_>, i: usize) -> Option<Match> {
         return None;
     }
     let r = cx.next(s)?;
-    // `Word` and `Other` slots count as words (section 8.10), a protected span acts as one word
-    // (section 2.6).
+    // `Word` and `Other` slots count as words (design section 8.10), a protected span acts as one
+    // word (design section 2.6).
     let opaque = cx.kind(r)?;
     let word = match opaque {
         Kind::Slot(kind) => matches!(kind, SlotKind::Word | SlotKind::Other),
@@ -89,8 +89,8 @@ pub(crate) fn dialogue(cx: &Cx<'_>, i: usize) -> Option<Match> {
             repl: Repl::Char(EM_DASH),
         });
     }
-    // No glue sticks to an `Other` slot or a fragment that holds one (sections 2.6 and 8.2): the
-    // dash is set, the space stays.
+    // No glue sticks to an `Other` slot or a fragment that holds one (design sections 2.6 and 8.2):
+    // the dash is set, the space stays.
     if cx.plain_space(s) && !holds_other(cx, r) {
         edits = edits.with(Edit::Glue {
             at,
@@ -193,7 +193,7 @@ fn between(cx: &Cx<'_>, i: usize, double: bool) -> Option<Match> {
     }
     let l = cx.prev(i)?;
     let r = cx.next(s2)?;
-    // A percent sign after spaces is read with its number (section 8.2).
+    // A percent sign after spaces is read with its number (design section 8.2).
     let fl = percent_owner(cx, cx.frag_of(l)?);
     let fr = cx.frag_of(r)?;
     let left = if cx.in_core(l) {

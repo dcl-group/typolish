@@ -12,7 +12,7 @@
 
 use typolish::{Error, Rule, RuleSet};
 
-/// The ids of section 4.1 in execution order.
+/// The ids of design section 4.1 in execution order.
 const IDS: [&str; 27] = [
     "symbols.copyright",
     "symbols.arrows",

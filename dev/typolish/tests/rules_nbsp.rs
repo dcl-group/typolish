@@ -1,10 +1,11 @@
-//! The tables of the `nbsp.*` rules (design sections 3.9, 8.2, 8.7 and 13.2, `tests/rules_nbsp.rs`).
+//! The tables of the `nbsp.*` rules (design sections 3.9, 8.2, 8.7 and 13.2,
+//! `tests/rules_nbsp.rs`).
 //!
 //! Every row runs with the one rule it exercises, alone (`RuleSet::EMPTY.with(rule)`), unless it
 //! names a configuration. The rows of "inside both sets" run in the full `PROSE` and `INTERFACE`,
 //! where other rules add their edits: those expectations are written out for each set. As in
-//! section 8.7, an output shows the edits of the rules that run. A row is written with the markers
-//! of `vis` (`⍽` is U+00A0, `⎵` is U+202F).
+//! design section 8.7, an output shows the edits of the rules that run. A row is written with the
+//! markers of `vis` (`⍽` is U+00A0, `⎵` is U+202F).
 
 #![allow(
     clippy::unwrap_used,
@@ -184,7 +185,7 @@ const RU_ABBR: &[(&str, &str)] = &[
     ("пп. 5", "пп.⍽5"),
     ("(см. рис. 5)", "(см.⍽рис.⍽5)"),
     ("ч. 2", "ч.⍽2"),
-    // A one-letter entry matches only as written (section 7.1).
+    // A one-letter entry matches only as written (design section 7.1).
     ("п. 5 устава", "п.⍽5 устава"),
     ("П. 5 устава", "П. 5 устава"),
     ("д. 5", "д.⍽5"),
@@ -326,9 +327,9 @@ fn abbreviations_inside_both_sets() {
 
 #[test]
 fn compact_abbreviations_next_to_a_dash() {
-    // A compact abbreviation reads as a word, as the parts it is split into do (section 8.2,
-    // invariant I2 of section 4.3), so the dash rules match on the first pass and a second pass
-    // returns the output.
+    // A compact abbreviation reads as a word, as the parts it is split into do (design section 8.2,
+    // invariant I2 of design section 4.3), so the dash rules match on the first pass and a second
+    // pass returns the output.
     set_rows(
         ru(),
         &[
@@ -380,7 +381,7 @@ fn abbreviations_are_off_when_disabled() {
 #[test]
 fn abbreviations_with_narrow_glue() {
     let t = with(ru(), &[ABBR], |b| b.narrow_glue(NarrowGlue::ABBREVIATIONS));
-    // `Narrow` goes only to the spaces between the parts of an entry (section 8.7).
+    // `Narrow` goes only to the spaces between the parts of an entry (design section 8.7).
     check_in("ru", &t, ("и т. д.", "и⍽т.⎵д."));
     check_in("ru", &t, ("т.е.", "т.⎵е."));
     check_in("ru", &t, ("т. е.", "т.⎵е."));
@@ -440,12 +441,13 @@ const RU_INITIALS: &[(&str, &str)] = &[
     ("А. Б. В. Иванов", "А.⍽Б.⍽В.⍽Иванов"),
     // A compact `А.С.` gets no inserted space; the space before the surname is glued.
     ("А.С. Пушкин", "А.С.⍽Пушкин"),
-    // A single initial before a surname is glued wherever it stands (settled, 15.2 item 11).
+    // A single initial before a surname is glued wherever it stands (settled, design section 15.2,
+    // item 11).
     ("Об этом сказал А. Петров.", "Об этом сказал А.⍽Петров."),
     ("Автор: А. Пушкин", "Автор: А.⍽Пушкин"),
     ("сказал А. Петров", "сказал А.⍽Петров"),
     ("от И. Петрова", "от И.⍽Петрова"),
-    // Also a capital letter with a full stop that ends a sentence (section 10.8).
+    // Also a capital letter with a full stop that ends a sentence (design section 10.8).
     (
         "Выберите вариант А. После этого",
         "Выберите вариант А.⍽После этого",
@@ -490,7 +492,7 @@ const EN_INITIALS: &[(&str, &str)] = &[
         "I chose plan P. Then I left.",
         "I chose plan P.⍽Then I left.",
     ),
-    // A single initial is glued after any word (section 10.8).
+    // A single initial is glued after any word (design section 10.8).
     (
         "Neither did I. Then we left.",
         "Neither did I.⍽Then we left.",
@@ -568,7 +570,7 @@ fn initials_inside_both_sets() {
 
 #[test]
 fn initials_with_abbreviations() {
-    // Section 8.7: `Mr. Smith` by abbreviations, `J. R. R. Tolkien` by initials.
+    // Design section 8.7: `Mr. Smith` by abbreviations, `J. R. R. Tolkien` by initials.
     let t = only(en(), &[ABBR, INITIALS]);
     check_in("en", &t, ("Mr. Smith", "Mr.⍽Smith"));
     check_in("en", &t, ("J. R. R. Tolkien", "J.⍽R.⍽R.⍽Tolkien"));
@@ -654,8 +656,8 @@ fn dates_in_russian() {
 
 #[test]
 fn a_date_core_before_a_year_word_is_protected_as_a_version() {
-    // Section 13.2: `Договор от 21.11.2026 г. Затем` gets no glue after `г.`, and the date is a
-    // `Technical(Version)` span (check 13 of section 3.6) in both sets.
+    // Design section 13.2: `Договор от 21.11.2026 г. Затем` gets no glue after `г.`, and the date
+    // is a `Technical(Version)` span (check 13 of design section 3.6) in both sets.
     const TEXT: &str = "Договор от 21.11.2026 г. Затем";
     let version = probe::tech(typolish::TechKind::Version);
     for (what, t, expected) in [
@@ -739,14 +741,14 @@ fn dates_inside_both_sets() {
             ("Школа №5 г. Москвы", "Школа №⍽5 г.⍽Москвы"),
         ],
     );
-    // Section 8.7: short words, dates and units together.
+    // Design section 8.7: short words, dates and units together.
     both_sets(
         en(),
         &[("On November 21, in 5 MB", "On⍽November⍽21, in⍽5⍽MB")],
     );
-    // `on 5 May`: `on⍽5⍽May` in both sets (13.2).
+    // `on 5 May`: `on⍽5⍽May` in both sets (design section 13.2).
     both_sets(en(), &[("on 5 May", "on⍽5⍽May")]);
-    // `2010-11 гг.`: Prose gives the range dash, Interface keeps the hyphen (section 10.7).
+    // `2010-11 гг.`: Prose gives the range dash, Interface keeps the hyphen (design section 10.7).
     set_rows(
         ru(),
         &[
@@ -876,8 +878,9 @@ fn units_by_setting() {
 
 #[test]
 fn units_of_any_length() {
-    // The unit list has no length limit (sections 7.6 and 8.7): a long unit added by the builder
-    // or by `LanguageBuilder` is matched whole, as the longest prefix followed by a non-letter.
+    // The unit list has no length limit (design sections 7.6 and 8.7): a long unit added by the
+    // builder or by `LanguageBuilder` is matched whole, as the longest prefix followed by a
+    // non-letter.
     let long: String = "абвгдежзийклмнопрстуфхцчшщъыьэюя".repeat(2);
     let short: String = long.chars().take(25).collect();
     for unit in [short.as_str(), long.as_str()] {
@@ -1029,8 +1032,9 @@ fn percent_spacing_inserts_and_removes_through_report() {
 
 #[test]
 fn percent_spacing_of_a_range() {
-    // A range is a quantity (section 8.2): the percent setting inserts the space before an
-    // attached sign as it glues or removes a typed one (section 8.7), and the output is stable.
+    // A range is a quantity (design section 8.2): the percent setting inserts the space before an
+    // attached sign as it glues or removes a typed one (design section 8.7), and the output is
+    // stable.
     use typolish::PercentSpacing::{Attached, Language as Lang, Spaced};
     let rows: &[(Language, typolish::PercentSpacing, &str, &str)] = &[
         (ru(), Spaced, "5–10%", "5–10⍽%"),
@@ -1075,9 +1079,9 @@ fn percent_spacing_of_a_range() {
 
 #[test]
 fn percent_spacing_and_the_dash_rules() {
-    // A percentage is one in both forms (section 8.2, invariant I2 of section 4.3): the dash rules
-    // read a percent sign after spaces with its number, so the space that the setting inserts or
-    // removes changes nothing for them, and a second pass returns the output.
+    // A percentage is one in both forms (design section 8.2, invariant I2 of design section 4.3):
+    // the dash rules read a percent sign after spaces with its number, so the space that the
+    // setting inserts or removes changes nothing for them, and a second pass returns the output.
     use typolish::PercentSpacing::{AsWritten, Attached, Spaced};
     let rows: &[(typolish::PercentSpacing, &str, &str)] = &[
         (AsWritten, "100 % - норма", "100⍽%⍽— норма"),
@@ -1153,7 +1157,8 @@ fn percent_spacing_with_a_label_number() {
 
 #[test]
 fn percent_spacing_in_the_sets() {
-    // With a non-default setting `nbsp.units` also inserts and removes in Interface (section 9.1).
+    // With a non-default setting `nbsp.units` also inserts and removes in Interface (design section
+    // 9.1).
     for set_ in [RuleSet::PROSE, RuleSet::INTERFACE] {
         let t = Typographer::builder(ru(), set_)
             .percent(typolish::PercentSpacing::Spaced)
@@ -1233,7 +1238,7 @@ const SIGN_ROWS: &[(&str, &str)] = &[
     ("№\n5", "№\n5"),
     ("№⍽5", "№⍽5"),
     ("№⎵5", "№⎵5"),
-    // Never before a fragment that starts with `-` (section 8.2).
+    // Never before a fragment that starts with `-` (design section 8.2).
     ("№ -5", "№ -5"),
     ("§ -1", "§ -1"),
 ];
@@ -1291,8 +1296,9 @@ fn signs_inside_both_sets() {
             ("№\t5", "№\t5"),
         ],
     );
-    // No glue before a fragment that starts with `-` (section 8.2) in either set; in Prose
-    // `number.minus` turns the hyphen into the minus sign (section 8.8), and the glue stays off.
+    // No glue before a fragment that starts with `-` (design section 8.2) in either set; in Prose
+    // `number.minus` turns the hyphen into the minus sign (design section 8.8), and the glue stays
+    // off.
     set_rows(
         ru(),
         &[
@@ -1300,7 +1306,8 @@ fn signs_inside_both_sets() {
             ("§ -1", "§ \u{2212}1", "§ -1"),
         ],
     );
-    // A short word before a sign (section 8.7, `nbsp.short-words`): the sign is a next token.
+    // A short word before a sign (design section 8.7, `nbsp.short-words`): the sign is a next
+    // token.
     both_sets(
         ru(),
         &[
@@ -1349,7 +1356,7 @@ const PHONE_ROWS: &[(&str, &str)] = &[
     // Not a telephone number.
     ("5 мая 2026", "5 мая 2026"),
     ("1 2 3", "1 2 3"),
-    // A percentage is not a group, in both of its forms (section 8.2).
+    // A percentage is not a group, in both of its forms (design section 8.2).
     ("+7 495 123-45-67 100%", "+7⍽495⍽123-45-67 100%"),
     ("+7 495 123-45-67 100 %", "+7⍽495⍽123-45-67 100 %"),
     ("+7 495 123-45-67 100⍽%", "+7⍽495⍽123-45-67 100⍽%"),
@@ -1366,7 +1373,7 @@ fn phone_numbers_in_every_built_in_language() {
 
 #[test]
 fn phone_numbers_in_the_sets() {
-    // Prose has the rule and `range.digits`, Interface neither (section 8.7, 10.7).
+    // Prose has the rule and `range.digits`, Interface neither (design section 8.7, 10.7).
     for language in [ru(), en()] {
         set_rows(
             language.clone(),
@@ -1404,7 +1411,7 @@ fn phone_numbers_in_the_sets() {
 #[test]
 fn phone_reads_a_percentage_alike_in_both_forms() {
     // The percent setting of ru glues `100%` into `100⍽%`; the number stays outside the telephone
-    // number in both forms, so a second pass changes nothing (section 8.2, invariant I2).
+    // number in both forms, so a second pass changes nothing (design section 8.2, invariant I2).
     let t = Typographer::builder(ru(), RuleSet::PROSE)
         .percent(PercentSpacing::Language)
         .build()
@@ -1568,7 +1575,7 @@ fn a_word_in_nfd_does_not_match_a_list() {
 
 #[test]
 fn short_words_never_glue_before_a_flag() {
-    // `ls -la` stays whatever the lists say (section 8.2).
+    // `ls -la` stays whatever the lists say (design section 8.2).
     let t = with(ru(), &[SHORT_WORDS], |b| {
         b.add_short_words(["ls"]).short_words_any_script(true)
     });
@@ -1579,7 +1586,8 @@ fn short_words_never_glue_before_a_flag() {
 
 #[test]
 fn short_words_are_not_a_trigger_inside_a_joined_core() {
-    // `Moscow—the capital` is one `Joined` fragment: `the` triggers nothing (section 4.3, I2).
+    // `Moscow—the capital` is one `Joined` fragment: `the` triggers nothing (design section 4.3,
+    // I2).
     check_in(
         "en",
         &alone(en(), SHORT_WORDS),
@@ -1606,7 +1614,7 @@ fn short_words_inside_both_sets() {
             ("Run X now.", "Run X now."),
         ],
     );
-    // Section 8.7: Interface has no `nbsp.short-length`.
+    // Design section 8.7: Interface has no `nbsp.short-length`.
     set_rows(
         ru(),
         &[(
@@ -1619,8 +1627,8 @@ fn short_words_inside_both_sets() {
 
 #[test]
 fn short_words_are_off_when_disabled() {
-    // In Prose `nbsp.short-length` still glues the one-letter `в` (section 8.7); a listed word of
-    // three letters shows that `nbsp.short-words` is off.
+    // In Prose `nbsp.short-length` still glues the one-letter `в` (design section 8.7); a listed
+    // word of three letters shows that `nbsp.short-words` is off.
     for (base, glued) in [
         (RuleSet::PROSE, "в⍽2026 году"),
         (RuleSet::INTERFACE, "в 2026 году"),
@@ -1706,7 +1714,7 @@ fn short_length_by_setting() {
 
 #[test]
 fn short_length_inside_the_sets() {
-    // Prose only (section 9.2).
+    // Prose only (design section 9.2).
     set_rows(
         ru(),
         &[
@@ -1735,7 +1743,7 @@ const RU_PARTICLES: &[(&str, &str)] = &[
     ("он ж", "он⍽ж"),
     ("я б", "я⍽б"),
     ("ждал ль", "ждал⍽ль"),
-    // Closing punctuation after the particle does not matter (section 15.2, item 19).
+    // Closing punctuation after the particle does not matter (design section 15.2, item 19).
     ("Знаешь ли, что", "Знаешь⍽ли, что"),
     ("Что ж,", "Что⍽ж,"),
     ("Что ж, ладно.", "Что⍽ж, ладно."),
@@ -1748,7 +1756,7 @@ const RU_PARTICLES: &[(&str, &str)] = &[
     ("Что ж\nдалее", "Что⍽ж\nдалее"),
     ("Что ж — ладно", "Что⍽ж — ладно"),
     ("что же бы ты", "что⍽же⍽бы ты"),
-    // A capital letter with a full stop is an initial, not a particle (section 8.7); a small
+    // A capital letter with a full stop is an initial, not a particle (design section 8.7); a small
     // particle letter with a full stop is a particle.
     ("Иван Б. Петров", "Иван Б. Петров"),
     ("писатель Ж. Верн", "писатель Ж. Верн"),
@@ -1798,16 +1806,16 @@ fn particles_inside_the_sets() {
         ru(),
         &[("сказал бы", "сказал⍽бы"), ("Знаешь ли", "Знаешь⍽ли")],
     );
-    // Section 8.7: particles and short words. The two-letter `бы` belongs to `Как`, so
-    // `nbsp.short-length` does not glue it to what follows in Prose (section 15.2, item 18, read
-    // for every particle, section 15.3, C34).
+    // Design section 8.7: particles and short words. The two-letter `бы` belongs to `Как`, so
+    // `nbsp.short-length` does not glue it to what follows in Prose (design section 15.2, item 18,
+    // read for every particle, design section 15.3, C34).
     both_sets(ru(), &[("Как бы то ни было", "Как⍽бы то⍽ни⍽было")]);
     let t = set(ru(), RuleSet::INTERFACE.without(PARTICLES));
     check_in("ru", &t, ("сказал бы", "сказал бы"));
 }
 
-/// Section 15.2, item 18: a particle is glued to the word before it, and a particle so placed
-/// glues nothing after itself; item 19: also when punctuation follows the particle.
+/// Design section 15.2, item 18: a particle is glued to the word before it, and a particle so
+/// placed glues nothing after itself; item 19: also when punctuation follows the particle.
 #[test]
 fn particles_bind_to_the_word_before() {
     set_rows(
@@ -1829,7 +1837,7 @@ fn particles_bind_to_the_word_before() {
             // A dash glues itself to the particle (`nbsp.dash`); that is no glue after it.
             ("Что ж - ладно", "Что⍽ж⍽— ладно", "Что⍽ж⍽— ладно"),
             // Two particles: each belongs to the word before it, the run glues nothing after
-            // (section 15.3, C33).
+            // (design section 15.3, C33).
             ("что же бы ты", "что⍽же⍽бы ты", "что⍽же⍽бы ты"),
             // No word before the particle: it is an ordinary short word.
             ("Ли ты знал", "Ли⍽ты⍽знал", "Ли ты знал"),
@@ -1840,7 +1848,7 @@ fn particles_bind_to_the_word_before() {
     );
     // An initial whose letter is on the particle list is an initial: the forward form of
     // `nbsp.initials` takes it and the word before stays apart, as for any other letter
-    // (section 8.7).
+    // (design section 8.7).
     set_rows(
         ru(),
         &[
@@ -1860,8 +1868,8 @@ fn particles_bind_to_the_word_before() {
     let prose = set(ru(), RuleSet::PROSE);
     check_unchanged("ru Prose", &prose, "Знаешь⍽ли ты");
     assert_changed_by("ru Prose", &prose, "Что ж,", PARTICLES);
-    // `to_plain` keeps the glue that no rule sets: none is set after a bound particle (section
-    // 12.1).
+    // `to_plain` keeps the glue that no rule sets: none is set after a bound particle (design
+    // section 12.1).
     assert_eq!(
         prose.to_plain(&vis("Знаешь⍽ли⍽ты")),
         vis("Знаешь ли⍽ты"),
@@ -1885,7 +1893,7 @@ fn particles_bind_to_the_word_before() {
 }
 
 /// The particle list decides which word belongs to the word before it, whichever rules are
-/// enabled (section 15.3, C33).
+/// enabled (design section 15.3, C33).
 #[test]
 fn a_bound_particle_glues_nothing_after_itself() {
     // `nbsp.short-length` alone: `ли` is a particle after a word, `ты` is not.
@@ -1957,7 +1965,7 @@ fn dash_glue_in_russian() {
 
 #[test]
 fn dash_glue_follows_the_style() {
-    // Inert except under `SpacedGlued` (section 8.1).
+    // Inert except under `SpacedGlued` (design section 8.1).
     let t = with(ru(), &[DASH], |b| b.dash_style(DashStyle::Spaced));
     assert!(!t.active_rules().contains(DASH));
     check_in("Spaced", &t, ("Москва — столица", "Москва — столица"));
@@ -2000,7 +2008,7 @@ fn dash_glue_inside_both_sets() {
     );
     let t = set(ru(), RuleSet::INTERFACE.without(DASH));
     check_in("ru", &t, ("Москва - столица", "Москва — столица"));
-    // Report: glue first, then the dash, as in the example of section 2.9.
+    // Report: glue first, then the dash, as in the example of design section 2.9.
     let t = set(ru(), RuleSet::INTERFACE);
     assert_eq!(
         edits(&t, "Цена - 5 руб."),
@@ -2013,7 +2021,7 @@ fn dash_glue_inside_both_sets() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Common conditions (section 8.2) and glue marks (section 3.9)
+// Common conditions (design section 8.2) and glue marks (design section 3.9)
 // ---------------------------------------------------------------------------------------------
 
 #[test]
@@ -2066,7 +2074,7 @@ fn a_trigger_word_is_a_whole_core_and_its_wrapper_does_not_hide_it() {
 
 #[test]
 fn typed_glue_is_never_rewritten() {
-    // Whatever `narrow_glue` says (section 4.5).
+    // Whatever `narrow_glue` says (design section 4.5).
     for rule in NBSP_RULES {
         let t = with(ru(), &[rule], |b| b.narrow_glue(NarrowGlue::ALL));
         check_in("typed", &t, ("в⍽Москве", "в⍽Москве"));
@@ -2087,7 +2095,7 @@ fn a_run_of_whitespace_that_contains_glue_is_not_glued_again() {
 #[test]
 fn the_first_rule_in_the_order_table_takes_the_space() {
     // `и т. д.`: both spaces could be taken by `nbsp.short-words` (the first) or
-    // `nbsp.abbreviations`; abbreviations come first in the order table (section 3.9).
+    // `nbsp.abbreviations`; abbreviations come first in the order table (design section 3.9).
     let t = set(ru(), RuleSet::INTERFACE);
     let rules = change_rules(&t, "и т. д.");
     assert_eq!(rules, [ABBR, ABBR], "{rules:?}");
@@ -2098,8 +2106,8 @@ fn the_first_rule_in_the_order_table_takes_the_space() {
 
 #[test]
 fn glue_is_a_single_character_change() {
-    // Section 3.9: the glue is the mark of a `Space` token; `report` shows it as a replacement of
-    // the space by U+00A0.
+    // Design section 3.9: the glue is the mark of a `Space` token; `report` shows it as a
+    // replacement of the space by U+00A0.
     let t = set(ru(), RuleSet::INTERFACE);
     let source = vis("Он вызвал ls на сервере");
     let r = t.report(&source, Output::Unicode);
@@ -2201,7 +2209,7 @@ fn the_two_rows_of_section_8_7_for_the_full_sets() {
         &set(ru(), RuleSet::PROSE),
         ("Об этом сказал А. Петров.", "Об⍽этом сказал А.⍽Петров."),
     );
-    // The rows in the table of 8.7 that name no rule set also hold in both sets.
+    // The rows in the table of design section 8.7 that name no rule set also hold in both sets.
     set_rows(
         ru(),
         &[
@@ -2219,19 +2227,23 @@ fn the_examples_of_sections_2_5_and_2_8() {
     // neighbors (`в⍽`--config``), and the space before a dash and before a unit is glued.
     let ui = set(ru(), RuleSet::INTERFACE);
     check_in(
-        "section 2.5",
+        "design section 2.5",
         &ui,
         (
             "Файл \"report.pdf\" не найден - проверьте путь в `--config`.",
             "Файл «report.pdf» не⍽найден⍽— проверьте путь в⍽`--config`.",
         ),
     );
-    check_in("section 2.8", &ui, ("Цена - 5 руб.", "Цена⍽— 5⍽руб."));
+    check_in(
+        "design section 2.8",
+        &ui,
+        ("Цена - 5 руб.", "Цена⍽— 5⍽руб."),
+    );
     // Technical text is neither changed nor copied.
-    check_unchanged("section 2.5", &ui, "host:8080");
+    check_unchanged("design section 2.5", &ui, "host:8080");
     // Already typeset text comes back borrowed (idempotence).
     check_unchanged(
-        "section 2.5",
+        "design section 2.5",
         &ui,
         "Файл «report.pdf» не⍽найден⍽— проверьте путь в⍽`--config`.",
     );

@@ -1,9 +1,9 @@
 //! `quotes.apostrophe`, `quotes.pairs` and `quotes.primes` (design sections 6 and 8.3).
 //!
 //! The quote phase has a linear preliminary pass over the window (`analyze`): certain apostrophes
-//! and primes (step 1, section 6.2), roles of series (6.3), families and stack matching (6.4),
-//! quotes after numbers in two passes (6.5), the all-or-nothing decision (6.6), levels (6.7) and
-//! single quotes at the top level (6.8). It leaves one decision per token; the three rules only
+//! and primes (step 1, design section 6.2), roles of series (6.3), families and stack matching
+//! (6.4), quotes after numbers in two passes (6.5), the all-or-nothing decision (6.6), levels (6.7)
+//! and single quotes at the top level (6.8). It leaves one decision per token; the three rules only
 //! read the decisions and propose the edits, each attributed to the rule whose behavior it is.
 //! Classification does not depend on which of the three rules are enabled.
 
@@ -432,13 +432,13 @@ pub(crate) fn analyze<R: Recorder>(
         }
     };
 
-    // Candidates and step 1 (sections 6.1 and 6.2).
+    // Candidates and step 1 (design sections 6.1 and 6.2).
     let mut facts = None;
     for q in qs.iter_mut() {
         categorize(cx, q, &mut facts);
     }
 
-    // Roles of series (section 6.3) and weak quotes (section 6.5).
+    // Roles of series (design section 6.3) and weak quotes (design section 6.5).
     let mut k = 0;
     while k < qs.len() {
         let start = k;
@@ -476,8 +476,8 @@ pub(crate) fn analyze<R: Recorder>(
             }
         }
     }
-    // Sign-only pairs (section 6.3), after every series has its role: the second quote of a pair
-    // may stand in a later series, whose role must not overwrite the pair.
+    // Sign-only pairs (design section 6.3), after every series has its role: the second quote of a
+    // pair may stand in a later series, whose role must not overwrite the pair.
     let mut k = 0;
     while k < qs.len() {
         let start = k;
@@ -505,7 +505,7 @@ pub(crate) fn analyze<R: Recorder>(
         _ => false,
     };
 
-    // Pass 1 (sections 6.4 and 6.5): weak quotes are ignored.
+    // Pass 1 (design sections 6.4 and 6.5): weak quotes are ignored.
     let mut converges = true;
     {
         let mut st = Stack::new(stack);
@@ -575,8 +575,8 @@ pub(crate) fn analyze<R: Recorder>(
         }
     }
 
-    // Pass 2 (section 6.5): weak quotes pair with an opener that pass 1 left unpaired on top of
-    // the stack, or become primes.
+    // Pass 2 (design section 6.5): weak quotes pair with an opener that pass 1 left unpaired on top
+    // of the stack, or become primes.
     let mut neutral_apostrophe_opener = NONE;
     if converges {
         let mut st = Stack::new(stack);
@@ -624,7 +624,7 @@ pub(crate) fn analyze<R: Recorder>(
                 }
             }
         }
-        // The end of the window (section 6.4): a straight `"` left open does not converge; a
+        // The end of the window (design section 6.4): a straight `"` left open does not converge; a
         // straight `'` stays unpaired; a typed opener is neutral.
         let mut first_d = None;
         for e in st.entries.iter() {
@@ -658,7 +658,7 @@ pub(crate) fn analyze<R: Recorder>(
         }
     }
 
-    // Step 1 is kept whatever the verdict (section 6.6).
+    // Step 1 is kept whatever the verdict (design section 6.6).
     for q in qs.iter() {
         if q.step1 != Mark::None
             && let Some(m) = marks.get_mut(q.tok as usize)
@@ -670,12 +670,12 @@ pub(crate) fn analyze<R: Recorder>(
         return;
     }
 
-    // Single quotes at the top level and levels (sections 6.7 and 6.8).
+    // Single quotes at the top level and levels (design sections 6.7 and 6.8).
     let mut enclosing = 0usize; // pairs of straight `"` and typed pairs
     let mut depth = 0usize; // every pair that counts for levels
     // New pairs open around the current quote whose glyphs are of the primary and of the nested
-    // pair, and the first typed closer that stayed neutral inside one of its own family (section
-    // 6.6): a second pass would pair it with the new opener.
+    // pair, and the first typed closer that stayed neutral inside one of its own family (design
+    // section 6.6): a second pass would pair it with the new opener.
     let mut open_new = [0usize; 2];
     let mut repairs = None;
     for idx in 0..qs.len() {
@@ -746,7 +746,7 @@ pub(crate) fn analyze<R: Recorder>(
         return;
     }
 
-    // Primes, the trailing possessive and the decade apostrophe (sections 6.5 and 6.6).
+    // Primes, the trailing possessive and the decade apostrophe (design sections 6.5 and 6.6).
     let data = cx.data;
     for q in qs.iter() {
         let i = q.tok as usize;
@@ -782,7 +782,7 @@ pub(crate) fn analyze<R: Recorder>(
 }
 
 /// The series of quotes that starts at `qs[start]`: the index after its last quote, and its L and
-/// R (section 6.3).
+/// R (design section 6.3).
 fn series(cx: &Cx<'_>, qs: &[Q], start: usize) -> (usize, Option<usize>, Option<usize>) {
     let first_tok = qs.get(start).map_or(0, |q| q.tok as usize);
     let mut last_tok = first_tok;
@@ -860,7 +860,7 @@ fn word_start(cx: &Cx<'_>, i: usize) -> bool {
     }
 }
 
-/// Sets what a quote is for pairing, and the decisions of step 1 (sections 6.1 and 6.2).
+/// Sets what a quote is for pairing, and the decisions of step 1 (design sections 6.1 and 6.2).
 fn categorize(cx: &Cx<'_>, q: &mut Q, facts: &mut Option<WrapperFacts>) {
     let i = q.tok as usize;
     let Some(t) = cx.tok(i) else {
@@ -932,10 +932,12 @@ pub(crate) struct WrapperFacts {
     ends_in_eq: bool,
 }
 
-/// Whether a straight quote in the wrapper of a frozen fragment is a candidate (section 6.1).
+/// Whether a straight quote in the wrapper of a frozen fragment is a candidate (design section
+/// 6.1).
 ///
 /// The quotes are visited in token order and the tokens of a fragment are contiguous, so `facts`
-/// holds the facts of the last fragment met and each fragment is scanned once (section 3.12).
+/// holds the facts of the last fragment met and each fragment is scanned once (design section
+/// 3.12).
 fn wrapper_candidate(cx: &Cx<'_>, i: usize, facts: &mut Option<WrapperFacts>) -> bool {
     let Some(frag) = cx.frag_of(i) else {
         return true;
@@ -966,7 +968,7 @@ fn wrapper_candidate(cx: &Cx<'_>, i: usize, facts: &mut Option<WrapperFacts>) ->
     !(f.ends_in_eq && !f.start_has && i >= frag.core_end as usize)
 }
 
-/// Step 1 (section 6.2): a certain apostrophe or prime.
+/// Step 1 (design section 6.2): a certain apostrophe or prime.
 fn step1(cx: &Cx<'_>, i: usize, glyph: char) -> Option<Mark> {
     let prev = cx.prev(i);
     let next = cx.next(i);
@@ -1036,11 +1038,11 @@ fn step1(cx: &Cx<'_>, i: usize, glyph: char) -> Option<Mark> {
     None
 }
 
-/// Sign-only pairs (section 6.3) whose first quote is in the series `qs[start..end]`, which has
-/// `L` of class `Space`, `OpenP` or `DashC`: the first opens and the second closes.
+/// Sign-only pairs (design section 6.3) whose first quote is in the series `qs[start..end]`, which
+/// has `L` of class `Space`, `OpenP` or `DashC`: the first opens and the second closes.
 fn sign_only(cx: &Cx<'_>, qs: &mut [Q], start: usize, end: usize) {
     // Every quote of the series counts for the rule of three, whatever its form: the count is the
-    // same on a second pass, where some of the quotes have become glyphs (section 6.11).
+    // same on a second pass, where some of the quotes have become glyphs (design section 6.11).
     let count = end - start;
     for a in start..end {
         let Some(q1) = qs.get(a).copied() else {
@@ -1072,7 +1074,7 @@ fn sign_only(cx: &Cx<'_>, qs: &mut [Q], start: usize, end: usize) {
     }
 }
 
-/// Whether the token at `k` is a sign between the quotes of a sign-only pair (section 6.3).
+/// Whether the token at `k` is a sign between the quotes of a sign-only pair (design section 6.3).
 fn is_sign(cx: &Cx<'_>, k: usize) -> bool {
     matches!(
         cx.kind(k),
@@ -1088,11 +1090,11 @@ fn is_sign(cx: &Cx<'_>, k: usize) -> bool {
     ) && !cx.tok(k).is_some_and(Tok::is_frozen)
 }
 
-/// The second quote of a sign-only pair (section 6.3) whose first quote is the straight quote at
-/// `i`: the next token that is not a sign, in the same fragment, is a straight quote of the same
-/// character whose series has R of class `Space`, `CloseP` or `DashC`. Two quotes of one series
-/// are no pair when the series holds three or more quotes of any form; `count` gives that number
-/// for the series of `i`. L of the first quote is the caller's to check.
+/// The second quote of a sign-only pair (design section 6.3) whose first quote is the straight
+/// quote at `i`: the next token that is not a sign, in the same fragment, is a straight quote of
+/// the same character whose series has R of class `Space`, `CloseP` or `DashC`. Two quotes of one
+/// series are no pair when the series holds three or more quotes of any form; `count` gives that
+/// number for the series of `i`. L of the first quote is the caller's to check.
 fn sign_only_partner(cx: &Cx<'_>, i: usize, count: impl FnOnce() -> usize) -> Option<usize> {
     let glyph = cx.chr(i).filter(|c| matches!(c, '"' | '\''))?;
     let frag = cx.tok(i)?.frag;
