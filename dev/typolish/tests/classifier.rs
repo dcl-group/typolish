@@ -601,6 +601,7 @@ const NUMBERS_AND_SHAPES: &[Row] = &[
     any("5x", &[(IDENT, "5x")]),
     // The lone letter between number fragments is `Times`, never frozen, in every form.
     any("10 x 5", &[]),
+    any("10 x\u{200d} 5", &[]),
     any("10 X 5", &[]),
     any("10 х 5", &[]),
     any("10 Х 5", &[]),

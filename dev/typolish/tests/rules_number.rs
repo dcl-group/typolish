@@ -338,15 +338,26 @@ fn times() {
             "alone and Prose: Interface has no number.times"
         );
         check_rows(&all, TIMES_ROWS);
-        // A `Format` token in the fragment of the sign is skipped (design section 3.6).
+        // A `Format` token in the fragment of the sign, and a ZWNJ or ZWJ in its letter, are
+        // skipped (design section 3.6).
         check_rows(
             &all,
             &[
                 ("10 \u{AD}x 5", "10 \u{AD}× 5"),
                 ("10 x\u{AD} 5", "10 ×\u{AD} 5"),
+                ("10 x\u{200D} 5", "10 × 5"),
+                ("10 x\u{200C} 5", "10 × 5"),
+                ("10 X\u{200D} 5", "10 × 5"),
+                ("10 х\u{200D} 5", "10 × 5"),
+                ("1920x\u{200D}1080", "1920×1080"),
+                ("1920x\u{200C}1080", "1920×1080"),
             ],
         );
         for (what, t) in &all {
+            let report = t.report("10 x\u{200D} 5", Output::Unicode);
+            let change = &report.changes()[0];
+            assert_eq!(report.original(change), "x\u{200D}", "{what}");
+            assert_eq!(change.replacement(), "\u{d7}", "{what}");
             assert_changed_by(what, t, "1920x1080", TIMES);
             assert_changed_by(what, t, "10 x 5", TIMES);
             let report = t.report("1920x1080", Output::Unicode);

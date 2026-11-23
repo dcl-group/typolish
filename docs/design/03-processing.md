@@ -383,17 +383,17 @@ Special cases. The first four are decided before the table and win over every ch
 included (the first on the whole fragment, the other three on the core); the others change how the
 checks read a core:
 
-- A lone fragment `x`, `X`, `х`, `Х` or `×` between two number fragments (`10 x 5`: the fragments
-  directly before and after it in the window have kind `Number`) has kind `Times`, in both forms, so
-  the kind survives the replacement. On the left a sign of the language with a number of digits
-  attached (`№10 x 5`; not a Roman numeral, `№IV x 5` stays) counts as a number fragment too: it is
-  the label number that `nbsp.signs` splits off (`№⍽10 x 5`), and a label counts as a number for
-  `number.times` (section 8.2), so the split changes nothing for the rule (invariant I2). A lone `%`
-  or `‰` after spaces on the left is read with the number before the spaces (`10 % x 5` and
-  `10⍽% x 5` read as `10% x 5`, section 8.2), so the space that the percent setting inserts or
-  removes changes nothing either. The lexer gives `×` the token kind `Times` in every position; a
-  lone `×` fragment that does not stand between two number fragments falls through the table to
-  check 24 (`Unclassified`, frozen).
+- A lone fragment `x`, `X`, `х`, `Х` or `×` (its letter read without ZWNJ and ZWJ, as in every
+  check) between two number fragments (`10 x 5`: the fragments directly before and after it in the
+  window have kind `Number`) has kind `Times`, in both forms, so the kind survives the replacement.
+  On the left a sign of the language with a number of digits attached (`№10 x 5`; not a Roman
+  numeral, `№IV x 5` stays) counts as a number fragment too: it is the label number that
+  `nbsp.signs` splits off (`№⍽10 x 5`), and a label counts as a number for `number.times` (section
+  8.2), so the split changes nothing for the rule (invariant I2). A lone `%` or `‰` after spaces on
+  the left is read with the number before the spaces (`10 % x 5` and `10⍽% x 5` read as `10% x 5`,
+  section 8.2), so the space that the percent setting inserts or removes changes nothing either. The
+  lexer gives `×` the token kind `Times` in every position; a lone `×` fragment that does not stand
+  between two number fragments falls through the table to check 24 (`Unclassified`, frozen).
 - A core that is a single `Dash` token in any form (`-`, `--`, `---`, `–`, `—`) is an `OperatorRun`
   ("dash fragment"; its wrapper stays editable, so `"-"` is one too), so a lone `-` and the `—` that
   replaces it have one kind; dash rules decide its fate by context. A typed `—` or `–` is matched by
@@ -421,7 +421,9 @@ checks read a core:
   algorithm (section 6.5).
 - `Format` tokens (section 5.4) inside a fragment, and ZWNJ and ZWJ inside the text of a token, are
   skipped by every check and by list lookups: `ноя\u{AD}бря` is the word `ноября` for check 23 and
-  for the month list, and `сло\u{200D}во` is the word `слово`. They stay in the text.
+  for the month list, and `сло\u{200D}во` is the word `слово`. They stay in the text. A replacement
+  of the cluster that holds a ZWNJ or ZWJ replaces the joiner with it (section 5.1):
+  `10 x\u{200D} 5` → `10 × 5`.
 
 **Roman numerals.** A Roman numeral is a `Word` token of Latin capital letters in the standard form
 `M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})`, not empty; its value is 1 to 3999

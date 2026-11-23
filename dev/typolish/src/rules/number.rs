@@ -118,8 +118,11 @@ pub(crate) fn times(cx: &Cx<'_>, i: usize) -> Option<Match> {
                     Some(Kind::Number | Kind::Slot(crate::SlotKind::Number))
                 )
             })?;
-            let digits = cx.src(first);
-            if cx.kind(first) == Some(Kind::Number) && digits.len() > 1 && digits.starts_with('0') {
+            let digits = cx.visible(first, first);
+            if cx.kind(first) == Some(Kind::Number)
+                && digits.clone().next() == Some('0')
+                && digits.count() > 1
+            {
                 return None;
             }
         }

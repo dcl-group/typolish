@@ -1352,7 +1352,8 @@ fn spaced_percent(tokens: &[Tok], owner: &Frag, f: &Frag) -> bool {
 
 /// The special case of a lone `x`, `X`, `х`, `Х` or `×` fragment between two number fragments:
 /// kind `Times`, never frozen (design section 3.6). On the left a percent sign after spaces is
-/// read with its number (`spaced_percent`).
+/// read with its number (`spaced_percent`). The letter is read without ZWNJ and ZWJ (design
+/// section 3.6).
 fn lone_times(signs: &[char], text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
     for i in 1..frags.len().saturating_sub(1) {
         let (Some(prev), Some(cur), Some(next)) =
@@ -1378,10 +1379,9 @@ fn lone_times(signs: &[char], text: &str, tokens: &mut [Tok], frags: &mut [Frag]
         };
         let letter = match tok.kind {
             Kind::Times => true,
-            Kind::Word(_) => matches!(
-                text.get(tok.src.start as usize..tok.src.end as usize),
-                Some("x" | "X" | "\u{445}" | "\u{425}")
-            ),
+            Kind::Word(_) => ["x", "X", "\u{445}", "\u{425}"]
+                .iter()
+                .any(|s| visible(text, tok.src.start, tok.src.end).eq(s.chars())),
             _ => false,
         };
         if letter {
