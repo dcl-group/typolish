@@ -194,8 +194,8 @@ dev/
       engine/  mod.rs  ingest.rs  window.rs  lex.rs  classify.rs  phase.rs  render.rs  record.rs  scratch.rs
       rules/   mod.rs  symbols.rs  ellipsis.rs  dash.rs  range.rs  number.rs  quotes.rs  nbsp.rs
     tests/
-      common/{mod,strategies}.rs  rules_*.rs  negative.rs  parts.rs  numbers.rs  output.rs  fluent_isolation.rs
-      reference.rs  reference/{ru,en_us}.rs  properties.rs  graphemes.rs  roundtrip.rs  corpus.rs  alloc.rs
+      common/{mod,strategies,load_inputs}.rs  rules_*.rs  negative.rs  parts.rs  numbers.rs  output.rs  fluent_isolation.rs
+      reference.rs  reference/{ru,en_us}.rs  deliberate_differences.rs  properties.rs  graphemes.rs  roundtrip.rs  corpus.rs  alloc.rs
       load.rs  conformance.rs  data.rs  api.rs  lint.rs
       builder.rs  language.rs  traits.rs  typeset_api.rs  rules.rs  helpers.rs
       corpus/  fixtures/unicode/  fixtures/whatwg-entities.txt
@@ -204,15 +204,17 @@ dev/
 ```
 
 `tests/reference/ru.rs` and `tests/reference/en_us.rs` are data modules, not targets: Cargo builds
-only `tests/*.rs` (and `tests/*/main.rs`). `tests/reference.rs` (section 13.4) and
-`tests/negative.rs` (section 13.3) include them with `#[path = "reference/ru.rs"] mod ru;` and
-`#[path = "reference/en_us.rs"] mod en_us;`. The data modules exist from stage 2, when only
-`tests/negative.rs` includes them; `tests/reference.rs` is added in stage 5 (section 15.4). The row
-type is in `tests/common/mod.rs`; since every target that declares `mod common;` includes that
-module but uses only part of it, `tests/common/mod.rs` starts with `#![allow(dead_code)]` (a shared
-helper module, as usual for integration tests), and `src/engine/mod.rs` includes the generators as
+only `tests/*.rs` (and `tests/*/main.rs`). `tests/reference.rs` (section 13.4),
+`tests/deliberate_differences.rs` (section 8.12) and `tests/negative.rs` (section 13.3) include them
+with `#[path = "reference/ru.rs"] mod ru;` and `#[path = "reference/en_us.rs"] mod en_us;`. The data
+modules exist from stage 2, when only `tests/negative.rs` includes them; `tests/reference.rs` and
+`tests/deliberate_differences.rs` are added in stage 5 (section 15.4). The row type is in
+`tests/common/mod.rs`; since every target that declares `mod common;` includes that module but uses
+only part of it, `tests/common/mod.rs` starts with `#![allow(dead_code)]` (a shared helper module,
+as usual for integration tests), and `src/engine/mod.rs` includes the generators as
 `#[cfg(test)] #[path = "../../tests/common/strategies.rs"] mod strategies;` (section 13.5, property
-8).
+8). `benches/load.rs` and `tests/load.rs` share the input generators of section 3.12 through
+`#[path = "../tests/common/load_inputs.rs"]` and `#[path = "common/load_inputs.rs"]`.
 
 The six test files from `builder.rs` to `helpers.rs` were added in stage 2 to keep `tests/api.rs`
 and `tests/conformance.rs` readable; they hold rows that section 13.2 assigns to `tests/api.rs` and
