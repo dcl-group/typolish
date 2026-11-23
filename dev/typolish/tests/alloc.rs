@@ -179,7 +179,10 @@ fn a_changed_string_is_one_allocation_however_much_it_grows() {
     let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
     // Short enough that the scratch stays under the 64 KiB it keeps between calls.
     let long = "\"a\" ".repeat(100);
-    for text in ["\"a\"", long.as_str()] {
+    // 240 edits in one window: more than a stable sort sorts without a heap buffer, so the edits
+    // are sorted in place (design section 15.3, C39); still under 64 KiB of scratch.
+    let many = "\"a\" ".repeat(120);
+    for text in ["\"a\"", long.as_str(), many.as_str()] {
         let first = t.typeset(text, Output::Unicode);
         assert!(first.len() >= 2 * text.len(), "{text:?} -> {first:?}");
         drop(first);

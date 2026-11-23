@@ -88,7 +88,7 @@ pub(crate) fn collect(tokens: &[Tok], removed: &[(u32, u32)], out: &mut Vec<REdi
     if let Some(window) = out.get_mut(base..) {
         // The order of `REdit` is total over its fields: only equal edits compare equal, so the
         // result does not depend on the sort algorithm, and an unstable sort allocates nothing
-        // (design section 2.12).
+        // (design sections 2.12 and 15.3, C39).
         window.sort_unstable();
     }
 }
