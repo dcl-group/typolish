@@ -591,6 +591,24 @@ fn lex_text(text: &str, clusters: &[(u32, u32)], out: &mut Vec<Tok>) {
     let mut no_operator_until = 0u32;
     let mut i = 0;
     while let Some(&(s, e)) = clusters.get(i) {
+        // The common case first: a letter of ASCII or of U+0400 to U+045F, a cluster of its own,
+        // continues a word (what `class_of_char` and `script_bit` give for it below).
+        if let Some(p) = pending.as_mut()
+            && p.class == Class::Letter
+        {
+            let bit = match text.as_bytes().get(s as usize..e as usize) {
+                Some([b]) if b.is_ascii_alphabetic() => 2,
+                Some([0xd0, 0x80..=0xbf] | [0xd1, 0x80..=0x9f]) => 1,
+                _ => 0,
+            };
+            if bit != 0 {
+                p.end = e;
+                p.scripts |= bit;
+                p.chars = p.chars.saturating_add(1);
+                i += 1;
+                continue;
+            }
+        }
         // Multi-character plain forms: whole operators and legal marks (design section 3.5).
         let mut whole: Option<(Kind, usize)> = None;
         if let Some(b) = single_byte(i) {
