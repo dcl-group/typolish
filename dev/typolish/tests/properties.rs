@@ -128,6 +128,12 @@ const SEEDS: &[&str] = &[
     "100 % - норма",
     "5–10% - норма",
     "Рост - 5–10%",
+    // A hyphen range with its percent sign attached or after spaces (section 8.2).
+    "5 - 10-20 %",
+    "5 - 10-20%",
+    "10-20 % - 5",
+    "5 - 1,5-2,5 %",
+    "5 - 1.5-2.5 %",
     // A label number owns its percent sign after spaces too (section 8.2).
     "№5 % — т.е.",
     "№10 % — -5% +",

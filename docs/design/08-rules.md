@@ -62,7 +62,10 @@ Two kinds of number name or measure something other than a quantity:
   range with the sign attached to its last side (`5–10%`, `{a}–{b}%`: the two sides of check 17
   joined by `–`, a `Joined` core by check 22 of section 3.6) is a **percentage range**: it counts as
   a range, and as a percentage, in the same way; after spaces (`5–10 %`) the range is a `Range` core
-  and the sign its percent sign.
+  and the sign its percent sign. With a hyphen and the sign attached (`10-20%`, `{a}-{b}%`) the core
+  is a technical fragment by section 3.6 and no rule edits it, but the dash rules read it as a
+  percentage range, as they read `10-20 %`: so `5 - 10-20%` and `5 - 10-20 %` both keep the hyphen,
+  and the space that the percent setting removes changes nothing for them (invariant I2).
 
 Both count as numbers everywhere (operands, the "numbers on both sides" refusal of the dash rules; a
 percent sign after spaces is read there with its number, label number or range, so `100 % - норма`

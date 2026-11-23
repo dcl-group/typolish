@@ -28,8 +28,8 @@ use common::corpus::{
 use common::{configs, interface, parse_tmpl, prose, show, vis, without_rule};
 use proptest::prelude::*;
 use typolish::{
-    DashStyle, Language, Output, Piece, QuotePairs, Rule, RuleSet, SingleQuotes, Slot, SlotKind,
-    Template, Typographer,
+    DashStyle, Language, Output, PercentSpacing, Piece, QuotePairs, Rule, RuleSet, SingleQuotes,
+    Slot, SlotKind, Template, Typographer,
 };
 
 fn ru() -> Language {
@@ -1139,6 +1139,34 @@ fn p2_template(t: &Typographer, message: &common::TmplMessage) -> Result<(), Str
             texts(&again).iter().map(|s| show(s)).collect::<Vec<_>>(),
         ))
     }
+}
+
+#[test]
+fn p2_on_percentage_ranges_under_every_percent_setting() {
+    // A hyphen range reads as a percentage range with its sign attached or after spaces, so the
+    // space that the percent setting removes does not make a dash rule fire (section 8.2).
+    let mut failures = Vec::new();
+    for language in [ru(), en()] {
+        for set in [RuleSet::PROSE, RuleSet::INTERFACE, RuleSet::ALL] {
+            for percent in [
+                PercentSpacing::AsWritten,
+                PercentSpacing::Language,
+                PercentSpacing::Attached,
+                PercentSpacing::Spaced,
+            ] {
+                let t = Typographer::builder(language.clone(), set)
+                    .percent(percent)
+                    .build()
+                    .unwrap();
+                for x in ["5 - 10-20 %", "5 - 10-20%", "10-20 % - 5", "10-20% - 5"] {
+                    if let Err(e) = p2(&t, x) {
+                        failures.push(format!("{language} {set} {percent:?}: {e}"));
+                    }
+                }
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
 fn setup_and_text() -> impl Strategy<Value = (Setup, String)> {

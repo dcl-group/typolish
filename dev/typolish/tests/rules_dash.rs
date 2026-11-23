@@ -78,6 +78,11 @@ const RU_SPACED: &[(&str, &str)] = &[
         "Выполните diff -u - file.txt",
     ),
     ("5–10 - 20", "5–10 - 20"),
+    // A hyphen range with its percent sign attached is a percentage range, as with the sign after
+    // spaces (section 8.2).
+    ("5 - 10-20%", "5 - 10-20%"),
+    ("10-20% - 5", "10-20% - 5"),
+    ("5 - 1,5-2,5%", "5 - 1,5-2,5%"),
     ("Use - --force", "Use - --force"),
     ("tar -cf - -C dir", "tar -cf - -C dir"),
     // Not a pattern: no single space on each side, or a `--` run (section 8.2).
@@ -165,6 +170,8 @@ const EN_SPACED: &[(&str, &str)] = &[
     ("5 - x", "5 - x"),
     ("x - 5", "x - 5"),
     ("10 - 20", "10 - 20"),
+    ("5 - 10-20%", "5 - 10-20%"),
+    ("10-20% - 5", "10-20% - 5"),
     ("123-45-67 - 123-45-68", "123-45-67 - 123-45-68"),
     ("diff -u - file.txt", "diff -u - file.txt"),
     ("tar -cf - -C dir", "tar -cf - -C dir"),
@@ -286,6 +293,8 @@ fn ambiguous_hyphens_are_reported_at_the_hyphen() {
         (Language::RU_RU, "tls-server - agent-ca", &["-"]),
         (Language::RU_RU, "Выполните diff -u - file.txt", &["-"]),
         (Language::RU_RU, "5–10 - 20", &["-"]),
+        (Language::RU_RU, "5 - 10-20%", &["-"]),
+        (Language::EN_US, "10-20% - 5", &["-"]),
         (Language::RU_RU, "123-45-67 - 123-45-68", &["-"]),
         (Language::RU_RU, "cat - 123-45-67", &["-"]),
         (Language::EN_US, "x - 5", &["-"]),

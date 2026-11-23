@@ -126,9 +126,12 @@ pub(crate) fn is_number(f: &Frag) -> bool {
     f.kind == FragKind::Number
 }
 
-/// A range: a `Range` or `YearMonth` core, or a percentage range (`5–10%`, design section 8.2).
+/// A range: a `Range` or `YearMonth` core, or a percentage range (`5–10%`, `10-20%`, design
+/// section 8.2).
 pub(crate) fn is_range(cx: &Cx<'_>, f: &Frag) -> bool {
-    matches!(f.kind, FragKind::Range | FragKind::YearMonth) || percent_range(cx, f)
+    matches!(f.kind, FragKind::Range | FragKind::YearMonth)
+        || percent_range(cx, f)
+        || percent_shape(cx, f, "-")
 }
 
 /// A percentage range (design section 8.2): a `Joined` core made of the two sides of a range of
@@ -136,9 +139,15 @@ pub(crate) fn is_range(cx: &Cx<'_>, f: &Frag) -> bool {
 /// what a range followed by a percent sign becomes when the percent setting removes the space,
 /// and it reads as the range does, except where a percentage is not a number.
 pub(crate) fn percent_range(cx: &Cx<'_>, f: &Frag) -> bool {
-    if f.kind != FragKind::Joined {
-        return false;
-    }
+    f.kind == FragKind::Joined && percent_shape(cx, f, "\u{2013}")
+}
+
+/// A core made of the two sides of a range of check 17 joined by `joint` and a `%` or `‰`
+/// attached to the last side. With `-` (`10-20%`) the core is a technical fragment and no rule
+/// edits it, but the dash rules read it as a percentage range, as they read `10-20 %` (design
+/// section 8.2), so that the space the percent setting removes changes nothing for them
+/// (invariant I2).
+fn percent_shape(cx: &Cx<'_>, f: &Frag, joint: &str) -> bool {
     let mut core = [0usize; 8];
     let mut len = 0;
     for j in cx.core(f) {
@@ -156,7 +165,7 @@ pub(crate) fn percent_range(cx: &Cx<'_>, f: &Frag) -> bool {
     }
     let Some(at) = rest
         .iter()
-        .position(|&j| cx.kind(j) == Some(Kind::Dash) && cx.is(j, "\u{2013}"))
+        .position(|&j| cx.kind(j) == Some(Kind::Dash) && cx.is(j, joint))
     else {
         return false;
     };
