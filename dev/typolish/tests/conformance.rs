@@ -18,7 +18,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use proptest::prelude::*;
-use typolish::{Language, Rule, RuleSet, Scratch, Typographer};
+use typolish::{Language, Output, Rule, RuleSet, Scratch, Typographer};
 
 fn crate_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -109,6 +109,45 @@ fn a_typographer_fits_a_static() {
     assert_eq!(RU.language(), &Language::RU_RU);
     assert_eq!(EN.rules(), RuleSet::PROSE);
     assert_eq!(UND.active_rules(), RuleSet::EMPTY);
+}
+
+#[test]
+fn replacement_tables_produce_no_letter_and_no_digit() {
+    // Design section 13.9: the characters that rules write contain no letter and no digit. Every
+    // replacement table of `symbols.*`, `number.times` and the other rules is reached here.
+    const TEXTS: [&str; 12] = [
+        "(c) 2026",
+        "Brand(tm)",
+        "Brand (r)",
+        "a -> b",
+        "a <- b",
+        "a <-> b",
+        "a >= b",
+        "a <= b",
+        "a != b",
+        "+-5",
+        "5x3",
+        "Ну... да?.. -5 и 1000000 \"цитата 'вложенная'\" -- тире 1990-2000 гг.",
+    ];
+    const SIGNS: [char; 11] = ['©', '™', '®', '→', '←', '↔', '≥', '≤', '≠', '±', '×'];
+    for language in Language::builtin().chain([Language::COMMON]) {
+        let t = Typographer::new(language.clone(), RuleSet::ALL);
+        let mut written = BTreeSet::new();
+        for text in TEXTS {
+            let report = t.report(text, Output::Unicode);
+            assert!(!report.changes().is_empty(), "{language} {text:?}");
+            for change in report.changes() {
+                assert!(
+                    !change.replacement().chars().any(char::is_alphanumeric),
+                    "{language} {text:?}: {change:?}"
+                );
+                written.extend(change.replacement().chars());
+            }
+        }
+        for sign in SIGNS {
+            assert!(written.contains(&sign), "{language}: no {sign:?}");
+        }
+    }
 }
 
 #[test]

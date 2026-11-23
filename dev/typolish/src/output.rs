@@ -802,14 +802,31 @@ mod tests {
     #[test]
     fn the_quotes_row_holds_every_glyph_a_language_may_use() {
         // Design sections 11.2 and 13.9: a quote pair set by a caller is encoded like a built-in
-        // one, and every `Quote` character of the lexer but `"` and `'` is in the set.
-        for c in QUOTE_GLYPHS {
+        // one, and the `Quote` characters of the lexer other than `"` and `'` are exactly the
+        // quotes row, `QUOTE_GLYPHS` (design section 7.6), and the primes row `′″`.
+        const PRIMES_ROW: [char; 2] = ['\u{2032}', '\u{2033}'];
+        let lexer: Vec<char> = (char::MIN..=char::MAX)
+            .filter(|&c| crate::engine::lex::is_quote_char(c) && c != '"' && c != '\'')
+            .collect();
+        let mut rows: Vec<char> = QUOTE_GLYPHS
+            .iter()
+            .chain(PRIMES_ROW.iter())
+            .copied()
+            .collect();
+        let mut got = lexer.clone();
+        got.sort_unstable();
+        rows.sort_unstable();
+        assert_eq!(got, rows);
+        for c in lexer {
             assert!(typographic(c).is_some(), "{c:?}");
         }
-        for c in ['«', '»', '„', '“', '”', '‘', '’', '‚', '‹', '›', '′', '″']
-        {
-            assert!(crate::engine::lex::is_quote_char(c));
-            assert!(typographic(c).is_some(), "{c:?}");
+    }
+
+    #[test]
+    fn the_typographic_set_holds_no_letter_and_no_digit() {
+        // Design section 13.9: the characters that rules write contain no letter and no digit.
+        for (c, _) in TYPOGRAPHIC {
+            assert!(!c.is_alphanumeric(), "{c:?}");
         }
     }
 

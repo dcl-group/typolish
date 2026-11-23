@@ -576,7 +576,8 @@ contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; the `#![
 attributes of every `tests/*.rs` list exactly the lints of section 14.5 (`tests/alloc.rs` also
 `unsafe_code`, first), and that of `tests/common/mod.rs` only `dead_code`; `src/lang/ru_ru.rs`,
 `src/lang/en_us.rs` and `src/lang/common.rs` contain no `fn`, `impl`, `match` or `if` (section 7.1);
-replacement tables produce no letter and no digit; every character the lexer reads as `Quote`
+the characters that rules write (the typographic set of section 11.2) and the strings of language
+data (section 7.6) contain no letter and no digit; every character the lexer reads as `Quote`
 (section 3.5) other than `"` and `'` is in the table of section 11.2, `′` and `″` in the primes row
 and the others in the quotes row; built-in languages × built-in sets build without error. A unit
 test next to the prefilter checks, for every built-in set and language, that the trigger set equals
