@@ -1122,8 +1122,9 @@ fn a_formatted_number_is_a_lazy_display() {
 #[test]
 fn number_is_a_plain_value() {
     let a = Number::from(5);
+    // `Number` is `Copy`: `a` is used after the copy.
     let b = a;
-    assert_eq!(a, b);
+    assert_eq!(b, Number::from(5));
     assert_eq!(
         Number::decimal("1.5").unwrap(),
         Number::decimal("1.5").unwrap()

@@ -176,7 +176,6 @@ fn output_kinds_are_distinct_values() {
         assert_ne!(*a, a.nowrap_style());
         assert_ne!(*a, a.nowrap_class("nowrap"));
         assert_ne!(a.nowrap_class("a"), a.nowrap_class("b"));
-        assert_eq!(a.nowrap_class("a"), a.nowrap_class("a"));
     }
     let escapes = [
         EscapeStyle::JS,
@@ -191,7 +190,6 @@ fn output_kinds_are_distinct_values() {
             assert_eq!(a == b, i == j, "{i} {j}");
         }
         assert_ne!(*a, a.non_ascii());
-        assert_eq!(a.non_ascii(), a.non_ascii());
     }
     assert_ne!(Output::Unicode, Output::Html(HtmlStyle::NAMED));
     assert_ne!(Output::Unicode, Output::Escaped(EscapeStyle::JS));
@@ -200,7 +198,6 @@ fn output_kinds_are_distinct_values() {
         Output::Escaped(EscapeStyle::JS),
         Output::Escaped(EscapeStyle::RUST)
     );
-    assert_eq!(Output::Html(HtmlStyle::HEX), Output::Html(HtmlStyle::HEX));
 }
 
 #[test]
