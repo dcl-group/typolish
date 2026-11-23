@@ -7,7 +7,8 @@ use std::sync::OnceLock;
 
 use crate::engine::{self, Input, scratch::Scratch};
 use crate::lang::data::{
-    DashData, DashStyle, List, QUOTE_GLYPHS, QuotePairs, fold_char, is_valid_group, is_valid_minus,
+    DashData, DashStyle, List, QUOTE_GLYPHS, QuotePairs, Signatures, WordList, fold_char,
+    is_valid_group, is_valid_minus,
 };
 use crate::report::{Diagnostic, Report};
 use crate::rules::{self, Triggers};
@@ -229,6 +230,9 @@ pub(crate) struct Compiled {
     pub(crate) active: RuleSet,
     /// The union of the trigger bytes of the active rules (design section 3.2).
     pub(crate) triggers: Triggers,
+    /// The signatures of the entries of check 0 of the classifier (design section 3.6), the
+    /// short words and the particles, with the builder's additions.
+    pub(crate) signatures: Signatures,
 }
 
 impl Typographer {
@@ -334,7 +338,23 @@ impl Typographer {
         let triggers = active.iter().fold(Triggers::NONE, |set, rule| {
             set.union(rules::triggers(rule, &data, percent))
         });
-        Compiled { active, triggers }
+        let mut signatures = Signatures::NONE;
+        signatures.add_table(&data);
+        let added = [
+            (WordList::Dictionary, &self.settings.units.added),
+            (WordList::ShortWords, &self.settings.short_words.added),
+            (WordList::Particles, &self.settings.particles.added),
+        ];
+        for (list, words) in added {
+            for word in words {
+                signatures.add(list, word.chars());
+            }
+        }
+        Compiled {
+            active,
+            triggers,
+            signatures,
+        }
     }
 
     /// Whether the text is a unit of the language with the builder's additions and removals,
@@ -385,17 +405,25 @@ impl Typographer {
     /// Whether the characters of a core are a short word of the language with the builder's
     /// additions and removals, compared without case (design section 7.1).
     pub(crate) fn has_short_word(&self, key: impl Iterator<Item = char> + Clone) -> bool {
-        self.settings
-            .short_words
-            .holds(self.language.data().short_words, key)
+        self.compiled()
+            .signatures
+            .may_hold(WordList::ShortWords, key.clone())
+            && self
+                .settings
+                .short_words
+                .holds(self.language.data().short_words, key)
     }
 
     /// Whether the characters of a core are a particle of the language with the builder's
     /// additions and removals, compared without case.
     pub(crate) fn has_particle(&self, key: impl Iterator<Item = char> + Clone) -> bool {
-        self.settings
-            .particles
-            .holds(self.language.data().particles, key)
+        self.compiled()
+            .signatures
+            .may_hold(WordList::Particles, key.clone())
+            && self
+                .settings
+                .particles
+                .holds(self.language.data().particles, key)
     }
 
     /// The length up to which any word of the language's script is short (`nbsp.short-length`).

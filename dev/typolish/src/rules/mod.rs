@@ -12,7 +12,7 @@ pub(crate) mod symbols;
 
 use crate::Rule;
 pub(crate) use crate::engine::classify::{Frag, FragKind};
-use crate::engine::lex::{Kind, script_bit};
+use crate::engine::lex::{Kind, is_alphabetic, script_bit};
 use crate::engine::phase::{Cx, Match};
 use crate::lang::data::{List, Script, Table, fold_char};
 
@@ -271,7 +271,7 @@ fn scripts(cx: &Cx<'_>, f: &Frag) -> u8 {
     cx.core(f)
         .filter(|&i| matches!(cx.kind(i), Some(Kind::Word(_))))
         .flat_map(|i| cx.visible(i, i))
-        .filter(|c| c.is_alphabetic())
+        .filter(|&c| is_alphabetic(c))
         .fold(0, |mask, c| mask | script_bit(c))
 }
 

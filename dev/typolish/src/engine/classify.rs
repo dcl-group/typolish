@@ -11,7 +11,7 @@
 use super::Recorder;
 use super::lex::{Flags, Kind, Mark, NO_PIECE, Op, Tok, WordScript, is_format_char, is_joiner};
 use super::record::{Loc, Sink};
-use crate::lang::data::{Table, fold_char};
+use crate::lang::data::{Table, WordList, fold_char};
 use crate::report::{ProtectedKind, TechKind};
 use crate::{DiagnosticKind, Severity, SlotKind, Typographer};
 
@@ -516,6 +516,13 @@ fn dictionary(
 /// Whether `cs.key` equals an entry of check 0, compared as design section 7.1 says.
 fn entry(t: &Typographer, data: &Table<'_>, apostrophe: bool, cs: &mut ClassifyScratch) -> bool {
     let key = cs.key.as_str();
+    let signatures = &t.compiled().signatures;
+    let elided = core::iter::once('\'').chain(key.chars());
+    if !signatures.may_hold(WordList::Dictionary, key.chars())
+        && !(apostrophe && signatures.may_hold(WordList::Dictionary, elided))
+    {
+        return false;
+    }
     // Entries compared with case, an entry that starts with a lowercase letter also matching the
     // text with that letter in uppercase, except a single letter with a full stop (section 7.1).
     cs.lowered.clear();

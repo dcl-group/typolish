@@ -356,7 +356,14 @@ How some checks read a core, where the table is short:
 
 - Check 0: a multi-part abbreviation is matched written together, as its consecutive parts that all
   end in a full stop (`т.е.` for `т.` `е.`, `т.ч.` for `в` `т.` `ч.`); an elision, which starts with
-  an apostrophe that the start wrapper cuts off, is matched together with that apostrophe.
+  an apostrophe that the start wrapper cuts off, is matched together with that apostrophe. Before
+  its lookups the key is tested against the signatures of the entries: a Bloom filter of 2048 bits
+  that the typographer computes once with its active rules (without allocation) from the length in
+  characters and the folded first and last characters of every entry of the check, the builder's
+  units included. Every comparison of section 7.1 keeps that signature, because folding is
+  idempotent, so a key whose signature is absent equals no entry and is not looked up; most words
+  cost one hash. The no-break rules read the short words, the particles and the month forms through
+  signatures of the same kind.
 - Check 5: hours have one or two digits, minutes and seconds two.
 - Check 7: operator tokens count in both forms (`→` as `->`), so a replacement keeps the kind.
 - Check 8: the kind is `Operator` when an operator character other than `_` stands inside,
@@ -597,7 +604,11 @@ piece. A span or a diagnostic that starts at a slot or a protected piece is repo
 - Time: lexer O(n); classifier O(n); seven phases, each O(n) with bounded context; quote matching
   with a stack, one push and one pop per quote; lookups in sorted static lists by binary search,
   O(log k) per fragment with k the longest list (hundreds); rendering O(n). Total O(n log k). There
-  is no recursion and no backtracking.
+  is no recursion and no backtracking. Abbreviations are sorted by their parts: `nbsp.abbreviations`
+  tries only the entries whose first part starts with the letter at its anchor (or with its
+  folding), a range found by binary search; check 0 compares a key with the abbreviation entries one
+  by one, but only when the key's signature is present (section 3.6), and the list holds tens of
+  entries.
 - Protection delimiters: fenced blocks are found in one pass over the input, other delimiters in one
   pass per window. If the closing delimiter of a pair is not found from position p, it is not found
   further on either, so the search for that pair stops. A hundred thousand unclosed backticks are

@@ -337,10 +337,16 @@ enum Class {
     Single(Kind),
 }
 
+/// `char::is_alphabetic`, with the basic Cyrillic letters (U+0400 to U+045F) answered without the
+/// tables of the standard library, which are slow to search.
+pub(crate) fn is_alphabetic(c: char) -> bool {
+    matches!(c, '\u{400}'..='\u{45f}') || c.is_alphabetic()
+}
+
 /// Whether a character that starts a cluster makes it a word cluster: a letter, or a digit of a
 /// system other than ASCII (any non-ASCII character with `char::is_numeric`, design section 5.2).
 fn is_word_char(c: char) -> bool {
-    c.is_alphabetic() || (c.is_numeric() && !c.is_ascii())
+    is_alphabetic(c) || (c.is_numeric() && !c.is_ascii())
 }
 
 /// The class of one cluster (design section 3.5).
@@ -575,7 +581,7 @@ fn lex_text(text: &str, clusters: &[(u32, u32)], out: &mut Vec<Tok>) {
         );
         let mut scripts = 0;
         if class == Class::Letter {
-            for c in cluster.chars().filter(|c| c.is_alphabetic()) {
+            for c in cluster.chars().filter(|&c| is_alphabetic(c)) {
                 scripts |= script_bit(c);
             }
         }
@@ -663,6 +669,18 @@ mod tests {
 
     fn reference(text: &str) -> Vec<usize> {
         text.grapheme_indices(true).map(|(i, _)| i).collect()
+    }
+
+    #[test]
+    fn the_fast_letter_test_is_that_of_the_standard_library() {
+        for c in (0..=0x10_ffff).filter_map(char::from_u32) {
+            assert_eq!(
+                is_alphabetic(c),
+                c.is_alphabetic(),
+                "{}",
+                c.escape_unicode()
+            );
+        }
     }
 
     /// The fast path gives the boundaries of the segmenter (design section 13.6).

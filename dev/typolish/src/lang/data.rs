@@ -787,6 +787,19 @@ impl<'a> Abbreviations<'a> {
     pub(crate) fn iter(self) -> impl Iterator<Item = (List<'a>, Bind)> + Clone {
         (0..self.len()).filter_map(move |i| self.get(i))
     }
+
+    /// The indices of the entries whose first part starts with `c`. The entries are sorted by
+    /// their parts (design section 7.6), so they form one range, found by binary search.
+    pub(crate) fn starting_with(self, c: char) -> core::ops::Range<usize> {
+        let first = |i: usize| {
+            self.get(i)
+                .and_then(|(parts, _)| parts.get(0))
+                .and_then(|part| part.chars().next())
+        };
+        let lo = partition(0, self.len(), |i| first(i) < Some(c));
+        let hi = partition(lo, self.len(), |i| first(i) <= Some(c));
+        lo..hi
+    }
 }
 
 impl PartialEq for Abbreviations<'_> {
@@ -1139,10 +1152,111 @@ fn is_valid_parts(parts: List<'_>) -> bool {
     !parts.is_empty() && parts.iter().all(is_valid_entry)
 }
 
+/// The word lists that `Signatures` covers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum WordList {
+    /// The entries of check 0 of the classifier (design section 3.6): units (the builder's
+    /// additions included), month forms, atom exceptions, elisions, and every abbreviation part or
+    /// run of parts that check 0 matches written together.
+    Dictionary,
+    /// The short words, the builder's additions included.
+    ShortWords,
+    /// The particles, the builder's additions included.
+    Particles,
+}
+
+/// The signatures of the entries of some word lists of a typographer: a Bloom filter of 2048
+/// bits over the list, the length in characters and the folded first and last characters of
+/// every entry. Every comparison of design section 7.1 (with case, with the first letter folded,
+/// or without case) keeps the signature, because folding is idempotent, so a key whose signature
+/// is absent equals no entry of the list and its lookups can be skipped. A present signature
+/// proves nothing. Computed once per typographer, with the active rules, without allocation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Signatures([u64; 32]);
+
+impl Signatures {
+    /// No signature.
+    pub(crate) const NONE: Signatures = Signatures([0; 32]);
+
+    /// The two bits of the signature of `chars` in `list`.
+    fn bits(list: WordList, mut chars: impl Iterator<Item = char>) -> [usize; 2] {
+        let first = chars.next();
+        let mut last = first;
+        let mut len = u64::from(first.is_some());
+        for c in chars {
+            last = Some(c);
+            len += 1;
+        }
+        let code = |c: Option<char>| u64::from(c.map_or(0, |c| u32::from(fold_char(c))));
+        let mut h = len ^ (code(first) << 8) ^ (code(last) << 32) ^ ((list as u64) << 60);
+        // The finalizer of SplitMix64.
+        h = (h ^ (h >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        h = (h ^ (h >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        h ^= h >> 31;
+        [(h & 0x7ff) as usize, ((h >> 11) & 0x7ff) as usize]
+    }
+
+    /// Adds the signature of an entry of `list`.
+    pub(crate) fn add(&mut self, list: WordList, chars: impl Iterator<Item = char>) {
+        for bit in Signatures::bits(list, chars) {
+            if let Some(word) = self.0.get_mut(bit / 64) {
+                *word |= 1 << (bit % 64);
+            }
+        }
+    }
+
+    /// Whether some entry of `list` may have the characters `chars`; `false` means that none has.
+    pub(crate) fn may_hold(&self, list: WordList, chars: impl Iterator<Item = char>) -> bool {
+        Signatures::bits(list, chars).iter().all(|&bit| {
+            self.0
+                .get(bit / 64)
+                .is_some_and(|word| word & (1 << (bit % 64)) != 0)
+        })
+    }
+
+    /// Adds the entries of a language's lists: check 0, short words and particles.
+    pub(crate) fn add_table(&mut self, data: &Table<'_>) {
+        let lists = [data.units, data.months, data.atom_exceptions, data.elisions];
+        for entry in lists.iter().flat_map(|list| list.iter()) {
+            self.add(WordList::Dictionary, entry.chars());
+        }
+        // The parts of an abbreviation as check 0 reads them: one part, or a run of parts that
+        // all end in a full stop.
+        for (parts, _) in data.abbreviations.iter() {
+            for i in 0..parts.len() {
+                for (n, part) in parts.iter().enumerate().skip(i) {
+                    if n > i
+                        && !(part.ends_with('.')
+                            && parts.get(n - 1).is_some_and(|p| p.ends_with('.')))
+                    {
+                        break;
+                    }
+                    let run = parts.iter().skip(i).take(n + 1 - i).flat_map(str::chars);
+                    self.add(WordList::Dictionary, run);
+                }
+            }
+        }
+        for word in data.short_words.iter() {
+            self.add(WordList::ShortWords, word.chars());
+        }
+        for word in data.particles.iter() {
+            self.add(WordList::Particles, word.chars());
+        }
+    }
+}
+
 /// The case folding of word lists (design section 7.1): the first character of
-/// `char::to_lowercase`.
+/// `char::to_lowercase`. ASCII and the basic Cyrillic letters are folded without the tables of the
+/// standard library, which are slow to search.
 pub(crate) fn fold_char(c: char) -> char {
-    c.to_lowercase().next().unwrap_or(c)
+    let shifted = |by: u32| char::from_u32(u32::from(c) + by).unwrap_or(c);
+    match c {
+        'A'..='Z' => c.to_ascii_lowercase(),
+        '\u{410}'..='\u{42f}' => shifted(0x20),
+        '\u{400}'..='\u{40f}' => shifted(0x50),
+        '\0'..='\x7f' | '\u{430}'..='\u{45f}' => c,
+        _ => c.to_lowercase().next().unwrap_or(c),
+    }
 }
 
 /// Whether each character equals its folding.

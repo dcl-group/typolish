@@ -14,9 +14,9 @@ use super::range::roman_value;
 use super::{
     Frag, FragKind, Triggers, folded_in, is_operand, is_word, percent_owner, percent_range,
 };
-use crate::engine::lex::{Glue, Kind, NO_FRAG, script_bit};
+use crate::engine::lex::{Glue, Kind, NO_FRAG, is_alphabetic, script_bit};
 use crate::engine::phase::{Cx, Edit, Edits, Match};
-use crate::lang::data::{Bind, List, MonthPosition, Script, fold_char};
+use crate::lang::data::{Bind, List, MonthPosition, Script, WordList, fold_char};
 use crate::{NarrowGlue, PercentSpacing, SlotKind};
 
 const SPACE: Triggers = Triggers::of(b" ");
@@ -215,7 +215,7 @@ fn letters(cx: &Cx<'_>, f: &Frag) -> (u8, usize) {
     cx.core(f)
         .filter(|&j| matches!(cx.kind(j), Some(Kind::Word(_))))
         .flat_map(|j| cx.visible(j, j))
-        .filter(|c| c.is_alphabetic())
+        .filter(|&c| is_alphabetic(c))
         .fold((0, 0), |(mask, n), c| (mask | script_bit(c), n + 1))
 }
 
@@ -347,7 +347,7 @@ fn year_like(cx: &Cx<'_>, f: &Frag) -> bool {
 /// (`и т.д…`). Returns the last token of the part.
 fn match_part(cx: &Cx<'_>, start: usize, part: &str, last: bool) -> Option<usize> {
     let mut chars = part.chars();
-    let single = chars.next().is_some_and(char::is_alphabetic) && chars.as_str() == ".";
+    let single = chars.next().is_some_and(is_alphabetic) && chars.as_str() == ".";
     let frag = cx.tok(start)?.frag;
     let mut rest = part;
     let mut first = true;
@@ -476,8 +476,29 @@ pub(crate) fn abbreviations(cx: &Cx<'_>, i: usize) -> Option<Match> {
         return None;
     }
     head(cx, i)?;
+    let list = cx.data.abbreviations;
+    // Only an entry whose first part starts with the first letter of the token, or with its
+    // folding (the relaxation of section 7.1), can match there. Such entries form a range of the
+    // sorted list each; they are read in the order of the list.
+    let ranges = match cx.visible(i, i).next() {
+        Some(c) => {
+            let exact = list.starting_with(c);
+            let folded = fold_char(c);
+            let relaxed = if folded == c {
+                0..0
+            } else {
+                list.starting_with(folded)
+            };
+            if relaxed.start < exact.start {
+                [relaxed, exact]
+            } else {
+                [exact, relaxed]
+            }
+        }
+        None => [0..list.len(), 0..0],
+    };
     let mut best: Option<(usize, Match)> = None;
-    for (parts, bind) in cx.data.abbreviations.iter() {
+    for (parts, bind) in ranges.into_iter().flatten().filter_map(|k| list.get(k)) {
         if best.as_ref().is_some_and(|(len, _)| *len >= parts.len()) {
             continue;
         }
@@ -661,7 +682,16 @@ fn day(cx: &Cx<'_>, f: &Frag) -> bool {
 fn month_ahead(cx: &Cx<'_>, f: &Frag) -> bool {
     let months = cx.data.months;
     let chars = cx.core_chars(f);
-    cased_in(months, chars.clone()) || (f.stop && cased_in(months, chars.chain(['.'])))
+    month_in(cx, months, chars.clone()) || (f.stop && month_in(cx, months, chars.chain(['.'])))
+}
+
+/// `cased_in` for the month forms, which are entries of check 0, so a key without their signature
+/// is no month form.
+fn month_in(cx: &Cx<'_>, months: List<'_>, key: impl Iterator<Item = char> + Clone) -> bool {
+    cx.t.compiled()
+        .signatures
+        .may_hold(WordList::Dictionary, key.clone())
+        && cased_in(months, key)
 }
 
 /// A month form that ends with token `l`: the core without a stop, or the core with a stop that
@@ -670,12 +700,12 @@ fn month_behind(cx: &Cx<'_>, f: &Frag, l: usize) -> bool {
     let months = cx.data.months;
     let chars = cx.core_chars(f);
     if cx.in_core(l) {
-        return cased_in(months, chars);
+        return month_in(cx, months, chars);
     }
     f.stop
         && cx.is(l, ".")
         && cx.core(f).last().and_then(|j| cx.next(j)) == Some(l)
-        && cased_in(months, chars.chain(['.']))
+        && month_in(cx, months, chars.chain(['.']))
 }
 
 /// A word of a list that ends in a full stop, read as the core with its stop.
@@ -709,10 +739,11 @@ pub(crate) fn dates(cx: &Cx<'_>, s: usize) -> Option<Match> {
         MonthPosition::BeforeDay | MonthPosition::Both
     );
     let left_core = cx.in_core(l);
+    // The conditions are pure; the cheap ones are read first.
     let found = (after_day && left_core && day(cx, fl) && month_ahead(cx, fr))
-        || (before_day && month_behind(cx, fl, l) && day(cx, fr))
-        || (left_core && year_like(cx, fl) && dotted_word(cx, fr, data.year_words))
-        || (left_core && century_like(cx, fl) && dotted_word(cx, fr, data.century_words));
+        || (before_day && day(cx, fr) && month_behind(cx, fl, l))
+        || (left_core && dotted_word(cx, fr, data.year_words) && year_like(cx, fl))
+        || (left_core && dotted_word(cx, fr, data.century_words) && century_like(cx, fl));
     found.then(|| glue_one(cx, s, Glue::NoBreak)).flatten()
 }
 
