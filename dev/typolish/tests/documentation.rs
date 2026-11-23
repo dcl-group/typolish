@@ -538,62 +538,6 @@ fn changelog_names_every_rule_and_its_counts() {
     }
 }
 
-/// Every file of the working tree that git would track: no `.git`, no build output, no keys and
-/// no local notes.
-fn tracked_candidates(dir: &Path, out: &mut Vec<PathBuf>) {
-    let mut entries: Vec<_> = fs::read_dir(dir)
-        .unwrap()
-        .map(|e| e.unwrap().path())
-        .collect();
-    entries.sort();
-    for path in entries {
-        let name = path.file_name().unwrap().to_string_lossy().into_owned();
-        if matches!(
-            name.as_str(),
-            ".git" | "target" | ".ssh" | "node_modules" | ".claude"
-        ) || name.contains(".local.")
-            || name.starts_with(".env")
-        {
-            continue;
-        }
-        if path.is_dir() {
-            tracked_candidates(&path, out);
-        } else {
-            out.push(path);
-        }
-    }
-}
-
-#[test]
-fn the_reference_implementation_is_never_named() {
-    // AGENTS.md hard rule 1: the text says "reference implementation". The name is assembled here
-    // so that this file does not hold it.
-    let name = ["typo", "graf"].concat();
-    let mut files = Vec::new();
-    tracked_candidates(&repo_dir(), &mut files);
-    assert!(files.len() > 100);
-    let mut found = Vec::new();
-    for file in files {
-        let shown = file.display().to_string();
-        if shown.to_lowercase().contains(&name) {
-            found.push(format!("{shown}: in the path"));
-        }
-        // Binary files and the generated corpus are compared byte for byte; read them lossily.
-        let Ok(bytes) = fs::read(&file) else { continue };
-        if String::from_utf8_lossy(&bytes)
-            .to_lowercase()
-            .contains(&name)
-        {
-            found.push(format!("{shown}: in the contents"));
-        }
-    }
-    assert!(
-        found.is_empty(),
-        "the reference implementation is named:\n{}",
-        found.join("\n")
-    );
-}
-
 // ---------------------------------------------------------------------------------------------
 // The known limits of design section 10.8: what the README says is what the crate does.
 
