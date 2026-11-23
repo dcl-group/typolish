@@ -402,12 +402,13 @@ checks read a core:
   7.6), single or doubled (`№`, `§§`, `¶`), has kind `Sign`: it is not frozen and not technical, and
   no check of the table runs on it; `nbsp.signs`, `nbsp.short-words` and the `LABEL` rule below read
   it.
-- A core that is a single `LegalMark` token in either form, alone or with one `Number` token
-  attached after it (`(c)`, `©`, `(r)`, `(tm)`, `(c)2026`), has kind `Word`: it is not frozen and
-  not technical, and no check of the table runs on it. Whether `(c)`, `(r)` or `(tm)` changes is
-  decided by `symbols.copyright` from the context (section 8.9: `вариант (c)` stays). A legal mark
-  attached to a word is a `Word` by check 23 (`Brand(tm)`, `f(c)`); one attached after a number or
-  anything else (`2026(c)`, `1001(c)`, `2020-2026(c)`) falls through to check 24.
+- A core that is a single `LegalMark` token in either form, alone or with one `Number` token or
+  `Number` slot attached after it (`(c)`, `©`, `(r)`, `(tm)`, `(c)2026`, `(c){n}`), has kind `Word`:
+  it is not frozen and not technical, and no check of the table runs on it. Whether `(c)`, `(r)` or
+  `(tm)` changes is decided by `symbols.copyright` from the context (section 8.9: `вариант (c)`
+  stays). A legal mark attached to a word is a `Word` by check 23 (`Brand(tm)`, `f(c)`); one
+  attached after a number or anything else (`2026(c)`, `1001(c)`, `2020-2026(c)`) falls through to
+  check 24. `symbols.copyright` reads no slot as a year (section 8.9), so `(c){n}` stays.
 - A `Number` slot inside a core counts as a number. A `Date` slot counts as a number only in check
   17 and only when both sides are `Date` slots (`{d1}-{d2}` is a `Range`); in every other position
   it counts as letters, so `{n}-{d}` and `5-{d}` are `Compound`. A `Number` slot and a literal

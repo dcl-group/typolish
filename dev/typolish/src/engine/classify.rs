@@ -482,9 +482,14 @@ fn special_case(data: &Table<'_>, core: &[Tok], units: &[Unit]) -> Option<FragKi
         {
             Some(FragKind::Sign)
         }
-        [Unit { u: U::Legal(_), .. }] | [Unit { u: U::Legal(_), .. }, Unit { u: U::Num, .. }] => {
-            Some(FragKind::Word)
-        }
+        [Unit { u: U::Legal(_), .. }]
+        | [
+            Unit { u: U::Legal(_), .. },
+            Unit {
+                u: U::Num | U::SlotNum,
+                ..
+            },
+        ] => Some(FragKind::Word),
         _ => None,
     }
 }

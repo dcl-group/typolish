@@ -402,6 +402,28 @@ fn label_and_sign_cores_with_slots_are_not_frozen() {
 }
 
 #[test]
+fn a_legal_mark_with_a_number_slot_is_not_frozen() {
+    // Design section 3.6: a `LegalMark` core with a `Number` slot attached is a word, not a
+    // technical fragment; `symbols.copyright` reads no slot as a year (design section 8.9).
+    for t in [
+        interface(),
+        Typographer::new(Language::RU_RU, RuleSet::PROSE),
+    ] {
+        for mark in ["(c)", "©"] {
+            let pieces = || vec![Piece::Text(mark), Piece::Slot("n", Slot::NUMBER)];
+            assert_eq!(report_records(&t, pieces()), [(1, 0..0, SLOT)], "{mark}");
+            assert_eq!(
+                t.typeset_template(pieces(), Output::Unicode).texts(),
+                [mark, ""]
+            );
+        }
+        // A word slot is no number: the core stays frozen.
+        let records = report_records(&t, vec![Piece::Text("(c)"), Piece::Slot("w", Slot::WORD)]);
+        assert!(records.iter().any(|r| r.0 == 0), "{records:?}");
+    }
+}
+
+#[test]
 fn glue_before_markup_and_a_slot_is_recorded_in_the_text_on_the_left() {
     // Design section 3.11: the record names the piece and the position that the text gets.
     for t in [
