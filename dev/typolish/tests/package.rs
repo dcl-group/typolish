@@ -684,7 +684,7 @@ fn package_lists_what_a_user_needs_and_nothing_else() {
     ] {
         assert!(list.iter().any(|l| l == file), "the package lacks {file}");
     }
-    // `exclude` of section 14.1.
+    // `exclude` of design section 14.5.
     for path in &list {
         assert!(!path.starts_with("tests/fixtures/unicode/"), "{path}");
         assert_ne!(path, "tests/fixtures/whatwg-entities.txt");
@@ -757,8 +757,19 @@ fn package_builds_from_its_own_tarball() {
         return;
     }
     // `cargo package` builds the tarball and then compiles it in a clean directory. It does not
-    // publish: `cargo publish` is the only command that does, and nothing here runs it.
-    let out = run_cargo(&["package", "--offline", "--allow-dirty"]);
+    // publish: `cargo publish` is the only command that does, and nothing here runs it. Both
+    // cargo runs of this test build in a directory of their own under the target directory of
+    // the tests.
+    let version = env!("CARGO_PKG_VERSION");
+    let target = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("package-check");
+    let target_arg = target.to_str().unwrap();
+    let out = run_cargo(&[
+        "package",
+        "--offline",
+        "--allow-dirty",
+        "--target-dir",
+        target_arg,
+    ]);
     assert!(
         out.status.success(),
         "cargo package failed:\n{}",
@@ -767,7 +778,7 @@ fn package_builds_from_its_own_tarball() {
     let stderr = lossy(&out.stderr);
     assert!(stderr.contains("Packaged"), "cargo package: {stderr}");
     assert!(
-        stderr.contains("Verifying typolish v0.1.0"),
+        stderr.contains(&format!("Verifying typolish v{version}")),
         "cargo package: {stderr}"
     );
     assert!(
@@ -775,14 +786,9 @@ fn package_builds_from_its_own_tarball() {
         "cargo package warns:\n{stderr}"
     );
     // The checks of this target and of `tests/documentation.rs` read the repository; in the
-    // unpacked package they skip what is not there and pass (design section 13.10). Cargo leaves
-    // the unpacked package where it verified it.
-    let unpacked = stderr
-        .split("Compiling typolish v0.1.0 (")
-        .nth(1)
-        .and_then(|rest| rest.split(')').next())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| panic!("no directory of the unpacked package in:\n{stderr}"));
+    // unpacked package they skip what is not there and pass (design section 13.10). Cargo
+    // verifies the package in `<target-dir>/package/<name>-<version>` and leaves it there.
+    let unpacked = target.join("package").join(format!("typolish-{version}"));
     assert!(unpacked.join("Cargo.toml.orig").is_file(), "{unpacked:?}");
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let out = Command::new(cargo)
@@ -793,6 +799,8 @@ fn package_builds_from_its_own_tarball() {
             "documentation",
             "--test",
             "package",
+            "--target-dir",
+            target_arg,
         ])
         .arg("--manifest-path")
         .arg(unpacked.join("Cargo.toml"))
