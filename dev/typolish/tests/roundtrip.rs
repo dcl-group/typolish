@@ -193,6 +193,14 @@ fn quotes_pairs_and_apostrophe_together() {
             ("the dogs’ bowl and James’s", "the dogs' bowl and James's"),
         ],
     );
+    // Embeddings and overrides are format characters too (design section 5.4).
+    for f in [
+        '\u{200e}', '\u{202a}', '\u{202b}', '\u{202c}', '\u{202d}', '\u{202e}',
+    ] {
+        let typeset = format!("“He said ‘the dogs{f}’ bowl is empty’”");
+        let plain = format!("\"He said \"the dogs{f}' bowl is empty\"\"");
+        run(&typographers, &[(&typeset, &plain)]);
+    }
     let mut ru_typographers = sets_of(&ru());
     ru_typographers.push(with_rules(
         &ru(),

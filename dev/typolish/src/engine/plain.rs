@@ -891,12 +891,10 @@ enum Near {
     Char(char),
 }
 
-/// Format characters, which are transparent to the context (design section 5.4).
+/// Format characters, ZWNJ and ZWJ, which are transparent to the context (design section 5.4):
+/// the same set as the lexer's.
 fn is_format(c: char) -> bool {
-    matches!(
-        c,
-        '\u{ad}' | '\u{200b}'..='\u{200f}' | '\u{2060}'..='\u{2064}' | '\u{2066}'..='\u{2069}' | '\u{feff}'
-    )
+    super::lex::is_format_char(c) || super::lex::is_joiner(c)
 }
 
 impl Flat<'_> {
