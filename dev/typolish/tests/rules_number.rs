@@ -444,6 +444,51 @@ fn times_after_a_label_number() {
 }
 
 #[test]
+fn times_after_a_label_number_split_by_a_transparent_token() {
+    // A label number split by a `Format` token or by markup is one number (design section 3.6):
+    // the sign comes in the first pass, as for `№10 x 5`, so the second pass changes nothing
+    // (design section 4.3).
+    for language in [Language::RU_RU, Language::EN_US] {
+        for mark in ['\u{AD}', '\u{200B}', '\u{2060}'] {
+            let split = |text: &str| text.replace('|', &mark.to_string());
+            let alone = only(language.clone(), &[TIMES]);
+            let prose = prose(language.clone());
+            let rows = [
+                (&alone, "№1|0 x 5", "№1|0 × 5"),
+                (&alone, "§1|0 x 5", "§1|0 × 5"),
+                (&alone, "№№1|0 x 5", "№№1|0 × 5"),
+                (&alone, "№1|0 % x 5", "№1|0 % × 5"),
+                // The leading zero is read across the mark too.
+                (&alone, "№0|10 x 5", "№0|10 x 5"),
+                (&prose, "№1|0 x 5", "№⍽1|0 × 5"),
+                (&prose, "№1|0 х 5", "№⍽1|0 × 5"),
+                (&prose, "§§1|0 x 5", "§§⍽1|0 × 5"),
+            ];
+            for (t, source, expected) in rows {
+                let (source, expected) = (split(source), split(expected));
+                check_exact(&format!("{language} {mark:?}"), t, (&source, &expected));
+                check_exact(
+                    &format!("{language} {mark:?} again"),
+                    t,
+                    (&expected, &expected),
+                );
+            }
+        }
+        // Markup between the digits of the label number is transparent the same way.
+        let t = prose(language.clone());
+        let out = t.typeset_template::<()>(
+            [
+                Piece::Text("№1"),
+                Piece::Markup("<b>"),
+                Piece::Text("0 x 5"),
+            ],
+            Output::Unicode,
+        );
+        assert_eq!(out.texts(), ["№\u{a0}1<b>0 × 5"], "{language}");
+    }
+}
+
+#[test]
 fn times_after_a_percentage_after_spaces() {
     // A percentage counts as a number for `number.times` in both of its forms (design sections 3.6,
     // 8.2 and 8.8), so the space that the percent setting inserts or removes changes nothing for

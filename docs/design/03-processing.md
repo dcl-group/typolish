@@ -387,7 +387,8 @@ checks read a core:
   check) between two number fragments (`10 x 5`: the fragments directly before and after it in the
   window have kind `Number`) has kind `Times`, in both forms, so the kind survives the replacement.
   On the left a sign of the language with a number of digits attached (`№10 x 5`; not a Roman
-  numeral, `№IV x 5` stays) counts as a number fragment too: it is the label number that
+  numeral, `№IV x 5` stays; `Number` tokens that only `Format` and `Markup` tokens separate are one
+  number, as in every check) counts as a number fragment too: it is the label number that
   `nbsp.signs` splits off (`№⍽10 x 5`), and a label counts as a number for `number.times` (section
   8.2), so the split changes nothing for the rule (invariant I2). A lone `%` or `‰` after spaces on
   the left is read with the number before the spaces (`10 % x 5` and `10⍽% x 5` read as `10% x 5`,

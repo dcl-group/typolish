@@ -1309,7 +1309,9 @@ fn sign_with_numeral(data: &Table<'_>, text: &str, u: &[Unit]) -> bool {
 /// Whether a fragment ends in a number for `lone_times`: a `Number` core, or a sign of the
 /// language with a number attached (`№10`), which `nbsp.signs` splits into the sign and a label
 /// number (invariant I2 of design section 4.3: a label counts as a number for `number.times` in
-/// both forms, design section 8.2).
+/// both forms, design section 8.2). `Number` tokens that only `Format` and `Markup` tokens
+/// separate are one number (`№1<SHY>0`), as in the units of the classifier (design sections 3.6
+/// and 5.4).
 fn ends_in_number(signs: &[char], tokens: &[Tok], f: &Frag) -> bool {
     if f.kind == FragKind::Number {
         return true;
@@ -1317,12 +1319,18 @@ fn ends_in_number(signs: &[char], tokens: &[Tok], f: &Frag) -> bool {
     if f.kind != FragKind::Word {
         return false;
     }
+    let mut last = None;
     let mut core = tokens
         .get(f.core_start as usize..f.core_end as usize)
         .unwrap_or_default()
         .iter()
         .filter(|t| !t.kind.is_transparent())
-        .map(|t| t.kind);
+        .map(|t| t.kind)
+        .filter(move |&k| {
+            let run = k == Kind::Number && last == Some(Kind::Number);
+            last = Some(k);
+            !run
+        });
     let sign = |k: Option<Kind>| matches!(k, Some(Kind::Punct(c)) if signs.contains(&c));
     let number = |k: Option<Kind>| matches!(k, Some(Kind::Number | Kind::Slot(SlotKind::Number)));
     let (first, second, third, fourth) = (core.next(), core.next(), core.next(), core.next());

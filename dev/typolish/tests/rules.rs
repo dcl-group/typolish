@@ -347,6 +347,8 @@ fn a_number_split_by_a_format_token_reads_as_one_number() {
         (Language::RU_RU, "10-20% - норма"),
         (Language::RU_RU, "Рост - 10–20%"),
         (Language::RU_RU, "5–10% - норма"),
+        (Language::RU_RU, "№10 x 5"),
+        (Language::RU_RU, "№10 % х 5"),
         (Language::EN_US, "10-20"),
         (Language::EN_US, "(c) 2026"),
         (Language::EN_US, "(c) 2025-2026"),
