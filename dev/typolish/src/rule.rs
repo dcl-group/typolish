@@ -398,7 +398,7 @@ impl Rule {
             Rule::SymbolsArrows => "a lone ->, <-, <-> between spaces to an arrow",
             Rule::SymbolsMath => "a lone >=, <=, != to ≥, ≤, ≠; +- to ±",
             Rule::EllipsisDots => {
-                "... at a word end or alone to an ellipsis; ?... and !... by the language"
+                "... attached to what precedes it or alone to an ellipsis; ?... and !... by the language"
             }
             Rule::EllipsisInner => "... at a word start or between words to an ellipsis",
             Rule::DashDialogue => {
