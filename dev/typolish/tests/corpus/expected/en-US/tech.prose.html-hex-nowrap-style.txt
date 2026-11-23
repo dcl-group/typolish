@@ -1,0 +1,108 @@
+Run `systemctl restart tls-server` <span style="white-space:nowrap">and check</span> <span style="white-space:nowrap">the status</span> <span style="white-space:nowrap">of the service.</span>
+<span style="white-space:nowrap">The configuration</span> file is in /etc/example/server.conf with permissions 0640.
+<span style="white-space:nowrap">The service</span> listens <span style="white-space:nowrap">on host:8080</span> <span style="white-space:nowrap">and accepts</span> connections from <span style="white-space:nowrap">the internal</span> network only.
+<span style="white-space:nowrap">To check</span> it, run curl http://localhost:8080/health <span style="white-space:nowrap">and wait</span> <span style="white-space:nowrap">for the answer.</span>
+<span style="white-space:nowrap">The database</span> address is db.example.internal, port 5432.
+Connection string: postgres://app@db.example.internal:5432/main with <span style="white-space:nowrap">a 10 s</span> timeout.
+Never use `rm -rf /` under any circumstances.
+The --force flag disables <span style="white-space:nowrap">the check,</span> and -v enables verbose output.
+<span style="white-space:nowrap">The command</span> `ls -la /var/log` lists all files, including hidden ones.
+<span style="white-space:nowrap">The build</span> version is 0.2.27, <span style="white-space:nowrap">the previous</span> one is v1.2.3-rc.1.
+<span style="white-space:nowrap">The release</span> <span style="white-space:nowrap">of 2026-11-21</span> is tagged v2.0.0.
+Request id: 550e8400-e29b-41d4-a716-446655440000.
+Checksum: d41d8cd98f00b204e9800998ecf8427e.
+<span style="white-space:nowrap">The token</span> &#x201C;SGVsbG8gd29ybGQ=&#x201D; is valid <span style="white-space:nowrap">for 1 hr.</span>
+<span style="white-space:nowrap">The host</span> example.com answers <span style="white-space:nowrap">on 10.0.0.1</span> and ::1.
+<span style="white-space:nowrap">The network</span> 10.0.0.0/8 is reserved <span style="white-space:nowrap">for internal</span> use.
+Ports 22,80,443 are open <span style="white-space:nowrap">to the outside.</span>
+<span style="white-space:nowrap">The range</span> 8000&#x2013;8100 is reserved <span style="white-space:nowrap">for service</span> use.
+<span style="white-space:nowrap">The environment</span> variable LOG_LEVEL accepts debug, info <span style="white-space:nowrap">and warn.</span>
+<span style="white-space:nowrap">The kv_lang</span> parameter selects <span style="white-space:nowrap">the language</span> <span style="white-space:nowrap">of messages.</span>
+<span style="white-space:nowrap">The names</span> tls-server <span style="white-space:nowrap">and agent-ca</span> refer <span style="white-space:nowrap">to internal</span> services.
+Send mail <span style="white-space:nowrap">to admin@example.com</span> <span style="white-space:nowrap">and a copy</span> <span style="white-space:nowrap">to ops@example.com.</span>
+<span style="white-space:nowrap">The log</span> is written to /var/log/example/app.log <span style="white-space:nowrap">and rotated</span> daily.
+Log line: 2026-11-21T10:15:30Z INFO service start completed.
+Log line: 2026-11-21T10:15:31Z WARN disk is 91% full.
+Log line: 2026-11-21T10:15:32Z ERROR could <span style="white-space:nowrap">not open</span> /data/queue.
+<span style="white-space:nowrap">If you</span> see <span style="white-space:nowrap">the error</span> &#x201C;connection refused&#x201D;, check <span style="white-space:nowrap">the port.</span>
+<span style="white-space:nowrap">If you</span> see <span style="white-space:nowrap">the error</span> `connection refused`, check <span style="white-space:nowrap">the port.</span>
+<span style="white-space:nowrap">The timeout=30</span> parameter sets <span style="white-space:nowrap">the wait</span> time <span style="white-space:nowrap">in seconds.</span>
+<span style="white-space:nowrap">The key=&quot;value&quot;</span> form is written without spaces around <span style="white-space:nowrap">the equals</span> sign.
+<span style="white-space:nowrap">The entry</span> PATH=/usr/local/bin:/usr/bin:/bin is added <span style="white-space:nowrap">to the profile.</span>
+<span style="white-space:nowrap">The command</span> `git log --oneline -n 5` shows <span style="white-space:nowrap">the last</span> five commits.
+<span style="white-space:nowrap">The command</span> `npm test -- --watch` runs <span style="white-space:nowrap">the tests</span> <span style="white-space:nowrap">in watch</span> mode.
+Piping through `tar -cf - -C dir | gzip` needs no temporary files.
+<span style="white-space:nowrap">The script</span> `deploy.sh` accepts <span style="white-space:nowrap">the arguments</span> --env and --dry-run.
+<span style="white-space:nowrap">For debugging,</span> set `RUST_LOG=debug` before starting.
+Dependency versions: serde 1.0.200, tokio 1.40.0, clap 4.5.1.
+<span style="white-space:nowrap">The minimum</span> compiler version is 1.100, checked <span style="white-space:nowrap">in the build.</span>
+<span style="white-space:nowrap">The image</span> example/app:1.4.2 was built from <span style="white-space:nowrap">the main</span> branch.
+<span style="white-space:nowrap">The container</span> uses <span style="white-space:nowrap">512 MB</span> <span style="white-space:nowrap">of memory</span> <span style="white-space:nowrap">and 2</span> processor cores.
+<span style="white-space:nowrap">The request</span> size limit is <span style="white-space:nowrap">16 MB,</span> <span style="white-space:nowrap">the field</span> count limit is 100.
+<span style="white-space:nowrap">The connection</span> timeout is <span style="white-space:nowrap">5 s,</span> with <span style="white-space:nowrap">at most</span> 3 retries.
+<span style="white-space:nowrap">The load</span> was 1200 requests <span style="white-space:nowrap">per second</span> with 40 connections.
+Latency <span style="white-space:nowrap">at the 99th</span> percentile is <span style="white-space:nowrap">120 ms,</span> <span style="white-space:nowrap">at the median</span> <span style="white-space:nowrap">15 ms.</span>
+<span style="white-space:nowrap">A 200</span> response means success, 404 &#x2014; <span style="white-space:nowrap">not found,</span> 500 &#x2014; server error.
+<span style="white-space:nowrap">The Content-Type:</span> application/json header is required <span style="white-space:nowrap">for all</span> requests.
+<span style="white-space:nowrap">The address</span> https://example.com/docs/guide.html leads <span style="white-space:nowrap">to the guide.</span>
+<span style="white-space:nowrap">The page</span> https://example.com/a?b=c&amp;d=e holds query parameters.
+<span style="white-space:nowrap">The schema</span> is in /srv/example/schema.sql <span style="white-space:nowrap">and is</span> versioned.
+<span style="white-space:nowrap">For migrations,</span> use `migrate up` from <span style="white-space:nowrap">the directory</span> /srv/example.
+After <span style="white-space:nowrap">the migration</span> <span style="white-space:nowrap">the users</span> table has 12 columns.
+<span style="white-space:nowrap">The index</span> users_email_idx speeds <span style="white-space:nowrap">up lookups</span> <span style="white-space:nowrap">by email.</span>
+<span style="white-space:nowrap">The query</span> SELECT id, name FROM users WHERE id = 5 returns one row.
+<span style="white-space:nowrap">The query</span> with <span style="white-space:nowrap">the condition</span> id &#x2265; 10 returns all rows from <span style="white-space:nowrap">the tenth</span> on.
+<span style="white-space:nowrap">If a</span> &#x2260; b, <span style="white-space:nowrap">the records</span> are considered different.
+<span style="white-space:nowrap">The output</span> of&#xA0;`echo $HOME` depends <span style="white-space:nowrap">on the user.</span>
+<span style="white-space:nowrap">The directory</span> ~/.config/example/ holds user settings.
+<span style="white-space:nowrap">The file</span> ~/.env must have permissions 0600 <span style="white-space:nowrap">and stay</span> out <span style="white-space:nowrap">of the repository.</span>
+Secrets are <span style="white-space:nowrap">not stored</span> <span style="white-space:nowrap">in code&#x2014;only</span> <span style="white-space:nowrap">in the environment.</span>
+<span style="white-space:nowrap">A backup</span> is made with <span style="white-space:nowrap">the command</span> `pg_dump main &gt; backup.sql`.
+Restore with `psql main &lt; backup.sql`, then check <span style="white-space:nowrap">the tables.</span>
+<span style="white-space:nowrap">The backup</span> is about <span style="white-space:nowrap">3.5 GB,</span> <span style="white-space:nowrap">and it</span> takes <span style="white-space:nowrap">20 min.</span> <span style="white-space:nowrap">to create.</span>
+Encryption is <span style="white-space:nowrap">on by default,</span> with <span style="white-space:nowrap">a key</span> length <span style="white-space:nowrap">of 256</span> bits.
+<span style="white-space:nowrap">The certificate</span> <span style="white-space:nowrap">for example.com</span> is valid until 2027-01-15.
+Certificate fingerprint: ab:cd:ef:01:23:45:67:89.
+Port 443 is open <span style="white-space:nowrap">to everyone,</span> port 22 only <span style="white-space:nowrap">to 10.0.0.0/8.</span>
+Firewall rule: allow tcp from 10.0.0.0/8 <span style="white-space:nowrap">to any</span> port 22.
+<span style="white-space:nowrap">The dns</span> service answers queries <span style="white-space:nowrap">on udp/53</span> <span style="white-space:nowrap">and tcp/53.</span>
+Check: dig example.com +short must return <span style="white-space:nowrap">an address.</span>
+<span style="white-space:nowrap">The response</span> time is given <span style="white-space:nowrap">in milliseconds,</span> <span style="white-space:nowrap">for example</span> <span style="white-space:nowrap">250 ms.</span>
+Service status: active (running) since 10:15.
+Load: processor 45%, memory 62%, disk 91%.
+<span style="white-space:nowrap">The load</span> peaks <span style="white-space:nowrap">at 9:00&#x2013;11:00</span> <span style="white-space:nowrap">on workdays.</span>
+Backups run <span style="white-space:nowrap">at 3:00&#x2013;4:00.</span>
+<span style="white-space:nowrap">The metric</span> http_requests_total grows with every request.
+<span style="white-space:nowrap">The metric</span> db_pool_size shows <span style="white-space:nowrap">the size</span> <span style="white-space:nowrap">of the connection</span> pool.
+Alerts go <span style="white-space:nowrap">to the channel</span> ops-alerts, <span style="white-space:nowrap">and the person</span> <span style="white-space:nowrap">on duty</span> is responsible.
+<span style="white-space:nowrap">The test</span> `cargo test --all` passes <span style="white-space:nowrap">in 40 s.</span>
+<span style="white-space:nowrap">A build</span> takes about <span style="white-space:nowrap">5 min.</span> <span style="white-space:nowrap">on a clean</span> machine.
+<span style="white-space:nowrap">The build</span> cache lives in ~/.cache/example-targets/main <span style="white-space:nowrap">and is</span> <span style="white-space:nowrap">not backed</span> up.
+<span style="white-space:nowrap">The file</span> Cargo.toml describes <span style="white-space:nowrap">the package,</span> <span style="white-space:nowrap">and Cargo.lock</span> pins <span style="white-space:nowrap">the versions.</span>
+<span style="white-space:nowrap">The license</span> MIT <span style="white-space:nowrap">OR Apache-2.0</span> is stated <span style="white-space:nowrap">in Cargo.toml.</span>
+Error E0425 means that <span style="white-space:nowrap">the name</span> is <span style="white-space:nowrap">not found</span> <span style="white-space:nowrap">in this</span> scope.
+<span style="white-space:nowrap">The warning</span> unused_variables can be switched <span style="white-space:nowrap">off with</span> <span style="white-space:nowrap">an attribute.</span>
+<span style="white-space:nowrap">The expression</span> 1 + 2 * 3 equals 7, <span style="white-space:nowrap">and (1</span> + 2) * 3 equals 9.
+<span style="white-space:nowrap">The condition</span> x &gt; 5 &amp;&amp; y &lt; 10 holds <span style="white-space:nowrap">for x</span> = 6 <span style="white-space:nowrap">and y</span> = 9.
+Regular expressions are <span style="white-space:nowrap">not used</span> here <span style="white-space:nowrap">at all.</span>
+Date format: YYYY-MM-DD, <span style="white-space:nowrap">for example</span> 2026-11-21.
+Time format: HH:MM:SS, <span style="white-space:nowrap">for example</span> 10:15:30.
+<span style="white-space:nowrap">The user</span> id is <span style="white-space:nowrap">a number</span> from 1 <span style="white-space:nowrap">to 65535.</span>
+<span style="white-space:nowrap">A user</span> name consists <span style="white-space:nowrap">of Latin</span> letters, digits <span style="white-space:nowrap">and the</span> _ sign.
+<span style="white-space:nowrap">A password</span> is <span style="white-space:nowrap">at least</span> 12 characters long <span style="white-space:nowrap">and differs</span> from <span style="white-space:nowrap">the name.</span>
+<span style="white-space:nowrap">To sign</span> in, use <span style="white-space:nowrap">the login</span> user_01 <span style="white-space:nowrap">and a one-time</span> password.
+<span style="white-space:nowrap">A session</span> lives <span style="white-space:nowrap">for 30 min.</span> <span style="white-space:nowrap">and is</span> extended with every request.
+<span style="white-space:nowrap">The cookie</span> is named session_id <span style="white-space:nowrap">and is</span> sent over https only.
+<span style="white-space:nowrap">The header</span> Authorization: Bearer &lt;token&gt; passes <span style="white-space:nowrap">the access</span> token.
+<span style="white-space:nowrap">The template</span> &lt;name&gt; is replaced with <span style="white-space:nowrap">the user</span> name <span style="white-space:nowrap">on sending.</span>
+<span style="white-space:nowrap">The password</span> hash is stored as $2b$12$abcdefghijklmnopqrstuv.
+<span style="white-space:nowrap">A link</span> like example.com/a-b-c is <span style="white-space:nowrap">not changed</span> <span style="white-space:nowrap">by processing.</span>
+<span style="white-space:nowrap">The address</span> ftp://files.example.com/pub/ is readable.
+<span style="white-space:nowrap">The file</span> archive.tar.gz weighs <span style="white-space:nowrap">1.2 GB</span> <span style="white-space:nowrap">and lies</span> in /srv/files.
+Unpack it with `tar -xzf archive.tar.gz` into <span style="white-space:nowrap">an empty</span> directory.
+<span style="white-space:nowrap">The directory</span> build/ <span style="white-space:nowrap">and the file</span> .env stay out <span style="white-space:nowrap">of the repository.</span>
+<span style="white-space:nowrap">The exclusion</span> list is in .gitignore next <span style="white-space:nowrap">to README.md.</span>
+<span style="white-space:nowrap">The configuration</span> is made <span style="white-space:nowrap">of 3</span> files: base.toml, dev.toml, prod.toml.
+<span style="white-space:nowrap">The last</span> file has priority, <span style="white-space:nowrap">and the others</span> are overridden.
+Program output: &#x201C;ok&#x201D; &#x2014; all good, &#x201C;fail&#x201D; &#x2014; there are errors.
+Return code 0 means success, any <span style="white-space:nowrap">other&#x2014;an error.</span>

@@ -1,0 +1,108 @@
+Запустите `systemctl restart tls-server` <span style="white-space:nowrap">и проверьте</span> статус службы.
+Файл конфигурации лежит в /etc/example/server.conf, права <span style="white-space:nowrap">на него</span> 0640.
+Сервис слушает host:8080 <span style="white-space:nowrap">и принимает</span> соединения только <span style="white-space:nowrap">из внутренней</span> сети.
+<span style="white-space:nowrap">Для проверки</span> выполните curl http://localhost:8080/health <span style="white-space:nowrap">и дождитесь</span> ответа.
+Адрес базы <span style="white-space:nowrap">данных &#x2014;</span> db.example.internal, порт 5432.
+Подключение: postgres://app@db.example.internal:5432/main <span style="white-space:nowrap">с таймаутом</span> <span style="white-space:nowrap">10 с.</span>
+<span style="white-space:nowrap">Не используйте</span> `rm -rf /` <span style="white-space:nowrap">ни при каких</span> условиях.
+Флаг --force отключает проверку, а -v включает подробный вывод.
+Команда `ls -la /var/log` покажет все файлы, включая скрытые.
+Версия <span style="white-space:nowrap">сборки &#x2014;</span> 0.2.27, <span style="white-space:nowrap">предыдущая &#x2014;</span> v1.2.3-rc.1.
+Релиз <span style="white-space:nowrap">от 2026-11-21</span> помечен тегом v2.0.0.
+Идентификатор запроса: 550e8400-e29b-41d4-a716-446655440000.
+Контрольная сумма: d41d8cd98f00b204e9800998ecf8427e.
+Токен &#xAB;SGVsbG8gd29ybGQ=&#xBB; действителен <span style="white-space:nowrap">1 ч.</span>
+Хост example.com отвечает <span style="white-space:nowrap">на 10.0.0.1</span> и ::1.
+Сеть 10.0.0.0/8 зарезервирована <span style="white-space:nowrap">для внутренних</span> нужд.
+Список портов: 22,80,443 открыты наружу.
+Диапазон 8000-8100 отдан <span style="white-space:nowrap">под служебные</span> нужды.
+Переменная окружения LOG_LEVEL принимает значения debug, info <span style="white-space:nowrap">и warn.</span>
+Параметр kv_lang отвечает <span style="white-space:nowrap">за язык</span> сообщений.
+Имена tls-server <span style="white-space:nowrap">и agent-ca</span> относятся <span style="white-space:nowrap">к внутренним</span> службам.
+Письма отправляйте <span style="white-space:nowrap">на admin@example.com,</span> <span style="white-space:nowrap">копию &#x2014;</span> <span style="white-space:nowrap">на ops@example.com.</span>
+Журнал пишется в /var/log/example/app.log, ротация раз <span style="white-space:nowrap">в сутки.</span>
+Строка журнала: 2026-11-21T10:15:30Z INFO запуск службы завершён.
+Строка журнала: 2026-11-21T10:15:31Z WARN диск заполнен <span style="white-space:nowrap">на 91%.</span>
+Строка журнала: 2026-11-21T10:15:32Z ERROR <span style="white-space:nowrap">не удалось</span> открыть /data/queue.
+<span style="white-space:nowrap">Если видите</span> ошибку &#xAB;connection refused&#xBB;, проверьте порт.
+<span style="white-space:nowrap">Если видите</span> ошибку `connection refused`, проверьте порт.
+Параметр timeout=30 задаёт время ожидания <span style="white-space:nowrap">в секундах.</span>
+Значение key=&quot;value&quot; записывается <span style="white-space:nowrap">без пробелов</span> вокруг знака равенства.
+Запись PATH=/usr/local/bin:/usr/bin:/bin добавляется <span style="white-space:nowrap">в профиль.</span>
+Команда `git log --oneline -n 5` покажет пять последних коммитов.
+Команда `npm test -- --watch` запускает тесты <span style="white-space:nowrap">в режиме</span> наблюдения.
+Передача данных через `tar -cf - -C dir | gzip` <span style="white-space:nowrap">не требует</span> временных файлов.
+Скрипт `deploy.sh` принимает аргументы --env и --dry-run.
+<span style="white-space:nowrap">Для отладки</span> включите `RUST_LOG=debug` перед запуском.
+Версии зависимостей: serde 1.0.200, tokio 1.40.0, clap 4.5.1.
+Минимальная версия <span style="white-space:nowrap">компилятора &#x2014;</span> 1.100, проверяется <span style="white-space:nowrap">в сборке.</span>
+Образ example/app:1.4.2 собран <span style="white-space:nowrap">из ветки</span> main.
+Контейнер использует <span style="white-space:nowrap">512 МБ</span> памяти <span style="white-space:nowrap">и 2</span> ядра процессора.
+Ограничение <span style="white-space:nowrap">на размер</span> <span style="white-space:nowrap">запроса &#x2014;</span> <span style="white-space:nowrap">16 МБ,</span> <span style="white-space:nowrap">на число</span> <span style="white-space:nowrap">полей &#x2014;</span> 100.
+Таймаут соединения равен <span style="white-space:nowrap">5 с.,</span> повторных попыток <span style="white-space:nowrap">не более</span> 3.
+Нагрузка составила 1200 запросов <span style="white-space:nowrap">в секунду</span> <span style="white-space:nowrap">при 40</span> соединениях.
+Задержка <span style="white-space:nowrap">на 99</span> <span style="white-space:nowrap">процентиле &#x2014;</span> <span style="white-space:nowrap">120 мс,</span> <span style="white-space:nowrap">на медиане &#x2014;</span> <span style="white-space:nowrap">15 мс.</span>
+Ответ 200 означает успех, <span style="white-space:nowrap">404 &#x2014;</span> ресурс <span style="white-space:nowrap">не найден,</span> <span style="white-space:nowrap">500 &#x2014;</span> ошибка сервера.
+Заголовок Content-Type: application/json обязателен <span style="white-space:nowrap">для всех</span> запросов.
+Адрес https://example.com/docs/guide.html ведёт <span style="white-space:nowrap">к руководству.</span>
+Страница https://example.com/a?b=c&amp;d=e содержит параметры запроса.
+Схема данных находится в /srv/example/schema.sql <span style="white-space:nowrap">и версионируется.</span>
+<span style="white-space:nowrap">Для миграций</span> используйте `migrate up` <span style="white-space:nowrap">из каталога</span> /srv/example.
+После миграции таблица users содержит 12 столбцов.
+Индекс users_email_idx ускоряет поиск <span style="white-space:nowrap">по адресу</span> почты.
+Запрос SELECT id, name FROM users WHERE id = 5 возвращает одну строку.
+Запрос <span style="white-space:nowrap">с условием</span> id &gt;= 10 вернёт все строки, начиная <span style="white-space:nowrap">с десятой.</span>
+<span style="white-space:nowrap">Если a</span> != b, <span style="white-space:nowrap">то записи</span> считаются разными.
+Вывод `echo $HOME` зависит <span style="white-space:nowrap">от пользователя.</span>
+Каталог ~/.config/example/ хранит пользовательские настройки.
+Файл ~/.env должен иметь права 0600 <span style="white-space:nowrap">и не попадать</span> <span style="white-space:nowrap">в репозиторий.</span>
+Секреты <span style="white-space:nowrap">не хранятся</span> <span style="white-space:nowrap">в коде &#x2014;</span> только <span style="white-space:nowrap">в окружении.</span>
+Резервная копия делается командой `pg_dump main &gt; backup.sql`.
+Восстановление: `psql main &lt; backup.sql`, затем проверка таблиц.
+Размер <span style="white-space:nowrap">копии &#x2014;</span> около <span style="white-space:nowrap">3,5 ГБ,</span> время <span style="white-space:nowrap">создания &#x2014;</span> <span style="white-space:nowrap">20 мин.</span>
+Шифрование включено <span style="white-space:nowrap">по умолчанию,</span> ключ длиной <span style="white-space:nowrap">256 бит.</span>
+Сертификат example.com действует <span style="white-space:nowrap">до 2027-01-15.</span>
+Отпечаток сертификата: ab:cd:ef:01:23:45:67:89.
+Порт 443 открыт <span style="white-space:nowrap">для всех,</span> порт <span style="white-space:nowrap">22 &#x2014;</span> только <span style="white-space:nowrap">для 10.0.0.0/8.</span>
+Правило брандмауэра: allow tcp from 10.0.0.0/8 to any port 22.
+Служба dns отвечает <span style="white-space:nowrap">на запросы</span> <span style="white-space:nowrap">по udp/53</span> <span style="white-space:nowrap">и tcp/53.</span>
+Проверка: dig example.com +short должна вернуть адрес.
+Время ответа указано <span style="white-space:nowrap">в миллисекундах,</span> например <span style="white-space:nowrap">250 мс.</span>
+Статус службы: active (running) <span style="white-space:nowrap">с 10:15.</span>
+Нагрузка <span style="white-space:nowrap">на процессор:</span> 45%, память: 62%, диск: 91%.
+Пик нагрузки приходится <span style="white-space:nowrap">на 9:00-11:00</span> <span style="white-space:nowrap">по рабочим</span> дням.
+<span style="white-space:nowrap">В 3:00-4:00</span> выполняется резервное копирование.
+Метрика http_requests_total растёт <span style="white-space:nowrap">при каждом</span> запросе.
+Метрика db_pool_size показывает размер пула соединений.
+Оповещения уходят <span style="white-space:nowrap">в канал</span> ops-alerts, <span style="white-space:nowrap">ответственный &#x2014;</span> дежурный.
+Тест `cargo test --all` проходит <span style="white-space:nowrap">за 40 с.</span>
+Сборка занимает около <span style="white-space:nowrap">5 мин.</span> <span style="white-space:nowrap">на чистой</span> машине.
+Кэш сборки хранится в ~/.cache/example-targets/main <span style="white-space:nowrap">и не бэкапится.</span>
+Файл Cargo.toml описывает пакет, <span style="white-space:nowrap">а Cargo.lock</span> фиксирует версии.
+Лицензия MIT OR Apache-2.0 указана <span style="white-space:nowrap">в Cargo.toml.</span>
+Ошибка E0425 означает, что имя <span style="white-space:nowrap">не найдено</span> <span style="white-space:nowrap">в этой</span> области.
+Предупреждение unused_variables можно отключить атрибутом.
+Выражение 1 + 2 * 3 равно 7, <span style="white-space:nowrap">а (1</span> + 2) * 3 равно 9.
+Условие x &gt; 5 &amp;&amp; y &lt; 10 истинно <span style="white-space:nowrap">при x</span> = 6 <span style="white-space:nowrap">и y</span> = 9.
+Регулярные выражения здесь <span style="white-space:nowrap">не используются</span> совсем.
+Формат даты: YYYY-MM-DD, например 2026-11-21.
+Формат времени: HH:MM:SS, например 10:15:30.
+Идентификатор <span style="white-space:nowrap">пользователя &#x2014;</span> число <span style="white-space:nowrap">от 1</span> <span style="white-space:nowrap">до 65535.</span>
+Имя пользователя состоит <span style="white-space:nowrap">из латинских</span> букв, цифр <span style="white-space:nowrap">и знака</span> _.
+Пароль <span style="white-space:nowrap">не короче</span> 12 символов <span style="white-space:nowrap">и не совпадает</span> <span style="white-space:nowrap">с именем.</span>
+<span style="white-space:nowrap">Для входа</span> используйте логин user_01 <span style="white-space:nowrap">и одноразовый</span> пароль.
+Сессия живёт <span style="white-space:nowrap">30 мин.</span> <span style="white-space:nowrap">и продлевается</span> <span style="white-space:nowrap">при каждом</span> запросе.
+Файл cookie называется session_id <span style="white-space:nowrap">и передаётся</span> только <span style="white-space:nowrap">по https.</span>
+Заголовок Authorization: Bearer &lt;token&gt; передаёт токен доступа.
+Шаблон &lt;name&gt; заменяется <span style="white-space:nowrap">на имя</span> пользователя <span style="white-space:nowrap">при отправке.</span>
+Хеш пароля хранится <span style="white-space:nowrap">в виде</span> $2b$12$abcdefghijklmnopqrstuv.
+Ссылка вида example.com/a-b-c <span style="white-space:nowrap">не меняется</span> <span style="white-space:nowrap">при обработке.</span>
+Адрес ftp://files.example.com/pub/ доступен <span style="white-space:nowrap">для чтения.</span>
+Файл archive.tar.gz весит <span style="white-space:nowrap">1,2 ГБ</span> <span style="white-space:nowrap">и лежит</span> в /srv/files.
+Распакуйте его командой `tar -xzf archive.tar.gz` <span style="white-space:nowrap">в пустой</span> каталог.
+Каталог build/ <span style="white-space:nowrap">и файл</span> .env <span style="white-space:nowrap">не попадают</span> <span style="white-space:nowrap">в репозиторий.</span>
+Список исключений лежит в .gitignore рядом <span style="white-space:nowrap">с README.md.</span>
+Конфигурация собрана <span style="white-space:nowrap">из 3</span> файлов: base.toml, dev.toml, prod.toml.
+Приоритет <span style="white-space:nowrap">у последнего</span> файла, остальные перекрываются.
+Вывод программы: <span style="white-space:nowrap">&#xAB;ok&#xBB; &#x2014;</span> всё хорошо, <span style="white-space:nowrap">&#xAB;fail&#xBB; &#x2014;</span> есть ошибки.
+Код возврата 0 означает успех, любой <span style="white-space:nowrap">другой &#x2014;</span> ошибку.

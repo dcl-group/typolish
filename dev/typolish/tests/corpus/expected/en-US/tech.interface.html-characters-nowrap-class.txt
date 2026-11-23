@@ -1,0 +1,108 @@
+Run `systemctl restart tls-server` <span class="nowrap">and check</span> <span class="nowrap">the status</span> <span class="nowrap">of the service.</span>
+<span class="nowrap">The configuration</span> file is in /etc/example/server.conf with permissions 0640.
+<span class="nowrap">The service</span> listens <span class="nowrap">on host:8080</span> <span class="nowrap">and accepts</span> connections from <span class="nowrap">the internal</span> network only.
+<span class="nowrap">To check</span> it, run curl http://localhost:8080/health <span class="nowrap">and wait</span> <span class="nowrap">for the answer.</span>
+<span class="nowrap">The database</span> address is db.example.internal, port 5432.
+Connection string: postgres://app@db.example.internal:5432/main with <span class="nowrap">a 10 s</span> timeout.
+Never use `rm -rf /` under any circumstances.
+The --force flag disables <span class="nowrap">the check,</span> and -v enables verbose output.
+<span class="nowrap">The command</span> `ls -la /var/log` lists all files, including hidden ones.
+<span class="nowrap">The build</span> version is 0.2.27, <span class="nowrap">the previous</span> one is v1.2.3-rc.1.
+<span class="nowrap">The release</span> <span class="nowrap">of 2026-11-21</span> is tagged v2.0.0.
+Request id: 550e8400-e29b-41d4-a716-446655440000.
+Checksum: d41d8cd98f00b204e9800998ecf8427e.
+<span class="nowrap">The token</span> “SGVsbG8gd29ybGQ=” is valid <span class="nowrap">for 1 hr.</span>
+<span class="nowrap">The host</span> example.com answers <span class="nowrap">on 10.0.0.1</span> and ::1.
+<span class="nowrap">The network</span> 10.0.0.0/8 is reserved <span class="nowrap">for internal</span> use.
+Ports 22,80,443 are open <span class="nowrap">to the outside.</span>
+<span class="nowrap">The range</span> 8000-8100 is reserved <span class="nowrap">for service</span> use.
+<span class="nowrap">The environment</span> variable LOG_LEVEL accepts debug, info <span class="nowrap">and warn.</span>
+<span class="nowrap">The kv_lang</span> parameter selects <span class="nowrap">the language</span> <span class="nowrap">of messages.</span>
+<span class="nowrap">The names</span> tls-server <span class="nowrap">and agent-ca</span> refer <span class="nowrap">to internal</span> services.
+Send mail <span class="nowrap">to admin@example.com</span> <span class="nowrap">and a copy</span> <span class="nowrap">to ops@example.com.</span>
+<span class="nowrap">The log</span> is written to /var/log/example/app.log <span class="nowrap">and rotated</span> daily.
+Log line: 2026-11-21T10:15:30Z INFO service start completed.
+Log line: 2026-11-21T10:15:31Z WARN disk is 91% full.
+Log line: 2026-11-21T10:15:32Z ERROR could <span class="nowrap">not open</span> /data/queue.
+<span class="nowrap">If you</span> see <span class="nowrap">the error</span> “connection refused”, check <span class="nowrap">the port.</span>
+<span class="nowrap">If you</span> see <span class="nowrap">the error</span> `connection refused`, check <span class="nowrap">the port.</span>
+<span class="nowrap">The timeout=30</span> parameter sets <span class="nowrap">the wait</span> time <span class="nowrap">in seconds.</span>
+<span class="nowrap">The key=&quot;value&quot;</span> form is written without spaces around <span class="nowrap">the equals</span> sign.
+<span class="nowrap">The entry</span> PATH=/usr/local/bin:/usr/bin:/bin is added <span class="nowrap">to the profile.</span>
+<span class="nowrap">The command</span> `git log --oneline -n 5` shows <span class="nowrap">the last</span> five commits.
+<span class="nowrap">The command</span> `npm test -- --watch` runs <span class="nowrap">the tests</span> <span class="nowrap">in watch</span> mode.
+Piping through `tar -cf - -C dir | gzip` needs no temporary files.
+<span class="nowrap">The script</span> `deploy.sh` accepts <span class="nowrap">the arguments</span> --env and --dry-run.
+<span class="nowrap">For debugging,</span> set `RUST_LOG=debug` before starting.
+Dependency versions: serde 1.0.200, tokio 1.40.0, clap 4.5.1.
+<span class="nowrap">The minimum</span> compiler version is 1.100, checked <span class="nowrap">in the build.</span>
+<span class="nowrap">The image</span> example/app:1.4.2 was built from <span class="nowrap">the main</span> branch.
+<span class="nowrap">The container</span> uses <span class="nowrap">512 MB</span> <span class="nowrap">of memory</span> <span class="nowrap">and 2</span> processor cores.
+<span class="nowrap">The request</span> size limit is <span class="nowrap">16 MB,</span> <span class="nowrap">the field</span> count limit is 100.
+<span class="nowrap">The connection</span> timeout is <span class="nowrap">5 s,</span> with <span class="nowrap">at most</span> 3 retries.
+<span class="nowrap">The load</span> was 1200 requests <span class="nowrap">per second</span> with 40 connections.
+Latency <span class="nowrap">at the 99th</span> percentile is <span class="nowrap">120 ms,</span> <span class="nowrap">at the median</span> <span class="nowrap">15 ms.</span>
+<span class="nowrap">A 200</span> response means success, 404 — <span class="nowrap">not found,</span> 500 — server error.
+<span class="nowrap">The Content-Type:</span> application/json header is required <span class="nowrap">for all</span> requests.
+<span class="nowrap">The address</span> https://example.com/docs/guide.html leads <span class="nowrap">to the guide.</span>
+<span class="nowrap">The page</span> https://example.com/a?b=c&amp;d=e holds query parameters.
+<span class="nowrap">The schema</span> is in /srv/example/schema.sql <span class="nowrap">and is</span> versioned.
+<span class="nowrap">For migrations,</span> use `migrate up` from <span class="nowrap">the directory</span> /srv/example.
+After <span class="nowrap">the migration</span> <span class="nowrap">the users</span> table has 12 columns.
+<span class="nowrap">The index</span> users_email_idx speeds <span class="nowrap">up lookups</span> <span class="nowrap">by email.</span>
+<span class="nowrap">The query</span> SELECT id, name FROM users WHERE id = 5 returns one row.
+<span class="nowrap">The query</span> with <span class="nowrap">the condition</span> id &gt;= 10 returns all rows from <span class="nowrap">the tenth</span> on.
+<span class="nowrap">If a</span> != b, <span class="nowrap">the records</span> are considered different.
+<span class="nowrap">The output</span> of `echo $HOME` depends <span class="nowrap">on the user.</span>
+<span class="nowrap">The directory</span> ~/.config/example/ holds user settings.
+<span class="nowrap">The file</span> ~/.env must have permissions 0600 <span class="nowrap">and stay</span> out <span class="nowrap">of the repository.</span>
+Secrets are <span class="nowrap">not stored</span> <span class="nowrap">in code—only</span> <span class="nowrap">in the environment.</span>
+<span class="nowrap">A backup</span> is made with <span class="nowrap">the command</span> `pg_dump main &gt; backup.sql`.
+Restore with `psql main &lt; backup.sql`, then check <span class="nowrap">the tables.</span>
+<span class="nowrap">The backup</span> is about <span class="nowrap">3.5 GB,</span> <span class="nowrap">and it</span> takes <span class="nowrap">20 min.</span> <span class="nowrap">to create.</span>
+Encryption is <span class="nowrap">on by default,</span> with <span class="nowrap">a key</span> length <span class="nowrap">of 256</span> bits.
+<span class="nowrap">The certificate</span> <span class="nowrap">for example.com</span> is valid until 2027-01-15.
+Certificate fingerprint: ab:cd:ef:01:23:45:67:89.
+Port 443 is open <span class="nowrap">to everyone,</span> port 22 only <span class="nowrap">to 10.0.0.0/8.</span>
+Firewall rule: allow tcp from 10.0.0.0/8 <span class="nowrap">to any</span> port 22.
+<span class="nowrap">The dns</span> service answers queries <span class="nowrap">on udp/53</span> <span class="nowrap">and tcp/53.</span>
+Check: dig example.com +short must return <span class="nowrap">an address.</span>
+<span class="nowrap">The response</span> time is given <span class="nowrap">in milliseconds,</span> <span class="nowrap">for example</span> <span class="nowrap">250 ms.</span>
+Service status: active (running) since 10:15.
+Load: processor 45%, memory 62%, disk 91%.
+<span class="nowrap">The load</span> peaks <span class="nowrap">at 9:00-11:00</span> <span class="nowrap">on workdays.</span>
+Backups run <span class="nowrap">at 3:00-4:00.</span>
+<span class="nowrap">The metric</span> http_requests_total grows with every request.
+<span class="nowrap">The metric</span> db_pool_size shows <span class="nowrap">the size</span> <span class="nowrap">of the connection</span> pool.
+Alerts go <span class="nowrap">to the channel</span> ops-alerts, <span class="nowrap">and the person</span> <span class="nowrap">on duty</span> is responsible.
+<span class="nowrap">The test</span> `cargo test --all` passes <span class="nowrap">in 40 s.</span>
+<span class="nowrap">A build</span> takes about <span class="nowrap">5 min.</span> <span class="nowrap">on a clean</span> machine.
+<span class="nowrap">The build</span> cache lives in ~/.cache/example-targets/main <span class="nowrap">and is</span> <span class="nowrap">not backed</span> up.
+<span class="nowrap">The file</span> Cargo.toml describes <span class="nowrap">the package,</span> <span class="nowrap">and Cargo.lock</span> pins <span class="nowrap">the versions.</span>
+<span class="nowrap">The license</span> MIT <span class="nowrap">OR Apache-2.0</span> is stated <span class="nowrap">in Cargo.toml.</span>
+Error E0425 means that <span class="nowrap">the name</span> is <span class="nowrap">not found</span> <span class="nowrap">in this</span> scope.
+<span class="nowrap">The warning</span> unused_variables can be switched <span class="nowrap">off with</span> <span class="nowrap">an attribute.</span>
+<span class="nowrap">The expression</span> 1 + 2 * 3 equals 7, <span class="nowrap">and (1</span> + 2) * 3 equals 9.
+<span class="nowrap">The condition</span> x &gt; 5 &amp;&amp; y &lt; 10 holds <span class="nowrap">for x</span> = 6 <span class="nowrap">and y</span> = 9.
+Regular expressions are <span class="nowrap">not used</span> here <span class="nowrap">at all.</span>
+Date format: YYYY-MM-DD, <span class="nowrap">for example</span> 2026-11-21.
+Time format: HH:MM:SS, <span class="nowrap">for example</span> 10:15:30.
+<span class="nowrap">The user</span> id is <span class="nowrap">a number</span> from 1 <span class="nowrap">to 65535.</span>
+<span class="nowrap">A user</span> name consists <span class="nowrap">of Latin</span> letters, digits <span class="nowrap">and the</span> _ sign.
+<span class="nowrap">A password</span> is <span class="nowrap">at least</span> 12 characters long <span class="nowrap">and differs</span> from <span class="nowrap">the name.</span>
+<span class="nowrap">To sign</span> in, use <span class="nowrap">the login</span> user_01 <span class="nowrap">and a one-time</span> password.
+<span class="nowrap">A session</span> lives <span class="nowrap">for 30 min.</span> <span class="nowrap">and is</span> extended with every request.
+<span class="nowrap">The cookie</span> is named session_id <span class="nowrap">and is</span> sent over https only.
+<span class="nowrap">The header</span> Authorization: Bearer &lt;token&gt; passes <span class="nowrap">the access</span> token.
+<span class="nowrap">The template</span> &lt;name&gt; is replaced with <span class="nowrap">the user</span> name <span class="nowrap">on sending.</span>
+<span class="nowrap">The password</span> hash is stored as $2b$12$abcdefghijklmnopqrstuv.
+<span class="nowrap">A link</span> like example.com/a-b-c is <span class="nowrap">not changed</span> <span class="nowrap">by processing.</span>
+<span class="nowrap">The address</span> ftp://files.example.com/pub/ is readable.
+<span class="nowrap">The file</span> archive.tar.gz weighs <span class="nowrap">1.2 GB</span> <span class="nowrap">and lies</span> in /srv/files.
+Unpack it with `tar -xzf archive.tar.gz` into <span class="nowrap">an empty</span> directory.
+<span class="nowrap">The directory</span> build/ <span class="nowrap">and the file</span> .env stay out <span class="nowrap">of the repository.</span>
+<span class="nowrap">The exclusion</span> list is in .gitignore next <span class="nowrap">to README.md.</span>
+<span class="nowrap">The configuration</span> is made <span class="nowrap">of 3</span> files: base.toml, dev.toml, prod.toml.
+<span class="nowrap">The last</span> file has priority, <span class="nowrap">and the others</span> are overridden.
+Program output: “ok” — all good, “fail” — there are errors.
+Return code 0 means success, any <span class="nowrap">other—an error.</span>

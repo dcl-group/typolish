@@ -1,0 +1,108 @@
+Запустите `systemctl restart tls-server` <span class="nowrap">и проверьте</span> статус службы.
+Файл конфигурации лежит в /etc/example/server.conf, права <span class="nowrap">на него</span> 0640.
+Сервис слушает host:8080 <span class="nowrap">и принимает</span> соединения только <span class="nowrap">из внутренней</span> сети.
+<span class="nowrap">Для проверки</span> выполните curl http://localhost:8080/health <span class="nowrap">и дождитесь</span> ответа.
+Адрес базы <span class="nowrap">данных —</span> db.example.internal, порт 5432.
+Подключение: postgres://app@db.example.internal:5432/main <span class="nowrap">с таймаутом</span> <span class="nowrap">10 с.</span>
+<span class="nowrap">Не используйте</span> `rm -rf /` <span class="nowrap">ни при каких</span> условиях.
+Флаг --force отключает проверку, а -v включает подробный вывод.
+Команда `ls -la /var/log` покажет все файлы, включая скрытые.
+Версия <span class="nowrap">сборки —</span> 0.2.27, <span class="nowrap">предыдущая —</span> v1.2.3-rc.1.
+Релиз <span class="nowrap">от 2026-11-21</span> помечен тегом v2.0.0.
+Идентификатор запроса: 550e8400-e29b-41d4-a716-446655440000.
+Контрольная сумма: d41d8cd98f00b204e9800998ecf8427e.
+Токен «SGVsbG8gd29ybGQ=» действителен <span class="nowrap">1 ч.</span>
+Хост example.com отвечает <span class="nowrap">на 10.0.0.1</span> и ::1.
+Сеть 10.0.0.0/8 зарезервирована <span class="nowrap">для внутренних</span> нужд.
+Список портов: 22,80,443 открыты наружу.
+Диапазон 8000-8100 отдан <span class="nowrap">под служебные</span> нужды.
+Переменная окружения LOG_LEVEL принимает значения debug, info <span class="nowrap">и warn.</span>
+Параметр kv_lang отвечает <span class="nowrap">за язык</span> сообщений.
+Имена tls-server <span class="nowrap">и agent-ca</span> относятся <span class="nowrap">к внутренним</span> службам.
+Письма отправляйте <span class="nowrap">на admin@example.com,</span> <span class="nowrap">копию —</span> <span class="nowrap">на ops@example.com.</span>
+Журнал пишется в /var/log/example/app.log, ротация раз <span class="nowrap">в сутки.</span>
+Строка журнала: 2026-11-21T10:15:30Z INFO запуск службы завершён.
+Строка журнала: 2026-11-21T10:15:31Z WARN диск заполнен <span class="nowrap">на 91%.</span>
+Строка журнала: 2026-11-21T10:15:32Z ERROR <span class="nowrap">не удалось</span> открыть /data/queue.
+<span class="nowrap">Если видите</span> ошибку «connection refused», проверьте порт.
+<span class="nowrap">Если видите</span> ошибку `connection refused`, проверьте порт.
+Параметр timeout=30 задаёт время ожидания <span class="nowrap">в секундах.</span>
+Значение key=&quot;value&quot; записывается <span class="nowrap">без пробелов</span> вокруг знака равенства.
+Запись PATH=/usr/local/bin:/usr/bin:/bin добавляется <span class="nowrap">в профиль.</span>
+Команда `git log --oneline -n 5` покажет пять последних коммитов.
+Команда `npm test -- --watch` запускает тесты <span class="nowrap">в режиме</span> наблюдения.
+Передача данных через `tar -cf - -C dir | gzip` <span class="nowrap">не требует</span> временных файлов.
+Скрипт `deploy.sh` принимает аргументы --env и --dry-run.
+<span class="nowrap">Для отладки</span> включите `RUST_LOG=debug` перед запуском.
+Версии зависимостей: serde 1.0.200, tokio 1.40.0, clap 4.5.1.
+Минимальная версия <span class="nowrap">компилятора —</span> 1.100, проверяется <span class="nowrap">в сборке.</span>
+Образ example/app:1.4.2 собран <span class="nowrap">из ветки</span> main.
+Контейнер использует <span class="nowrap">512 МБ</span> памяти <span class="nowrap">и 2</span> ядра процессора.
+Ограничение <span class="nowrap">на размер</span> <span class="nowrap">запроса —</span> <span class="nowrap">16 МБ,</span> <span class="nowrap">на число</span> <span class="nowrap">полей —</span> 100.
+Таймаут соединения равен <span class="nowrap">5 с.,</span> повторных попыток <span class="nowrap">не более</span> 3.
+Нагрузка составила 1200 запросов <span class="nowrap">в секунду</span> <span class="nowrap">при 40</span> соединениях.
+Задержка <span class="nowrap">на 99</span> <span class="nowrap">процентиле —</span> <span class="nowrap">120 мс,</span> <span class="nowrap">на медиане —</span> <span class="nowrap">15 мс.</span>
+Ответ 200 означает успех, <span class="nowrap">404 —</span> ресурс <span class="nowrap">не найден,</span> <span class="nowrap">500 —</span> ошибка сервера.
+Заголовок Content-Type: application/json обязателен <span class="nowrap">для всех</span> запросов.
+Адрес https://example.com/docs/guide.html ведёт <span class="nowrap">к руководству.</span>
+Страница https://example.com/a?b=c&amp;d=e содержит параметры запроса.
+Схема данных находится в /srv/example/schema.sql <span class="nowrap">и версионируется.</span>
+<span class="nowrap">Для миграций</span> используйте `migrate up` <span class="nowrap">из каталога</span> /srv/example.
+После миграции таблица users содержит 12 столбцов.
+Индекс users_email_idx ускоряет поиск <span class="nowrap">по адресу</span> почты.
+Запрос SELECT id, name FROM users WHERE id = 5 возвращает одну строку.
+Запрос <span class="nowrap">с условием</span> id &gt;= 10 вернёт все строки, начиная <span class="nowrap">с десятой.</span>
+<span class="nowrap">Если a</span> != b, <span class="nowrap">то записи</span> считаются разными.
+Вывод `echo $HOME` зависит <span class="nowrap">от пользователя.</span>
+Каталог ~/.config/example/ хранит пользовательские настройки.
+Файл ~/.env должен иметь права 0600 <span class="nowrap">и не попадать</span> <span class="nowrap">в репозиторий.</span>
+Секреты <span class="nowrap">не хранятся</span> <span class="nowrap">в коде —</span> только <span class="nowrap">в окружении.</span>
+Резервная копия делается командой `pg_dump main &gt; backup.sql`.
+Восстановление: `psql main &lt; backup.sql`, затем проверка таблиц.
+Размер <span class="nowrap">копии —</span> около <span class="nowrap">3,5 ГБ,</span> время <span class="nowrap">создания —</span> <span class="nowrap">20 мин.</span>
+Шифрование включено <span class="nowrap">по умолчанию,</span> ключ длиной <span class="nowrap">256 бит.</span>
+Сертификат example.com действует <span class="nowrap">до 2027-01-15.</span>
+Отпечаток сертификата: ab:cd:ef:01:23:45:67:89.
+Порт 443 открыт <span class="nowrap">для всех,</span> порт <span class="nowrap">22 —</span> только <span class="nowrap">для 10.0.0.0/8.</span>
+Правило брандмауэра: allow tcp from 10.0.0.0/8 to any port 22.
+Служба dns отвечает <span class="nowrap">на запросы</span> <span class="nowrap">по udp/53</span> <span class="nowrap">и tcp/53.</span>
+Проверка: dig example.com +short должна вернуть адрес.
+Время ответа указано <span class="nowrap">в миллисекундах,</span> например <span class="nowrap">250 мс.</span>
+Статус службы: active (running) <span class="nowrap">с 10:15.</span>
+Нагрузка <span class="nowrap">на процессор:</span> 45%, память: 62%, диск: 91%.
+Пик нагрузки приходится <span class="nowrap">на 9:00-11:00</span> <span class="nowrap">по рабочим</span> дням.
+<span class="nowrap">В 3:00-4:00</span> выполняется резервное копирование.
+Метрика http_requests_total растёт <span class="nowrap">при каждом</span> запросе.
+Метрика db_pool_size показывает размер пула соединений.
+Оповещения уходят <span class="nowrap">в канал</span> ops-alerts, <span class="nowrap">ответственный —</span> дежурный.
+Тест `cargo test --all` проходит <span class="nowrap">за 40 с.</span>
+Сборка занимает около <span class="nowrap">5 мин.</span> <span class="nowrap">на чистой</span> машине.
+Кэш сборки хранится в ~/.cache/example-targets/main <span class="nowrap">и не бэкапится.</span>
+Файл Cargo.toml описывает пакет, <span class="nowrap">а Cargo.lock</span> фиксирует версии.
+Лицензия MIT OR Apache-2.0 указана <span class="nowrap">в Cargo.toml.</span>
+Ошибка E0425 означает, что имя <span class="nowrap">не найдено</span> <span class="nowrap">в этой</span> области.
+Предупреждение unused_variables можно отключить атрибутом.
+Выражение 1 + 2 * 3 равно 7, <span class="nowrap">а (1</span> + 2) * 3 равно 9.
+Условие x &gt; 5 &amp;&amp; y &lt; 10 истинно <span class="nowrap">при x</span> = 6 <span class="nowrap">и y</span> = 9.
+Регулярные выражения здесь <span class="nowrap">не используются</span> совсем.
+Формат даты: YYYY-MM-DD, например 2026-11-21.
+Формат времени: HH:MM:SS, например 10:15:30.
+Идентификатор <span class="nowrap">пользователя —</span> число <span class="nowrap">от 1</span> <span class="nowrap">до 65535.</span>
+Имя пользователя состоит <span class="nowrap">из латинских</span> букв, цифр <span class="nowrap">и знака</span> _.
+Пароль <span class="nowrap">не короче</span> 12 символов <span class="nowrap">и не совпадает</span> <span class="nowrap">с именем.</span>
+<span class="nowrap">Для входа</span> используйте логин user_01 <span class="nowrap">и одноразовый</span> пароль.
+Сессия живёт <span class="nowrap">30 мин.</span> <span class="nowrap">и продлевается</span> <span class="nowrap">при каждом</span> запросе.
+Файл cookie называется session_id <span class="nowrap">и передаётся</span> только <span class="nowrap">по https.</span>
+Заголовок Authorization: Bearer &lt;token&gt; передаёт токен доступа.
+Шаблон &lt;name&gt; заменяется <span class="nowrap">на имя</span> пользователя <span class="nowrap">при отправке.</span>
+Хеш пароля хранится <span class="nowrap">в виде</span> $2b$12$abcdefghijklmnopqrstuv.
+Ссылка вида example.com/a-b-c <span class="nowrap">не меняется</span> <span class="nowrap">при обработке.</span>
+Адрес ftp://files.example.com/pub/ доступен <span class="nowrap">для чтения.</span>
+Файл archive.tar.gz весит <span class="nowrap">1,2 ГБ</span> <span class="nowrap">и лежит</span> в /srv/files.
+Распакуйте его командой `tar -xzf archive.tar.gz` <span class="nowrap">в пустой</span> каталог.
+Каталог build/ <span class="nowrap">и файл</span> .env <span class="nowrap">не попадают</span> <span class="nowrap">в репозиторий.</span>
+Список исключений лежит в .gitignore рядом <span class="nowrap">с README.md.</span>
+Конфигурация собрана <span class="nowrap">из 3</span> файлов: base.toml, dev.toml, prod.toml.
+Приоритет <span class="nowrap">у последнего</span> файла, остальные перекрываются.
+Вывод программы: <span class="nowrap">«ok» —</span> всё хорошо, <span class="nowrap">«fail» —</span> есть ошибки.
+Код возврата 0 означает успех, любой <span class="nowrap">другой —</span> ошибку.

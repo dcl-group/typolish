@@ -1,0 +1,160 @@
+files-found = Found {n:number} files.
+files-deleted = Deleted {n:number} files <span style="white-space:nowrap">in {t:number} s.</span>
+files-size = Size: <span style="white-space:nowrap">{n:number} MB.</span>
+files-size-range = Size from {a:number} <span style="white-space:nowrap">to {b:number} MB.</span>
+files-count-range = Found {a:number}&#x2013;{b:number} files.
+items-days = {n:number} days left.
+items-hours = {n:number} hrs. <span style="white-space:nowrap">{m:number} min.</span> have passed.
+items-percent = {n:number}% <span style="white-space:nowrap">of the file</span> is loaded.
+items-percent-spaced = <span style="white-space:nowrap">The disk</span> is <span style="white-space:nowrap">{n:number} %</span> full.
+items-temperature = Temperature: -{n:number} degrees.
+user-greeting = Hello, {name:word}!
+user-quoted = User &#x201C;{name:word}&#x201D; has signed in.
+user-quoted-other = <span style="white-space:nowrap">The value</span> &#x201C;{x:other}&#x201D; is <span style="white-space:nowrap">not allowed.</span>
+user-group = Could <span style="white-space:nowrap">not find</span> <span style="white-space:nowrap">the group</span> &#x201C;{group:word}&#x201D; <span style="white-space:nowrap">in the directory.</span>
+user-nested = He replied: &#x201C;Read <span style="white-space:nowrap">the section</span> &#x2018;Getting Started&#x2019; <span style="white-space:nowrap">in full&#x201D;.</span>
+user-owner = <span style="white-space:nowrap">The owner</span> is {name:word}.
+user-role = {name:word} &#x2014; project administrator.
+user-possessive = {name:word}&#x2019;s profile
+user-last-login = Last sign-in: {d:date}.
+user-created = Account created <span style="white-space:nowrap">on {d:date}.</span>
+user-period = Period from {a:date} <span style="white-space:nowrap">to {b:date}.</span>
+user-period-range = Report <span style="white-space:nowrap">for {a:date}&#x2013;{b:date}.</span>
+user-initials = Author: <span style="white-space:nowrap">J. R. R. Tolkien.</span>
+user-title = Contact <span style="white-space:nowrap">Mr. Smith</span> <span style="white-space:nowrap">or Ms. Jones</span> <span style="white-space:nowrap">for details.</span>
+doc-number = Document <span style="white-space:nowrap">No. {n:number}</span> was accepted.
+doc-section = See <span style="white-space:nowrap">§ {n:number}</span> <span style="white-space:nowrap">of these</span> rules.
+doc-page = Page {n:number} <span style="white-space:nowrap">of {m:number}.</span>
+doc-page-short = Pg. {n:number}.
+doc-and-so-on = Files, folders, etc. will be deleted.
+doc-see = See <span style="white-space:nowrap">the &#x201C;Settings&#x201D;</span> section <span style="white-space:nowrap">for details.</span>
+doc-year = <span style="white-space:nowrap">The version</span> was released <span style="white-space:nowrap">in {y:number}.</span>
+doc-ellipsis = Loading&#x2026;
+doc-ellipsis-mid = Please wait&#x2026; checking.
+doc-question-ellipsis = Are you sure?&#x2026;
+dialog-confirm = Delete &#x201C;{name:word}&#x201D;? This action cannot be undone.
+dialog-save = Save changes <span style="white-space:nowrap">to &#x201C;{name:word}&#x201D;?</span>
+dialog-close = Close <span style="white-space:nowrap">the window</span> without saving?
+dialog-yes = Yes, delete
+dialog-no = No, keep
+dialog-cancel = Cancel
+dialog-retry = Retry <span style="white-space:nowrap">in {n:number} s.</span>
+dialog-wait = Please wait&#x2026;
+dialog-done = Done!
+error-not-found = File &#x201C;{name:word}&#x201D; was <span style="white-space:nowrap">not found.</span>
+error-denied = Access denied: no permission <span style="white-space:nowrap">for the folder</span> &#x201C;{name:word}&#x201D;.
+error-timeout = Timed out <span style="white-space:nowrap">({n:number} s.).</span>
+error-network = Could <span style="white-space:nowrap">not connect</span> <span style="white-space:nowrap">to the server</span> {host:word}.
+error-port = Port {n:number} is already <span style="white-space:nowrap">in use</span> <span style="white-space:nowrap">by another</span> program.
+error-disk = <span style="white-space:nowrap">Not enough</span> disk space: <span style="white-space:nowrap">{n:number} MB</span> needed, <span style="white-space:nowrap">{m:number} MB</span> available.
+error-quota = Quota exceeded: {n:number} <span style="white-space:nowrap">of {m:number}</span> used.
+error-format = Invalid date format: expected {d:date}.
+error-unknown = Unknown error&#x2014;contact your administrator.
+error-code = Error code: {x:other}.
+error-code-long = Error {x:other} occurred, please try again later.
+error-line = Error <span style="white-space:nowrap">on line</span> {n:number}: {x:other}.
+error-expected = Expected <span style="white-space:nowrap">a value</span> from {a:number} <span style="white-space:nowrap">to {b:number},</span> got {c:number}.
+error-minimum = <span style="white-space:nowrap">The minimum</span> value is {n:number}.
+error-maximum = <span style="white-space:nowrap">The maximum</span> value is {n:number}.
+error-length = <span style="white-space:nowrap">The length</span> must <span style="white-space:nowrap">not exceed</span> {n:number} characters.
+error-empty = <span style="white-space:nowrap">The field</span> cannot be empty.
+error-cannot = <span style="white-space:nowrap">The system</span> can&#x2019;t open this file.
+error-wont = It won&#x2019;t take long.
+status-online = {n:number} users online.
+status-offline = Offline since {d:date}.
+status-progress = Completed {n:number} <span style="white-space:nowrap">of {m:number}.</span>
+status-eta = About <span style="white-space:nowrap">{n:number} min.</span> left.
+status-speed = Speed: <span style="white-space:nowrap">{n:number} KB/s.</span>
+status-memory = <span style="white-space:nowrap">{n:number} MB</span> <span style="white-space:nowrap">of memory</span> <span style="white-space:nowrap">in use.</span>
+status-ready = <span style="white-space:nowrap">The system</span> is ready.
+status-waiting = Waiting <span style="white-space:nowrap">for a reply</span> from {host:word}&#x2026;
+status-sync = Syncing with &#x201C;{name:word}&#x201D;&#x2026;
+status-paused = Paused: <span style="white-space:nowrap">the download</span> will continue later.
+menu-file = File
+menu-edit = Edit
+menu-view = View
+menu-help = Help
+menu-settings = Settings&#x2026;
+menu-open = Open&#x2026;
+menu-save-as = Save as&#x2026;
+menu-exit = Exit
+menu-recent = Recent files
+settings-language = Interface language
+settings-theme = Theme
+settings-notifications = Notify me about new messages
+settings-interval = Check every <span style="white-space:nowrap">{n:number} min.</span>
+settings-limit = No more than {n:number} files <span style="white-space:nowrap">a day.</span>
+settings-reset = Reset all settings?
+settings-saved = Settings saved.
+settings-path = Download folder: {x:other}
+mail-subject = Order <span style="white-space:nowrap">No. {n:number}</span> confirmed
+mail-greeting = Hello, {name:word}!
+mail-body = Your order <span style="white-space:nowrap">No. {n:number}</span> for ${m:number} has been accepted.
+mail-delivery = Delivery <span style="white-space:nowrap">on {d:date}</span> between 10:00&#x2013;18:00.
+mail-delivery-range = Delivery within {a:number}&#x2013;{b:number} days.
+mail-phone = Support phone: <span style="white-space:nowrap">+1 212 555-0100.</span>
+mail-signature = Best regards, <span style="white-space:nowrap">the project</span> team.
+mail-unsubscribe = <span style="white-space:nowrap">To unsubscribe,</span> click &#x201C;Unsubscribe&#x201D; <span style="white-space:nowrap">at the bottom</span> <span style="white-space:nowrap">of the email.</span>
+shop-price = Price: ${n:number}.
+shop-price-discount = Price with <span style="white-space:nowrap">a {n:number}%</span> discount: ${m:number}.
+shop-in-stock = {n:number} pcs. <span style="white-space:nowrap">in stock.</span>
+shop-delivery-free = Free delivery over ${n:number}.
+shop-weight = Weight: <span style="white-space:nowrap">{n:number} kg.</span>
+shop-size = Size: {a:number}&#xD7;{b:number} cm.
+shop-size-spaced = Size: {a:number} &#xD7; <span style="white-space:nowrap">{b:number} cm.</span>
+shop-cart = {n:number} items <span style="white-space:nowrap">in the cart,</span> ${m:number} total.
+shop-empty = Your cart is empty.
+shop-promo = Promo code &#x201C;{x:other}&#x201D; applied.
+shop-promo-invalid = Promo code &#x201C;{x:other}&#x201D; is <span style="white-space:nowrap">not valid.</span>
+shop-review = Review from {name:word}: &#x201C;{x:other}&#x201D;.
+shop-rating = Rating: {n:number} out <span style="white-space:nowrap">of 5.</span>
+shop-order-date = Order <span style="white-space:nowrap">of {d:date}.</span>
+shop-return = Returns are accepted within {n:number} days <span style="white-space:nowrap">of purchase.</span>
+report-title = Report <span style="white-space:nowrap">for {d:date}</span>
+report-total = Total: {n:number}.
+report-average = {n:number} <span style="white-space:nowrap">per day</span> <span style="white-space:nowrap">on average.</span>
+report-change = Change over <span style="white-space:nowrap">the period:</span> +{n:number}%.
+report-decrease = Decrease: -{n:number}%.
+report-compare = {a:number} versus {b:number}.
+report-top = <span style="white-space:nowrap">The first</span> {n:number} records.
+report-empty = No data <span style="white-space:nowrap">for the selected</span> period.
+report-export = Export <span style="white-space:nowrap">to the file</span> &#x201C;{name:word}&#x201D; is complete.
+report-columns = Columns: {x:other}.
+log-started = <span style="white-space:nowrap">The service</span> started <span style="white-space:nowrap">at {d:date}.</span>
+log-stopped = <span style="white-space:nowrap">The service</span> stopped: {x:other}.
+log-connect = Connection <span style="white-space:nowrap">to {host:word}</span> established.
+log-retry = Retry {n:number} <span style="white-space:nowrap">of {m:number}.</span>
+log-fail = <span style="white-space:nowrap">The operation</span> &#x201C;{name:word}&#x201D; failed: {x:other}.
+log-ok = <span style="white-space:nowrap">The operation</span> &#x201C;{name:word}&#x201D; took <span style="white-space:nowrap">{n:number} ms.</span>
+help-intro = <span style="white-space:nowrap">To get</span> started, choose &#x201C;File&#x201D; &#x2014; &#x201C;Open&#x201D; from <span style="white-space:nowrap">the menu.</span>
+help-hint = Tip: press F1 <span style="white-space:nowrap">to open</span> <span style="white-space:nowrap">the help.</span>
+help-contact = Write to {x:other} with any questions.
+help-version = Version {x:other} <span style="white-space:nowrap">of {d:date}.</span>
+help-license = Distributed under <span style="white-space:nowrap">an open</span> license.
+help-more = See <span style="white-space:nowrap">the page</span> &#x201C;{name:word}&#x201D; <span style="white-space:nowrap">for more.</span>
+help-steps = Step {n:number} <span style="white-space:nowrap">of {m:number}:</span> {x:other}.
+help-example = <span style="white-space:nowrap">For example,</span> &#x201C;{x:other}&#x201D;.
+help-note = Note: <span style="white-space:nowrap">the changes</span> take effect after <span style="white-space:nowrap">a restart.</span>
+help-warning = Warning! <span style="white-space:nowrap">The data</span> will be deleted permanently.
+help-time = Uptime: {a:number}:{b:number}.
+help-shortcut = Keyboard shortcut: {x:other}.
+help-range = Values {a:number}&#x2013;{b:number} are allowed.
+help-minus = Values from -{n:number} <span style="white-space:nowrap">to {m:number}</span> are allowed.
+help-arrow = Go to {x:other} &#x2192; {y:other}.
+help-greater = <span style="white-space:nowrap">The value</span> must be &#x2265; {n:number}.
+help-different = <span style="white-space:nowrap">The value</span> must be &#x2260; {n:number}.
+help-copyright = &#xA9; 2026 Example Corp.
+help-trademark = Example&#x2122; is <span style="white-space:nowrap">a trademark.</span>
+stats-today = Today: {n:number}.
+stats-week = This week: {n:number}.
+stats-month = This month: {n:number}.
+stats-year = <span style="white-space:nowrap">In {y:number}:</span> {n:number}.
+stats-growth = Growth: {n:number}%.
+stats-new = New: {n:number}.
+stats-total-gb = <span style="white-space:nowrap">{n:number} GB</span> <span style="white-space:nowrap">in total.</span>
+stats-free-gb = <span style="white-space:nowrap">{n:number} GB</span> free.
+notify-new-message = You have {n:number} new messages.
+notify-from = <span style="white-space:nowrap">A message</span> from {name:word}.
+notify-reminder = Reminder: &#x201C;{x:other}&#x201D;.
+notify-meeting = <span style="white-space:nowrap">The meeting</span> &#x201C;{name:word}&#x201D; starts <span style="white-space:nowrap">at {a:number}:{b:number}.</span>
+notify-birthday = It is {name:word}&#x2019;s birthday today.

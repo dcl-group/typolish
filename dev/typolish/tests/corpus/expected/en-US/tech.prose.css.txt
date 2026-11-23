@@ -1,0 +1,108 @@
+Run `systemctl restart tls-server` and\a0 check the\a0 status of\a0 the\a0 service.
+The\a0 configuration file is in /etc/example/server.conf with permissions 0640.
+The\a0 service listens on\a0 host:8080 and\a0 accepts connections from the\a0 internal network only.
+To\a0 check it, run curl http://localhost:8080/health and\a0 wait for\a0 the\a0 answer.
+The\a0 database address is db.example.internal, port 5432.
+Connection string: postgres://app@db.example.internal:5432/main with a\a0 10\a0 s timeout.
+Never use `rm -rf /` under any circumstances.
+The --force flag disables the\a0 check, and -v enables verbose output.
+The\a0 command `ls -la /var/log` lists all files, including hidden ones.
+The\a0 build version is 0.2.27, the\a0 previous one is v1.2.3-rc.1.
+The\a0 release of\a0 2026-11-21 is tagged v2.0.0.
+Request id: 550e8400-e29b-41d4-a716-446655440000.
+Checksum: d41d8cd98f00b204e9800998ecf8427e.
+The\a0 token \201c SGVsbG8gd29ybGQ=\201d  is valid for\a0 1\a0 hr.
+The\a0 host example.com answers on\a0 10.0.0.1 and ::1.
+The\a0 network 10.0.0.0/8 is reserved for\a0 internal use.
+Ports 22,80,443 are open to\a0 the\a0 outside.
+The\a0 range 8000\2013 8100 is reserved for\a0 service use.
+The\a0 environment variable LOG_LEVEL accepts debug, info and\a0 warn.
+The\a0 kv_lang parameter selects the\a0 language of\a0 messages.
+The\a0 names tls-server and\a0 agent-ca refer to\a0 internal services.
+Send mail to\a0 admin@example.com and\a0 a\a0 copy to\a0 ops@example.com.
+The\a0 log is written to /var/log/example/app.log and\a0 rotated daily.
+Log line: 2026-11-21T10:15:30Z INFO service start completed.
+Log line: 2026-11-21T10:15:31Z WARN disk is 91% full.
+Log line: 2026-11-21T10:15:32Z ERROR could not\a0 open /data/queue.
+If\a0 you see the\a0 error \201c connection refused\201d , check the\a0 port.
+If\a0 you see the\a0 error `connection refused`, check the\a0 port.
+The\a0 timeout=30 parameter sets the\a0 wait time in\a0 seconds.
+The\a0 key=\"value\" form is written without spaces around the\a0 equals sign.
+The\a0 entry PATH=/usr/local/bin:/usr/bin:/bin is added to\a0 the\a0 profile.
+The\a0 command `git log --oneline -n 5` shows the\a0 last five commits.
+The\a0 command `npm test -- --watch` runs the\a0 tests in\a0 watch mode.
+Piping through `tar -cf - -C dir | gzip` needs no temporary files.
+The\a0 script `deploy.sh` accepts the\a0 arguments --env and --dry-run.
+For\a0 debugging, set `RUST_LOG=debug` before starting.
+Dependency versions: serde 1.0.200, tokio 1.40.0, clap 4.5.1.
+The\a0 minimum compiler version is 1.100, checked in\a0 the\a0 build.
+The\a0 image example/app:1.4.2 was built from the\a0 main branch.
+The\a0 container uses 512\a0 MB of\a0 memory and\a0 2 processor cores.
+The\a0 request size limit is 16\a0 MB, the\a0 field count limit is 100.
+The\a0 connection timeout is 5\a0 s, with at\a0 most 3 retries.
+The\a0 load was 1200 requests per\a0 second with 40 connections.
+Latency at\a0 the\a0 99th percentile is 120\a0 ms, at\a0 the\a0 median 15\a0 ms.
+A\a0 200 response means success, 404 \2014  not\a0 found, 500 \2014  server error.
+The\a0 Content-Type: application/json header is required for\a0 all requests.
+The\a0 address https://example.com/docs/guide.html leads to\a0 the\a0 guide.
+The\a0 page https://example.com/a?b=c&d=e holds query parameters.
+The\a0 schema is in /srv/example/schema.sql and\a0 is versioned.
+For\a0 migrations, use `migrate up` from the\a0 directory /srv/example.
+After the\a0 migration the\a0 users table has 12 columns.
+The\a0 index users_email_idx speeds up\a0 lookups by\a0 email.
+The\a0 query SELECT id, name FROM users WHERE id = 5 returns one row.
+The\a0 query with the\a0 condition id \2265  10 returns all rows from the\a0 tenth on.
+If\a0 a \2260  b, the\a0 records are considered different.
+The\a0 output of\a0 `echo $HOME` depends on\a0 the\a0 user.
+The\a0 directory ~/.config/example/ holds user settings.
+The\a0 file ~/.env must have permissions 0600 and\a0 stay out of\a0 the\a0 repository.
+Secrets are not\a0 stored in\a0 code\2014 only in\a0 the\a0 environment.
+A\a0 backup is made with the\a0 command `pg_dump main > backup.sql`.
+Restore with `psql main \3c  backup.sql`, then check the\a0 tables.
+The\a0 backup is about 3.5\a0 GB, and\a0 it takes 20\a0 min. to\a0 create.
+Encryption is on\a0 by\a0 default, with a\a0 key length of\a0 256 bits.
+The\a0 certificate for\a0 example.com is valid until 2027-01-15.
+Certificate fingerprint: ab:cd:ef:01:23:45:67:89.
+Port 443 is open to\a0 everyone, port 22 only to\a0 10.0.0.0/8.
+Firewall rule: allow tcp from 10.0.0.0/8 to\a0 any port 22.
+The\a0 dns service answers queries on\a0 udp/53 and\a0 tcp/53.
+Check: dig example.com +short must return an\a0 address.
+The\a0 response time is given in\a0 milliseconds, for\a0 example 250\a0 ms.
+Service status: active (running) since 10:15.
+Load: processor 45%, memory 62%, disk 91%.
+The\a0 load peaks at\a0 9:00\2013 11:00 on\a0 workdays.
+Backups run at\a0 3:00\2013 4:00.
+The\a0 metric http_requests_total grows with every request.
+The\a0 metric db_pool_size shows the\a0 size of\a0 the\a0 connection pool.
+Alerts go to\a0 the\a0 channel ops-alerts, and\a0 the\a0 person on\a0 duty is responsible.
+The\a0 test `cargo test --all` passes in\a0 40\a0 s.
+A\a0 build takes about 5\a0 min. on\a0 a\a0 clean machine.
+The\a0 build cache lives in ~/.cache/example-targets/main and\a0 is not\a0 backed up.
+The\a0 file Cargo.toml describes the\a0 package, and\a0 Cargo.lock pins the\a0 versions.
+The\a0 license MIT OR\a0 Apache-2.0 is stated in\a0 Cargo.toml.
+Error E0425 means that the\a0 name is not\a0 found in\a0 this scope.
+The\a0 warning unused_variables can be switched off\a0 with an\a0 attribute.
+The\a0 expression 1 + 2 * 3 equals 7, and\a0 (1 + 2) * 3 equals 9.
+The\a0 condition x > 5 && y \3c  10 holds for\a0 x = 6 and\a0 y = 9.
+Regular expressions are not\a0 used here at\a0 all.
+Date format: YYYY-MM-DD, for\a0 example 2026-11-21.
+Time format: HH:MM:SS, for\a0 example 10:15:30.
+The\a0 user id is a\a0 number from 1 to\a0 65535.
+A\a0 user name consists of\a0 Latin letters, digits and\a0 the _ sign.
+A\a0 password is at\a0 least 12 characters long and\a0 differs from the\a0 name.
+To\a0 sign in, use the\a0 login user_01 and\a0 a\a0 one-time password.
+A\a0 session lives for\a0 30\a0 min. and\a0 is extended with every request.
+The\a0 cookie is named session_id and\a0 is sent over https only.
+The\a0 header Authorization: Bearer \3c token> passes the\a0 access token.
+The\a0 template \3c name> is replaced with the\a0 user name on\a0 sending.
+The\a0 password hash is stored as $2b$12$abcdefghijklmnopqrstuv.
+A\a0 link like example.com/a-b-c is not\a0 changed by\a0 processing.
+The\a0 address ftp://files.example.com/pub/ is readable.
+The\a0 file archive.tar.gz weighs 1.2\a0 GB and\a0 lies in /srv/files.
+Unpack it with `tar -xzf archive.tar.gz` into an\a0 empty directory.
+The\a0 directory build/ and\a0 the\a0 file .env stay out of\a0 the\a0 repository.
+The\a0 exclusion list is in .gitignore next to\a0 README.md.
+The\a0 configuration is made of\a0 3 files: base.toml, dev.toml, prod.toml.
+The\a0 last file has priority, and\a0 the\a0 others are overridden.
+Program output: \201c ok\201d  \2014  all good, \201c fail\201d  \2014  there are errors.
+Return code 0 means success, any other\2014 an\a0 error.

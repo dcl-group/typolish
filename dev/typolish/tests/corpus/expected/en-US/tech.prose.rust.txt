@@ -1,0 +1,108 @@
+Run `systemctl restart tls-server` and\u{a0}check the\u{a0}status of\u{a0}the\u{a0}service.
+The\u{a0}configuration file is in /etc/example/server.conf with permissions 0640.
+The\u{a0}service listens on\u{a0}host:8080 and\u{a0}accepts connections from the\u{a0}internal network only.
+To\u{a0}check it, run curl http://localhost:8080/health and\u{a0}wait for\u{a0}the\u{a0}answer.
+The\u{a0}database address is db.example.internal, port 5432.
+Connection string: postgres://app@db.example.internal:5432/main with a\u{a0}10\u{a0}s timeout.
+Never use `rm -rf /` under any circumstances.
+The --force flag disables the\u{a0}check, and -v enables verbose output.
+The\u{a0}command `ls -la /var/log` lists all files, including hidden ones.
+The\u{a0}build version is 0.2.27, the\u{a0}previous one is v1.2.3-rc.1.
+The\u{a0}release of\u{a0}2026-11-21 is tagged v2.0.0.
+Request id: 550e8400-e29b-41d4-a716-446655440000.
+Checksum: d41d8cd98f00b204e9800998ecf8427e.
+The\u{a0}token \u{201c}SGVsbG8gd29ybGQ=\u{201d} is valid for\u{a0}1\u{a0}hr.
+The\u{a0}host example.com answers on\u{a0}10.0.0.1 and ::1.
+The\u{a0}network 10.0.0.0/8 is reserved for\u{a0}internal use.
+Ports 22,80,443 are open to\u{a0}the\u{a0}outside.
+The\u{a0}range 8000\u{2013}8100 is reserved for\u{a0}service use.
+The\u{a0}environment variable LOG_LEVEL accepts debug, info and\u{a0}warn.
+The\u{a0}kv_lang parameter selects the\u{a0}language of\u{a0}messages.
+The\u{a0}names tls-server and\u{a0}agent-ca refer to\u{a0}internal services.
+Send mail to\u{a0}admin@example.com and\u{a0}a\u{a0}copy to\u{a0}ops@example.com.
+The\u{a0}log is written to /var/log/example/app.log and\u{a0}rotated daily.
+Log line: 2026-11-21T10:15:30Z INFO service start completed.
+Log line: 2026-11-21T10:15:31Z WARN disk is 91% full.
+Log line: 2026-11-21T10:15:32Z ERROR could not\u{a0}open /data/queue.
+If\u{a0}you see the\u{a0}error \u{201c}connection refused\u{201d}, check the\u{a0}port.
+If\u{a0}you see the\u{a0}error `connection refused`, check the\u{a0}port.
+The\u{a0}timeout=30 parameter sets the\u{a0}wait time in\u{a0}seconds.
+The\u{a0}key=\"value\" form is written without spaces around the\u{a0}equals sign.
+The\u{a0}entry PATH=/usr/local/bin:/usr/bin:/bin is added to\u{a0}the\u{a0}profile.
+The\u{a0}command `git log --oneline -n 5` shows the\u{a0}last five commits.
+The\u{a0}command `npm test -- --watch` runs the\u{a0}tests in\u{a0}watch mode.
+Piping through `tar -cf - -C dir | gzip` needs no temporary files.
+The\u{a0}script `deploy.sh` accepts the\u{a0}arguments --env and --dry-run.
+For\u{a0}debugging, set `RUST_LOG=debug` before starting.
+Dependency versions: serde 1.0.200, tokio 1.40.0, clap 4.5.1.
+The\u{a0}minimum compiler version is 1.100, checked in\u{a0}the\u{a0}build.
+The\u{a0}image example/app:1.4.2 was built from the\u{a0}main branch.
+The\u{a0}container uses 512\u{a0}MB of\u{a0}memory and\u{a0}2 processor cores.
+The\u{a0}request size limit is 16\u{a0}MB, the\u{a0}field count limit is 100.
+The\u{a0}connection timeout is 5\u{a0}s, with at\u{a0}most 3 retries.
+The\u{a0}load was 1200 requests per\u{a0}second with 40 connections.
+Latency at\u{a0}the\u{a0}99th percentile is 120\u{a0}ms, at\u{a0}the\u{a0}median 15\u{a0}ms.
+A\u{a0}200 response means success, 404 \u{2014} not\u{a0}found, 500 \u{2014} server error.
+The\u{a0}Content-Type: application/json header is required for\u{a0}all requests.
+The\u{a0}address https://example.com/docs/guide.html leads to\u{a0}the\u{a0}guide.
+The\u{a0}page https://example.com/a?b=c&d=e holds query parameters.
+The\u{a0}schema is in /srv/example/schema.sql and\u{a0}is versioned.
+For\u{a0}migrations, use `migrate up` from the\u{a0}directory /srv/example.
+After the\u{a0}migration the\u{a0}users table has 12 columns.
+The\u{a0}index users_email_idx speeds up\u{a0}lookups by\u{a0}email.
+The\u{a0}query SELECT id, name FROM users WHERE id = 5 returns one row.
+The\u{a0}query with the\u{a0}condition id \u{2265} 10 returns all rows from the\u{a0}tenth on.
+If\u{a0}a \u{2260} b, the\u{a0}records are considered different.
+The\u{a0}output of\u{a0}`echo $HOME` depends on\u{a0}the\u{a0}user.
+The\u{a0}directory ~/.config/example/ holds user settings.
+The\u{a0}file ~/.env must have permissions 0600 and\u{a0}stay out of\u{a0}the\u{a0}repository.
+Secrets are not\u{a0}stored in\u{a0}code\u{2014}only in\u{a0}the\u{a0}environment.
+A\u{a0}backup is made with the\u{a0}command `pg_dump main > backup.sql`.
+Restore with `psql main < backup.sql`, then check the\u{a0}tables.
+The\u{a0}backup is about 3.5\u{a0}GB, and\u{a0}it takes 20\u{a0}min. to\u{a0}create.
+Encryption is on\u{a0}by\u{a0}default, with a\u{a0}key length of\u{a0}256 bits.
+The\u{a0}certificate for\u{a0}example.com is valid until 2027-01-15.
+Certificate fingerprint: ab:cd:ef:01:23:45:67:89.
+Port 443 is open to\u{a0}everyone, port 22 only to\u{a0}10.0.0.0/8.
+Firewall rule: allow tcp from 10.0.0.0/8 to\u{a0}any port 22.
+The\u{a0}dns service answers queries on\u{a0}udp/53 and\u{a0}tcp/53.
+Check: dig example.com +short must return an\u{a0}address.
+The\u{a0}response time is given in\u{a0}milliseconds, for\u{a0}example 250\u{a0}ms.
+Service status: active (running) since 10:15.
+Load: processor 45%, memory 62%, disk 91%.
+The\u{a0}load peaks at\u{a0}9:00\u{2013}11:00 on\u{a0}workdays.
+Backups run at\u{a0}3:00\u{2013}4:00.
+The\u{a0}metric http_requests_total grows with every request.
+The\u{a0}metric db_pool_size shows the\u{a0}size of\u{a0}the\u{a0}connection pool.
+Alerts go to\u{a0}the\u{a0}channel ops-alerts, and\u{a0}the\u{a0}person on\u{a0}duty is responsible.
+The\u{a0}test `cargo test --all` passes in\u{a0}40\u{a0}s.
+A\u{a0}build takes about 5\u{a0}min. on\u{a0}a\u{a0}clean machine.
+The\u{a0}build cache lives in ~/.cache/example-targets/main and\u{a0}is not\u{a0}backed up.
+The\u{a0}file Cargo.toml describes the\u{a0}package, and\u{a0}Cargo.lock pins the\u{a0}versions.
+The\u{a0}license MIT OR\u{a0}Apache-2.0 is stated in\u{a0}Cargo.toml.
+Error E0425 means that the\u{a0}name is not\u{a0}found in\u{a0}this scope.
+The\u{a0}warning unused_variables can be switched off\u{a0}with an\u{a0}attribute.
+The\u{a0}expression 1 + 2 * 3 equals 7, and\u{a0}(1 + 2) * 3 equals 9.
+The\u{a0}condition x > 5 && y < 10 holds for\u{a0}x = 6 and\u{a0}y = 9.
+Regular expressions are not\u{a0}used here at\u{a0}all.
+Date format: YYYY-MM-DD, for\u{a0}example 2026-11-21.
+Time format: HH:MM:SS, for\u{a0}example 10:15:30.
+The\u{a0}user id is a\u{a0}number from 1 to\u{a0}65535.
+A\u{a0}user name consists of\u{a0}Latin letters, digits and\u{a0}the _ sign.
+A\u{a0}password is at\u{a0}least 12 characters long and\u{a0}differs from the\u{a0}name.
+To\u{a0}sign in, use the\u{a0}login user_01 and\u{a0}a\u{a0}one-time password.
+A\u{a0}session lives for\u{a0}30\u{a0}min. and\u{a0}is extended with every request.
+The\u{a0}cookie is named session_id and\u{a0}is sent over https only.
+The\u{a0}header Authorization: Bearer <token> passes the\u{a0}access token.
+The\u{a0}template <name> is replaced with the\u{a0}user name on\u{a0}sending.
+The\u{a0}password hash is stored as $2b$12$abcdefghijklmnopqrstuv.
+A\u{a0}link like example.com/a-b-c is not\u{a0}changed by\u{a0}processing.
+The\u{a0}address ftp://files.example.com/pub/ is readable.
+The\u{a0}file archive.tar.gz weighs 1.2\u{a0}GB and\u{a0}lies in /srv/files.
+Unpack it with `tar -xzf archive.tar.gz` into an\u{a0}empty directory.
+The\u{a0}directory build/ and\u{a0}the\u{a0}file .env stay out of\u{a0}the\u{a0}repository.
+The\u{a0}exclusion list is in .gitignore next to\u{a0}README.md.
+The\u{a0}configuration is made of\u{a0}3 files: base.toml, dev.toml, prod.toml.
+The\u{a0}last file has priority, and\u{a0}the\u{a0}others are overridden.
+Program output: \u{201c}ok\u{201d} \u{2014} all good, \u{201c}fail\u{201d} \u{2014} there are errors.
+Return code 0 means success, any other\u{2014}an\u{a0}error.

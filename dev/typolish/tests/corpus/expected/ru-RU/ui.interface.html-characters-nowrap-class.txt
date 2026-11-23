@@ -1,0 +1,161 @@
+files-found = Найдено {n:number} файлов.
+files-deleted = Удалено {n:number} файлов <span class="nowrap">за {t:number} с.</span>
+files-size = Размер: <span class="nowrap">{n:number} МБ.</span>
+files-size-range = Размер <span class="nowrap">от {a:number}</span> <span class="nowrap">до {b:number} МБ.</span>
+files-count-range = Найдено {a:number}–{b:number} файлов.
+items-days = Осталось <span class="nowrap">{n:number} дн.</span>
+items-hours = Прошло <span class="nowrap">{n:number} ч.</span> <span class="nowrap">{m:number} мин.</span>
+items-percent = Загружено {n:number}% файла.
+items-percent-spaced = Заполнено <span class="nowrap">{n:number} %</span> диска.
+items-temperature = Температура: -{n:number} градусов.
+user-greeting = Здравствуйте, {name:word}!
+user-quoted = Пользователь «{name:word}» вошёл <span class="nowrap">в систему.</span>
+user-quoted-other = Значение «{x:other}» недопустимо.
+user-guillemets = <span class="nowrap">Не удалось</span> найти группу «{group:word}» <span class="nowrap">в каталоге.</span>
+user-nested = Он ответил: «Прочитайте раздел „Начало работы“ полностью».
+user-owner = <span class="nowrap">Владелец —</span> {name:word}.
+user-role = <span class="nowrap">{name:word} —</span> администратор проекта.
+user-last-login = Последний вход: {d:date}.
+user-created = Учётная запись создана <span class="nowrap">{d:date} г.</span>
+user-period = Период <span class="nowrap">с {a:date}</span> <span class="nowrap">по {b:date}.</span>
+user-period-range = Отчёт <span class="nowrap">за {a:date}–{b:date}.</span>
+user-initials = Автор: <span class="nowrap">А. С. Иванов.</span>
+user-initials-slot = Автор: {name:word}.
+doc-number = Документ <span class="nowrap">№ {n:number}</span> принят.
+doc-section = См. <span class="nowrap">§ {n:number}</span> настоящих правил.
+doc-paragraph = Согласно <span class="nowrap">п. {n:number}</span> договора.
+doc-page = Страница {n:number} <span class="nowrap">из {m:number}.</span>
+doc-page-short = <span class="nowrap">Стр. {n:number}.</span>
+doc-and-so-on = Файлы, каталоги <span class="nowrap">и т. д.</span> будут удалены.
+doc-and-the-like = Принтеры, сканеры <span class="nowrap">и т. п.</span> <span class="nowrap">не поддерживаются.</span>
+doc-that-is = Копия, <span class="nowrap">т. е.</span> точная версия, сохранена.
+doc-see = Подробности <span class="nowrap">см. в разделе</span> «Настройки».
+doc-year = Версия выпущена <span class="nowrap">в {y:number} г.</span>
+doc-century = Здание построено <span class="nowrap">в XIX в.</span>
+doc-ellipsis = Загрузка…
+doc-ellipsis-mid = Подождите… идёт проверка.
+doc-question-ellipsis = Вы уверены?..
+dialog-confirm = Удалить «{name:word}»? Это действие нельзя отменить.
+dialog-save = Сохранить изменения <span class="nowrap">в файле</span> «{name:word}»?
+dialog-close = Закрыть окно <span class="nowrap">без сохранения?</span>
+dialog-yes = Да, удалить
+dialog-no = Нет, оставить
+dialog-cancel = Отмена
+dialog-retry = Повторить попытку через <span class="nowrap">{n:number} с.</span>
+dialog-wait = Подождите, пожалуйста…
+dialog-done = Готово!
+error-not-found = Файл «{name:word}» <span class="nowrap">не найден.</span>
+error-denied = Доступ запрещён: нет прав <span class="nowrap">на каталог</span> «{name:word}».
+error-timeout = Превышено время ожидания <span class="nowrap">({n:number} с.).</span>
+error-network = <span class="nowrap">Не удалось</span> подключиться <span class="nowrap">к серверу</span> {host:word}.
+error-port = Порт {n:number} уже занят другой программой.
+error-disk = Недостаточно места <span class="nowrap">на диске:</span> нужно <span class="nowrap">{n:number} МБ,</span> доступно <span class="nowrap">{m:number} МБ.</span>
+error-quota = Превышена квота: использовано {n:number} <span class="nowrap">из {m:number}.</span>
+error-format = Неверный формат даты: ожидается {d:date}.
+error-unknown = Неизвестная <span class="nowrap">ошибка —</span> обратитесь <span class="nowrap">к администратору.</span>
+error-code = Код ошибки: {x:other}.
+error-code-long = Произошла ошибка {x:other}, повторите попытку позже.
+error-line = Ошибка <span class="nowrap">в строке</span> {n:number}: {x:other}.
+error-expected = Ожидалось значение <span class="nowrap">от {a:number}</span> <span class="nowrap">до {b:number},</span> получено {c:number}.
+error-minimum = Минимальное <span class="nowrap">значение —</span> {n:number}.
+error-maximum = Максимальное <span class="nowrap">значение —</span> {n:number}.
+error-length = Длина должна быть <span class="nowrap">не более</span> {n:number} символов.
+error-empty = Поле <span class="nowrap">не может</span> быть пустым.
+status-online = {n:number} пользователей <span class="nowrap">в сети.</span>
+status-offline = <span class="nowrap">Не в сети</span> <span class="nowrap">с {d:date}.</span>
+status-progress = Выполнено {n:number} <span class="nowrap">из {m:number}.</span>
+status-eta = Осталось примерно <span class="nowrap">{n:number} мин.</span>
+status-speed = Скорость: <span class="nowrap">{n:number} КБ/с.</span>
+status-memory = Использовано <span class="nowrap">{n:number} МБ</span> памяти.
+status-ready = Система готова <span class="nowrap">к работе.</span>
+status-waiting = Ожидание ответа <span class="nowrap">от {host:word}…</span>
+status-sync = Синхронизация <span class="nowrap">с «{name:word}»…</span>
+status-paused = Пауза: загрузка будет продолжена позже.
+menu-file = Файл
+menu-edit = Правка
+menu-view = Вид
+menu-help = Справка
+menu-settings = Настройки…
+menu-open = Открыть…
+menu-save-as = Сохранить как…
+menu-exit = Выход
+menu-recent = Недавние файлы
+settings-language = Язык интерфейса
+settings-theme = Тема оформления
+settings-notifications = Уведомлять <span class="nowrap">о новых</span> сообщениях
+settings-interval = Проверять каждые <span class="nowrap">{n:number} мин.</span>
+settings-limit = <span class="nowrap">Не более</span> {n:number} файлов <span class="nowrap">в день.</span>
+settings-reset = Сбросить все настройки?
+settings-saved = Настройки сохранены.
+settings-path = Каталог <span class="nowrap">для загрузок:</span> {x:other}
+mail-subject = Заказ <span class="nowrap">№ {n:number}</span> оформлен
+mail-greeting = Здравствуйте, {name:word}!
+mail-body = Ваш заказ <span class="nowrap">№ {n:number}</span> <span class="nowrap">на сумму</span> <span class="nowrap">{m:number} руб.</span> принят <span class="nowrap">в обработку.</span>
+mail-delivery = Доставка {d:date} <span class="nowrap">с 10:00-18:00.</span>
+mail-delivery-range = Доставка <span class="nowrap">в течение</span> <span class="nowrap">{a:number}–{b:number} дн.</span>
+mail-phone = Телефон службы поддержки: +7 495 123-45-67.
+mail-signature = <span class="nowrap">С уважением,</span> команда проекта.
+mail-unsubscribe = Чтобы отписаться, нажмите «Отписаться» внизу письма.
+shop-price = Цена: <span class="nowrap">{n:number} руб.</span>
+shop-price-discount = Цена <span class="nowrap">со скидкой</span> {n:number}%: <span class="nowrap">{m:number} руб.</span>
+shop-in-stock = <span class="nowrap">В наличии</span> <span class="nowrap">{n:number} шт.</span>
+shop-delivery-free = Бесплатная доставка <span class="nowrap">от {n:number} руб.</span>
+shop-weight = Вес: <span class="nowrap">{n:number} кг.</span>
+shop-size = Размер: {a:number}x{b:number} см.
+shop-size-spaced = Размер: {a:number} x <span class="nowrap">{b:number} см.</span>
+shop-cart = <span class="nowrap">В корзине</span> {n:number} товаров <span class="nowrap">на {m:number} руб.</span>
+shop-empty = Корзина пуста.
+shop-promo = Промокод «{x:other}» применён.
+shop-promo-invalid = Промокод «{x:other}» недействителен.
+shop-review = Отзыв <span class="nowrap">от {name:word}:</span> «{x:other}».
+shop-rating = Оценка: {n:number} <span class="nowrap">из 5.</span>
+shop-order-date = Заказ <span class="nowrap">от {d:date}.</span>
+shop-return = Возврат возможен <span class="nowrap">в течение</span> <span class="nowrap">{n:number} дн.</span> после покупки.
+report-title = Отчёт <span class="nowrap">за {d:date}</span>
+report-total = Всего: {n:number}.
+report-average = <span class="nowrap">В среднем</span> {n:number} <span class="nowrap">в день.</span>
+report-change = Изменение <span class="nowrap">за период:</span> +{n:number}%.
+report-decrease = Снижение: -{n:number}%.
+report-compare = {a:number} против {b:number}.
+report-top = Первые {n:number} записей.
+report-empty = Нет данных <span class="nowrap">за выбранный</span> период.
+report-export = Экспорт <span class="nowrap">в файл</span> «{name:word}» завершён.
+report-columns = Столбцы: {x:other}.
+log-started = Служба запущена <span class="nowrap">в {d:date}.</span>
+log-stopped = Служба остановлена: {x:other}.
+log-connect = Подключение <span class="nowrap">к {host:word}</span> установлено.
+log-retry = Повторная попытка {n:number} <span class="nowrap">из {m:number}.</span>
+log-fail = <span class="nowrap">Не удалось</span> выполнить операцию «{name:word}»: {x:other}.
+log-ok = Операция «{name:word}» выполнена <span class="nowrap">за {n:number} мс.</span>
+help-intro = <span class="nowrap">Для начала</span> работы выберите пункт меню <span class="nowrap">«Файл» —</span> «Открыть».
+help-hint = Подсказка: нажмите F1 <span class="nowrap">для вызова</span> справки.
+help-contact = <span class="nowrap">По вопросам</span> пишите <span class="nowrap">на адрес</span> {x:other}.
+help-version = Версия {x:other} <span class="nowrap">от {d:date}.</span>
+help-license = Распространяется <span class="nowrap">на условиях</span> открытой лицензии.
+help-more = Подробнее <span class="nowrap">см. на странице</span> «{name:word}».
+help-steps = Шаг {n:number} <span class="nowrap">из {m:number}:</span> {x:other}.
+help-example = Например, «{x:other}».
+help-note = Примечание: изменения вступят <span class="nowrap">в силу</span> после перезапуска.
+help-warning = Внимание! Данные будут удалены безвозвратно.
+help-time = Время работы: {a:number}:{b:number}.
+help-shortcut = Сочетание клавиш: {x:other}.
+help-range = Допустимы значения {a:number}–{b:number}.
+help-minus = Допустимы значения от -{n:number} <span class="nowrap">до {m:number}.</span>
+help-arrow = Перейдите <span class="nowrap">в раздел</span> {x:other} -&gt; {y:other}.
+help-greater = Значение должно быть &gt;= {n:number}.
+help-different = Значение должно быть != {n:number}.
+help-copyright = (c) 2026 Example Corp.
+help-trademark = <span class="nowrap">Example(tm) —</span> торговая марка.
+stats-today = Сегодня: {n:number}.
+stats-week = <span class="nowrap">За неделю:</span> {n:number}.
+stats-month = <span class="nowrap">За месяц:</span> {n:number}.
+stats-year = <span class="nowrap">За {y:number} г.:</span> {n:number}.
+stats-growth = Рост: {n:number}%.
+stats-new = Новых: {n:number}.
+stats-total-gb = Всего <span class="nowrap">{n:number} ГБ.</span>
+stats-free-gb = Свободно <span class="nowrap">{n:number} ГБ.</span>
+notify-new-message = <span class="nowrap">У вас</span> {n:number} новых сообщений.
+notify-from = Сообщение <span class="nowrap">от {name:word}.</span>
+notify-reminder = Напоминание: «{x:other}».
+notify-meeting = Встреча «{name:word}» начнётся <span class="nowrap">в {a:number}:{b:number}.</span>
+notify-birthday = Сегодня день рождения <span class="nowrap">у {name:word}.</span>

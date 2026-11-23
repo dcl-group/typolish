@@ -6,6 +6,8 @@
 
 #![allow(dead_code)]
 
+pub mod canonical;
+pub mod corpus;
 pub mod decode;
 pub mod set_glue;
 pub mod strategies;
