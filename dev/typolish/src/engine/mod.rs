@@ -686,6 +686,32 @@ mod tests {
         }
     }
 
+    #[test]
+    fn dashes_next_to_a_prime_and_a_minus_recur_on_the_second_pass() {
+        // I4 of design section 4.3: the prime that `quotes.primes` writes reads as the closing
+        // quote it was typed as, and `−` as the sign `-` of a number (section 8.4); both inputs
+        // once failed the property above.
+        let set: RuleSet = RuleSet::ALL
+            .iter()
+            .filter(|r| !r.id().starts_with("nbsp."))
+            .collect();
+        let t = Typographer::new(Language::RU_RU, set);
+        let mut scratch = Scratch::new();
+        for text in ["5'10\" - т.е.", "-1,5 -- т.е.\u{7f}"] {
+            let (tx, out) = trace(&t, &mut scratch, text);
+            let (ty, _) = trace(&t, &mut scratch, &out);
+            let dashes = |tr: &Trace| {
+                tr.matches
+                    .iter()
+                    .filter(|m| matches!(m.0, Rule::DashSpacedHyphen | Rule::DashDoubleHyphen))
+                    .count()
+            };
+            assert_eq!(dashes(&tx), 1, "{text:?}");
+            assert_eq!(dashes(&ty), 1, "{text:?} -> {out:?}");
+            assert!(ty.matches.iter().all(|m| !m.4), "{out:?}");
+        }
+    }
+
     /// Design section 3.11: the three recorders see the same run; `Diagnostics` keeps the
     /// diagnostics of `Journal`, and `NoRecord` gives the result of `Journal`.
     #[test]

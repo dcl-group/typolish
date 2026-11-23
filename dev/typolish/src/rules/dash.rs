@@ -110,12 +110,16 @@ pub(crate) fn spaced_hyphen(cx: &Cx<'_>, i: usize) -> Option<Match> {
     between(cx, i, false)
 }
 
-/// Closing punctuation on the left of a dash: `, . ! ? … )` or a closing quote.
+/// Closing punctuation on the left of a dash: `, . ! ? … )`, a closing quote, or a prime `′` `″`,
+/// which `quotes.primes` writes after a number in place of a straight quote that has the closing
+/// role there (`5'10" - x`), so the prime reads as the quote it was typed as (design sections 4.3,
+/// I4, and 8.4).
 pub(crate) fn closing_punct(cx: &Cx<'_>, l: usize) -> bool {
     matches!(
         cx.kind(l),
         Some(Kind::Punct(',' | '!' | '?') | Kind::Dots | Kind::Close(')'))
     ) || local_role(cx, l) == Some(Role::Close)
+        || (cx.kind(l) == Some(Kind::Quote) && matches!(cx.chr(l), Some('\u{2032}' | '\u{2033}')))
 }
 
 /// A number, a range or a single-letter word: one side of the first refusal.

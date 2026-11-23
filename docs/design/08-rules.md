@@ -149,8 +149,10 @@ Diagnostics: `UnmatchedQuote`, `CrossingQuotes`, `AmbiguousQuote`.
 **`dash.spaced-hyphen`.** A dash fragment whose token is a single `-`, `–` or `—` (section 3.6; a
 run `--` or `---` belongs to `dash.double-hyphen`, and this rule does not match it, not even with an
 empty edit), with one space on each side (not a line break), an operand or closing punctuation
-(`, . ! ? … ) »` or a closing quote) on the left, and an operand, an opening quote or an opening
-bracket on the right → em dash. It does not fire, and reports `AmbiguousHyphen`, when:
+(`, . ! ? … ) »`, a closing quote, or a prime `′` `″`, which `quotes.primes` writes after a number
+in place of a straight quote that has the closing role there, so `5'10" - x` and `5′10″ - x` read
+alike, I4 of section 4.3) on the left, and an operand, an opening quote or an opening bracket on the
+right → em dash. It does not fire, and reports `AmbiguousHyphen`, when:
 
 - each side is a number, a range or a single-letter word, in any mix (`10 - 20`, `5 - 3 = 2`,
   `{a} - {b}`, `a - b`, `x - y`, `5 - x`, `x - 5`, `{a} - x`, `5–10 - 20`): a range, a minus, a
