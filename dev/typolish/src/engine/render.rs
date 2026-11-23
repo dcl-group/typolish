@@ -4,15 +4,16 @@
 //! After the phases of a changed window, its tokens give one edit per replaced token, per glued
 //! space and per inserted space, and the phases list the removed spaces. Each edit replaces a
 //! range of the call's text. In `Output::Unicode` a string comes back borrowed when no window
-//! changed; otherwise the output is built once, at `len + len / 8` bytes, with the unchanged parts
-//! copied. A changed template text is allocated once at its length plus the new text of its
+//! changed; otherwise the output is built once, at the exact length counted from the edits, with
+//! the unchanged parts copied. A changed template text is allocated once at its length plus the new text of its
 //! edits; a template text that no edit touches is the merge of its pieces, as without rules.
 //!
 //! The other kinds go through the encoder of `crate::output`: the renderer walks the result as a
 //! stream of characters, each marked as text, protected text or markup, with the slots between
 //! them, and finds the nowrap groups of design section 11.5 on that stream. A string or a template
 //! text is borrowed (or merged) exactly when its encoded form equals the input, which a comparison
-//! decides without allocation; a changed template text is counted first and then allocated once.
+//! decides without allocation; a changed string or template text is counted first and then
+//! allocated once.
 
 use std::borrow::Cow;
 
@@ -102,14 +103,32 @@ fn write(out: &mut String, text: RText, data: &Table<'_>) {
     }
 }
 
-/// The result for string input: borrowed when there is no edit.
+/// The result for string input: borrowed when there is no edit; otherwise one string of exactly
+/// the length of the result (design section 2.12).
 pub(crate) fn render_text<'a>(text: &'a str, edits: &[REdit], data: &Table<'_>) -> Cow<'a, str> {
     if edits.is_empty() {
         return Cow::Borrowed(text);
     }
-    let mut out = String::with_capacity(text.len() + text.len() / 8);
+    let mut out = String::with_capacity(rendered_len(text, edits, data));
     render_text_into(text, edits, data, &mut out);
     Cow::Owned(out)
+}
+
+/// The length in bytes of what `render_text_into` appends, counted the same way.
+fn rendered_len(text: &str, edits: &[REdit], data: &Table<'_>) -> usize {
+    let mut pos = 0usize;
+    let mut len = 0usize;
+    for e in edits {
+        let (start, end) = (e.start as usize, e.end as usize);
+        len = len.saturating_add(text.get(pos..start).map_or(0, str::len));
+        len = len.saturating_add(match e.text {
+            RText::Empty => 0,
+            RText::Char(c) => c.len_utf8(),
+            RText::Ellipsis(form) => ellipsis_tail(data, form).len(),
+        });
+        pos = end.max(pos);
+    }
+    len.saturating_add(text.get(pos..).map_or(0, str::len))
 }
 
 /// Appends `text` with its edits to `out`, without a string of its own (`typeset_into`, design
@@ -655,7 +674,7 @@ impl Writer {
 }
 
 /// The result for string input in an encoded output kind: borrowed when the encoded text equals
-/// the input.
+/// the input; otherwise counted, then allocated once (design section 2.12).
 pub(crate) fn render_text_encoded<'a>(
     text: &'a str,
     v: &View<'_, '_>,
@@ -670,7 +689,10 @@ pub(crate) fn render_text_encoded<'a>(
             return Cow::Borrowed(text);
         }
     }
-    let mut s = String::with_capacity(text.len() + text.len() / 8);
+    let mut count = Count(0);
+    let (mut i, mut w) = (items, writer);
+    let _ = w.text(&mut i, &mut count);
+    let mut s = String::with_capacity(count.0);
     let (mut i, mut w) = (items, writer);
     // Writing into a `String` never stops.
     let _ = w.text(&mut i, &mut s);

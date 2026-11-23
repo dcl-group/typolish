@@ -167,6 +167,27 @@ fn typeset_into_a_buffer_with_room_does_not_allocate() {
     }
 }
 
+#[test]
+fn a_changed_string_is_one_allocation_however_much_it_grows() {
+    // Section 2.12: the Unicode output string is sized exactly, so a text that the rules grow to
+    // twice its length or more (`"a"` → `“a”`, three bytes to seven) is still one allocation.
+    let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    // Short enough that the scratch stays under the 64 KiB it keeps between calls.
+    let long = "\"a\" ".repeat(100);
+    for text in ["\"a\"", long.as_str()] {
+        let first = t.typeset(text, Output::Unicode);
+        assert!(first.len() >= 2 * text.len(), "{text:?} -> {first:?}");
+        drop(first);
+        let (allocs, reallocs, out) = count(|| t.typeset(text, Output::Unicode));
+        assert!(matches!(out, Cow::Owned(_)));
+        assert_eq!((allocs, reallocs), (1, 0), "{text:?}");
+        let mut scratch = Scratch::new();
+        let _ = t.typeset_with(&mut scratch, text, Output::Unicode);
+        let (allocs, reallocs, _) = count(|| t.typeset_with(&mut scratch, text, Output::Unicode));
+        assert_eq!((allocs, reallocs), (1, 0), "with {text:?}");
+    }
+}
+
 /// A template of `n` repetitions of a text and a slot.
 fn template(n: u8) -> Vec<Piece<'static, u8>> {
     (0..n)
@@ -392,16 +413,15 @@ fn an_unchanged_string_does_not_allocate_in_any_output_kind() {
             if non_ascii {
                 // The Cyrillic is encoded by `non_ascii()`: one allocation, never borrowed.
                 assert!(matches!(out, Cow::Owned(_)), "{input} {output:?}");
-                assert!(allocs >= 1, "{input} {output:?}");
+                assert_eq!((allocs, reallocs), (1, 0), "{input} {output:?}");
             } else {
                 assert_eq!((allocs, reallocs), (0, 0), "{input} {output:?}");
                 assert!(matches!(out, Cow::Borrowed(_)), "{input} {output:?}");
             }
             let _ = t.typeset_with(&mut scratch, input, output);
             let (allocs, reallocs, _) = count(|| t.typeset_with(&mut scratch, input, output));
-            if !non_ascii {
-                assert_eq!((allocs, reallocs), (0, 0), "with {input} {output:?}");
-            }
+            let expected = if non_ascii { (1, 0) } else { (0, 0) };
+            assert_eq!((allocs, reallocs), expected, "with {input} {output:?}");
         }
     }
 }
@@ -427,26 +447,31 @@ fn typeset_into_a_buffer_with_room_does_not_allocate_in_any_output_kind() {
 
 #[test]
 fn a_text_that_needs_encoding_is_one_allocation() {
-    // Section 2.12: one allocation, the output string with the capacity `len + len / 8`; a second
-    // only if it grows past that. One `<` in a long text grows it by at most five bytes. No rule
-    // runs, so only the encoding changes the text.
+    // Section 2.12: one allocation, the output string, counted first, however much the encoding
+    // grows the text: one `<` in a long text, a short text that grows almost fivefold, a thousand
+    // apostrophes and Cyrillic escaped by `non_ascii()`. No rule runs, so only the encoding
+    // changes the text.
     const LONG: &str = "Сохранить изменения в файле перед закрытием окна <выйти> из программы и вернуться к списку";
+    let apostrophes = "'".repeat(1000);
+    let cyrillic = "Сохранить изменения в файле перед закрытием окна ".repeat(4);
+    let texts = [LONG, "\"<>&'", apostrophes.as_str(), cyrillic.as_str()];
     let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY);
-    let growth = |text: &str, output: Output| t.typeset(text, output).len() - text.len();
+    let mut grew_past_double = false;
     for output in outputs() {
-        let first = t.typeset(LONG, output);
-        if matches!(first, Cow::Borrowed(_)) {
-            continue;
-        }
-        drop(first);
-        let grows = growth(LONG, output);
-        let (allocs, reallocs, out) = count(|| t.typeset(LONG, output));
-        assert!(matches!(out, Cow::Owned(_)), "{output:?}");
-        assert_eq!(allocs, 1, "{output:?}");
-        if grows <= LONG.len() / 8 {
-            assert_eq!(reallocs, 0, "{output:?} grows by {grows}");
+        for text in texts {
+            let first = t.typeset(text, output);
+            if matches!(first, Cow::Borrowed(_)) {
+                continue;
+            }
+            grew_past_double |= first.len() > 2 * text.len();
+            drop(first);
+            let (allocs, reallocs, out) = count(|| t.typeset(text, output));
+            assert!(matches!(out, Cow::Owned(_)), "{output:?}");
+            let head: String = text.chars().take(5).collect();
+            assert_eq!((allocs, reallocs), (1, 0), "{output:?} {head:?}");
         }
     }
+    assert!(grew_past_double, "some text grows past twice its length");
     // The same through `typeset_with`.
     let mut scratch = Scratch::new();
     let _ = t.typeset_with(&mut scratch, LONG, Output::Html(HtmlStyle::NAMED));

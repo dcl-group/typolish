@@ -556,13 +556,15 @@ Rendering walks the tokens and writes each one's text (or glue) through the enco
 kind (section 11). The tokens of a changed window give one edit of the call's text per replaced
 token, glued space and inserted space, and the phases list the spaces they removed; the output is
 the input with these edits applied. The output string is created lazily: while no window has changed
-and encoding changes nothing, nothing is built. At the first change the output gets
-`String::with_capacity(len + len / 8)`, the unchanged prefix of the input is copied in, and windows
-are written from there, with the boundary characters between them (section 3.3). If nothing changed
-to the end, the result is `Cow::Borrowed(input)`. For templates the same holds per text: a text that
-maps to one unchanged input piece borrows it, and a changed text gets one string sized from its
-pieces plus the new text of its edits, a bound on its length, so it is never grown (section 2.12: a
-glued space takes two bytes for one, which `len + len / 8` would not cover in a short text such as
+and encoding changes nothing, nothing is built. When something changed, the length of the output is
+counted first (the input plus the new text of the edits; in `Html` and `Escaped` by a counting pass
+of the encoder), the output gets `String::with_capacity` of exactly that length, the unchanged parts
+of the input are copied in, and windows are written from there, with the boundary characters between
+them (section 3.3), so the string never grows. If nothing changed to the end, the result is
+`Cow::Borrowed(input)`. For templates the same holds per text: a text that maps to one unchanged
+input piece borrows it, and a changed text gets one string sized from its pieces plus the new text
+of its edits, a bound on its length, so it is never grown (section 2.12: a glued space takes two
+bytes for one, which a fixed margin such as `len + len / 8` would not cover in a short text such as
 `{n} дн.`).
 
 ### 3.11 Recording
