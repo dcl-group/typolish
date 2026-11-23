@@ -6,8 +6,13 @@ use crate::engine::phase::{Cx, Edit, Edits, Match};
 
 /// `number.minus`: a hyphen before a number.
 pub(crate) const MINUS: Triggers = Triggers::of(b"-").union(Triggers::DIGITS);
-/// `number.times`: `x` between numbers (the Cyrillic letters are found through the digits).
-pub(crate) const TIMES: Triggers = Triggers::of(b"xX").union(Triggers::DIGITS);
+/// `number.times`: `x` between numbers, with the lead bytes of the Cyrillic `х` and `Х`, which
+/// stand alone between two `Number` slots in a template whose texts have no digit
+/// (`{w} х {h}`, design section 3.2).
+pub(crate) const TIMES: Triggers = Triggers::of(b"xX")
+    .union(Triggers::DIGITS)
+    .with_lead('\u{445}')
+    .with_lead('\u{425}');
 
 const TIMES_SIGN: char = '\u{d7}';
 
@@ -83,12 +88,21 @@ pub(crate) fn times(cx: &Cx<'_>, i: usize) -> Option<Match> {
     match f.kind {
         FragKind::Dimensions => {}
         FragKind::Times => {
-            // The left factor of a lone sign: a number fragment without a leading zero.
+            // The left factor of a lone sign: a number fragment without a leading zero; a
+            // `Number` slot is a number (design section 8.2) whose digits are unknown.
             let left = cx.prev(f.start as usize).and_then(|s| cx.prev(s))?;
             let lf = cx.frag_of(left)?;
-            let first = cx.core(lf).find(|&j| cx.kind(j) == Some(Kind::Number))?;
+            if lf.kind != FragKind::Number {
+                return None;
+            }
+            let first = cx.core(lf).find(|&j| {
+                matches!(
+                    cx.kind(j),
+                    Some(Kind::Number | Kind::Slot(crate::SlotKind::Number))
+                )
+            })?;
             let digits = cx.src(first);
-            if lf.kind != FragKind::Number || (digits.len() > 1 && digits.starts_with('0')) {
+            if cx.kind(first) == Some(Kind::Number) && digits.len() > 1 && digits.starts_with('0') {
                 return None;
             }
         }

@@ -38,13 +38,14 @@ rules; each rule declares its trigger bytes as a constant next to its code (`rul
 `TypographerBuilder::build` computes the set and the active rules once; `Typographer::new` is a
 `const fn` and cannot, so a typographer it made computes them on its first call and keeps them (a
 `OnceLock` in the typographer, which allocates nothing). In version 1 the set is: `"` `'` `-` `.`
-`(` `<` `>` `!` `+` `x` `X`, the digits, the lead bytes of every sign of the language's `signs`
-(`№`, `§`, `¶` in the built-in tables), the lead bytes of typographic characters that rules use as
-context, `%` and the lead byte of `‰` when `nbsp.units` is active and `PercentSpacing` is not
-`AsWritten`, and the space when a no-break rule is active. A call first scans the input bytes
-against that set and against the set of bytes that the output kind encodes. The second set is
-derived, once per output style, from the same constant table the encoder uses (section 11), so the
-two cannot drift apart:
+`(` `<` `>` `!` `+` `x` `X`, the lead bytes of the Cyrillic `х` and `Х` when `number.times` is
+active (`{w} х {h}` between two `Number` slots has no other byte), the digits, the lead bytes of
+every sign of the language's `signs` (`№`, `§`, `¶` in the built-in tables), the lead bytes of
+typographic characters that rules use as context, `%` and the lead byte of `‰` when `nbsp.units` is
+active and `PercentSpacing` is not `AsWritten`, and the space when a no-break rule is active. A call
+first scans the input bytes against that set and against the set of bytes that the output kind
+encodes. The second set is derived, once per output style, from the same constant table the encoder
+uses (section 11), so the two cannot drift apart:
 
 - `Unicode`: empty;
 - `Html`: `& < > " '`, and the lead bytes of the typographic set except with
@@ -57,11 +58,12 @@ two cannot drift apart:
   set through U+00A0.
 
 If no byte matches, the call returns `Cow::Borrowed` without lexing. Lead bytes over-approximate (a
-Cyrillic letter never matches, while every character from U+2000 to U+2FFF does): a false match
-costs a full run, never a wrong result (property 8 of section 13.5 compares the prefilter with a run
-without it). So `typeset("a</script>b", Output::Escaped(EscapeStyle::JS))` is never borrowed, even
-in Interface, where no rule reacts to `<`. For short interface strings without signs this skips the
-whole pipeline; the scan is linear and allocates nothing.
+Cyrillic letter matches only while `number.times` is active, while every character from U+2000 to
+U+2FFF does): a false match costs a full run, never a wrong result (property 8 of section 13.5
+compares the prefilter with a run without it). So
+`typeset("a</script>b", Output::Escaped(EscapeStyle::JS))` is never borrowed, even in Interface,
+where no rule reacts to `<`. For short interface strings without signs this skips the whole
+pipeline; the scan is linear and allocates nothing.
 
 For `typeset_template` the trigger set of the rules is matched against the bytes of all `Text`
 pieces together; a slot contributes no byte, so every rule that can edit next to a slot needs its
