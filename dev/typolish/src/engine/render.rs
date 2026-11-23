@@ -28,7 +28,7 @@ use crate::report::Diagnostic;
 use crate::{DiagnosticKind, Output, Severity};
 
 /// The new text of an edit.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum RText {
     /// A deletion.
     Empty,
@@ -36,8 +36,9 @@ pub(crate) enum RText {
     Ellipsis(EllipsisForm),
 }
 
-/// One edit of the call's text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// One edit of the call's text. Ordered by position first, then by every other field, so a sort
+/// leaves no two different edits in an unspecified order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct REdit {
     pub(crate) start: u32,
     pub(crate) end: u32,
@@ -85,7 +86,10 @@ pub(crate) fn collect(tokens: &[Tok], removed: &[(u32, u32)], out: &mut Vec<REdi
         left: true,
     }));
     if let Some(window) = out.get_mut(base..) {
-        window.sort_unstable_by_key(|e| (e.start, e.end));
+        // The order of `REdit` is total over its fields: only equal edits compare equal, so the
+        // result does not depend on the sort algorithm, and an unstable sort allocates nothing
+        // (design section 2.12).
+        window.sort_unstable();
     }
 }
 

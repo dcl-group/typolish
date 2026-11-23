@@ -81,7 +81,7 @@ pub(crate) enum Repl {
 }
 
 /// The forms of the language's ellipsis data (`?..` or `?…` and the others).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum EllipsisForm {
     Question,
     Exclamation,
