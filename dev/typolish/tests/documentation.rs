@@ -551,6 +551,148 @@ fn texts_are_american_english() {
     assert!(found.is_empty(), "British spelling:\n{}", found.join("\n"));
 }
 
+/// Whether the character at `i` starts an identifier-like token, or follows the `b` prefix of a
+/// byte string that does.
+fn starts_token(chars: &[char], i: usize) -> bool {
+    let ident = |k: usize| chars[k].is_alphanumeric() || chars[k] == '_';
+    i == 0 || !ident(i - 1) || (chars[i - 1] == 'b' && (i == 1 || !ident(i - 2)))
+}
+
+/// The comments of a Rust source as `(line, text)`, one entry per comment: the text after `//`
+/// (and after the `/` or `!` of a doc comment) of each line, with the lines of a run of whole-line
+/// comments joined into one entry that carries the line number of each word. `//` inside a string
+/// literal, a raw string literal or a character literal does not start a comment.
+fn comments(source: &str) -> Vec<Vec<(usize, String)>> {
+    let mut out: Vec<Vec<(usize, String)>> = Vec::new();
+    // `Some(hashes)` inside a raw string closed by `"` and that many `#`; `Some(usize::MAX)`
+    // inside an ordinary string.
+    let mut string: Option<usize> = None;
+    let mut run_open = false;
+    for (index, line) in source.lines().enumerate() {
+        let chars: Vec<char> = line.chars().collect();
+        let mut comment = None;
+        let mut i = 0;
+        while i < chars.len() {
+            let c = chars[i];
+            match string {
+                Some(usize::MAX) => {
+                    if c == '\\' {
+                        i += 1;
+                    } else if c == '"' {
+                        string = None;
+                    }
+                }
+                Some(hashes) => {
+                    if c == '"'
+                        && chars[i + 1..]
+                            .iter()
+                            .take(hashes)
+                            .filter(|h| **h == '#')
+                            .count()
+                            == hashes
+                    {
+                        string = None;
+                        i += hashes;
+                    }
+                }
+                None => {
+                    if c == '/' && chars.get(i + 1) == Some(&'/') {
+                        comment = Some(i);
+                        break;
+                    } else if c == '"' {
+                        string = Some(usize::MAX);
+                    } else if c == 'r' && starts_token(&chars, i) {
+                        let hashes = chars[i + 1..].iter().take_while(|h| **h == '#').count();
+                        if chars.get(i + 1 + hashes) == Some(&'"') {
+                            string = Some(hashes);
+                            i += 1 + hashes;
+                        }
+                    } else if c == '\'' {
+                        // A character literal such as `'"'` or `'\''`; a lifetime has no closing quote.
+                        if chars.get(i + 1) == Some(&'\\') {
+                            if let Some(end) = chars[i + 2..].iter().position(|q| *q == '\'') {
+                                i += 2 + end;
+                            }
+                        } else if chars.get(i + 2) == Some(&'\'') {
+                            i += 2;
+                        }
+                    }
+                }
+            }
+            i += 1;
+        }
+        let Some(start) = comment else {
+            run_open = false;
+            continue;
+        };
+        let whole_line = chars[..start].iter().all(|c| c.is_whitespace());
+        let mut text: String = chars[start + 2..].iter().collect();
+        if text.starts_with('/') || text.starts_with('!') {
+            text.remove(0);
+        }
+        let words: Vec<(usize, String)> = text
+            .split_whitespace()
+            .map(|w| (index + 1, w.to_string()))
+            .collect();
+        match out.last_mut() {
+            Some(run) if run_open && whole_line => run.extend(words),
+            _ => out.push(words),
+        }
+        run_open = whole_line;
+    }
+    out
+}
+
+#[test]
+fn design_references_say_design() {
+    // AGENTS.md: code and tests refer to a place in the design as "design section N.M". In every
+    // comment of the crate's Rust files, the word `section` or `sections` (in any case, after an
+    // opening parenthesis too) that a number follows comes right after the word `design`, also when
+    // a comment line ends between the two words. String literals and code are not read.
+    if repository().is_none() {
+        return;
+    }
+    let mut sources = Vec::new();
+    for dir in ["src", "tests", "examples", "benches"] {
+        rust_files(&crate_dir().join(dir), &mut sources);
+    }
+    assert!(sources.len() > 80, "only {} Rust files", sources.len());
+    let bare = |word: &str| -> String {
+        word.trim_start_matches(['(', '[', '`', '"'])
+            .trim_end_matches(|c: char| !c.is_alphanumeric())
+            .to_lowercase()
+    };
+    let mut found = Vec::new();
+    let mut checked = 0;
+    for file in sources {
+        for run in comments(&read(&file)) {
+            for (k, (line, word)) in run.iter().enumerate() {
+                let word = bare(word);
+                if word != "section" && word != "sections" {
+                    continue;
+                }
+                let Some((_, next)) = run.get(k + 1) else {
+                    continue;
+                };
+                if !next.starts_with(|c: char| c.is_ascii_digit()) {
+                    continue;
+                }
+                checked += 1;
+                let after_design = k > 0 && bare(&run[k - 1].1) == "design";
+                if !after_design {
+                    found.push(format!("{}:{line}", file.display()));
+                }
+            }
+        }
+    }
+    assert!(checked > 500, "only {checked} design references");
+    assert!(
+        found.is_empty(),
+        "references to the design without the word `design`:\n{}",
+        found.join("\n")
+    );
+}
+
 // ---------------------------------------------------------------------------------------------
 // CHANGELOG (design sections 15.2 and 15.4: a prepared 0.1.0 entry).
 
