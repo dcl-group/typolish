@@ -38,8 +38,8 @@ pub enum SingleQuotes {
     /// let t = Typographer::builder(Language::EN_US, RuleSet::PROSE)
     ///     .single_quotes(SingleQuotes::NestedOnly)
     ///     .build()?;
-    /// let out = t.typeset("He said 'hello' to me.", Output::Unicode);
-    /// assert_eq!(out, "He said 'hello' to\u{a0}me.");
+    /// let out = t.typeset("He said \"a 'b' c\".", Output::Unicode);
+    /// assert_eq!(out, "He said “a\u{a0}‘b’ c”.");
     /// # Ok::<(), typolish::Error>(())
     /// ```
     NestedOnly,
@@ -64,8 +64,8 @@ pub enum SingleQuotes {
     /// let t = Typographer::builder(Language::EN_US, RuleSet::PROSE)
     ///     .single_quotes(SingleQuotes::Never)
     ///     .build()?;
-    /// let out = t.typeset("He said 'hello' to me.", Output::Unicode);
-    /// assert_eq!(out, "He said 'hello' to\u{a0}me.");
+    /// let out = t.typeset("He said \"a 'b' c\".", Output::Unicode);
+    /// assert_eq!(out, "He said “a\u{a0}'b' c”.");
     /// # Ok::<(), typolish::Error>(())
     /// ```
     Never,

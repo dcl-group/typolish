@@ -25,7 +25,8 @@ mod cldr49;
 
 use typolish::{
     Abbreviation, Bind, DashData, DashStyle, EllipsisForms, Error, Language, LanguageBuilder,
-    LanguageData, MonthPosition, NumberData, Output, QuotePairs, RuleSet, Script, Typographer,
+    LanguageData, MonthPosition, NumberData, Output, QuotePairs, Rule, RuleSet, Script,
+    Typographer,
 };
 
 const RU_UNITS: &[&str] = &[
@@ -1506,4 +1507,39 @@ fn the_language_builder_normalizes_the_case_of_the_tag() {
             "{bad:?}"
         );
     }
+}
+
+#[test]
+fn script_other_matches_words_outside_cyrillic_latin_and_greek() {
+    // `Script::Other` (design section 7.1) is the script of every letter that is not Cyrillic,
+    // Latin or Greek: its word lists match words of such letters, and a Latin word only with
+    // `short_words_any_script` (design section 8.2).
+    static XX: LanguageData = LanguageData::new("xx")
+        .with_script(Script::Other)
+        .with_short_words(&["a", "\u{3b1}", "\u{56f}", "\u{10d3}\u{10d0}"]);
+    let rules = RuleSet::EMPTY.with(Rule::NbspShortWords);
+    let lang = Language::from_data(&XX).unwrap();
+    let t = Typographer::new(lang.clone(), rules);
+    for (input, expected) in [
+        (
+            "\u{10d3}\u{10d0} \u{10e1}\u{10d0}",
+            "\u{10d3}\u{10d0}\u{a0}\u{10e1}\u{10d0}",
+        ),
+        (
+            "\u{56f} \u{574}\u{561}\u{580}\u{564}",
+            "\u{56f}\u{a0}\u{574}\u{561}\u{580}\u{564}",
+        ),
+        ("a cat", "a cat"),
+        (
+            "\u{3b1} \u{3bb}\u{3cc}\u{3b3}\u{3bf}\u{3c2}",
+            "\u{3b1} \u{3bb}\u{3cc}\u{3b3}\u{3bf}\u{3c2}",
+        ),
+    ] {
+        assert_eq!(t.typeset(input, Output::Unicode), expected, "{input}");
+    }
+    let any = Typographer::builder(lang, rules)
+        .short_words_any_script(true)
+        .build()
+        .unwrap();
+    assert_eq!(any.typeset("a cat", Output::Unicode), "a\u{a0}cat");
 }

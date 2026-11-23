@@ -54,15 +54,17 @@ pub enum Script {
     /// # Ok::<(), typolish::Error>(())
     /// ```
     Greek,
-    /// Any other script, or none (`Language::COMMON`); no short word matches.
+    /// Any other script, or none (`Language::COMMON`): the word lists match only words whose
+    /// letters are not Cyrillic, Latin or Greek, unless `short_words_any_script` is set.
     ///
     /// ```
     /// # use typolish::{Language, LanguageData, Output, Rule, RuleSet, Script, Typographer};
     /// static XX: LanguageData = LanguageData::new("xx")
     ///     .with_script(Script::Other)
-    ///     .with_short_words(&["a"]);
+    ///     .with_short_words(&["a", "და"]);
     /// let rules = RuleSet::EMPTY.with(Rule::NbspShortWords);
     /// let t = Typographer::new(Language::from_data(&XX)?, rules);
+    /// assert_eq!(t.typeset("და სახლი", Output::Unicode), "და\u{a0}სახლი");
     /// assert_eq!(t.typeset("a cat", Output::Unicode), "a cat");
     /// # Ok::<(), typolish::Error>(())
     /// ```
