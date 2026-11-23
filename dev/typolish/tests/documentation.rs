@@ -4,8 +4,11 @@
 //! The README's code blocks run as doctests through the `#[cfg(doctest)]` item of `lib.rs`; this
 //! target checks what a doctest cannot: that every block is run, that the README and the CHANGELOG
 //! are English and agree with the code on the numbers they state, that every link points at a file,
-//! and that the known limits of design section 10.8 are what the crate does. The checks that read
-//! `docs/design/` skip when the file is absent: the published package has no design.
+//! and that the known limits of design section 10.8 are what the crate does.
+//!
+//! The README is read through the crate's own `README.md`, which the package holds. The checks
+//! that read files only the repository has (the CHANGELOG, `docs/design/`, the targets of links)
+//! skip outside it, so that `cargo test` passes in the unpacked package too (design section 13.10).
 
 #![allow(
     clippy::unwrap_used,
@@ -38,23 +41,36 @@ fn read(path: &Path) -> String {
     fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
-fn readme() -> String {
-    read(&repo_dir().join("README.md"))
-}
-
-fn changelog() -> String {
-    read(&repo_dir().join("CHANGELOG.md"))
-}
-
-/// A file of `docs/design/`, or `None` when the design is not there.
-fn design(file: &str) -> Option<String> {
-    let path = repo_dir().join("docs/design").join(file);
-    if path.exists() {
-        Some(read(&path))
+/// The root of the repository, or `None` (with a note) when the crate is not inside it, as in the
+/// unpacked package: the crate is the repository's `dev/typolish/` and the design is there.
+fn repository() -> Option<PathBuf> {
+    let repo = repo_dir();
+    let inside = repo.join("docs/design/README.md").is_file()
+        && repo.join("dev/typolish").canonicalize().ok() == crate_dir().canonicalize().ok();
+    if inside {
+        Some(repo)
     } else {
-        eprintln!("skipped: {} is absent", path.display());
+        eprintln!(
+            "skipped: {} is not in the repository",
+            crate_dir().display()
+        );
         None
     }
+}
+
+/// The README of the crate: a link to the root README in the repository, a copy in the package.
+fn readme() -> String {
+    read(&crate_dir().join("README.md"))
+}
+
+/// The CHANGELOG, which only the repository has.
+fn changelog() -> Option<String> {
+    repository().map(|repo| read(&repo.join("CHANGELOG.md")))
+}
+
+/// A file of `docs/design/`, or `None` outside the repository.
+fn design(file: &str) -> Option<String> {
+    repository().map(|repo| read(&repo.join("docs/design").join(file)))
 }
 
 /// The text of a Markdown section: from the heading line that starts with `heading` to the next
@@ -349,8 +365,11 @@ fn readme_numbers_agree_with_the_code() {
 
 #[test]
 fn links_point_at_files_of_the_repository() {
+    let (Some(repo), Some(changelog)) = (repository(), changelog()) else {
+        return;
+    };
     let prefix = "https://github.com/dcl-group/typolish/";
-    for (name, text) in [("README.md", readme()), ("CHANGELOG.md", changelog())] {
+    for (name, text) in [("README.md", readme()), ("CHANGELOG.md", changelog)] {
         let mut links = Vec::new();
         let mut rest = text.as_str();
         while let Some(at) = rest.find("](") {
@@ -372,7 +391,7 @@ fn links_point_at_files_of_the_repository() {
             };
             let path = path.split('#').next().unwrap();
             assert!(
-                repo_dir().join(path).exists(),
+                repo.join(path).exists(),
                 "{name}: the link {link} points at a missing path"
             );
         }
@@ -382,7 +401,9 @@ fn links_point_at_files_of_the_repository() {
 #[test]
 fn readme_and_changelog_are_english() {
     // Russian appears in examples only: inside code blocks and code spans.
-    for (name, text) in [("README.md", readme()), ("CHANGELOG.md", changelog())] {
+    let mut texts = vec![("README.md", readme())];
+    texts.extend(changelog().map(|text| ("CHANGELOG.md", text)));
+    for (name, text) in texts {
         for (i, line) in prose_text(&text).lines().enumerate() {
             assert!(
                 !line.chars().any(is_cyrillic),
@@ -415,10 +436,17 @@ fn texts_are_american_english() {
         "catalogue",
         "artefact",
     ];
-    let mut files = vec![
-        repo_dir().join("README.md"),
-        repo_dir().join("CHANGELOG.md"),
-    ];
+    let mut files = vec![crate_dir().join("README.md")];
+    if let Some(repo) = repository() {
+        files.push(repo.join("CHANGELOG.md"));
+        let mut design: Vec<PathBuf> = fs::read_dir(repo.join("docs/design"))
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .collect();
+        assert!(design.len() > 10, "only {} design files", design.len());
+        design.sort();
+        files.extend(design);
+    }
     // Every Rust file of the crate; this file holds the list of British words and is skipped.
     let mut sources = Vec::new();
     for dir in ["src", "tests", "examples", "benches"] {
@@ -427,9 +455,6 @@ fn texts_are_american_english() {
     let this = crate_dir().join("tests/documentation.rs");
     assert!(sources.len() > 80, "only {} Rust files", sources.len());
     files.extend(sources.into_iter().filter(|p| *p != this));
-    if let Ok(dir) = fs::read_dir(repo_dir().join("docs/design")) {
-        files.extend(dir.map(|e| e.unwrap().path()));
-    }
     let mut found = Vec::new();
     for file in files {
         for (i, line) in read(&file).lines().enumerate() {
@@ -447,8 +472,7 @@ fn texts_are_american_english() {
 // ---------------------------------------------------------------------------------------------
 // CHANGELOG (design sections 15.2 and 15.4: a prepared 0.1.0 entry).
 
-fn changelog_entry(version: &str) -> String {
-    let text = changelog();
+fn changelog_entry(text: &str, version: &str) -> String {
     let mut out = String::new();
     let mut inside = false;
     for line in text.lines() {
@@ -470,7 +494,9 @@ fn changelog_entry(version: &str) -> String {
 
 #[test]
 fn changelog_has_the_prepared_entry() {
-    let text = changelog();
+    let Some(text) = changelog() else {
+        return;
+    };
     assert!(text.starts_with("# Changelog\n"));
     assert!(text.contains("keepachangelog.com"));
     assert!(text.contains("semver.org"));
@@ -486,7 +512,7 @@ fn changelog_has_the_prepared_entry() {
         "the second entry is the version of Cargo.toml: {}",
         headings[1]
     );
-    let entry = changelog_entry(version);
+    let entry = changelog_entry(&text, version);
     assert!(entry.contains("### Added"));
     assert!(
         entry.contains("1.100"),
@@ -506,7 +532,10 @@ fn changelog_has_the_prepared_entry() {
 
 #[test]
 fn changelog_names_every_rule_and_its_counts() {
-    let entry = changelog_entry(env!("CARGO_PKG_VERSION"));
+    let Some(text) = changelog() else {
+        return;
+    };
+    let entry = changelog_entry(&text, env!("CARGO_PKG_VERSION"));
     for rule in Rule::ALL {
         assert!(
             entry.contains(&format!("`{}`", rule.id())),

@@ -94,14 +94,19 @@ data, answered `HTTP 404` with ``{"errors":[{"detail":"crate `typolish` does not
 name was free at that moment; it is not reserved, and nothing was published. No other query was
 made.
 
-**Package** (stage 5, 2026-11-23): `cargo package --list` gives 195 files: `Cargo.toml`,
+**Package** (stage 5, 2026-11-23): `cargo package --list` gives 197 files: `Cargo.toml`,
 `Cargo.lock`, `README.md`, both license files, `src/`, `tests/` without `tests/fixtures/` (excluded
 by section 14.5), `benches/load.rs` and the three examples; the name of the reference implementation
-appears in none of them. `cargo package` packed 3.0 MiB (607 KiB compressed) and built the crate
-from its own tarball; `cargo test` in the unpacked tarball passes as in the repository (1055 tests,
-doctests and README included). Without the excluded fixtures, `tests/output.rs` and
-`tests/graphemes.rs` skip the checks that read them (`whatwg-entities.txt`,
-`GraphemeBreakTest.txt`).
+appears in none of them. `tests/documentation.rs` and `tests/package.rs` are among the 197 files;
+their checks of the repository skip in the package (sections 13.9 and 13.10). `cargo package` packed
+3.1 MiB (622 KiB compressed) and built the crate from its own tarball; `cargo test --offline` in the
+unpacked tarball passes as in the repository: 1094 tests passed, doctests and README included, none
+failed, and the 10 `#[ignore]` tests that are run by hand (sections 13.5, 13.7 and 13.8) were not
+run. Without the excluded fixtures, `tests/output.rs` and `tests/graphemes.rs` skip the checks that
+read them (`whatwg-entities.txt`, `GraphemeBreakTest.txt`). The first count, 195 files with 1055
+tests, was taken before the two stage 5 targets were added; with them, the tarball run first failed
+22 checks that read the repository unconditionally, which now skip there, and `tests/package.rs`
+repeats the run of the two targets in the unpacked package.
 
 **Not checked:**
 

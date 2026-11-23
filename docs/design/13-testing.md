@@ -573,6 +573,18 @@ test next to the prefilter checks, for every built-in set and language, that the
 the union of the trigger constants of the active rules. Checks that read `docs/design/` skip when
 the file is absent (the published package has no design).
 
+`tests/package.rs` checks the package (stage 5, section 15.4): the manifests and `dev/deny.toml`
+against section 14.5, the tree of `Cargo.lock` against section 14.1, the layout of section 14.6, the
+license and ignore files, the allow lists of `benches/load.rs` and `examples/*.rs` (section 14.5;
+those of `tests/*.rs` are checked by `tests/conformance.rs`), the record of the name check in
+`history.md`, the list and size of `cargo package --list`, and the build from its own tarball; it
+runs the three examples. The checks of the repository skip outside it: the crate must be the
+repository's `dev/typolish/` and `docs/design/README.md` must exist. The tarball check then runs
+`cargo test` for `tests/documentation.rs` and `tests/package.rs` in the package that `cargo package`
+unpacked and verified, so the published tests are known to pass without the repository. The two
+targets stay in the package: excluding an auto-discovered target makes `cargo package` warn, and the
+tarball check rejects any warning.
+
 `tests/data.rs` runs the validation of section 7.6 on every built-in table (so the order and
 duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,
 minimum grouping digits, percent pattern, range pattern, `nan`, `infinity`, month names (the union
@@ -593,7 +605,16 @@ run with `cargo test`. "Public item" here is every public type, function, method
 associated constants included. Enum variants and struct fields have rustdoc (`missing_docs` checks
 it) and are shown by the example of their type; an example per variant would repeat the type's. The
 rustdoc lint `missing_doc_code_examples` is unstable and skips items re-exported from private
-modules, which is every item of this crate, so the stage 5 report counts the examples from the
-rustdoc JSON of a nightly toolchain, outside the gates. README and CHANGELOG are in English. The
-README states the known limits of section 10.8 and how to protect commands; its code blocks run as
-doctests through a `#[cfg(doctest)]` item of `lib.rs` that includes it.
+modules, which is every item of this crate. Therefore `tests/documentation.rs` checks inside the
+gates, from the source text, that every `pub` item of `src/` has an example and that every example
+of `src/` is run (no `ignore`, `no_run` or other language); the stage 5 report cross-checks the
+count with the rustdoc JSON of a nightly toolchain, outside the gates. README and CHANGELOG are in
+English, and every text of the repository (README, CHANGELOG, the design and every Rust file of the
+crate) is in American English. The README states the known limits of section 10.8 and how to protect
+commands; its code blocks run as doctests through a `#[cfg(doctest)]` item of `lib.rs` that includes
+it. `tests/documentation.rs` also checks that every README block is a `rust` block, that the numbers
+the README states (rules, version, MSRV) are those of the code, that its links point at files of the
+repository, that its known limits are those of section 10.8 and are what the crate does, and that
+the CHANGELOG has the prepared `0.1.0` entry naming every rule. It reads the README through the
+crate's `README.md`, which the package holds; the checks that need the CHANGELOG, the design or the
+targets of links skip outside the repository, as in `tests/package.rs` (section 13.9).

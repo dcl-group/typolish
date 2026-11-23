@@ -4,8 +4,12 @@
 //!
 //! Nothing here publishes anything: `cargo package` only builds the tarball and checks it, and the
 //! check of the name on crates.io is a single query that the lead makes by hand (section 15.5, item
-//! 3), not a test, because tests need no network. The checks that read `docs/design/` skip when the
-//! file is absent: the published package has no design.
+//! 3), not a test, because tests need no network.
+//!
+//! The checks of the repository (the manifests as written, `deny.toml`, `Cargo.lock`, the layout,
+//! the design) and of the package (`cargo package` refuses to run inside an unpacked package) skip
+//! outside the repository, so that `cargo test` passes in the unpacked package too (design section
+//! 13.10). The checks of the examples and of the allow lists run in both places.
 
 #![allow(
     clippy::unwrap_used,
@@ -40,6 +44,23 @@ fn dev_dir() -> PathBuf {
 
 fn read(path: &Path) -> String {
     fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+/// The root of the repository, or `None` (with a note) when the crate is not inside it, as in the
+/// unpacked package: the crate is the repository's `dev/typolish/` and the design is there.
+fn repository() -> Option<PathBuf> {
+    let repo = repo_dir();
+    let inside = repo.join("docs/design/README.md").is_file()
+        && repo.join("dev/typolish").canonicalize().ok() == crate_dir().canonicalize().ok();
+    if inside {
+        Some(repo)
+    } else {
+        eprintln!(
+            "skipped: {} is not in the repository",
+            crate_dir().display()
+        );
+        None
+    }
 }
 
 /// The lines of one table of a TOML file (`[name]`), without comments and blank lines.
@@ -82,6 +103,9 @@ fn lossy(bytes: &[u8]) -> String {
 
 #[test]
 fn package_manifest_matches_section_14_5() {
+    if repository().is_none() {
+        return;
+    }
     let toml = manifest();
     let package = table(&toml, "package");
     let has = |line: &str| package.iter().any(|l| l == line);
@@ -128,6 +152,9 @@ fn package_manifest_matches_section_14_5() {
 
 #[test]
 fn dependencies_are_those_of_section_14_1() {
+    if repository().is_none() {
+        return;
+    }
     let toml = manifest();
     assert_eq!(
         table(&toml, "dependencies"),
@@ -146,6 +173,9 @@ fn dependencies_are_those_of_section_14_1() {
 
 #[test]
 fn workspace_manifest_matches_section_14_5() {
+    if repository().is_none() {
+        return;
+    }
     let toml = read(&dev_dir().join("Cargo.toml"));
     assert_eq!(
         table(&toml, "workspace"),
@@ -186,6 +216,9 @@ fn workspace_manifest_matches_section_14_5() {
 
 #[test]
 fn deny_toml_matches_section_14_5() {
+    if repository().is_none() {
+        return;
+    }
     let toml = read(&dev_dir().join("deny.toml"));
     assert_eq!(table(&toml, "graph"), ["all-features = true"]);
     assert_eq!(
@@ -224,6 +257,9 @@ fn deny_toml_matches_section_14_5() {
 
 #[test]
 fn lockfile_has_the_tree_of_section_14_1() {
+    if repository().is_none() {
+        return;
+    }
     // "23 packages in `Cargo.lock` besides `typolish`": 7 normal ones and the dev tree.
     let lock = read(&dev_dir().join("Cargo.lock"));
     let names: BTreeSet<&str> = lock
@@ -252,7 +288,9 @@ fn lockfile_has_the_tree_of_section_14_1() {
 
 #[test]
 fn repository_layout_matches_section_14_6() {
-    let repo = repo_dir();
+    let Some(repo) = repository() else {
+        return;
+    };
     for file in [
         "AGENTS.md",
         "CLAUDE.md",
@@ -371,10 +409,13 @@ fn repository_layout_matches_section_14_6() {
 
 #[test]
 fn claude_md_is_a_pointer_to_agents_md() {
-    let claude = read(&repo_dir().join("CLAUDE.md"));
+    let Some(repo) = repository() else {
+        return;
+    };
+    let claude = read(&repo.join("CLAUDE.md"));
     assert!(claude.contains("@AGENTS.md"));
     assert!(claude.contains("AGENTS.md"));
-    let agents = read(&repo_dir().join("AGENTS.md"));
+    let agents = read(&repo.join("AGENTS.md"));
     // The two hard rules that section 14.6 adds to the skeleton.
     assert!(agents.contains("Co-Authored-By: Claude <noreply@anthropic.com>"));
     assert!(agents.contains("reference implementation"));
@@ -382,10 +423,13 @@ fn claude_md_is_a_pointer_to_agents_md() {
 
 #[test]
 fn license_files_follow_section_14_6() {
-    let mit = read(&repo_dir().join("LICENSE-MIT"));
+    let Some(repo) = repository() else {
+        return;
+    };
+    let mit = read(&repo.join("LICENSE-MIT"));
     assert!(mit.contains("Copyright (c) 2026 Dmitry Bikman"));
     assert!(mit.starts_with("MIT License"));
-    let apache = read(&repo_dir().join("LICENSE-APACHE"));
+    let apache = read(&repo.join("LICENSE-APACHE"));
     assert!(apache.contains("Apache License"));
     assert!(apache.contains("Version 2.0, January 2004"));
     // The crate name appears in neither text.
@@ -398,19 +442,22 @@ fn license_files_follow_section_14_6() {
 #[test]
 fn ignore_files_protect_local_notes_and_keys() {
     // AGENTS.md: `AGENTS.local.md` is ignored by git and never committed; keys never are.
-    let ignore = read(&repo_dir().join(".gitignore"));
+    let Some(repo) = repository() else {
+        return;
+    };
+    let ignore = read(&repo.join(".gitignore"));
     let lines: Vec<&str> = ignore.lines().map(str::trim).collect();
     for pattern in ["target/", ".env", "*.local.*", ".ssh/"] {
         assert!(lines.contains(&pattern), ".gitignore lacks {pattern}");
     }
-    let attributes = read(&repo_dir().join(".gitattributes"));
+    let attributes = read(&repo.join(".gitattributes"));
     assert!(attributes.contains("* text=auto eol=lf"));
     assert!(attributes.contains("dev/typolish/tests/fixtures/** -text"));
     assert!(attributes.contains("dev/typolish/tests/corpus/** -text"));
-    let prettier = read(&repo_dir().join(".prettierrc.json"));
+    let prettier = read(&repo.join(".prettierrc.json"));
     assert!(prettier.contains("\"proseWrap\": \"always\""));
     assert!(prettier.contains("\"printWidth\": 100"));
-    let prettier_ignore = read(&repo_dir().join(".prettierignore"));
+    let prettier_ignore = read(&repo.join(".prettierignore"));
     for pattern in ["target/", "**/tests/fixtures/", "**/tests/corpus/"] {
         assert!(
             prettier_ignore.lines().any(|l| l == pattern),
@@ -463,12 +510,10 @@ fn non_library_targets_carry_the_allow_list_of_section_14_5() {
 fn name_check_is_recorded_in_the_design() {
     // Section 15.4: "the report gives its result"; the record of the one query is kept in the
     // design (the lead made it in stage 5).
-    let path = repo_dir().join("docs/design/history.md");
-    if !path.exists() {
-        eprintln!("skipped: {} is absent", path.display());
+    let Some(repo) = repository() else {
         return;
-    }
-    let text = read(&path);
+    };
+    let text = read(&repo.join("docs/design/history.md"));
     assert!(
         text.contains("Name on crates.io") && text.contains("crates.io/api/v1/crates/typolish"),
         "the history does not record the name check on crates.io"
@@ -495,6 +540,9 @@ fn package_list() -> Vec<String> {
 
 #[test]
 fn package_lists_what_a_user_needs_and_nothing_else() {
+    if repository().is_none() {
+        return;
+    }
     let list = package_list();
     for file in [
         "Cargo.toml",
@@ -565,6 +613,9 @@ fn package_lists_what_a_user_needs_and_nothing_else() {
 
 #[test]
 fn package_is_small_enough_for_the_registry() {
+    if repository().is_none() {
+        return;
+    }
     // crates.io accepts a tarball of at most 10 MiB; the uncompressed size is a safe bound.
     let list = package_list();
     let total: u64 = list
@@ -579,6 +630,9 @@ fn package_is_small_enough_for_the_registry() {
 
 #[test]
 fn package_builds_from_its_own_tarball() {
+    if repository().is_none() {
+        return;
+    }
     // `cargo package` builds the tarball and then compiles it in a clean directory. It does not
     // publish: `cargo publish` is the only command that does, and nothing here runs it.
     let out = run_cargo(&["package", "--offline", "--allow-dirty"]);
@@ -596,6 +650,45 @@ fn package_builds_from_its_own_tarball() {
     assert!(
         !stderr.contains("warning:"),
         "cargo package warns:\n{stderr}"
+    );
+    // The checks of this target and of `tests/documentation.rs` read the repository; in the
+    // unpacked package they skip what is not there and pass (design section 13.10). Cargo leaves
+    // the unpacked package where it verified it.
+    let unpacked = stderr
+        .split("Compiling typolish v0.1.0 (")
+        .nth(1)
+        .and_then(|rest| rest.split(')').next())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| panic!("no directory of the unpacked package in:\n{stderr}"));
+    assert!(unpacked.join("Cargo.toml.orig").is_file(), "{unpacked:?}");
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    let out = Command::new(cargo)
+        .args([
+            "test",
+            "--offline",
+            "--test",
+            "documentation",
+            "--test",
+            "package",
+        ])
+        .arg("--manifest-path")
+        .arg(unpacked.join("Cargo.toml"))
+        .args(["--", "--show-output"])
+        .output()
+        .unwrap();
+    let (stdout, stderr) = (lossy(&out.stdout), lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "cargo test in the unpacked package failed:\n{stdout}\n{stderr}"
+    );
+    assert_eq!(
+        stdout.matches("test result: ok.").count(),
+        2,
+        "two targets run in the unpacked package:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("is not in the repository"),
+        "the repository checks did not skip:\n{stdout}"
     );
 }
 
