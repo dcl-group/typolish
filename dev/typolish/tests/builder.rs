@@ -511,7 +511,7 @@ fn quote_pair_reasons_name_the_ground_of_design_section_2_11() {
 fn quote_pairs_are_a_value_type() {
     let a = QuotePairs::new(('«', '»'), ('„', '“'));
     let b = a;
-    assert_eq!(a, b);
+    assert_eq!(b, QuotePairs::new(('«', '»'), ('„', '“')));
     assert_ne!(a, QuotePairs::new(('“', '”'), ('‘', '’')));
 }
 
