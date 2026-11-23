@@ -63,7 +63,8 @@ supported Rust version: 1.100.
   text is escaped in the JavaScript styles.
 - Explanation: `report` and `report_template` return the result with every edit (`Change`), the
   protected spans (`ProtectedSpan`, `ProtectedKind`, `TechKind`) and the diagnostics (`Diagnostic`,
-  `DiagnosticKind`, `Severity`); the `Display` of `Report` prints a table of them.
+  `DiagnosticKind`, `Severity`); the `Display` of `Report` prints a table of the edits and the
+  protected spans.
 - Source check: `lint` and `lint_template` return the diagnostics of a source that must stay plain,
   with a `TypographicChar` for every character that `to_plain` would change.
 - Reverse transformation: `to_plain` and `to_plain_template` map typeset Unicode text back to the
