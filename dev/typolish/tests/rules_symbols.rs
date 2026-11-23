@@ -56,6 +56,12 @@ const COPYRIGHT_ROWS: &[(&str, &str)] = &[
     ("Бренд(tm)", "Бренд™"),
     ("Бренд (r)", "Бренд ®"),
     ("(c) 2026 Example Corp", "© 2026 Example Corp"),
+    // A word of design section 8.2 whatever its number of tokens, and a compound word in the
+    // spaced form (design section 15.2, item 16).
+    ("McDonald’s(tm)", "McDonald’s™"),
+    ("McDonald’s (r)", "McDonald’s ®"),
+    ("Rock’n’Roll (tm)", "Rock’n’Roll ™"),
+    ("IT-Systems (tm)", "IT-Systems ™"),
     // Not firing: a list item, a function argument, a lowercase or one-letter brand, an operator
     // after the mark, a mark attached to a number or a range, a mixed-case mark, a short year.
     ("вариант (c)", "вариант (c)"),
@@ -78,6 +84,10 @@ const COPYRIGHT_ROWS: &[(&str, &str)] = &[
     ("2026(c)", "2026(c)"),
     ("Section 1001(c) applies.", "Section 1001(c) applies."),
     ("(c) 2026a", "(c) 2026a"),
+    // Lowercase, a number first, or an attached compound word (check 24 freezes it).
+    ("don’t(tm)", "don’t(tm)"),
+    ("90’s (tm)", "90’s (tm)"),
+    ("IT-Systems(tm)", "IT-Systems(tm)"),
     // Typeset input stays, borrowed; a lone legal mark is not frozen.
     ("© 2026", "© 2026"),
     ("Brand™", "Brand™"),
@@ -109,6 +119,16 @@ fn copyright() {
                 assert!(span_texts(t, text).is_empty(), "{what}: {text}");
             }
         }
+    }
+}
+
+#[test]
+fn copyright_after_a_brand_with_plain_apostrophes_in_prose() {
+    // Design section 8.9: the apostrophes of the brand are typeset by `quotes.apostrophe` too.
+    for language in [Language::RU_RU, Language::EN_US] {
+        let t = prose(language);
+        check_in("Prose", &t, ("McDonald's(tm)", "McDonald’s™"));
+        check_in("Prose", &t, ("Rock'n'Roll (tm)", "Rock’n’Roll ™"));
     }
 }
 

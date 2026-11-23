@@ -486,10 +486,13 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
   copyright sign even when a year follows it: `f(c) 2026` stays. A label number or a percentage is
   not a year in either of its forms (section 8.2): `(c) 2026%`, `(c) 2026 %`, `(c) 2020-2026 %` and
   `№2026 (c)` stay. Otherwise `(c)` is a list item and stays (`вариант (c)`). `(tm)`, `(TM)`, `(r)`,
-  `(R)` → `™`, `®` after a brand name: a capitalized word of at least two letters, attached
-  (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` → `Brand ®`), and not followed by an
-  operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a function argument and stays:
-  `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
+  `(R)` → `™`, `®` after a brand name: a word of section 8.2 that starts with a capital letter and
+  has at least two letters, whatever its number of tokens (`McDonald’s(tm)` → `McDonald’s™`), a
+  compound word included in the spaced form (`IT-Systems (tm)` → `IT-Systems ™`; the attached
+  `IT-Systems(tm)` is not a word by check 23 and stays frozen), attached (`Brand(tm)` → `Brand™`) or
+  one space before (`Brand (r)` → `Brand ®`), and not followed by an operator fragment (`=`, `+`,
+  `<`, `>=`). Otherwise it is a function argument and stays: `S(r) = πr²`, `f(r)`, `V(r)`,
+  `area(r)`.
 - **`symbols.arrows`**: an operator fragment that is exactly `->`, `<-` or `<->`, with a space on
   each side → `→`, `←`, `↔`. `=>`, `-->`, `<-->`, `->>` are not in the table; `a->b` is frozen.
 - **`symbols.math`**: an operator fragment that is exactly `>=`, `<=` or `!=`, with a space on each

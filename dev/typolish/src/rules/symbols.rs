@@ -110,13 +110,18 @@ fn before<'a>(cx: &Cx<'a>, f: &Frag) -> Option<&'a Frag> {
     (g.core_end as usize == j + 1 && cx.in_core(j)).then_some(g)
 }
 
-/// A brand name (design section 8.9): one `Word` token of at least two letters whose first
-/// letter is a capital.
-fn brand(cx: &Cx<'_>, j: usize) -> bool {
-    if !matches!(cx.kind(j), Some(Kind::Word(_))) {
+/// A brand name (design section 8.9): a word of design section 8.2 (a `Word` core of any number
+/// of tokens, apostrophes included, or a compound word), not a label, starting with a capital,
+/// with at least two letters. `first` and `last` are its first and last tokens in the fragment
+/// `f`.
+fn brand(cx: &Cx<'_>, f: &Frag, first: usize, last: usize) -> bool {
+    if !matches!(f.kind, FragKind::Word | FragKind::Compound)
+        || f.label
+        || !matches!(cx.kind(first), Some(Kind::Word(_)))
+    {
         return false;
     }
-    let mut letters = cx.visible(j, j).filter(|c| c.is_alphabetic());
+    let mut letters = cx.visible(first, last).filter(|c| c.is_alphabetic());
     letters.next().is_some_and(char::is_uppercase) && letters.next().is_some()
 }
 
@@ -141,10 +146,10 @@ pub(crate) fn copyright(cx: &Cx<'_>, i: usize) -> Option<Match> {
         return None;
     };
     let f = cx.frag_of(i)?;
-    let (core, len) = core_of::<2>(cx, f)?;
-    let core = core.get(..len)?;
     match mark {
         Mark::Copyright => {
+            let (core, len) = core_of::<2>(cx, f)?;
+            let core = core.get(..len)?;
             let fits = match *core {
                 // `(c)2026`: a year attached after the mark.
                 [m, year] => {
@@ -164,16 +169,20 @@ pub(crate) fn copyright(cx: &Cx<'_>, i: usize) -> Option<Match> {
             fits.then(|| replace(cx, i, '\u{a9}'))
         }
         Mark::Registered | Mark::Trademark => {
-            let fits = match *core {
-                // `Brand(tm)`.
-                [word, m] => m == i && brand(cx, word),
-                // `Brand (r)`.
-                [m] => {
-                    m == i
-                        && before(cx, f).is_some_and(|g| {
-                            core_of::<1>(cx, g).is_some_and(|(c, n)| n == 1 && brand(cx, c[0]))
-                        })
-                }
+            let mut core = cx.core(f);
+            let fits = match (core.next(), core.last()) {
+                // `Brand (r)`, `IT-Systems (tm)`: the mark alone, the brand before it.
+                (Some(m), None) if m == i => before(cx, f).is_some_and(|g| {
+                    let mut word = cx.core(g);
+                    match (word.next(), word.last()) {
+                        (Some(a), b) => brand(cx, g, a, b.unwrap_or(a)),
+                        (None, _) => false,
+                    }
+                }),
+                // `Brand(tm)`, `McDonald’s(tm)`: the brand is the rest of the core.
+                (Some(a), Some(m)) if m == i && a != i => cx
+                    .prev(i)
+                    .is_some_and(|b| cx.in_core(b) && brand(cx, f, a, b)),
                 _ => false,
             };
             if !fits || operator_after(cx, f) {

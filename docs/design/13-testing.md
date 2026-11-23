@@ -117,8 +117,11 @@ gives the output of the whole set.
   `вариант (c)`, `f(c)`, `f(c) 2026`, `(R) знак`, `S(r) = πr²` → unchanged; `2020-2026(c)`,
   `(c)2020-2026`, `2026(c)` and en `Section 1001(c) applies.` → unchanged, and
   `report().protected()` lists `Technical(Unclassified)` for `2020-2026(c)`, `(c)2020-2026`,
-  `2026(c)` and `1001(c)`; `Brand(Tm)` → unchanged; `symbols.arrows` and `symbols.math`: `x  ->  y`,
-  `x\t>=\t5` → unchanged, no diagnostic.
+  `2026(c)` and `1001(c)`; `Brand(Tm)` → unchanged; `McDonald’s(tm)` → `McDonald’s™`,
+  `McDonald’s (r)` → `McDonald’s ®`, `Rock’n’Roll (tm)` → `Rock’n’Roll ™`, `IT-Systems (tm)` →
+  `IT-Systems ™`, while `don’t(tm)`, `90’s (tm)` and `IT-Systems(tm)` → unchanged; in Prose
+  `McDonald's(tm)` → `McDonald’s™`; `symbols.arrows` and `symbols.math`: `x  ->  y`, `x\t>=\t5` →
+  unchanged, no diagnostic.
 - `tests/rules_nbsp.rs` (stage 3): ru `А.С. Пушкин` → `А.С.⍽Пушкин` (`nbsp.initials`); `и т.д...`
   with `ellipsis.dots` and `nbsp.abbreviations` → `и⍽т.⍽д…`; `и т. д…` → `и⍽т.⍽д…`; en `etc...` with
   `ellipsis.dots` and `nbsp.abbreviations` → `etc…` (`etc` with its stop is `Dictionary`);
