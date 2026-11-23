@@ -110,6 +110,17 @@ const SEEDS: &[&str] = &[
     "100 % - норма",
     "5–10% - норма",
     "Рост - 5–10%",
+    // A label number owns its percent sign after spaces too (section 8.2).
+    "№5 % — т.е.",
+    "№10 % — -5% +",
+    "№5 %\u{a0}-- `x`",
+    "§5 % - x",
+    // A percentage after spaces as the left factor of a lone `x` and next to `(c)` (8.8, 8.9).
+    "10 % x 5",
+    "10 %... X\u{a0}10 %",
+    "(c) 2026 %",
+    "(c) 2026%",
+    "№2026 (c)",
     "word\u{a0}- word",
     "Sign in - it's free",
     "Подождите...\nДальше",
