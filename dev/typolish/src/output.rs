@@ -579,7 +579,8 @@ const fn markup_reference(c: char) -> Option<&'static str> {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Encoder {
     output: Output,
-    /// A `$` held back until the next character shows whether it starts `${`.
+    /// A `$` held back until the next character shows whether it starts `${`; at the end of a
+    /// text it is escaped.
     dollar: bool,
 }
 
@@ -629,12 +630,22 @@ impl Encoder {
         }
     }
 
-    /// Writes a held-back `$`: at the end of a text, and before a slot, whose value is not part
-    /// of the text.
+    /// Writes a held-back `$`: at the end of a text and before a slot the next character is
+    /// unknown, so in JavaScript it is escaped (design section 11.6).
     pub(crate) fn flush<O: Out>(&mut self, o: &mut O) -> Res {
         if self.dollar {
             self.dollar = false;
-            o.put_char('$')?;
+            match self.output {
+                Output::Escaped(style)
+                    if matches!(
+                        style.syntax,
+                        Syntax::Js | Syntax::JsHex | Syntax::JsCodePoint
+                    ) =>
+                {
+                    code(o, style.syntax, u32::from('$'))?;
+                }
+                _ => o.put_char('$')?,
+            }
         }
         Ok(())
     }

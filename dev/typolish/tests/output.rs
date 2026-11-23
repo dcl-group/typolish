@@ -264,7 +264,7 @@ const ESCAPES: &[(&str, [&str; 6])] = &[
     (">", ["\\u003E", "\\x3E", "\\u{3E}", "\\u003e", ">", ">"]),
     ("&", ["\\u0026", "\\x26", "\\u{26}", "\\u0026", "&", "&"]),
     ("${", ["\\u0024{", "\\x24{", "\\u{24}{", "${", "${", "${"]),
-    ("$", ["$", "$", "$", "$", "$", "$"]),
+    ("$", ["\\u0024", "\\x24", "\\u{24}", "$", "$", "$"]),
     ("$a", ["$a", "$a", "$a", "$a", "$a", "$a"]),
     ("{", ["{", "{", "{", "{", "{", "{"]),
     ("\n", ["\\n", "\\n", "\\n", "\\n", "\\n", "\\a "]),
@@ -587,6 +587,8 @@ fn borrowed_exactly_when_nothing_is_encoded() {
         ("x`y", json, true),
         ("x`y", CSS, true),
         ("a$b", JS, true),
+        ("a$", JS, false),
+        ("a$", json, true),
         ("a${b", JS, false),
         ("a${b", json, true),
         ("a\\b", RUST, false),
@@ -1183,6 +1185,46 @@ fn the_filled_template_is_the_encoded_text() {
     let n = t.format_number(1000, Output::Unicode).to_string();
     let filled = out.fill(|_| Cow::Owned(n.clone()));
     assert_eq!(filled, "1\u{a0}000\\u{a0}руб.");
+}
+
+#[test]
+fn a_dollar_before_a_slot_or_at_the_end_is_escaped() {
+    // Design section 11.6: the character after a `$` that ends a text is not known (a slot value
+    // or the text after a slot may start with `{`), so the JavaScript styles escape it and no
+    // `${` can form across a slot boundary.
+    let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    let js = [
+        (EscapeStyle::JS, "price: \\u0024"),
+        (EscapeStyle::JS_HEX, "price: \\x24"),
+        (EscapeStyle::JS_CODE_POINT, "price: \\u{24}"),
+    ];
+    for (style, expected) in js {
+        let output = Output::Escaped(style);
+        let out = t.typeset_template(
+            [Piece::Text("price: $"), Piece::Slot(0u8, Slot::OTHER)],
+            output,
+        );
+        assert_eq!(out.texts(), [expected, ""], "{style:?}");
+        let filled = out.fill(|_| "{alert(1)}".into());
+        assert!(!filled.contains("${"), "{style:?}: {filled}");
+        let value = t.typeset("{alert(1)}", output).into_owned();
+        assert!(
+            !out.fill(|_| value.as_str().into()).contains("${"),
+            "{style:?}"
+        );
+        // The mirror case: the value ends in `$`, the text after the slot starts with `{`.
+        let out = t.typeset_template([Piece::Slot(0u8, Slot::OTHER), Piece::Text("{x}")], output);
+        let value = t.typeset("$", output).into_owned();
+        let filled = out.fill(|_| value.as_str().into());
+        assert!(!filled.contains("${"), "{style:?}: {filled}");
+    }
+    for style in [EscapeStyle::JSON, EscapeStyle::RUST] {
+        let out = t.typeset_template(
+            [Piece::Text("price: $"), Piece::Slot(0u8, Slot::OTHER)],
+            Output::Escaped(style),
+        );
+        assert_eq!(out.texts()[0], "price: $", "{style:?}");
+    }
 }
 
 #[test]

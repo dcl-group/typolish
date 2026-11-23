@@ -27,8 +27,10 @@ run-time values are inserted as plain Unicode with no escaping, and `format_numb
 `format_range` are called with `Output::Unicode`; for an `Output::Html` template the run-time string
 is HTML, so values are HTML-escaped and numbers are formatted with the same `Output::Html`. The
 safety statements of sections 11.4 and 11.6 and the decoding guarantee of section 11.8 are about the
-texts the crate writes. A value with spaces inserted into a nowrap element (section 11.5) cannot
-break inside the element.
+texts the crate writes. For `JS`, `JS_HEX` and `JS_CODE_POINT` a value encoded with the same output
+kind (`typeset`, `format_number`) never ends in a raw `$`. A value encoded by other means must
+neither end in a raw `$` nor start with a raw `{` where it can meet a text across a slot boundary. A
+value with spaces inserted into a nowrap element (section 11.5) cannot break inside the element.
 
 ### 11.2 Typographic set
 
@@ -124,7 +126,7 @@ backslashes; escaping after the crate would ruin its own escapes.
 | `"`                                                     | `\"`                                                    | `\"`                                                               | `\"`                         | `\"`                  |
 | `'`, backtick                                           | `\u0027`, `\u0060`                                      | `\x27`, `\x60`                                                     | as is                        | as is                 |
 | `<`, `>`, `&`                                           | `\u003C`, `\u003E`, `\u0026`                            | `\x3C`, `\x3E`, `\x26`                                             | `\u003c`, `\u003e`, `\u0026` | as is                 |
-| `$` before `{`                                          | `\u0024`                                                | `\x24`                                                             | as is                        | as is                 |
+| `$` before `{` or at the end of a text                  | `\u0024`                                                | `\x24`                                                             | as is                        | as is                 |
 | `\n`, `\r`, `\t`                                        | `\n`, `\r`, `\t`                                        | `\n`, `\r`, `\t`                                                   | `\n`, `\r`, `\t`             | `\n`, `\r`, `\t`      |
 | other controls (U+0000 to U+001F, U+007F)               | `\u0000`                                                | `\x00`                                                             | `\u0000`                     | `\0`, `\u{1}`         |
 | U+2028, U+2029                                          | `\u2028`, `\u2029`                                      | `\u2028`, `\u2029`                                                 | `\u2028`, `\u2029`           | as is                 |
@@ -132,7 +134,9 @@ backslashes; escaping after the crate would ruin its own escapes.
 
 - `JS` and `JS_HEX` use only escapes valid in every JavaScript string form, so the result is safe in
   single-quoted, double-quoted and template literals and inside an HTML `<script>` element. `JS_HEX`
-  is the `\xHH` form (`\x00`), with the same complete container escaping.
+  is the `\xHH` form (`\x00`), with the same complete container escaping. A `$` that ends a text
+  (before a slot or at the end of the result) is escaped too: the next character is not known, and a
+  slot value or the text after a slot may start with `{`.
 - `JSON` uses only escapes that JSON defines and also escapes U+2028, U+2029, `<`, `>` and `&`, so
   the result is safe to embed in a script element too.
 - `RUST` is for code generated at build time (section 2.14): the body of a normal (non-raw) string

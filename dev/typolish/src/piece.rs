@@ -323,7 +323,9 @@ impl<'t, S> Template<'t, S> {
     /// Joins the texts with slot values, for tests and run-time use without code generation.
     ///
     /// Values are inserted as they are: with `Output::Html` or `Output::Escaped` the closure must
-    /// return values already encoded for that output (design section 11.1).
+    /// return values already encoded for that output (design section 11.1). In the JavaScript
+    /// styles a text never ends in a raw `$`; a value encoded by other means must neither end in a
+    /// raw `$` nor start with a raw `{`, so that no `${` forms across a slot boundary.
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};

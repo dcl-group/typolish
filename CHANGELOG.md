@@ -58,7 +58,8 @@ supported Rust version: 1.100.
   hexadecimal references or characters (`HtmlStyle`) and no-break groups as entities or as nowrap
   elements (`nowrap_class`, `nowrap_style`); `Output::Escaped` with the body of a string literal for
   JavaScript (`JS`, `JS_HEX`, `JS_CODE_POINT`), JSON, Rust and CSS (`EscapeStyle`), the typographic
-  set or with `non_ascii()` every non-ASCII character escaped.
+  set or with `non_ascii()` every non-ASCII character escaped; `$` before `{` and at the end of a
+  text is escaped in the JavaScript styles.
 - Explanation: `report` and `report_template` return the result with every edit (`Change`), the
   protected spans (`ProtectedSpan`, `ProtectedKind`, `TechKind`) and the diagnostics (`Diagnostic`,
   `DiagnosticKind`, `Severity`); the `Display` of `Report` prints a table of them.

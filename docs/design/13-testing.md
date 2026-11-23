@@ -427,14 +427,14 @@ the no-panic test.
 17. **Safe alphabet**: for every output kind, the output of `typeset` and of `typeset_template`
     (each text) contains none of these raw characters: `Html` — `<`, `>`, `"`, `'`, and `&` not
     starting a reference (`Markup` pieces excepted); `JS`, `JS_HEX`, `JS_CODE_POINT` — `"`, `'`,
-    backtick, `<`, `>`, `&`, `$` followed by `{`, U+2028, U+2029, controls; `JSON` — `"`, `<`, `>`,
-    `&`, U+2028, U+2029, controls; `RUST` — `"`, controls; `CSS` — `"`, `'`, `<` and the controls of
-    section 11.6; in every escaped kind each `\` starts an escape that a strict parser of that
-    syntax accepts (a CSS hex escape always ends with its space); with `non_ascii()` no byte from
-    0x80; except with `HtmlStyle::CHARACTERS`, no raw character of the typographic set. The strict
-    parsers are test helpers next to the decoders. "Controls" here are those of the table of section
-    11.6, U+0000 to U+001F and U+007F; U+0085 and the other C1 characters are not among them and are
-    written raw by every escaped kind unless `non_ascii()` is set.
+    backtick, `<`, `>`, `&`, `$` followed by `{` or at the end, U+2028, U+2029, controls; `JSON` —
+    `"`, `<`, `>`, `&`, U+2028, U+2029, controls; `RUST` — `"`, controls; `CSS` — `"`, `'`, `<` and
+    the controls of section 11.6; in every escaped kind each `\` starts an escape that a strict
+    parser of that syntax accepts (a CSS hex escape always ends with its space); with `non_ascii()`
+    no byte from 0x80; except with `HtmlStyle::CHARACTERS`, no raw character of the typographic set.
+    The strict parsers are test helpers next to the decoders. "Controls" here are those of the table
+    of section 11.6, U+0000 to U+001F and U+007F; U+0085 and the other C1 characters are not among
+    them and are written raw by every escaped kind unless `non_ascii()` is set.
 
 ### 13.6 Unicode conformance
 

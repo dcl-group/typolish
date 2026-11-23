@@ -133,7 +133,7 @@ pub fn raw_forbidden(syntax: Syntax, c: char, next: Option<char>) -> bool {
             matches!(
                 c,
                 '"' | '\'' | '`' | '<' | '>' | '&' | '\u{2028}' | '\u{2029}'
-            ) || (c == '$' && next == Some('{'))
+            ) || (c == '$' && matches!(next, Some('{') | None))
                 || control
         }
         Syntax::Json => matches!(c, '"' | '<' | '>' | '&' | '\u{2028}' | '\u{2029}') || control,
@@ -471,7 +471,7 @@ fn encode_escaped(style: EscapeStyle, text: &str) -> String {
                 Syntax::Css if c == '<' => out.push_str(&format!("\\{cp:x} ")),
                 _ => out.push(c),
             },
-            '$' if next == Some('{') => match syntax {
+            '$' if matches!(next, Some('{') | None) => match syntax {
                 Syntax::Js => out.push_str("\\u0024"),
                 Syntax::JsHex => out.push_str("\\x24"),
                 Syntax::JsCodePoint => out.push_str("\\u{24}"),
