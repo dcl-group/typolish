@@ -4,7 +4,8 @@
 //!
 //! A cell that the table gives as a fragment is checked as a fragment of the output; a cell marked
 //! "unchanged" is compared with the input byte for byte; a cell marked "unchanged (glue aside)" is
-//! compared with the no-break spaces turned into plain spaces.
+//! compared with the exact Prose output of the third column of `GLUE_ASIDE_RU`, whose glue written
+//! as plain spaces gives back the input.
 
 #![allow(
     clippy::unwrap_used,
