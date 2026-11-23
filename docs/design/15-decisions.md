@@ -136,6 +136,7 @@ that the maintainer settled in section 15.5 name the item.
 | C29 | A minus sign is `-` or a dash (U+2010 to U+2015, U+2212): the signs check 15 reads as the sign of a number again                                              | any non-letter, non-digit, non-space, non-quote sign: the second pass breaks idempotence        | 2.11, 7.6 |
 | C30 | No glue sticks to a fragment that holds an `Other` slot (`and "{o}"`, `и {d}{o}`): a nowrap group takes whole fragments                                       | "next to" as the adjacent token: `and⍽"{o}"` glued                                              | 2.6, 8.2  |
 | C31 | `to_plain` checks every reading with forward runs of the engine: a character goes back only where an enabled rule produces it                                 | inverse patterns per rule, a second copy that drifts from the forward rules                     | 12.1      |
+| C32 | A nested quote pair whose double-quote reading does not pair again (`«x „“.»`) reads as `'`, so P2 holds for it                                               | double quotes at every level and a known loss of P2                                             | 12.1      |
 
 ### 15.4 Stage plan
 

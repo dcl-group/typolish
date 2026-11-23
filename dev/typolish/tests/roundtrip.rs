@@ -204,6 +204,71 @@ fn quotes_pairs_and_apostrophe_together() {
     );
 }
 
+/// The two built-in sets and `RuleSet::ALL` of a language, with names.
+fn sets_and_all(language: &Language) -> Vec<(String, Typographer)> {
+    let mut typographers = sets_of(language);
+    typographers.push((
+        format!("{language} All"),
+        Typographer::new(language.clone(), RuleSet::ALL),
+    ));
+    typographers
+}
+
+#[test]
+fn nested_pairs_of_signs_and_possessives_round_trip() {
+    // Section 12.1: a `’` after a `‘` with nothing but signs between them closes it, the mirror of
+    // the sign-only pair of section 6.3; a possessive `’` inside a deeper pair does not end the
+    // search for the closer of its own pair.
+    let canonical_en = [
+        "\"a \"\" b\"",
+        "\"a \"-\" b\"",
+        "\"a \"\", b\"",
+        "\"a \"?\" b\"",
+        "\"a \"...\" b\"",
+        "\"a \"the dogs' bowl\" b\"",
+        "\"\"a dogs' b \"c dogs' d\" e\" f\"",
+        "\"\"house the dogs' bowl \"the dogs' bowl\" house\" two words\"",
+        // A neighbor inside a frozen core is of class `Word` (section 6.3).
+        "\"x \"y {\"\"",
+        "\"x \"y 2026{\"\"",
+        "\"x \"y a/\"\"",
+        "\"\"\"house the dogs' bowl in 2026{\"\"\"",
+    ];
+    let canonical_ru = [
+        "\"a \"\" b\"",
+        "\"a \"-\" b\"",
+        "\"a \"\", b\"",
+        "\"a \"?\" b\"",
+        "\"x \"y {\"\"",
+    ];
+    // Section 12.1: where the double quotes of a window do not pair again, the nested pair reads
+    // as `'`; these inputs are not canonical, so only P2 holds.
+    let plain = ["\"x ''.\"", "\"May '+-'':\"", "\"x '-'.\""];
+    let mut failures = Vec::new();
+    for (language, canonical) in [(en(), &canonical_en[..]), (ru(), &canonical_ru[..])] {
+        for (what, t) in sets_and_all(&language) {
+            for x in canonical {
+                if let Err(e) = p1(&t, x) {
+                    failures.push(format!("{what}: {e}"));
+                }
+            }
+            for x in canonical.iter().chain(&plain) {
+                if let Err(e) = p2(&t, x) {
+                    failures.push(format!("{what}: {e}"));
+                }
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+    for (what, t) in sets_of(&en()) {
+        check_plain(&what, &t, ("“x ‘’.”", "\"x ''.\""));
+        check_plain(&what, &t, ("“a⍽‘’ b”", "\"a \"\" b\""));
+    }
+    for (what, t) in sets_of(&ru()) {
+        check_plain(&what, &t, ("«x „“.»", "\"x ''.\""));
+    }
+}
+
 #[test]
 fn each_of_the_two_quote_rules_undoes_only_its_own_character() {
     // `quotes.pairs` alone: the apostrophe stays.

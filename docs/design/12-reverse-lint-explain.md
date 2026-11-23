@@ -46,43 +46,60 @@ characters comes back as `Cow::Borrowed`.
 **How a reading is checked.** The table gives the reading of every typographic character outside the
 spans of `protected()`: the plain text it came from (`a—b` reads as `a - b`, or `a -- b` when only
 `dash.double-hyphen` is on; `a — b` as `a - b` or `a -- b`). Quote glyphs and apostrophes are undone
-by the table and the rule below alone, since their plain form does not depend on the level the
-forward rule would choose (`„x“` and `‘x’` at the top level give `"x"` too). Every other character
-is undone only where an enabled rule produces it, and the rules decide that themselves: the engine
-runs forward on the text with the readings in place, and a reading is dropped (the character stays)
-when it does not come back as its character, or when it makes a rule edit the text next to it that
-the text as it was does not get, so that the round trip would break there. Glue of either width
-counts as glue, and the spaces that the dash style sets around a dash do not count; the restored
-spaces of a closed dash are exempt from the second test, because the closed form joins two words
-into one fragment, which by design changes the rules around it (section 8.4). A reading that failed
-only because a neighbouring reading was wrong is tried again alone in its neighbourhood: readings
-farther apart than any rule looks (256 bytes; the longest pattern, `nbsp.phone`, spans at most 24
-tokens) are tried in one forward run, and a problem of the run is laid at the nearest of them, so
-the number of runs does not grow with the length of the text. The whole pass repeats on its own
-output until nothing changes, so `to_plain` is stable by construction. There is no second copy of
-the rule patterns to drift from them, and P2 holds wherever the forward pass is idempotent; the
-price is a few forward runs per call, which the tooling path allows (section 2.12).
+by the table and the rule below, since their plain form does not depend on the level the forward
+rule would choose (`„x“` and `‘x’` at the top level give `"x"` too). Their readings are checked
+first, because they are context for the rules that check the others: the engine runs forward with
+the quote readings in place, and a quote reading comes back when it gives a glyph of the pairs at
+any level (or `’`). In a window where one does not come back, the glyphs of the nested pair read as
+`'` instead, if that brings every quote of the window back: the double quotes of `«x „“.»`, read as
+`"x "".`, do not pair again (the closer of the nested pair and the last quote form the sign-only
+pair `"."`, section 6.3), while `"x ''."` gives `«x „“.»`. Otherwise the double quotes stay. Every
+other character is undone only where an enabled rule produces it, and the rules decide that
+themselves: the engine runs forward on the text with the readings in place, and a reading is dropped
+(the character stays) when it does not come back as its character, or when it makes a rule edit the
+text next to it that the text as it was does not get, so that the round trip would break there. Glue
+of either width counts as glue, and the spaces that the dash style sets around a dash do not count;
+the restored spaces of a closed dash are exempt from the second test, because the closed form joins
+two words into one fragment, which by design changes the rules around it (section 8.4). A reading
+that failed only because a neighboring reading was wrong is tried again alone in its neighborhood:
+readings farther apart than any rule looks (256 bytes; the longest pattern, `nbsp.phone`, spans at
+most 24 tokens) are tried in one forward run, and a problem of the run is laid at the nearest of
+them, so the number of runs does not grow with the length of the text. The whole pass repeats on its
+own output until nothing changes, so `to_plain` is stable by construction. There is no second copy
+of the rule patterns to drift from them; the price is a few forward runs per call, which the tooling
+path allows (section 2.12).
 
 **Which `’` is an apostrophe** (English, where `’` is both the apostrophe and the nested closing
 quote). A `’` in a fixed apostrophe context of section 6.2 (between letters, after a digit before a
-letter, an elision, at a word start before digits) is an apostrophe. Any other `’` with a closing
-role closes the innermost open `‘` of its depth, mirroring the forward algorithm, with one
-exception: a `’` after `s` and before a non-letter, where the forward algorithm puts a trailing
-possessive, leaves the `‘` open if a later `’` of the same depth, before the next `‘` of that depth
-and before the closer of the enclosing pair, has a closing role and does not follow `s`; that later
-`’` closes it. A `’` that closes nothing is an apostrophe. So `“He said ‘the dogs’ bowl is empty’”`
-→ `"He said "the dogs' bowl is empty""`, and `“‘Hi,’ said the dogs’ owner”` →
-`""Hi," said the dogs' owner"`. When every candidate follows `s` (`‘the dogs’ bowls’`), the first
-one closes, and the round trip lists the case as a known loss (`NestedPossessive`, section 12.2).
+letter, an elision, at a word start before digits) is an apostrophe. A `’` that has nothing but
+signs (or nothing) between it and the `‘` on top of the open pairs, where that `‘` has L of class
+`Space`, `OpenP` or `DashC` and the `’` has R of class `Space`, `CloseP` or `DashC`, closes it: the
+mirror of the sign-only pair of section 6.3, by which plain `""`, `"-"` or `"?"` inside a pair is
+typeset as `‘’`, `‘-’`, `‘?’` whatever the roles of its series (`“a ‘’ b”` → `"a "" b"`); two
+adjacent quotes in a series of three or more do not count. Any other `’` with a closing role closes
+the innermost open `‘` of its depth, mirroring the forward algorithm, with one exception: a `’`
+after `s` and before a non-letter, where the forward algorithm puts a trailing possessive, leaves
+the `‘` open if a later `’` of the same depth, before the next `‘` of that depth and before the
+closer of the enclosing pair, has a closing role and does not follow `s`; that later `’` closes it.
+The pairs opened after the first `’` are followed by their kind: a `’` inside a deeper `“…”` closes
+nothing there (it is an apostrophe), so it neither ends that pair nor the search
+(`“‘a dogs’ b “c dogs’ d” e’ f”` → `""a dogs' b "c dogs' d" e" f"`). A `’` that closes nothing is an
+apostrophe. So `“He said ‘the dogs’ bowl is empty’”` → `"He said "the dogs' bowl is empty""`, and
+`“‘Hi,’ said the dogs’ owner”` → `""Hi," said the dogs' owner"`. When every candidate follows `s`
+(`‘the dogs’ bowls’`), the first one closes, and the round trip lists the case as a known loss
+(`NestedPossessive`, section 12.2). The classes of the neighbors are those of section 6.3: a
+character inside a protected span (a frozen core, a delimited span) is of class `Word`, so the `’`
+of `“x ‘y 2026{’”` closes.
 
 The canonical plain form, for the enabled rules, is the Plain column of the table above, with these
 choices: no typographic character that the rules produce; a dash between words written `-` (not
 `--`, unless `dash.double-hyphen` is on and `dash.spaced-hyphen` off) with spaces on both sides; a
 range written `a-b` with no spaces; `x`, `(c)`, `(r)`, `(tm)` in lowercase Latin letters;
-abbreviations with a space (`т. е.`); `№ 5` with a space; double quotes at every level; `'` only for
-apostrophes and primes; `...` for an ellipsis; `?..` after a question in Russian; a percentage in
-the form that `PercentSpacing` keeps: either form with `AsWritten`, `100%` with `Attached` and with
-`Language` for en, `100 %` with `Spaced` and with `Language` for ru.
+abbreviations with a space (`т. е.`); `№ 5` with a space; double quotes at every level (a nested
+pair reads as `'` only where the double quotes do not pair again, see above, and such text is not
+canonical); `'` only for apostrophes and primes; `...` for an ellipsis; `?..` after a question in
+Russian; a percentage in the form that `PercentSpacing` keeps: either form with `AsWritten`, `100%`
+with `Attached` and with `Language` for en, `100 %` with `Spaced` and with `Language` for ru.
 
 It is a method of the typographer because it needs the enabled rules, the quote pairs, single-quote
 mode and dash style of the typographer (the language data with the builder's overrides), and the

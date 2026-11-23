@@ -15,6 +15,7 @@ use std::borrow::Cow;
 
 use super::Input;
 use super::ingest::Atom;
+use super::lex::{is_dash_char, is_punct_char};
 use super::record::{NoRecord, Recorder};
 use super::render::{REdit, merge, write_text};
 use super::scratch::Scratch;
@@ -65,6 +66,9 @@ struct Cand {
     window: usize,
     /// Whether it is an em dash, whose spaces the dash style decides.
     dash: bool,
+    /// Whether it is a quote glyph or `’`: it comes back as any glyph of the pairs or `’`, since
+    /// the level decides the glyph and not the reading.
+    quote: bool,
 }
 
 impl Cand {
@@ -237,6 +241,7 @@ fn round(
     let text = Flat {
         text: &flat,
         walls: &walls,
+        frozen: &protected,
     };
     let mut cands = candidates(&settings, &text, &protected, &boundaries);
     if cands.is_empty() {
@@ -249,7 +254,9 @@ fn round(
         flat: &flat,
         base: &base,
         boundaries: &boundaries,
+        reading: settings,
     };
+    settle_quotes(&check, scratch, &mut cands);
     // First the candidates that do not come back are put aside, until all that are left come
     // back; one that failed only because of a neighbour's wrong reading is then tried again, one
     // at a time in each window (windows are independent, design section 3.3), in each of its
@@ -456,6 +463,7 @@ struct Check<'c, 'i> {
     /// The edits of the forward run on the text as it is, in order.
     base: &'c [REdit],
     boundaries: &'c [usize],
+    reading: Reading,
 }
 
 impl Check<'_, '_> {
@@ -520,7 +528,12 @@ impl Check<'_, '_> {
             );
             let original = self.flat.get(cand.start..cand.end).unwrap_or("");
             if let Some(f) = failed.get_mut(k) {
-                *f = !ok || !same(cand.dash, &segment, original);
+                *f = !ok
+                    || if cand.quote {
+                        !self.reading.is_quote_glyph(&segment)
+                    } else {
+                        !same(cand.dash, &segment, original)
+                    };
             }
         }
         let mut stray = Vec::new();
@@ -553,6 +566,57 @@ impl Check<'_, '_> {
             }
         }
         Verdict { failed, stray }
+    }
+}
+
+/// The readings of the quote glyphs, checked before the other candidates (they are context for
+/// the rules that check those): the engine runs forward with the quote readings in place and the
+/// other candidates as they are, and in a window where a quote reading does not come back as a
+/// glyph (the double quotes of `«x „“.»` read as `"x "".` do not pair again), the glyphs of the
+/// nested pair read as `'` instead, if that brings every quote of the window back (design section
+/// 12.1).
+fn settle_quotes(check: &Check<'_, '_>, scratch: &mut Scratch, cands: &mut [Cand]) {
+    let nested = |c: &Cand| c.fixed && c.on && c.alts.len() > 1;
+    if !cands.iter().any(nested) {
+        return;
+    }
+    let on: Vec<bool> = cands.iter().map(|c| c.on).collect();
+    for cand in cands.iter_mut() {
+        if !cand.fixed {
+            cand.on = false;
+        }
+    }
+    let broken = |cands: &[Cand], verdict: &Verdict| -> Vec<usize> {
+        let mut windows: Vec<usize> = cands
+            .iter()
+            .zip(&verdict.failed)
+            .filter(|(c, f)| c.on && c.quote && c.alts.first() == Some(&"\"") && **f)
+            .map(|(c, _)| c.window)
+            .collect();
+        windows.dedup();
+        windows
+    };
+    let first = check.run(scratch, cands);
+    let windows: Vec<usize> = broken(cands, &first)
+        .into_iter()
+        .filter(|&w| cands.iter().any(|c| c.window == w && nested(c)))
+        .collect();
+    if !windows.is_empty() {
+        for cand in cands.iter_mut() {
+            if nested(cand) && windows.contains(&cand.window) {
+                cand.alt = 1;
+            }
+        }
+        let second = check.run(scratch, cands);
+        let still = broken(cands, &second);
+        for cand in cands.iter_mut() {
+            if cand.fixed && cand.alt == 1 && still.contains(&cand.window) {
+                cand.alt = 0;
+            }
+        }
+    }
+    for (cand, was) in cands.iter_mut().zip(on) {
+        cand.on = was;
     }
 }
 
@@ -650,6 +714,13 @@ impl Reading {
         self.pairs.is_some_and(|g| g.contains(&c))
     }
 
+    /// Whether `s` is one glyph of the pairs or `’`: what a quote reading comes back as, at
+    /// whatever level.
+    fn is_quote_glyph(&self, s: &str) -> bool {
+        let mut chars = s.chars();
+        matches!((chars.next(), chars.next()), (Some(c), None) if c == APOSTROPHE || self.is_glyph(c))
+    }
+
     fn is_candidate(&self, c: char) -> bool {
         fixed(c).is_some()
             || matches!(c, '\u{2014}' | APOSTROPHE)
@@ -682,11 +753,13 @@ fn fixed(c: char) -> Option<&'static [&'static str]> {
     })
 }
 
-/// The call's text with the positions of slots and protected pieces, which have no text.
+/// The call's text with the positions of slots and protected pieces, which have no text, and the
+/// protected spans of the text, in order.
 #[derive(Clone, Copy, Debug)]
 struct Flat<'s> {
     text: &'s str,
     walls: &'s [usize],
+    frozen: &'s [(usize, usize)],
 }
 
 /// What stands next to a character, format characters skipped.
@@ -709,36 +782,72 @@ fn is_format(c: char) -> bool {
 
 impl Flat<'_> {
     /// What stands before `at`, skipping format characters and the characters `skip` accepts.
-    fn before(&self, mut at: usize, skip: impl Fn(char) -> bool) -> Near {
-        loop {
-            if self.walls.binary_search(&at).is_ok() {
-                return Near::Wall;
-            }
-            let Some(c) = self.text.get(..at).and_then(|s| s.chars().next_back()) else {
-                return Near::Edge;
-            };
-            if is_format(c) || skip(c) {
-                at = at.saturating_sub(c.len_utf8());
-                continue;
-            }
-            return Near::Char(c);
-        }
+    fn before(&self, at: usize, skip: impl Fn(char) -> bool) -> Near {
+        self.before_at(at, skip).0
     }
 
     /// What stands after `at`, skipping format characters and the characters `skip` accepts.
-    fn after(&self, mut at: usize, skip: impl Fn(char) -> bool) -> Near {
+    fn after(&self, at: usize, skip: impl Fn(char) -> bool) -> Near {
+        self.after_at(at, skip).0
+    }
+
+    /// `before`, with the start of the character found.
+    fn before_at(&self, mut at: usize, skip: impl Fn(char) -> bool) -> (Near, usize) {
         loop {
             if self.walls.binary_search(&at).is_ok() {
-                return Near::Wall;
+                return (Near::Wall, at);
+            }
+            let Some(c) = self.text.get(..at).and_then(|s| s.chars().next_back()) else {
+                return (Near::Edge, at);
+            };
+            at = at.saturating_sub(c.len_utf8());
+            if is_format(c) || skip(c) {
+                continue;
+            }
+            return (Near::Char(c), at);
+        }
+    }
+
+    /// `after`, with the start of the character found.
+    fn after_at(&self, mut at: usize, skip: impl Fn(char) -> bool) -> (Near, usize) {
+        loop {
+            if self.walls.binary_search(&at).is_ok() {
+                return (Near::Wall, at);
             }
             let Some(c) = self.text.get(at..).and_then(|s| s.chars().next()) else {
-                return Near::Edge;
+                return (Near::Edge, at);
             };
             if is_format(c) || skip(c) {
                 at = at.saturating_add(c.len_utf8());
                 continue;
             }
-            return Near::Char(c);
+            return (Near::Char(c), at);
+        }
+    }
+
+    /// Whether the character at `at` lies in a protected span.
+    fn is_frozen(&self, at: usize) -> bool {
+        let next = self.frozen.partition_point(|&(start, _)| start <= at);
+        next.checked_sub(1)
+            .and_then(|k| self.frozen.get(k))
+            .is_some_and(|&(_, end)| at < end)
+    }
+
+    /// The class of the left neighbor of the series of quotes that ends at `at` (design section
+    /// 6.3). A character inside a protected span is of class `Word`, as a neighbor inside a
+    /// frozen core or a protected span is in the forward algorithm (sections 6.3 and 6.9).
+    fn class_before(&self, reading: &Reading, at: usize) -> Class {
+        match self.before_at(at, |q| is_quote(reading, q)) {
+            (Near::Char(_), pos) if self.is_frozen(pos) => Class::Word,
+            (near, _) => class(near),
+        }
+    }
+
+    /// The class of the right neighbor of the series of quotes that starts at `at`.
+    fn class_after(&self, reading: &Reading, at: usize) -> Class {
+        match self.after_at(at, |q| is_quote(reading, q)) {
+            (Near::Char(_), pos) if self.is_frozen(pos) => Class::Word,
+            (near, _) => class(near),
         }
     }
 }
@@ -794,6 +903,88 @@ struct QuoteAt {
     closing: bool,
     /// It follows `s`, where the forward algorithm puts a trailing possessive.
     after_s: bool,
+    /// It is a `’` that closes the nested opener before it as the second quote of a sign-only
+    /// pair would (design sections 6.3 and 12.1).
+    sign_only: bool,
+}
+
+/// A sign between the quotes of a sign-only pair (design section 6.3): punctuation, dots, dashes,
+/// operators, brackets and the times sign.
+fn is_sign(c: char) -> bool {
+    matches!(
+        c,
+        '-' | '.' | '\u{2026}' | '\u{d7}' | '(' | ')' | '[' | ']' | '{' | '}' | '\u{2190}'
+            ..='\u{2194}' | '\u{2260}' | '\u{2264}' | '\u{2265}' | '\u{b1}'
+    ) || is_dash_char(c)
+        || is_punct_char(c)
+}
+
+/// Whether the `’` at `at..end` is the mirror of the second quote of a sign-only pair (design
+/// section 6.3): the nearest character before it that is not a sign or a format character is the
+/// nested opener, whose series has L of class `Space`, `OpenP` or `DashC`, and two adjacent quotes
+/// are not part of a series of three or more. R of the `’` is the caller's to check. Plain `""`,
+/// `"-"` or `"?"` inside a pair is typeset as such a nested pair, whatever the roles of its series.
+fn sign_only_close(reading: &Reading, text: &Flat<'_>, at: usize, end: usize) -> bool {
+    let Some([open1, _, open2, _]) = reading.pairs else {
+        return false;
+    };
+    if open2 == open1 {
+        return false;
+    }
+    let mut p = at;
+    let mut adjacent = true;
+    loop {
+        if text.walls.binary_search(&p).is_ok() {
+            return false;
+        }
+        let Some(c) = text.text.get(..p).and_then(|s| s.chars().next_back()) else {
+            return false;
+        };
+        p = p.saturating_sub(c.len_utf8());
+        if is_format(c) {
+            continue;
+        }
+        if is_sign(c) {
+            adjacent = false;
+            continue;
+        }
+        if c != open2 {
+            return false;
+        }
+        break;
+    }
+    if !matches!(
+        text.class_before(reading, p),
+        Class::Space | Class::OpenP | Class::DashC
+    ) {
+        return false;
+    }
+    !adjacent || series_len(reading, text, p, end) < 3
+}
+
+/// The number of quotes in the series around the quotes at `start..end`, format characters
+/// skipped.
+fn series_len(reading: &Reading, text: &Flat<'_>, start: usize, end: usize) -> usize {
+    let quotes = |s: &str| s.chars().filter(|&q| is_quote(reading, q)).count();
+    let inner = text.text.get(start..end).map_or(0, quotes);
+    let mut count = inner;
+    let mut p = start;
+    while text.walls.binary_search(&p).is_err()
+        && let Some(c) = text.text.get(..p).and_then(|s| s.chars().next_back())
+        && (is_format(c) || is_quote(reading, c))
+    {
+        count = count.saturating_add(usize::from(is_quote(reading, c)));
+        p = p.saturating_sub(c.len_utf8());
+    }
+    let mut p = end;
+    while text.walls.binary_search(&p).is_err()
+        && let Some(c) = text.text.get(p..).and_then(|s| s.chars().next())
+        && (is_format(c) || is_quote(reading, c))
+    {
+        count = count.saturating_add(usize::from(is_quote(reading, c)));
+        p = p.saturating_add(c.len_utf8());
+    }
+    count
 }
 
 /// The candidates of the text in order of position, outside the protected spans.
@@ -818,16 +1009,20 @@ fn candidates(
         }
         let end = at.saturating_add(c.len_utf8());
         let alts: &'static [&'static str] = if c == APOSTROPHE || reading.is_glyph(c) {
-            let left = text.before(at, |q| is_quote(reading, q));
-            let right = text.after(end, |q| is_quote(reading, q));
-            let closing = !matches!(class(left), Class::Space | Class::OpenP | Class::DashC)
-                && matches!(class(right), Class::Space | Class::CloseP | Class::DashC);
+            let left = text.class_before(reading, at);
+            let right = text.class_after(reading, end);
+            let closing = !matches!(left, Class::Space | Class::OpenP | Class::DashC)
+                && matches!(right, Class::Space | Class::CloseP | Class::DashC);
             let after_s = matches!(text.before(at, |_| false), Near::Char('s' | 'S'));
+            let sign_only = c == APOSTROPHE
+                && matches!(right, Class::Space | Class::CloseP | Class::DashC)
+                && sign_only_close(reading, text, at, end);
             quotes.push(QuoteAt {
                 c,
                 window: boundaries.partition_point(|&b| b <= at),
                 closing,
                 after_s,
+                sign_only,
             });
             // The reading is decided below, with the pairs.
             &[]
@@ -856,6 +1051,7 @@ fn candidates(
             fixed: false,
             window: boundaries.partition_point(|&b| b <= at),
             dash: c == '\u{2014}',
+            quote: c == APOSTROPHE || reading.is_glyph(c),
         });
     }
     let readings = quote_readings(reading, &quotes);
@@ -876,15 +1072,18 @@ fn candidates(
 }
 
 /// The readings of the quote glyphs and apostrophes, in order: a glyph is `"`; a `’` closes the
-/// innermost open pair whose closer it is, or is an apostrophe (design section 12.1).
+/// innermost open pair whose closer it is, or is an apostrophe (design section 12.1). A glyph of
+/// the nested pair has the second reading `'`, which `settle_quotes` takes where `"` does not come
+/// back.
 fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<&'static [&'static str]> {
     const QUOTE: &[&str] = &["\""];
-    const CLOSER: &[&str] = &["\""];
+    const NESTED: &[&str] = &["\"", "'"];
     // An apostrophe is undone only with `quotes.apostrophe`; otherwise it has no reading.
     let apostrophe: &'static [&'static str] = if reading.apostrophe { &["'"] } else { &[] };
     let Some([open1, close1, open2, close2]) = reading.pairs else {
         return quotes.iter().map(|_| apostrophe).collect();
     };
+    let glyphs = [open1, close1, open2, close2];
     let mut out = Vec::with_capacity(quotes.len());
     // The open pairs: `false` for the primary pair, `true` for the nested one.
     let mut stack: Vec<bool> = Vec::new();
@@ -897,12 +1096,17 @@ fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<&'static [&'stat
         let c = q.c;
         if c == APOSTROPHE && (c == close1 || c == close2) {
             let nested = c == close2;
-            if q.closing && stack.last() == Some(&nested) {
-                if q.after_s && later_closer(quotes, k, [open1, close1, open2, close2], nested) {
+            let closer = if nested { NESTED } else { QUOTE };
+            if q.sign_only && stack.last() == Some(&true) && nested {
+                // The mirror of a sign-only pair (section 6.3): `‘’`, `‘-’`.
+                stack.pop();
+                out.push(closer);
+            } else if q.closing && stack.last() == Some(&nested) {
+                if q.after_s && later_closer(quotes, k, glyphs, nested) {
                     out.push(apostrophe);
                 } else {
                     stack.pop();
-                    out.push(CLOSER);
+                    out.push(closer);
                 }
             } else {
                 out.push(apostrophe);
@@ -913,21 +1117,28 @@ fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<&'static [&'stat
             out.push(apostrophe);
             continue;
         }
-        if c == open1 || c == open2 {
-            stack.push(c == open2 && c != open1);
+        let nested = if c == open1 || c == open2 {
+            let nested = c == open2 && c != open1;
+            stack.push(nested);
+            nested
         } else if c == close1 || c == close2 {
             let nested = c == close2 && c != close1;
             if let Some(level) = stack.iter().rposition(|&n| n == nested) {
                 stack.truncate(level);
             }
-        }
-        out.push(QUOTE);
+            nested
+        } else {
+            false
+        };
+        out.push(if nested { NESTED } else { QUOTE });
     }
     out
 }
 
 /// Whether a later `’` of the same depth, before the next opener of that depth and before the
 /// closer of the enclosing pair, has a closing role and does not follow `s` (design section 12.1).
+/// The pairs opened after the `’` are followed by their kind, as in `quote_readings`: a `’` inside
+/// a deeper primary pair closes nothing there and leaves the scan where it is.
 fn later_closer(quotes: &[QuoteAt], k: usize, glyphs: [char; 4], nested: bool) -> bool {
     let [open1, close1, open2, close2] = glyphs;
     let (own_open, own_close) = if nested {
@@ -938,7 +1149,9 @@ fn later_closer(quotes: &[QuoteAt], k: usize, glyphs: [char; 4], nested: bool) -
     let Some(this) = quotes.get(k) else {
         return false;
     };
-    let mut depth = 0usize;
+    // The pairs opened after the `’` and still open: `false` for the primary pair, `true` for the
+    // nested one.
+    let mut stack: Vec<bool> = Vec::new();
     for q in quotes.iter().skip(k.saturating_add(1)) {
         if q.window != this.window {
             return false;
@@ -946,7 +1159,7 @@ fn later_closer(quotes: &[QuoteAt], k: usize, glyphs: [char; 4], nested: bool) -
         let c = q.c;
         let opens = c == open1 || c == open2;
         let closes = (c == close1 || c == close2) && (c != APOSTROPHE || q.closing);
-        if depth == 0 {
+        if stack.is_empty() {
             if c == own_close && c == APOSTROPHE {
                 if q.closing && !q.after_s {
                     return true;
@@ -957,12 +1170,23 @@ fn later_closer(quotes: &[QuoteAt], k: usize, glyphs: [char; 4], nested: bool) -
                 return false;
             }
             if opens {
-                depth = depth.saturating_add(1);
+                stack.push(c == open2 && c != open1);
             }
         } else if opens {
-            depth = depth.saturating_add(1);
+            stack.push(c == open2 && c != open1);
         } else if closes {
-            depth = depth.saturating_sub(1);
+            let kind = c == close2 && c != close1;
+            if c == APOSTROPHE {
+                // `’` closes only a `‘` on top; otherwise it is an apostrophe.
+                if stack.last() == Some(&kind) {
+                    stack.pop();
+                }
+            } else if let Some(level) = stack.iter().rposition(|&n| n == kind) {
+                stack.truncate(level);
+            } else {
+                // It closes a pair opened before the `’`: the enclosing one.
+                return false;
+            }
         }
     }
     false

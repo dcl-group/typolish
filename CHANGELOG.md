@@ -11,9 +11,10 @@ Nothing released yet. Version 0.1.0 is in development.
 - `Typographer::to_plain` and `Typographer::to_plain_template` map typeset Unicode text back to the
   canonical plain form, undoing exactly the enabled rules: a typographic character goes back only
   where an enabled rule produces it (glue that no enabled rule sets stays, a typed `–` with spaces
-  stays), quote glyphs at every level become `"`, protected spans and markup are left alone, slots
-  keep their place, and the result is stable under a second call. Typesetting the plain form gives
-  the typeset text back; the known losses are listed in `tests/corpus/roundtrip-known.tsv`.
+  stays), quote glyphs at every level become `"` (the nested pair becomes `'` only where `"` would
+  not pair again, as in `«x „“.»`), protected spans and markup are left alone, slots keep their
+  place, and the result is stable under a second call. Typesetting the plain form gives the typeset
+  text back; the known losses are listed in `tests/corpus/roundtrip-known.tsv`.
 - `Typographer::report` and `Typographer::report_template` return the result together with every
   edit (`Change`), the protected spans (`ProtectedSpan`, `ProtectedKind`, `TechKind`) and the
   diagnostics (`Diagnostic`, `DiagnosticKind`, `Severity`): those of protection and the fragment

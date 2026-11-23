@@ -5,8 +5,8 @@
 //! character, a dash between words written `-` with spaces on both sides, ranges `a-b`, `x`,
 //! `(c)`, `(r)`, `(tm)`, abbreviations with a space (`т. е.`), `№ 5`, double straight quotes at
 //! every level, `'` only for apostrophes and primes, `...`, ru `?..` and the form of a percentage
-//! that the `PercentSpacing` of the setup keeps. The generator avoids the pattern of
-//! `NestedPossessive`: an `s'` at depth two or deeper is never produced.
+//! that the `PercentSpacing` of the setup keeps. The generator avoids only the pattern of
+//! `NestedPossessive`: two `s'` at the same depth of one nested pair.
 //!
 //! The strings are built from atoms, each of which is canonical alone and starts and ends with a
 //! letter, a digit, a quote or one full stop, and from joiners that put the atoms together. Where
@@ -147,6 +147,10 @@ pub fn atoms(setup: &Setup) -> (Vec<String>, Vec<String>) {
             "\"слово \"внутри\" слова\"",
             "\"и \"кто-то\" ещё\"",
             "\"a b\"",
+            "\"a \"\" b\"",
+            "\"a \"-\" b\"",
+            "\"a \"?\" b\"",
+            "\"слово \"\", слово\"",
             "в 2026 году",
             "21 ноября",
             "ls -la",
@@ -227,6 +231,10 @@ pub fn atoms(setup: &Setup) -> (Vec<String>, Vec<String>) {
             "\"don't \"stop\" it's\"",
             "\"and \"mother-in-law\" too\"",
             "\"a b\"",
+            "\"a \"\" b\"",
+            "\"a \"-\" b\"",
+            "\"a \"?\" b\"",
+            "\"a word \"\", a word\"",
             "in 2026",
             "November 21",
             "ls -la",
@@ -283,6 +291,9 @@ pub fn atoms(setup: &Setup) -> (Vec<String>, Vec<String>) {
             first.push("the dogs' bowl");
             first.push("\"the dogs' bowl\"");
             first.push("James's coat");
+            // An `s'` at depth two, and at depths two and three.
+            first.push("\"a \"the dogs' bowl\" b\"");
+            first.push("\"\"a dogs' b \"c dogs' d\" e\" f\"");
         }
     }
     let (spaced, attached) = percent_forms(setup.lang, setup.percent);
@@ -405,6 +416,7 @@ pub fn template_atoms(setup: &Setup) -> Vec<String> {
             "кто-то",
             "и т. д.",
             "5 МБ",
+            "\"{name:word} \"\" и \"-\"\"",
         ]
     } else {
         vec![
@@ -431,8 +443,12 @@ pub fn template_atoms(setup: &Setup) -> Vec<String> {
             "don't",
             "etc.",
             "5 MB",
+            "\"{name:word} \"\" and \"-\"\"",
         ]
     };
+    if !ru && setup.single != SingleQuotes::Everywhere {
+        atoms.push("\"{name:word} \"the dogs' bowl\" here\"");
+    }
     let (spaced, attached) = percent_forms(setup.lang, setup.percent);
     if spaced {
         atoms.push("{n:number} %");

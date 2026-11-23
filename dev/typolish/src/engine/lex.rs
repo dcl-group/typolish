@@ -263,7 +263,7 @@ pub(crate) const fn is_dash_char(c: char) -> bool {
 }
 
 /// The characters of `Kind::Punct`.
-const fn is_punct_char(c: char) -> bool {
+pub(crate) const fn is_punct_char(c: char) -> bool {
     matches!(
         c,
         ',' | ';'
