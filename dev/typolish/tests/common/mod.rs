@@ -104,8 +104,112 @@ pub fn without_nbsp(language: Language, set: RuleSet) -> Typographer {
     builder.build().unwrap()
 }
 
+/// The reason codes of design section 8.12: why our output differs from the recorded output of the
+/// reference implementation on a `DIVERGE` row (design section 13.4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Reason {
+    /// See design section 8.12.
+    NoGuess,
+    /// See design section 8.12.
+    LookAlike,
+    /// See design section 8.12.
+    NoSpaceEdit,
+    /// See design section 8.12.
+    NoDateRewrite,
+    /// See design section 8.12.
+    AmbiguousHyphen,
+    /// See design section 8.12.
+    PercentAsWritten,
+    /// See design section 8.12.
+    Technical,
+    /// See design section 8.12.
+    AuthorPunctuation,
+    /// See design section 8.12.
+    DashStyleEn,
+    /// See design section 8.12.
+    RangeLiteral,
+    /// See design section 8.12.
+    NoLastShortWord,
+    /// See design section 8.12.
+    Slots,
+    /// See design section 8.12.
+    NoSpelling,
+    /// See design section 8.12.
+    Apostrophe,
+    /// See design section 8.12.
+    NestedSingle,
+    /// See design section 8.12.
+    EnNbsp,
+    /// See design section 8.12.
+    RuNbsp,
+    /// See design section 8.12.
+    LegalMarkContext,
+    /// See design section 8.12.
+    Primes,
+    /// See design section 8.12.
+    WideGlue,
+    /// See design section 8.12.
+    NoDigitChange,
+    /// See design section 8.12.
+    MinusSign,
+    /// See design section 8.12.
+    AlreadyTypeset,
+    /// See design section 8.12.
+    NoTrim,
+    /// See design section 8.12.
+    KeepSpaces,
+    /// See design section 8.12.
+    EllipsisDigits,
+}
+
+impl Reason {
+    /// Every reason, in the order of the table of design section 8.12.
+    pub const ALL: [Reason; 26] = [
+        Reason::NoGuess,
+        Reason::LookAlike,
+        Reason::NoSpaceEdit,
+        Reason::NoDateRewrite,
+        Reason::AmbiguousHyphen,
+        Reason::PercentAsWritten,
+        Reason::Technical,
+        Reason::AuthorPunctuation,
+        Reason::DashStyleEn,
+        Reason::RangeLiteral,
+        Reason::NoLastShortWord,
+        Reason::Slots,
+        Reason::NoSpelling,
+        Reason::Apostrophe,
+        Reason::NestedSingle,
+        Reason::EnNbsp,
+        Reason::RuNbsp,
+        Reason::LegalMarkContext,
+        Reason::Primes,
+        Reason::WideGlue,
+        Reason::NoDigitChange,
+        Reason::MinusSign,
+        Reason::AlreadyTypeset,
+        Reason::NoTrim,
+        Reason::KeepSpaces,
+        Reason::EllipsisDigits,
+    ];
+}
+
+/// The group of a reference row (design section 13.4).
+#[derive(Clone, Copy, Debug)]
+pub enum Group {
+    /// Our output equals the recorded one.
+    Agree,
+    /// Our output differs: it is written out, with the reason codes of design section 8.12.
+    Diverge {
+        /// Our output for the input (a template input is written with its `{name}` slots).
+        ours: &'static str,
+        /// One or more reasons.
+        reasons: &'static [Reason],
+    },
+}
+
 /// A row of the generated reference tables `tests/reference/{ru,en_us}.rs` (design section 13.4):
-/// the case id, the input and the output the reference implementation recorded.
+/// the case id, the input, the output the reference implementation recorded and the group.
 #[derive(Clone, Copy, Debug)]
 pub struct RefRow {
     /// The case id: the corpus group, the language and the number (`neg.list.ctx.ru.519`).
@@ -114,14 +218,33 @@ pub struct RefRow {
     pub input: &'static str,
     /// The recorded output.
     pub recorded: &'static str,
+    /// `AGREE` or `DIVERGE` with the reasons.
+    pub group: Group,
 }
 
-/// A row of a reference table.
-pub const fn row(id: &'static str, input: &'static str, recorded: &'static str) -> RefRow {
+/// An `AGREE` row of a reference table.
+pub const fn agree(id: &'static str, input: &'static str, recorded: &'static str) -> RefRow {
     RefRow {
         id,
         input,
         recorded,
+        group: Group::Agree,
+    }
+}
+
+/// A `DIVERGE` row of a reference table.
+pub const fn diverge(
+    id: &'static str,
+    input: &'static str,
+    recorded: &'static str,
+    ours: &'static str,
+    reasons: &'static [Reason],
+) -> RefRow {
+    RefRow {
+        id,
+        input,
+        recorded,
+        group: Group::Diverge { ours, reasons },
     }
 }
 

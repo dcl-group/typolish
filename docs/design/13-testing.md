@@ -291,14 +291,25 @@ corpus group of the case and ends with its language and number (`neg.list.ru.518
 by this prefix. From stage 5 every case is also in one of two groups, each a plain table row:
 
 - `AGREE`: our output equals the recorded one;
-- `DIVERGE`: our output is written out together with a reason code from section 8.12 (`NoGuess`,
-  `LookAlike`, `NoSpaceEdit`, `NoDateRewrite`, `AmbiguousHyphen`, `PercentAsWritten`, `Technical`,
-  `AuthorPunctuation`, `DashStyleEn`, `RangeLiteral`, `NoLastShortWord`, `Slots`, `NoSpelling`,
-  `Apostrophe`, `EnNbsp`, `LegalMarkContext`, `Primes`, `WideGlue`, `NoDigitChange`,
-  `AlreadyTypeset`, `NoTrim`, `KeepSpaces`, `EllipsisDigits`).
+- `DIVERGE`: our output is written out together with one or more reason codes from section 8.12
+  (`NoGuess`, `LookAlike`, `NoSpaceEdit`, `NoDateRewrite`, `AmbiguousHyphen`, `PercentAsWritten`,
+  `Technical`, `AuthorPunctuation`, `DashStyleEn`, `RangeLiteral`, `NoLastShortWord`, `Slots`,
+  `NoSpelling`, `Apostrophe`, `NestedSingle`, `EnNbsp`, `RuNbsp`, `LegalMarkContext`, `Primes`,
+  `WideGlue`, `NoDigitChange`, `MinusSign`, `AlreadyTypeset`, `NoTrim`, `KeepSpaces`,
+  `EllipsisDigits`). A row with several causes names each of them.
 
 The test compares our output with the expectation in both groups, using Prose (closest to the
-reference defaults). The 405 cases of the `neg.*` groups (section 13.3) are also run with Interface
+reference defaults). A row whose input holds `{name}` slots (the `quote.subst` and `mix` cases) runs
+as a template: the slot kind comes from the name (`n`, `a`, `b`, `pct`, `price` are numbers, `from`
+and `to` dates, the rest words), and the result is compared as the template written out with its
+`{name}` slots. A `DIVERGE` row must differ from the recorded output, must name a reason, and where
+section 8.12 names a diagnostic for its only reason (`NoGuess` with `UnmatchedQuote`, `LookAlike`
+with `MixedScript`, `AmbiguousHyphen`) the report of a plain string row holds that diagnostic. Every
+reason has at least one row. The cause of a row is decided by the script that wrote the tables and
+checked by hand: a row that differs in more than glue gets the reasons of its content change, and a
+glue mark that differs outside a changed fragment gets `NoLastShortWord` (the reference
+implementation glues, we do not), `EnNbsp` or `RuNbsp` (we glue, it does not) or `WideGlue` (the
+character differs). The 405 cases of the `neg.*` groups (section 13.3) are also run with Interface
 and checked as section 13.3 says: the case's token byte for byte through `report`, glue of `nbsp.*`
 rules outside it allowed; whole-string equality with the input is not required, because Interface
 keeps `nbsp.short-words` (`Он вызвал ls на⍽сервере.`). Both sections read the same tables,

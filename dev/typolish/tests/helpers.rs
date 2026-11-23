@@ -13,8 +13,8 @@
 mod common;
 
 use common::{
-    TmplPiece, assert_no_markers, configs, expected_in_set, interface, only, parse_tmpl, prose,
-    row, show, vis, without_nbsp, without_rule,
+    Group, Reason, TmplPiece, agree, assert_no_markers, configs, diverge, expected_in_set,
+    interface, only, parse_tmpl, prose, show, vis, without_nbsp, without_rule,
 };
 use typolish::{Language, Rule, RuleSet, SlotKind};
 
@@ -70,11 +70,20 @@ fn tmpl_lines_become_pieces() {
 
 #[test]
 fn rows_of_the_reference_tables_hold_their_parts() {
-    let r = row("neg.flags.ru.395", "--force", "--force");
+    let r = agree("neg.flags.ru.395", "--force", "--force");
     assert_eq!(
         (r.id, r.input, r.recorded),
         ("neg.flags.ru.395", "--force", "--force")
     );
+    assert!(matches!(r.group, Group::Agree));
+    let r = diverge("host.ru.1", "a:b", "a: b", "a:b", &[Reason::NoSpaceEdit]);
+    assert!(matches!(
+        r.group,
+        Group::Diverge {
+            ours: "a:b",
+            reasons: [Reason::NoSpaceEdit]
+        }
+    ));
 }
 
 #[test]
