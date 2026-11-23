@@ -1532,7 +1532,13 @@ fn check_delimiters(pairs: &[(String, String)]) -> Result<(), Error> {
 fn check_quotes(pairs: QuotePairs) -> Result<(), Error> {
     let glyphs = pairs.glyphs();
     let offending = glyphs.iter().filter_map(|c| {
-        if !QUOTE_GLYPHS.contains(c) {
+        // The grounds of design section 2.11, item (3).
+        if matches!(c, '"' | '\'') || c.is_whitespace() || c.is_alphabetic() {
+            Some((
+                *c,
+                format!("{c:?} would be read as input again, breaking idempotence"),
+            ))
+        } else if !QUOTE_GLYPHS.contains(c) {
             Some((
                 *c,
                 format!("{c:?} is not a quote character a language may use"),

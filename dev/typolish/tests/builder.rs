@@ -485,6 +485,23 @@ fn quote_pair_validation() {
 }
 
 #[test]
+fn quote_pair_reasons_name_the_ground_of_design_section_2_11() {
+    // Design section 2.11, item (3): a straight quote, a space or a letter would be read as input
+    // again, breaking idempotence; other characters are no quote characters.
+    for pairs in [
+        QuotePairs::new(('"', '»'), ('„', '“')),
+        QuotePairs::new(('a', '»'), ('„', '“')),
+        QuotePairs::new((' ', '»'), ('„', '“')),
+    ] {
+        let (setting, reason) = setting_error(base().quote_pairs(pairs));
+        assert_eq!(setting, "quote_pairs");
+        assert!(reason.contains("idempotence"), "{pairs:?}: {reason}");
+    }
+    let (_, reason) = setting_error(base().quote_pairs(QuotePairs::new(('(', ')'), ('[', ']'))));
+    assert!(reason.contains("is not a quote character"), "{reason}");
+}
+
+#[test]
 fn quote_pairs_are_a_value_type() {
     let a = QuotePairs::new(('«', '»'), ('„', '“'));
     let b = a;
