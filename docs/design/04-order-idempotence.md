@@ -115,9 +115,9 @@ agree and that every rule appears once.
   Each case has a fixed seed in the idempotence property (section 13.5): `Школа №5 г. Москвы`,
   `§5 ч. 2`, `¶IV`, `т.е.`, `и т.д...`, `Слово - т.е.`, `Москва – т.е. столица`, `Слово -- т.д.`,
   `5 - т.е.`, `т.е. - 5`, `Moscow - the capital`, `See https://example.com/docs - the guide`,
-  `He said - "a cat"`, `100%`, `100‰`, `100 %`, `5–10%`, `5–10 %`, `100 % - норма`, `5–10% - норма`
-  and `Рост - 5–10%` under every `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en
-  Closed `word⍽- word`, `Sign in - it's free`.
+  `He said - "a cat"`, `details - a - т.е.sk`, `5 - x - Moscow`, `100%`, `100‰`, `100 %`, `5–10%`,
+  `5–10 %`, `100 % - норма`, `5–10% - норма` and `Рост - 5–10%` under every `PercentSpacing`,
+  `100⍽%` under `Attached` and `Language` (en), en Closed `word⍽- word`, `Sign in - it's free`.
 
 - **I3. Products are not triggers.** A rule changes only plain forms: straight `"` and `'`, `-`,
   `--`, `---`, a run of exactly three full stops, `(c)` `(C)` `(с)` `(С)` `(r)` `(R)` `(tm)` `(TM)`,
@@ -138,10 +138,14 @@ agree and that every rule appears once.
   the structural changes of I2: where a removed space merged fragments, a match whose tokens lie in
   the merged fragment may not recur: the dash match that covered a removed space, and a no-break
   match triggered by a word that is now inside the `Joined` core (`nbsp.short-words` on `the` in
-  `Moscow—the⍽capital`); their edits stay (I2, I3); where an inserted space split a fragment, the
-  rules that read the parts match them with empty edits. A dash that `dash.double-hyphen` wrote is
-  matched on f(x) by `dash.spaced-hyphen` (section 8.4), and by no rule when that rule is off; no
-  edit is lost either way. So on f(x) no rule matches with a non-empty edit.
+  `Moscow—the⍽capital`); their edits stay (I2, I3). Next to a merged fragment a dash match may not
+  recur either: a `Joined` core is not an operand (section 8.4), so a dash whose operand the merge
+  took into the `Joined` fragment is matched by no dash rule on f(x). Its edit stays by I3, and a
+  refused `-` stays as it was (`details - a - т.е.sk` → `details—a — т.е.sk`, `5 - x - Moscow` →
+  `5 - x—Moscow`); where an inserted space split a fragment, the rules that read the parts match
+  them with empty edits. A dash that `dash.double-hyphen` wrote is matched on f(x) by
+  `dash.spaced-hyphen` (section 8.4), and by no rule when that rule is off; no edit is lost either
+  way. So on f(x) no rule matches with a non-empty edit.
 - **I5. Quotes are all or nothing per window** (section 6.6).
 
 ### 4.4 Proof sketch
@@ -164,9 +168,11 @@ Let f = P7 ∘ … ∘ P1, where Pk is phase k. The claim is f(f(x)) = f(x) for 
    `dash.spaced-hyphen` (section 8.4), and except on fragments split or merged by I2: the parts of a
    split fragment are matched in their "already done" form, and a match in a merged fragment recurs
    only if it neither covered a removed space nor was triggered by a part of the fragment as a whole
-   core (I2, I4); no match has a non-empty edit, and the edits of each match lead signs to the
-   target form that f(x) already has: the same phase put it there on the first pass, and later
-   phases did not change it (I3). Every edit is empty.
+   core, and a dash match next to it recurs only if the merge did not take its operand (I2, I4); a
+   match that does not recur leaves a typographic form or nothing, which no rule changes (I3); no
+   match has a non-empty edit, and the edits of each match lead signs to the target form that f(x)
+   already has: the same phase put it there on the first pass, and later phases did not change it
+   (I3). Every edit is empty.
 3. Matches that the engine refused on the first pass because they touched a frozen token are refused
    again: freezing comes from the classifier, which by I2 yields the same kinds.
 4. The quote phase is proved separately (section 6.11).

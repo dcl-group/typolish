@@ -106,6 +106,9 @@ const SEEDS: &[&str] = &[
     "Moscow - the capital",
     "See https://example.com/docs - the guide",
     "He said - \"a cat\"",
+    // A dash next to a fragment that the closed style merged (section 4.3, I4).
+    "details - a - т.е.sk",
+    "5 - x - Moscow",
     "5'10\"",
     "90's",
     "'90s",

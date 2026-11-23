@@ -382,7 +382,8 @@ the no-panic test.
    `f(x)` has an empty edit, and every match on `x` outside the fragments merged or split by I2
    recurs on `f(x)` with the same rule and `consume`, except that a spaced dash produced by
    `dash.double-hyphen` is matched by `dash.spaced-hyphen`, and by no rule when `dash.spaced-hyphen`
-   is off, section 8.4), I5 (in a non-converging window no straight quote changed).
+   is off, section 8.4, and that a dash match whose operand a removed space merged into a `Joined`
+   fragment does not recur, section 4.3), I5 (in a non-converging window no straight quote changed).
 4. **Slots and protected spans**: number, order, kinds and payloads of slots are kept;
    `texts().len() == slots().len() + 1`; protected spans and markup are byte for byte in place.
 5. **Technical fragments**: fragments classified as technical in the input, and compound words

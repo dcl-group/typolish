@@ -554,7 +554,7 @@ mod tests {
         /// Kind, `LABEL`, `FROZEN`, byte range.
         frags: Vec<(classify::FragKind, bool, bool, u32, u32)>,
         /// Rule, byte range from the anchor to the last consumed token, `consume`, edits.
-        matches: Vec<(Rule, u32, u32, u8, bool)>,
+        matches: Vec<Matched>,
         /// Byte range and length of the replacement.
         changes: Vec<(u32, u32, usize)>,
     }
@@ -593,6 +593,10 @@ mod tests {
         }
     }
 
+    /// A recorded match: rule, byte range from the anchor to the last consumed token, `consume`,
+    /// edits.
+    type Matched = (Rule, u32, u32, u8, bool);
+
     /// Where a position of x lies in f(x): `end` maps the exclusive end of a range, so an
     /// insertion there is after it.
     fn map(changes: &[(u32, u32, usize)], p: u32, end: bool) -> i64 {
@@ -627,6 +631,34 @@ mod tests {
 
     fn touches(intervals: &[Interval], start: i64, end: i64) -> bool {
         intervals.iter().any(|&(s, e)| start <= e && s <= end)
+    }
+
+    /// Whether a dash match on x has an operand that a removed space merged into a `Joined`
+    /// fragment of f(x). A `Joined` core is not an operand (design section 8.4), so such a match
+    /// does not recur: its edit stays (section 4.3, I3 and I4), and a refusal stays refused.
+    fn beside_a_merge(tx: &Trace, ty: &Trace, sy: &[Interval], m: &Matched) -> bool {
+        if !matches!(m.0, Rule::DashSpacedHyphen | Rule::DashDoubleHyphen) {
+            return false;
+        }
+        // The operands: the last fragment before the anchor and the first one after the match.
+        let left = tx
+            .frags
+            .iter()
+            .filter(|f| f.4 <= m.1)
+            .max_by_key(|f| f.4)
+            .map(|f| map(&tx.changes, f.4, true));
+        let right = tx
+            .frags
+            .iter()
+            .filter(|f| f.3 >= m.2)
+            .min_by_key(|f| f.3)
+            .map(|f| map(&tx.changes, f.3, false));
+        [left, right].into_iter().flatten().any(|p| {
+            ty.frags.iter().any(|g| {
+                let (s, e) = (i64::from(g.3), i64::from(g.4));
+                g.0 == classify::FragKind::Joined && s <= p && p <= e && touches(sy, s, e)
+            })
+        })
     }
 
     fn trace(t: &Typographer, scratch: &mut Scratch, text: &str) -> (Trace, String) {
@@ -670,8 +702,10 @@ mod tests {
         /// (no `nbsp.*`). I2: outside the fragments that an inserted or a removed space split or
         /// merged, the fragments of f(x) have the kinds, flags and extents of those of x. I4: no
         /// match on f(x) has an edit, and every match on x outside those fragments recurs on f(x)
-        /// with the same rule (`dash.double-hyphen` as `dash.spaced-hyphen`) and `consume`; the
-        /// quote phase has its own proof (section 6.11) and is left out of the recurrence.
+        /// with the same rule (`dash.double-hyphen` as `dash.spaced-hyphen`) and `consume`, except
+        /// a dash match whose operand a removed space merged into a `Joined` fragment (section
+        /// 8.4: a `Joined` core is not an operand); the quote phase has its own proof (section
+        /// 6.11) and is left out of the recurrence.
         #[test]
         fn i2_and_i4_hold_on_the_classification_and_the_matches(
             text in strategies::any_text(), lang in 0usize..3, set in strategies::rule_set(),
@@ -715,6 +749,7 @@ mod tests {
                 .filter(|m| !quotes.contains(&m.0))
                 .filter(|m| spaced || m.0 != Rule::DashDoubleHyphen)
                 .filter(|m| !touches(&sx, i64::from(m.1), i64::from(m.2)))
+                .filter(|m| !beside_a_merge(&tx, &ty, &sy, m))
             {
                 let rule = if m.0 == Rule::DashDoubleHyphen { Rule::DashSpacedHyphen } else { m.0 };
                 let (s, e) = (map(&tx.changes, m.1, false), map(&tx.changes, m.2, true));
@@ -727,6 +762,66 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn a_dash_beside_a_merged_fragment_does_not_recur() {
+        // I4 of design section 4.3: the closed style merges `details - a` into the `Joined`
+        // fragment `details—a`, which is not an operand (section 8.4), so the next dash is matched
+        // on x and by no rule on f(x). Its edit stays and a refusal stays refused; the output is a
+        // fixed point. The first input is the one the property once shrank to.
+        let set: RuleSet = RuleSet::ALL
+            .iter()
+            .filter(|r| !r.id().starts_with("nbsp."))
+            .collect();
+        let t = Typographer::new(Language::EN_US, set);
+        let mut scratch = Scratch::new();
+        for (text, expected, edited) in [
+            (
+                " - т.е.Follow the news on the site, and for details - a - т.е.sk?.. the organizers.",
+                " - т.е.Follow the news on the site, and for details—a — т.е.sk?.. the organizers.",
+                true,
+            ),
+            ("details - a - т.е.sk", "details—a — т.е.sk", true),
+            ("details - a - b.c", "details—a — b.c", true),
+            ("word - word - 5", "word—word — 5", true),
+            ("word - a - b", "word—a - b", false),
+            ("5 - x - Moscow", "5 - x—Moscow", false),
+        ] {
+            let (tx, out) = trace(&t, &mut scratch, text);
+            assert_eq!(out, expected, "{text:?}");
+            let (ty, again) = trace(&t, &mut scratch, &out);
+            assert_eq!(again, out, "{text:?}");
+            assert!(ty.matches.iter().all(|m| !m.4), "{out:?}: {:?}", ty.matches);
+            let (sx, sy) = structural(&tx.changes);
+            let beside: Vec<_> = tx
+                .matches
+                .iter()
+                .filter(|m| !touches(&sx, i64::from(m.1), i64::from(m.2)))
+                .filter(|m| beside_a_merge(&tx, &ty, &sy, m))
+                .collect();
+            assert_eq!(beside.len(), 1, "{text:?}: {:?}", tx.matches);
+            assert!(beside.iter().all(|m| m.4 == edited), "{text:?}: {beside:?}");
+            let dashes = |tr: &Trace| {
+                tr.matches
+                    .iter()
+                    .filter(|m| matches!(m.0, Rule::DashSpacedHyphen | Rule::DashDoubleHyphen))
+                    .count()
+            };
+            assert_eq!(dashes(&tx), 2, "{text:?}");
+            assert_eq!(dashes(&ty), 0, "{out:?}");
+        }
+        // Without the merge the same dash recurs with an empty edit.
+        let (tx, out) = trace(&t, &mut scratch, "x - a - т.е.sk");
+        let (ty, _) = trace(&t, &mut scratch, &out);
+        let (_, sy) = structural(&tx.changes);
+        assert!(tx.matches.iter().all(|m| !beside_a_merge(&tx, &ty, &sy, m)));
+        assert!(
+            ty.matches
+                .iter()
+                .any(|m| m.0 == Rule::DashSpacedHyphen && !m.4),
+            "{out:?}"
+        );
     }
 
     #[test]
