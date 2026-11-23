@@ -1055,14 +1055,16 @@ pub(crate) fn phone(cx: &Cx<'_>, s: usize) -> Option<Match> {
 // ---------------------------------------------------------------------------------------------
 
 /// `nbsp.short-words`: a word of the list (no case), one space, then an operand, an opening
-/// quote or bracket, or a sign of the language → glue. Anchors at the space.
+/// quote or bracket, or a sign of the language → glue; not after a particle that belongs to the
+/// word before it (section 8.7). Anchors at the space.
 pub(crate) fn short_words(cx: &Cx<'_>, s: usize) -> Option<Match> {
     let (l, r) = sides(cx, s)?;
     let f = tail(cx, l)?;
     let found = is_word(cx, f)
         && cx.t.has_short_word(cx.core_chars(f))
         && (cx.t.short_words_any_script() || in_script(cx, f))
-        && glueable(cx, r, true);
+        && glueable(cx, r, true)
+        && !bound_particle(cx, f);
     found.then(|| glue_one(cx, s, Glue::NoBreak)).flatten()
 }
 
@@ -1081,19 +1083,47 @@ pub(crate) fn short_length(cx: &Cx<'_>, s: usize) -> Option<Match> {
     let found = n >= 1
         && n <= length
         && (cx.t.short_words_any_script() || scripts & language_bit(cx) != 0)
-        && glueable(cx, r, true);
+        && glueable(cx, r, true)
+        && !bound_particle(cx, f);
     found.then(|| glue_one(cx, s, Glue::NoBreak)).flatten()
 }
 
 /// `nbsp.particles`: a word or a slot (not `Other`), one space, then a particle of the list (a
-/// whole core, no closing punctuation after it) → glue. Anchors at the space.
+/// whole core, closing punctuation after it or not) → glue. Anchors at the space.
 pub(crate) fn particles(cx: &Cx<'_>, s: usize) -> Option<Match> {
     let (l, r) = sides(cx, s)?;
-    let fl = tail(cx, l)?;
-    let left = is_word(cx, fl) || matches!(cx.kind(l), Some(Kind::Slot(_)));
-    let fr = head(cx, r)?;
-    let found = left && bare_end(cx, fr) && cx.t.has_particle(cx.core_chars(fr));
-    found.then(|| glue_one(cx, s, Glue::NoBreak)).flatten()
+    particle_after(cx, l, r)
+        .then(|| glue_one(cx, s, Glue::NoBreak))
+        .flatten()
+}
+
+/// Whether the tokens `l` and `r` on the two sides of a pattern space are the end of a word or a
+/// slot (not `Other`) and the start of a particle of the list: the place that `nbsp.particles`
+/// glues (section 8.7). Closing punctuation after the particle does not matter (`Что⍽ж,`,
+/// section 15.2, item 19).
+fn particle_after(cx: &Cx<'_>, l: usize, r: usize) -> bool {
+    let left =
+        tail(cx, l).is_some_and(|fl| is_word(cx, fl) || matches!(cx.kind(l), Some(Kind::Slot(_))));
+    left && head(cx, r).is_some_and(|fr| cx.t.has_particle(cx.core_chars(fr)))
+}
+
+/// Whether the word `f` is a particle that belongs to the word or slot before it, one pattern
+/// space away (`particle_after`): such a particle glues nothing after itself (`Знаешь⍽ли ты`,
+/// section 15.2, item 18). The particle list decides, whichever rules are enabled, so
+/// `nbsp.short-words` and `nbsp.short-length` read a text alike with `nbsp.particles` on or off
+/// (section 15.3, C33).
+fn bound_particle(cx: &Cx<'_>, f: &Frag) -> bool {
+    if !cx.t.has_particle(cx.core_chars(f)) {
+        return false;
+    }
+    let Some(r) = cx.core(f).next() else {
+        return false;
+    };
+    // The same space and sides as `nbsp.particles` reads; `sides` keeps the cache of the space
+    // that the caller is matching.
+    cx.prev(r)
+        .and_then(|s| sides_of(cx, s))
+        .is_some_and(|(l, r2)| r2 == r && particle_after(cx, l, r))
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -456,55 +456,37 @@ pub const ROWS: &[RefRow] = &[
         "Он\u{a0}знал, что я\u{a0}тоже там.",
         &[R::NoLastShortWord],
     ),
-    diverge(
+    agree(
         "nbsp.particle.ru.174",
         "Как бы то ни было.",
         "Как\u{a0}бы то\u{a0}ни\u{a0}было.",
-        "Как\u{a0}бы\u{a0}то\u{a0}ни\u{a0}было.",
-        &[R::RuNbsp],
     ),
-    diverge(
+    agree(
         "nbsp.particle.ru.175",
         "Знаешь ли ты это?",
         "Знаешь\u{a0}ли ты\u{a0}это?",
-        "Знаешь\u{a0}ли\u{a0}ты\u{a0}это?",
-        &[R::RuNbsp],
     ),
-    diverge(
+    agree(
         "nbsp.particle.ru.176",
         "Он же пришёл.",
         "Он\u{a0}же пришёл.",
-        "Он\u{a0}же\u{a0}пришёл.",
-        &[R::RuNbsp],
     ),
-    diverge(
+    agree(
         "nbsp.particle.ru.177",
         "Пришёл бы он!",
         "Пришёл\u{a0}бы он!",
-        "Пришёл\u{a0}бы\u{a0}он!",
-        &[R::RuNbsp],
     ),
-    diverge(
+    agree(
         "nbsp.particle.ru.178",
         "Что ж, ладно.",
         "Что\u{a0}ж, ладно.",
-        "Что ж, ладно.",
-        &[R::NoLastShortWord],
     ),
-    diverge(
+    agree(
         "nbsp.particle.ru.179",
         "Читал ли он книгу?",
         "Читал\u{a0}ли он\u{a0}книгу?",
-        "Читал\u{a0}ли\u{a0}он\u{a0}книгу?",
-        &[R::RuNbsp],
     ),
-    diverge(
-        "nbsp.particle.ru.180",
-        "Я б пошёл.",
-        "Я\u{a0}б пошёл.",
-        "Я\u{a0}б\u{a0}пошёл.",
-        &[R::RuNbsp],
-    ),
+    agree("nbsp.particle.ru.180", "Я б пошёл.", "Я\u{a0}б пошёл."),
     agree(
         "nbsp.abbr.ru.181",
         "Яблоки, груши и т. д.",

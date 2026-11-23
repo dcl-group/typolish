@@ -6,7 +6,7 @@
 <span style="white-space:nowrap">&#x2014; Возьми</span> два, один обязательно потеряешь.
 Она засмеялась <span style="white-space:nowrap">и пошла</span> <span style="white-space:nowrap">по тропинке</span> <span style="white-space:nowrap">к реке.</span>
 Река <span style="white-space:nowrap">в этом</span> месте широкая, <span style="white-space:nowrap">а берег</span> пологий.
-Лодка стояла там же, где <span style="white-space:nowrap">её оставили</span> вчера.
+Лодка стояла <span style="white-space:nowrap">там же,</span> где <span style="white-space:nowrap">её оставили</span> вчера.
 Весло лежало рядом, <span style="white-space:nowrap">на траве,</span> <span style="white-space:nowrap">и казалось</span> тёплым <span style="white-space:nowrap">от солнца.</span>
 &#xAB;Куда <span style="white-space:nowrap">ты собралась?&#xBB; &#x2014;</span> крикнул кто-то <span style="white-space:nowrap">с холма.</span>
 Анна обернулась, <span style="white-space:nowrap">но никого</span> <span style="white-space:nowrap">не увидела.</span>
@@ -47,23 +47,23 @@
 Новый мост построили <span style="white-space:nowrap">к осени,</span> <span style="white-space:nowrap">и теперь</span> через него ездят грузовики.
 Они возят зерно <span style="white-space:nowrap">на элеватор,</span> <span style="white-space:nowrap">до которого</span> <span style="white-space:nowrap">35 км.</span>
 Зерно собирают <span style="white-space:nowrap">в августе,</span> когда стоит жара до +30 градусов.
-<span style="white-space:nowrap">Зимой же бывает</span> и &#x2212;25, <span style="white-space:nowrap">и тогда</span> река замерзает <span style="white-space:nowrap">до дна.</span>
+<span style="white-space:nowrap">Зимой же</span> бывает и &#x2212;25, <span style="white-space:nowrap">и тогда</span> река замерзает <span style="white-space:nowrap">до дна.</span>
 Лёд держит человека, <span style="white-space:nowrap">но по нему</span> лучше <span style="white-space:nowrap">не ходить</span> <span style="white-space:nowrap">в одиночку.</span>
 Рыбаки всё равно выходят, садятся <span style="white-space:nowrap">у лунок</span> <span style="white-space:nowrap">и ждут</span> клёва.
 Клюёт редко, зато рыба крупная.
 Щука <span style="white-space:nowrap">в 5 кг считается</span> там обычной добычей.
 Мясо <span style="white-space:nowrap">у неё</span> сухое, поэтому его мариновали <span style="white-space:nowrap">и жарили.</span>
 Рецепт передавался <span style="white-space:nowrap">из поколения</span> <span style="white-space:nowrap">в поколение,</span> <span style="white-space:nowrap">и его</span> никто <span style="white-space:nowrap">не записывал.</span>
-<span style="white-space:nowrap">Но Анна</span> однажды <span style="white-space:nowrap">всё же записала:</span> 2 ложки соли, 1 лимон, чеснок, укроп.
+<span style="white-space:nowrap">Но Анна</span> однажды <span style="white-space:nowrap">всё же</span> записала: 2 ложки соли, 1 лимон, чеснок, укроп.
 Получилось вкусно, хотя <span style="white-space:nowrap">и не совсем</span> так, <span style="white-space:nowrap">как у бабушки.</span>
 <span style="white-space:nowrap">К вечеру</span> небо затянуло, <span style="white-space:nowrap">как и обещал</span> сосед.
 Первые капли упали <span style="white-space:nowrap">на крышу</span> около 18:00.
 Дождь шёл всю ночь, <span style="white-space:nowrap">а наутро</span> река поднялась <span style="white-space:nowrap">на 30 см.</span>
 Лодку пришлось вытаскивать выше, <span style="white-space:nowrap">на берег.</span>
 Анна помогала соседу, <span style="white-space:nowrap">и вместе</span> они справились <span style="white-space:nowrap">за час.</span>
-<span style="white-space:nowrap">&#x2014; Спасибо, &#x2014;</span> сказал <span style="white-space:nowrap">он. &#x2014;</span> <span style="white-space:nowrap">Без тебя бы не успел.</span>
+<span style="white-space:nowrap">&#x2014; Спасибо, &#x2014;</span> сказал <span style="white-space:nowrap">он. &#x2014;</span> <span style="white-space:nowrap">Без тебя бы</span> <span style="white-space:nowrap">не успел.</span>
 <span style="white-space:nowrap">&#x2014; Не за что.</span> Зонт <span style="white-space:nowrap">я всё-таки</span> забыла дома.
-<span style="white-space:nowrap">&#x2014; Вот</span> видишь, значит, <span style="white-space:nowrap">потеряла бы один</span> <span style="white-space:nowrap">из двух.</span>
+<span style="white-space:nowrap">&#x2014; Вот</span> видишь, значит, <span style="white-space:nowrap">потеряла бы</span> один <span style="white-space:nowrap">из двух.</span>
 Они рассмеялись <span style="white-space:nowrap">и пошли</span> пить чай.
 Чай был крепкий, <span style="white-space:nowrap">с мятой</span> <span style="white-space:nowrap">и мёдом.</span>
 Мёд сосед брал <span style="white-space:nowrap">у пасечника,</span> жившего <span style="white-space:nowrap">за рекой.</span>

@@ -1659,10 +1659,24 @@ const RU_PARTICLES: &[(&str, &str)] = &[
     ("он ж", "он⍽ж"),
     ("я б", "я⍽б"),
     ("ждал ль", "ждал⍽ль"),
-    // A particle followed by closing punctuation triggers nothing.
-    ("Знаешь ли, что", "Знаешь ли, что"),
+    // Closing punctuation after the particle does not matter (section 15.2, item 19).
+    ("Знаешь ли, что", "Знаешь⍽ли, что"),
+    ("Что ж,", "Что⍽ж,"),
+    ("Что ж, ладно.", "Что⍽ж, ладно."),
+    ("Что ж?", "Что⍽ж?"),
+    ("Знаешь ли...", "Знаешь⍽ли..."),
+    ("«Знаешь ли» ты", "«Знаешь⍽ли» ты"),
+    ("(сказал бы) и", "(сказал⍽бы) и"),
+    // At the end of a window, before a dash, between two particles.
+    ("Что ж", "Что⍽ж"),
+    ("Что ж\nдалее", "Что⍽ж\nдалее"),
+    ("Что ж — ладно", "Что⍽ж — ладно"),
+    ("что же бы ты", "что⍽же⍽бы ты"),
+    // An opening bracket before the particle: no whole core after the space.
+    ("сказал (бы)", "сказал (бы)"),
     // No left word.
     ("Бы пошёл", "Бы пошёл"),
+    ("Так, ли ты", "Так, ли ты"),
     ("сказал\tбы", "сказал\tбы"),
     ("сказал  бы", "сказал  бы"),
     ("сказал⍽бы", "сказал⍽бы"),
@@ -1702,18 +1716,94 @@ fn particles_inside_the_sets() {
         ru(),
         &[("сказал бы", "сказал⍽бы"), ("Знаешь ли", "Знаешь⍽ли")],
     );
-    // Section 8.7: particles and short words. In Prose `nbsp.short-length` also glues the
-    // two-letter `бы` to what follows.
-    set_rows(
-        ru(),
-        &[(
-            "Как бы то ни было",
-            "Как⍽бы⍽то⍽ни⍽было",
-            "Как⍽бы то⍽ни⍽было",
-        )],
-    );
+    // Section 8.7: particles and short words. The two-letter `бы` belongs to `Как`, so
+    // `nbsp.short-length` does not glue it to what follows in Prose (section 15.2, item 18).
+    both_sets(ru(), &[("Как бы то ни было", "Как⍽бы то⍽ни⍽было")]);
     let t = set(ru(), RuleSet::INTERFACE.without(PARTICLES));
     check_in("ru", &t, ("сказал бы", "сказал бы"));
+}
+
+/// Section 15.2, item 18: a particle is glued to the word before it, and a particle so placed
+/// glues nothing after itself; item 19: also when punctuation follows the particle.
+#[test]
+fn particles_bind_to_the_word_before() {
+    set_rows(
+        ru(),
+        &[
+            ("Знаешь ли ты", "Знаешь⍽ли ты", "Знаешь⍽ли ты"),
+            (
+                "Знаешь ли ты это?",
+                "Знаешь⍽ли ты⍽это?",
+                "Знаешь⍽ли ты это?",
+            ),
+            ("Он же пришёл.", "Он⍽же пришёл.", "Он⍽же пришёл."),
+            ("Пришёл бы он!", "Пришёл⍽бы он!", "Пришёл⍽бы он!"),
+            ("Я б пошёл.", "Я⍽б пошёл.", "Я⍽б пошёл."),
+            ("Что ж,", "Что⍽ж,", "Что⍽ж,"),
+            ("Что ж, ладно.", "Что⍽ж, ладно.", "Что⍽ж, ладно."),
+            ("Знаешь ли...", "Знаешь⍽ли…", "Знаешь⍽ли…"),
+            ("«Знаешь ли» ты", "«Знаешь⍽ли» ты", "«Знаешь⍽ли» ты"),
+            // A dash glues itself to the particle (`nbsp.dash`); that is no glue after it.
+            ("Что ж - ладно", "Что⍽ж⍽— ладно", "Что⍽ж⍽— ладно"),
+            // Two particles: each belongs to the word before it, the run glues nothing after.
+            ("что же бы ты", "что⍽же⍽бы ты", "что⍽же⍽бы ты"),
+            // No word before the particle: it is an ordinary short word.
+            ("Ли ты знал", "Ли⍽ты⍽знал", "Ли ты знал"),
+            // Glue typed by the author stays where it is.
+            ("Знаешь⍽ли ты", "Знаешь⍽ли ты", "Знаешь⍽ли ты"),
+            ("Знаешь ли⍽ты", "Знаешь⍽ли⍽ты", "Знаешь⍽ли⍽ты"),
+        ],
+    );
+    let prose = set(ru(), RuleSet::PROSE);
+    check_unchanged("ru Prose", &prose, "Знаешь⍽ли ты");
+    assert_changed_by("ru Prose", &prose, "Что ж,", PARTICLES);
+    // `to_plain` keeps the glue that no rule sets: none is set after a bound particle (section
+    // 12.1).
+    assert_eq!(
+        prose.to_plain(&vis("Знаешь⍽ли⍽ты")),
+        vis("Знаешь ли⍽ты"),
+        "to_plain"
+    );
+    // After a slot (not `Other`) the particle belongs to the slot; after an `Other` slot nothing
+    // glues to it, so the particle is an ordinary word (a short one in Prose).
+    for (name, t, other) in [
+        ("Prose", set(ru(), RuleSet::PROSE), " же⍽ты"),
+        ("Interface", set(ru(), RuleSet::INTERFACE), " же ты"),
+    ] {
+        for (kind, expected) in [
+            (Slot::WORD, "⍽же ты"),
+            (Slot::NUMBER, "⍽же ты"),
+            (Slot::OTHER, other),
+        ] {
+            let got = texts(&t, vec![Piece::Slot("x", kind), Piece::Text(" же ты")]);
+            assert_eq!(got, ["".to_owned(), vis(expected)], "{name} slot {kind:?}");
+        }
+    }
+}
+
+/// The particle list decides which word belongs to the word before it, whichever rules are
+/// enabled (section 15.3, C33).
+#[test]
+fn a_bound_particle_glues_nothing_after_itself() {
+    // `nbsp.short-length` alone: `ли` is a particle after a word, `ты` is not.
+    let t = alone(ru(), SHORT_LENGTH);
+    check_unchanged("ru short-length", &t, "Знаешь ли ты");
+    check_in("ru short-length", &t, ("Я б пошёл.", "Я⍽б пошёл."));
+    check_in("ru short-length", &t, ("ли ты", "ли⍽ты"));
+    // A particle that is also a short word.
+    let t = with(ru(), &[SHORT_WORDS], |b| b.add_short_words(["ли"]));
+    check_unchanged("ru short-words", &t, "Знаешь ли ты");
+    check_in("ru short-words", &t, ("ли ты", "ли⍽ты"));
+    let t = with(ru(), &[SHORT_WORDS, PARTICLES], |b| {
+        b.add_short_words(["ли"])
+    });
+    check_in("ru short-words", &t, ("Знаешь ли ты", "Знаешь⍽ли ты"));
+    // A word removed from the particles is an ordinary short word again.
+    let t = Typographer::builder(ru(), RuleSet::PROSE)
+        .remove_particles(["ли"])
+        .build()
+        .unwrap();
+    check_in("ru Prose", &t, ("Знаешь ли ты", "Знаешь ли⍽ты"));
 }
 
 // ---------------------------------------------------------------------------------------------

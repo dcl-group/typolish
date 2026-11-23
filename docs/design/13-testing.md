@@ -130,15 +130,20 @@ gives the output of the whole set.
   `1990–2000⍽— годы` in both sets; en `the 90's` and `of don't` with `nbsp.short-words` alone →
   `the⍽90's` and `of⍽don't`, ru `и don't` → `и⍽don't` (a core of kind `Word` is a word whatever its
   number of tokens, section 8.2); ru `кто-то же` with `nbsp.particles` alone → `кто-то⍽же` (a
-  compound word is a word, section 8.2); ru `21 Ноября` → `21⍽Ноября`; en `chapter 5 may be` →
-  unchanged; en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both sets); ru `Привезли 5 т груза` →
-  `Привезли 5⍽т груза`; en with `PercentSpacing::Attached`: `100⍽%` → unchanged (only a single
-  U+0020 is removed, section 8.7); ru `1990–2000 г. Затем`, `2010-11 г. Затем`, `5–10 ч. Потом` → no
-  glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` → `г.⍽Москвы` (a label range); ru
-  `21.11.2026 г.` → `21.11.2026⍽г.`; ru `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and
-  `report().protected()` lists `Technical(Version)` for the date; ru `21.11.26 г.` → `21.11.26⍽г.`;
-  ru `Договор от 21.11.26 г. Затем` → no glue after `г.`; ru `0.2.27 г.` → unchanged (not a date
-  core); ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en
+  compound word is a word, section 8.2); the particles of section 15.2, items 18 and 19, in both
+  sets: `Знаешь ли ты` → `Знаешь⍽ли ты`, `Что ж,` → `Что⍽ж,`, `что же бы ты` → `что⍽же⍽бы ты`,
+  `Что ж - ладно` → `Что⍽ж⍽— ладно`, typed `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`, a particle after a
+  `Word` slot (`{x}⍽же ты`) and after an `Other` slot (`{x} же⍽ты`), and with `nbsp.short-length`
+  alone `Знаешь ли ты` → unchanged (section 15.3, C33); ru `21 Ноября` → `21⍽Ноября`; en
+  `chapter 5 may be` → unchanged; en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both sets); ru
+  `Привезли 5 т груза` → `Привезли 5⍽т груза`; en with `PercentSpacing::Attached`: `100⍽%` →
+  unchanged (only a single U+0020 is removed, section 8.7); ru `1990–2000 г. Затем`,
+  `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` →
+  `г.⍽Москвы` (a label range); ru `21.11.2026 г.` → `21.11.2026⍽г.`; ru
+  `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and `report().protected()` lists
+  `Technical(Version)` for the date; ru `21.11.26 г.` → `21.11.26⍽г.`; ru
+  `Договор от 21.11.26 г. Затем` → no glue after `г.`; ru `0.2.27 г.` → unchanged (not a date core);
+  ru, Prose and Interface: `в §5` → `в⍽§⍽5`, `в ¶5` → `в⍽¶⍽5`, `и ¶ 5` → `и⍽¶⍽5`; en
   `J. R. R. R. Tolkien` → unchanged (Interface); `nbsp.initials`: ru `Об этом сказал А. Петров.` →
   `Об этом сказал А.⍽Петров.`, ru `Выберите вариант А. После этого` →
   `Выберите вариант А.⍽После этого`, en `I chose plan B. Then I left.` →

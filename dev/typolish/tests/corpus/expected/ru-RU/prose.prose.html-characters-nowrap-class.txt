@@ -6,7 +6,7 @@
 <span class="nowrap">— Возьми</span> два, один обязательно потеряешь.
 Она засмеялась <span class="nowrap">и пошла</span> <span class="nowrap">по тропинке</span> <span class="nowrap">к реке.</span>
 Река <span class="nowrap">в этом</span> месте широкая, <span class="nowrap">а берег</span> пологий.
-Лодка стояла там же, где <span class="nowrap">её оставили</span> вчера.
+Лодка стояла <span class="nowrap">там же,</span> где <span class="nowrap">её оставили</span> вчера.
 Весло лежало рядом, <span class="nowrap">на траве,</span> <span class="nowrap">и казалось</span> тёплым <span class="nowrap">от солнца.</span>
 «Куда <span class="nowrap">ты собралась?» —</span> крикнул кто-то <span class="nowrap">с холма.</span>
 Анна обернулась, <span class="nowrap">но никого</span> <span class="nowrap">не увидела.</span>
@@ -47,23 +47,23 @@
 Новый мост построили <span class="nowrap">к осени,</span> <span class="nowrap">и теперь</span> через него ездят грузовики.
 Они возят зерно <span class="nowrap">на элеватор,</span> <span class="nowrap">до которого</span> <span class="nowrap">35 км.</span>
 Зерно собирают <span class="nowrap">в августе,</span> когда стоит жара до +30 градусов.
-<span class="nowrap">Зимой же бывает</span> и −25, <span class="nowrap">и тогда</span> река замерзает <span class="nowrap">до дна.</span>
+<span class="nowrap">Зимой же</span> бывает и −25, <span class="nowrap">и тогда</span> река замерзает <span class="nowrap">до дна.</span>
 Лёд держит человека, <span class="nowrap">но по нему</span> лучше <span class="nowrap">не ходить</span> <span class="nowrap">в одиночку.</span>
 Рыбаки всё равно выходят, садятся <span class="nowrap">у лунок</span> <span class="nowrap">и ждут</span> клёва.
 Клюёт редко, зато рыба крупная.
 Щука <span class="nowrap">в 5 кг считается</span> там обычной добычей.
 Мясо <span class="nowrap">у неё</span> сухое, поэтому его мариновали <span class="nowrap">и жарили.</span>
 Рецепт передавался <span class="nowrap">из поколения</span> <span class="nowrap">в поколение,</span> <span class="nowrap">и его</span> никто <span class="nowrap">не записывал.</span>
-<span class="nowrap">Но Анна</span> однажды <span class="nowrap">всё же записала:</span> 2 ложки соли, 1 лимон, чеснок, укроп.
+<span class="nowrap">Но Анна</span> однажды <span class="nowrap">всё же</span> записала: 2 ложки соли, 1 лимон, чеснок, укроп.
 Получилось вкусно, хотя <span class="nowrap">и не совсем</span> так, <span class="nowrap">как у бабушки.</span>
 <span class="nowrap">К вечеру</span> небо затянуло, <span class="nowrap">как и обещал</span> сосед.
 Первые капли упали <span class="nowrap">на крышу</span> около 18:00.
 Дождь шёл всю ночь, <span class="nowrap">а наутро</span> река поднялась <span class="nowrap">на 30 см.</span>
 Лодку пришлось вытаскивать выше, <span class="nowrap">на берег.</span>
 Анна помогала соседу, <span class="nowrap">и вместе</span> они справились <span class="nowrap">за час.</span>
-<span class="nowrap">— Спасибо, —</span> сказал <span class="nowrap">он. —</span> <span class="nowrap">Без тебя бы не успел.</span>
+<span class="nowrap">— Спасибо, —</span> сказал <span class="nowrap">он. —</span> <span class="nowrap">Без тебя бы</span> <span class="nowrap">не успел.</span>
 <span class="nowrap">— Не за что.</span> Зонт <span class="nowrap">я всё-таки</span> забыла дома.
-<span class="nowrap">— Вот</span> видишь, значит, <span class="nowrap">потеряла бы один</span> <span class="nowrap">из двух.</span>
+<span class="nowrap">— Вот</span> видишь, значит, <span class="nowrap">потеряла бы</span> один <span class="nowrap">из двух.</span>
 Они рассмеялись <span class="nowrap">и пошли</span> пить чай.
 Чай был крепкий, <span class="nowrap">с мятой</span> <span class="nowrap">и мёдом.</span>
 Мёд сосед брал <span class="nowrap">у пасечника,</span> жившего <span class="nowrap">за рекой.</span>

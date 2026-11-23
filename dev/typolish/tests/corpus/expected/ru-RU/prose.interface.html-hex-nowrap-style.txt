@@ -6,7 +6,7 @@
 - Возьми два, один обязательно потеряешь.
 Она засмеялась <span style="white-space:nowrap">и пошла</span> <span style="white-space:nowrap">по тропинке</span> <span style="white-space:nowrap">к реке.</span>
 Река <span style="white-space:nowrap">в этом</span> месте широкая, <span style="white-space:nowrap">а берег</span> пологий.
-Лодка стояла там же, где её оставили вчера.
+Лодка стояла <span style="white-space:nowrap">там же,</span> где её оставили вчера.
 Весло лежало рядом, <span style="white-space:nowrap">на траве,</span> <span style="white-space:nowrap">и казалось</span> тёплым <span style="white-space:nowrap">от солнца.</span>
 &#xAB;Куда ты <span style="white-space:nowrap">собралась?&#xBB; &#x2014;</span> крикнул кто-то <span style="white-space:nowrap">с холма.</span>
 Анна обернулась, <span style="white-space:nowrap">но никого</span> <span style="white-space:nowrap">не увидела.</span>

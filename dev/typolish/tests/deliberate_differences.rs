@@ -49,7 +49,6 @@ fn diagnostics(language: Language, input: &str) -> Vec<DiagnosticKind> {
 const EXACT_RU: &[(&str, &str, &str)] = &[
     ("PercentAsWritten", "Скидка 100 %.", "Скидка 100⍽%."),
     ("Technical", "a <-> b", "a ↔ b"),
-    ("NoLastShortWord", "Что ж,", "Что ж,"),
     (
         "NoLastShortWord",
         "-- Привет! -- сказал он.",
@@ -66,7 +65,7 @@ const EXACT_RU: &[(&str, &str, &str)] = &[
     ("RuNbsp", "3 мин.", "3⍽мин."),
     ("RuNbsp", "Пушкин А.С.", "Пушкин⍽А.С."),
     ("RuNbsp", "над лесом", "над⍽лесом"),
-    ("RuNbsp", "Знаешь ли ты", "Знаешь⍽ли⍽ты"),
+    ("RuNbsp", "20 мм и 5 м.", "20⍽мм⍽и⍽5⍽м."),
     ("WideGlue", "Документ № 5", "Документ №⍽5"),
     ("NoDigitChange", "5 м2", "5⍽м2"),
     ("KeepSpaces", "Размер 10 x 5.", "Размер 10 × 5."),

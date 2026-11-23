@@ -1009,7 +1009,9 @@ impl TypographerBuilder {
 
     /// Adds particles to the language's list (compared without case).
     ///
-    /// Affects the rule `nbsp.particles`.
+    /// Affects the rule `nbsp.particles`, which glues a particle to the word or slot before it,
+    /// and the rules `nbsp.short-words` and `nbsp.short-length`, which glue nothing after a
+    /// particle so placed (`Знаешь ли ты` → `Знаешь\u{a0}ли ты`).
     pub fn add_particles<I>(mut self, words: I) -> Self
     where
         I: IntoIterator,
@@ -1021,7 +1023,9 @@ impl TypographerBuilder {
 
     /// Removes particles from the language's list.
     ///
-    /// Affects the rule `nbsp.particles`.
+    /// Affects the rule `nbsp.particles`, which glues a particle to the word or slot before it,
+    /// and the rules `nbsp.short-words` and `nbsp.short-length`, which glue nothing after a
+    /// particle so placed (`Знаешь ли ты` → `Знаешь\u{a0}ли ты`).
     pub fn remove_particles<I>(mut self, words: I) -> Self
     where
         I: IntoIterator,

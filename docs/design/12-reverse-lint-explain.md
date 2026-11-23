@@ -33,10 +33,11 @@ markup are never touched.
 | `symbols.*`                                | `©` `®` `™` where `symbols.copyright` would produce them (section 8.9: `©` before a four-digit year, attached or one space away, `©` one space after a four-digit year, or `©` one space from a range of years; `®`, `™` attached to or one space after a capitalized word of at least two letters, not followed by an operator fragment), `→` `←` `↔` `≥` `≤` `≠` `±` | `(c)` `(r)` `(tm)` `->` `<-` `<->` `>=` `<=` `!=` `+-`                                                         |
 
 Glue that no enabled rule sets at its place stays: with `nbsp.units` alone, `5⍽МБ в⍽доме` →
-`5 МБ в⍽доме`. A typed `–` with spaces (`Москва⍽– столица`, `10⍽– 20`) is not a product of the range
-rules and stays; only the glue that `nbsp.dash` set before it becomes a space (section 8.7). A lone
-`©`, `®` or `™` outside those contexts (`© Example Corp`, `® знак`) is not a product of the rule and
-stays.
+`5 МБ в⍽доме`; in Prose `Знаешь⍽ли⍽ты` → `Знаешь ли⍽ты`, since no rule glues after a particle bound
+to the word before it (section 8.7). A typed `–` with spaces (`Москва⍽– столица`, `10⍽– 20`) is not
+a product of the range rules and stays; only the glue that `nbsp.dash` set before it becomes a space
+(section 8.7). A lone `©`, `®` or `™` outside those contexts (`© Example Corp`, `® знак`) is not a
+product of the rule and stays.
 
 `to_plain` changes only the typographic characters of the table above. Plain forms (`--`, `т.д.`,
 `?...`, `(C)`) are not normalized: `to_plain("a -- b")` returns the input. Its output contains no

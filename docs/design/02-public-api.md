@@ -296,7 +296,7 @@ impl TypographerBuilder {
     pub fn short_word_length(self, max_chars: u8) -> Self;       // 0 makes nbsp.short-length inert
     // nbsp.short-words, nbsp.short-length
     pub fn short_words_any_script(self, yes: bool) -> Self;
-    // nbsp.particles
+    // nbsp.particles; nbsp.short-words, nbsp.short-length (no glue after a bound particle, 8.7)
     pub fn add_particles<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     pub fn remove_particles<I>(self, words: I) -> Self where I: IntoIterator, I::Item: AsRef<str>;
     // nbsp.abbreviations, nbsp.initials, nbsp.signs: where U+202F is used instead of U+00A0
