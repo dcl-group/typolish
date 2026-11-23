@@ -266,6 +266,27 @@ fn spaced_hyphen_next_to_the_apostrophe_rule() {
 }
 
 #[test]
+fn an_apostrophe_of_step_1_is_no_quote_for_the_dash_rules() {
+    // Design sections 6.2, 6.3 and 8.2: `'tis` and `’tis` read alike (design section 4.3, I4).
+    let alone = only(Language::EN_US, &[SPACED]);
+    for text in [
+        "x - 'tis",
+        "x - ’tis",
+        "x - '90s",
+        "x - ’90s",
+        "x - 'em now",
+    ] {
+        check_unchanged("alone", &alone, text);
+    }
+    for t in [prose(Language::EN_US), interface(Language::EN_US)] {
+        check_in("set", &t, ("x - 'tis", "x - ’tis"));
+        check_in("set", &t, ("x - '90s", "x - ’90s"));
+        check_unchanged("set", &t, "x - ’tis");
+        check_unchanged("set", &t, "x - ’90s");
+    }
+}
+
+#[test]
 fn spaced_hyphen_and_the_ellipsis_rule() {
     // Section 13.2: `Ждите - ...` stays with `dash.spaced-hyphen` alone, with no
     // `AmbiguousHyphen` and no protected span; the sets also set the ellipsis.

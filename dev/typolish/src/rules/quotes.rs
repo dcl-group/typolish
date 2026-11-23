@@ -176,15 +176,24 @@ fn straight_role(cx: &Cx<'_>, l: Option<usize>, r: Option<usize>) -> Option<Role
     rc.ends().then_some(Role::Close)
 }
 
-/// The role of a quote by the local rule of design section 6.3, as other rules read it (section
-/// 8.2): a typed glyph has the role of its glyph in the language's pairs, a straight quote the
-/// role its neighbors give, the sign-only pair included. The quote phase gives a straight quote
-/// the same role, so its glyph has that role on a second pass (section 4.3, I4).
+/// The role of a quote by the local rule of design section 6.3, as other rules read it (design
+/// section 8.2): a typed glyph has the role of its glyph in the language's pairs, except U+2019,
+/// which closes only where the closing test of design section 6.3 holds; a straight quote has the
+/// role its neighbors give, the sign-only pair included; a quote that step 1 (design section 6.2)
+/// makes an apostrophe, plain or typed, has no role. So a glyph has on a second pass the role its
+/// plain form had on the first (design section 4.3, I4), except the apostrophes of design section
+/// 6.6, which depend on pairing.
 pub(crate) fn local_role(cx: &Cx<'_>, i: usize) -> Option<Role> {
     if !is_quote(cx, i) {
         return None;
     }
-    match cx.chr(i)? {
+    let glyph = cx.chr(i)?;
+    // A certain apostrophe of step 1 (design section 6.2), plain or typed, is no quote for other
+    // rules.
+    if matches!(glyph, '\'' | APOSTROPHE_CHAR) && step1(cx, i, glyph) == Some(Mark::Apostrophe) {
+        return None;
+    }
+    match glyph {
         '"' | '\'' => {
             let (l, r) = neighbors(cx, i);
             // As in the quote phase, a later pair overrides an earlier one: the opening role of a
@@ -201,6 +210,11 @@ pub(crate) fn local_role(cx: &Cx<'_>, i: usize) -> Option<Role> {
             let pairs = cx.pairs?;
             if c == pairs.primary.0 || c == pairs.nested.0 {
                 Some(Role::Open)
+            } else if c == APOSTROPHE_CHAR && (c == pairs.primary.1 || c == pairs.nested.1) {
+                // `’` is also the apostrophe: it closes only where the closing test of design
+                // section 6.3 holds.
+                let (l, r) = neighbors(cx, i);
+                (!class(cx, l).opens() && class(cx, r).ends()).then_some(Role::Close)
             } else if c == pairs.primary.1 || c == pairs.nested.1 {
                 Some(Role::Close)
             } else {

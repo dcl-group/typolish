@@ -1517,6 +1517,9 @@ fn short_words_in_english() {
     for word in ["I", "we", "is", "he", "it"] {
         check_unchanged("en not listed", &t, &format!("{word} dog"));
     }
+    // An apostrophe of step 1 is no quote, plain or typed (design sections 6.2 and 8.2).
+    check_unchanged("en apostrophe", &t, "the 'tis x");
+    check_unchanged("en apostrophe", &t, "the ’tis x");
 }
 
 #[test]
