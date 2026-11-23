@@ -399,67 +399,83 @@ fn class_of(cluster: &str) -> Class {
     }
 }
 
+/// Whether a character is a cluster of its own between two such characters (design section
+/// 3.5): ASCII, and fixed ranges of Latin, Greek and Cyrillic letters and of the punctuation,
+/// currency, letterlike, arrow and math signs that typography uses. None of them is `Prepend`,
+/// `Extend`, `ZWJ`, `SpacingMark`, a regional indicator or a Hangul jamo or syllable, so no rule
+/// of UAX #29 joins two of them, except `\r\n`. A unit test checks every one against the
+/// segmenter.
+pub(crate) const fn is_simple(c: char) -> bool {
+    matches!(
+        c,
+        '\0'..='\u{7f}'
+            | '\u{a0}'..='\u{2ff}'
+            | '\u{370}'..='\u{3ff}'
+            | '\u{400}'..='\u{482}'
+            | '\u{48a}'..='\u{52f}'
+            | '\u{2010}'..='\u{2027}'
+            | '\u{202f}'..='\u{205e}'
+            | '\u{20a0}'..='\u{20cf}'
+            | '\u{2100}'..='\u{22ff}'
+    )
+}
+
 /// The extended grapheme clusters of `text[start..end]`, as ranges of `text` (design section
-/// 3.5). A position between two ASCII bytes is a cluster boundary, except inside `\r\n`; every
-/// run of non-ASCII characters goes to the segmenter together with the ASCII byte directly
-/// before it (a mark may extend it) and the one directly after it (a `Prepend` character glues
-/// it).
+/// 3.5). A position between two simple characters (`is_simple`) is a cluster boundary, except
+/// inside `\r\n`; every run of other characters goes to the segmenter together with the simple
+/// character directly before it (a mark may extend it) and the one directly after it (a
+/// `Prepend` character glues it).
 pub(crate) fn clusters(text: &str, start: usize, end: usize, out: &mut Vec<(u32, u32)>) {
     out.clear();
-    let bytes = text.as_bytes();
-    let at = |i: usize| bytes.get(i).copied().unwrap_or(0);
     let mut push = |s: usize, e: usize| {
         if let (Ok(s), Ok(e)) = (u32::try_from(s), u32::try_from(e)) {
             out.push((s, e));
         }
     };
-    let mut i = start;
-    while i < end {
-        let b = at(i);
-        let next_complex = i + 1 < end && at(i + 1) >= 0x80;
-        if b < 0x80 && !next_complex {
-            if b == b'\r' && i + 1 < end && at(i + 1) == b'\n' {
-                push(i, i + 2);
-                i += 2;
+    let Some(slice) = text.get(start..end) else {
+        // Not reachable for valid positions; keep the text as one cluster rather than fail.
+        push(start, end);
+        return;
+    };
+    let mut chars = slice.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        let len = c.len_utf8();
+        let next = chars.peek().map(|&(_, n)| n);
+        if is_simple(c) && next.is_none_or(is_simple) {
+            if c == '\r' && next == Some('\n') {
+                chars.next();
+                push(start + i, start + i + 2);
             } else {
-                push(i, i + 1);
-                i += 1;
+                push(start + i, start + i + len);
             }
             continue;
         }
-        // A region of non-ASCII characters with its ASCII neighbors.
-        let region_start = i;
-        let mut j = if b < 0x80 { i + 1 } else { i };
-        loop {
-            if j >= end {
-                break;
-            }
-            if at(j) >= 0x80 {
-                j += 1;
+        // A region of other characters with their simple neighbors: `c` opens it either way.
+        let mut j = i + len;
+        while let Some(&(k, d)) = chars.peek() {
+            chars.next();
+            let dlen = d.len_utf8();
+            let after = chars.peek().map(|&(_, n)| n);
+            if !is_simple(d) || after.is_some_and(|n| !is_simple(n)) {
+                j = k + dlen;
                 continue;
             }
-            if j + 1 < end && at(j + 1) >= 0x80 {
-                j += 1;
-                continue;
-            }
-            j += if at(j) == b'\r' && j + 1 < end && at(j + 1) == b'\n' {
-                2
+            j = if d == '\r' && after == Some('\n') {
+                chars.next();
+                k + 2
             } else {
-                1
+                k + dlen
             };
             break;
         }
-        let j = j.min(end);
-        if let Some(region) = text.get(region_start..j) {
+        if let Some(region) = slice.get(i..j) {
             for (offset, cluster) in region.grapheme_indices(true) {
-                let s = region_start + offset;
+                let s = start + i + offset;
                 push(s, s + cluster.len());
             }
         } else {
-            // Not reachable for valid positions; keep the text as one cluster rather than fail.
-            push(region_start, j);
+            push(start + i, start + j);
         }
-        i = j;
     }
 }
 
@@ -672,6 +688,41 @@ mod tests {
     }
 
     #[test]
+    fn simple_characters_never_join() {
+        // Every simple character breaks before and after `a`, before the Hangul jamo L, V and T,
+        // a regional indicator and a line feed, so its `Grapheme_Cluster_Break` is `Other`,
+        // `Control` or `LF`, and no rule of UAX #29 joins two simple characters (design section
+        // 3.5).
+        let after = ['a', '\u{1100}', '\u{1161}', '\u{11a8}', '\u{1f1e6}', '\n'];
+        for c in (0..=0xffff)
+            .filter_map(char::from_u32)
+            .filter(|&c| is_simple(c))
+        {
+            if c == '\r' {
+                continue;
+            }
+            for x in after {
+                let text = format!("{c}{x}");
+                assert_eq!(text.graphemes(true).count(), 2, "{}", text.escape_unicode());
+            }
+            let text = format!("a{c}");
+            assert_eq!(text.graphemes(true).count(), 2, "{}", text.escape_unicode());
+        }
+        // A sample of pairs, through the fast path.
+        let sample: Vec<char> = (0..=0xffff)
+            .filter_map(char::from_u32)
+            .filter(|&c| is_simple(c))
+            .step_by(7)
+            .collect();
+        for &a in &sample {
+            for &b in sample.iter().step_by(13) {
+                let text = format!("{a}{b}");
+                assert_eq!(fast(&text), reference(&text), "{}", text.escape_unicode());
+            }
+        }
+    }
+
+    #[test]
     fn the_fast_letter_test_is_that_of_the_standard_library() {
         for c in (0..=0x10_ffff).filter_map(char::from_u32) {
             assert_eq!(
@@ -709,6 +760,8 @@ mod tests {
             "\u{ad}",
             "\u{85}",
             "\t",
+            "\u{a0}",
+            "\u{2014}",
         ];
         for a in ALPHABET {
             for b in ALPHABET {

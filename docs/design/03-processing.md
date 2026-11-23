@@ -165,22 +165,27 @@ ellipsis, because an edit may not include markup.
 ### 3.5 Lexer: class-invariant tokens
 
 Text is cut into tokens along extended grapheme clusters (`unicode-segmentation`, section 5.1). A
-fast path skips the tables for ASCII. No ASCII character is `Prepend`, `Extend`, `ZWJ` or
-`SpacingMark`, so a position between two ASCII bytes is a cluster boundary (except inside `\r\n`),
-and so are the start and the end of the text. The lexer cuts the text at these positions: a piece of
-one ASCII byte is a cluster of its own (`\r\n` is one cluster), and every other piece, which holds
-non-ASCII characters together with the ASCII bytes directly before and after them, goes to the
-segmenter whole. So the ASCII byte before a non-ASCII character is segmented with it, because a
-combining mark, ZWJ or variation selector may extend it (`"` + U+0301, `1` + U+FE0F + U+20E3), and
-the ASCII byte after it is segmented with it too, because a `Prepend` character glues the next
-character to itself (U+0600 + `1`, rule GB9b of UAX #29). The gain is for Latin text; in Cyrillic
-text most ASCII bytes stand next to non-ASCII characters and go to the segmenter. A token's class
-comes from the first character of its first cluster, except that a cluster of several characters
-whose first character is not a letter (a digit of another system counts as a letter, section 5.2) is
-a `Symbol` (keycaps `1️⃣` and `#️⃣`, `"` + U+0301, `"` + U+200C, `1` + U+200D), with three exceptions:
-a cluster of ZWNJ and ZWJ only is a `Format` token (section 5.4); `\r\n` is a `Newline`; and a
-cluster that starts with a whitespace character and carries a combining mark, ZWNJ or ZWJ is a
-frozen `Space` (below).
+fast path skips the tables for **simple characters**: ASCII and fixed ranges of the characters that
+typography meets most (U+00A0 to U+02FF: Latin-1 and Latin Extended letters and the spacing
+modifiers; U+0370 to U+03FF Greek; U+0400 to U+0482 and U+048A to U+052F Cyrillic letters; U+2010 to
+U+2027 and U+202F to U+205E punctuation; U+20A0 to U+20CF currency signs; U+2100 to U+22FF
+letterlike signs, number forms, arrows and math). No simple character is `Prepend`, `Extend`, `ZWJ`,
+`SpacingMark`, a regional indicator or a Hangul jamo or syllable (a lexer unit test checks each one
+against the segmenter), so a position between two simple characters is a cluster boundary (except
+inside `\r\n`), and so are the start and the end of the text. The lexer cuts the text at these
+positions: a simple character between simple characters is a cluster of its own (`\r\n` is one
+cluster), and every other piece, which holds other characters together with the simple characters
+directly before and after them, goes to the segmenter whole. So the simple character before another
+character is segmented with it, because a combining mark, ZWJ or variation selector may extend it
+(`"` + U+0301, `1` + U+FE0F + U+20E3, `е` + U+0301), and the simple character after it is segmented
+with it too, because a `Prepend` character glues the next character to itself (U+0600 + `1`, rule
+GB9b of UAX #29). Latin, Greek and Cyrillic text without combining marks or emoji never reaches the
+segmenter. A token's class comes from the first character of its first cluster, except that a
+cluster of several characters whose first character is not a letter (a digit of another system
+counts as a letter, section 5.2) is a `Symbol` (keycaps `1️⃣` and `#️⃣`, `"` + U+0301, `"` + U+200C,
+`1` + U+200D), with three exceptions: a cluster of ZWNJ and ZWJ only is a `Format` token (section
+5.4); `\r\n` is a `Newline`; and a cluster that starts with a whitespace character and carries a
+combining mark, ZWNJ or ZWJ is a frozen `Space` (below).
 
 "Horizontal whitespace" is every character with `char::is_whitespace` that is not a line break
 (`\n`, `\r`, U+0085, U+2028) and not U+2029: U+0020, U+00A0, U+202F, tab, U+000B, U+000C, U+2000 to

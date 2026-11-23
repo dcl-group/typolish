@@ -452,16 +452,18 @@ the no-panic test.
   followed by a letter or digit and come out unchanged; U+0020 + U+200D is a frozen `Space`; through
   `report`, no edit falls between a ZWNJ or ZWJ and the character before it).
 - Tables for clusters led by a non-letter: keycaps `1️⃣` and `#️⃣`, `"` + U+0301, each alone and right
-  after ASCII text (`Шаги 1️⃣-3️⃣`, `a"\u{301}b`), so that the ASCII fast path of section 3.5 hands
-  them to the segmenter; they come out unchanged and are not numbers, signs or quotes. Clusters led
-  by a `Prepend` character before ASCII: `\u{600}123`, `\u{6DD}` + space at the end of the text,
+  after ASCII text (`Шаги 1️⃣-3️⃣`, `a"\u{301}b`), so that the fast path of section 3.5 hands them to
+  the segmenter; they come out unchanged and are not numbers, signs or quotes. Clusters led by a
+  `Prepend` character before ASCII: `\u{600}123`, `\u{6DD}` + space at the end of the text,
   `a\u{600}b`. They come out unchanged; `\u{600}1` is a `Symbol`, and no edit falls between U+0600
   and the ASCII character after it. A lexer unit test compares the cluster boundaries of the fast
   path with `grapheme_indices(true)` on generated strings that mix ASCII with a character of every
   `Grapheme_Cluster_Break` class and Indic conjunct class that the fixture uses (`Prepend`,
   `Extend`, `ZWJ`, `SpacingMark`, the Hangul classes, regional indicators, pictographs and the
-  rest). The fixture itself is read only by `tests/graphemes.rs`, which runs every line of it: a
-  unit test in `src/` reads no file (section 13.9 checks that `src/` contains no `std::fs`).
+  rest), and another checks that every simple character of section 3.5 breaks from `a`, the Hangul
+  jamo, a regional indicator and a line feed on either side. The fixture itself is read only by
+  `tests/graphemes.rs`, which runs every line of it: a unit test in `src/` reads no file (section
+  13.9 checks that `src/` contains no `std::fs`).
 
 ### 13.7 Own corpus
 

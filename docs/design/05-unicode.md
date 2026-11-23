@@ -16,8 +16,9 @@ Rules work on whole clusters:
   non-letter is a `Symbol` (except `\r\n`, a cluster of ZWNJ and ZWJ only, section 5.4, and a space
   with a combining mark, ZWNJ or ZWJ attached, section 5.3): a straight quote with a combining mark
   attached (`"` + U+0301) is not a quote candidate, and a keycap (`1️⃣`, `#️⃣`) is not a number or a
-  sign. The ASCII fast path of section 3.5 hands the ASCII bytes on both sides of a non-ASCII
-  character to the segmenter, so this holds right before and right after ASCII text too.
+  sign. The fast path of section 3.5 hands the simple characters on both sides of any other
+  character to the segmenter, so this holds right before and right after ASCII, Latin, Greek and
+  Cyrillic text too.
 - An insertion (`т.е.` → `т.⍽е.`, `№5` → `№⍽5`) is made only between clusters.
 - Glue is set only on a `Space` token, which is a whole cluster.
 - Emoji sequences (ZWJ, skin-tone modifiers, flags, keycaps, tag sequences) are single `Symbol`
