@@ -4,6 +4,7 @@
 //! dash fragment, so that the closed style can remove it; they take the space, the dash and the
 //! space after it.
 
+use super::nbsp::holds_other;
 use super::quotes::{Role, local_role};
 use super::{
     Frag, FragKind, Triggers, foreign, is_number, is_operand, is_range, is_technical, percent_owner,
@@ -88,8 +89,9 @@ pub(crate) fn dialogue(cx: &Cx<'_>, i: usize) -> Option<Match> {
             repl: Repl::Char(EM_DASH),
         });
     }
-    // No glue sticks to an `Other` slot (sections 2.6 and 8.2): the dash is set, the space stays.
-    if cx.plain_space(s) && opaque != Kind::Slot(SlotKind::Other) {
+    // No glue sticks to an `Other` slot or a fragment that holds one (sections 2.6 and 8.2): the
+    // dash is set, the space stays.
+    if cx.plain_space(s) && !holds_other(cx, r) {
         edits = edits.with(Edit::Glue {
             at,
             glue: Glue::NoBreak,

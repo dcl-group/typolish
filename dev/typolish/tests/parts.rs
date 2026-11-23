@@ -87,8 +87,10 @@ fn slots_come_out_in_order_with_their_payloads() {
             "{what}"
         );
         assert_eq!(out.texts().len(), 5, "{what}");
-        // `и` is a short word, and glue sticks before a `Date` slot (section 2.6).
-        assert_eq!(texts(&out), ["", "", " и\u{a0}", "", ""], "{what}");
+        // `и` is a short word and glue sticks before a `Date` slot, but the fragment after the
+        // space is `{d}{o}`, which holds an `Other` slot: no glue sticks to it (sections 2.6 and
+        // 8.2), so the space stays.
+        assert_eq!(texts(&out), ["", "", " и ", "", ""], "{what}");
     }
 }
 
@@ -189,13 +191,10 @@ fn a_quote_pairs_across_a_slot() {
             ],
             Output::Unicode,
         );
-        // `and` is a listed short word before an opening quote; the glue does not stick to the
-        // `Other` slot, which is inside the next fragment.
-        let plain: Vec<String> = texts(&out)
-            .iter()
-            .map(|t| t.replace('\u{a0}', " "))
-            .collect();
-        assert_eq!(plain, ["Open “", "” and “", "”."], "{what}");
+        // `and` is a listed short word before an opening quote, but the fragment after the space
+        // is `“{other}”.`, whose core is the `Other` slot: no glue sticks to it (sections 2.6 and
+        // 8.2), so the space after `and` stays an ordinary space.
+        assert_eq!(texts(&out), ["Open “", "” and “", "”."], "{what}");
     }
 }
 
@@ -673,6 +672,16 @@ fn word_and_other_slots_and_protected_pieces_are_words_for_the_dialogue_dash() {
         Output::Unicode,
     );
     assert_eq!(texts(&out), ["— ", " пришёл"]);
+    // The same for a quoted `Other` slot: the quote opens the fragment whose core is the slot.
+    let out = t.typeset_template(
+        [
+            Piece::Text("- \""),
+            Piece::Slot("o", Slot::OTHER),
+            Piece::Text("\" пришёл"),
+        ],
+        Output::Unicode,
+    );
+    assert_eq!(texts(&out), ["— «", "» пришёл"]);
     let out = t.typeset_template::<()>(
         [
             Piece::Text("- "),
@@ -924,6 +933,27 @@ fn row_glue_before_and_after_a_slot() {
             vec![Piece::Slot("name", Slot::WORD), Piece::Text(" же")],
         );
         assert_eq!(out, ["", "\u{a0}же"], "{what}");
+    }
+    // A quoted or bracketed slot is the core of its fragment: the glue before the fragment sticks
+    // to the slot, so an `Other` slot gets none there either (sections 2.6 and 8.2).
+    for (slot, name) in KINDS {
+        let glued = slot.kind() != SlotKind::Other;
+        for (open, close) in [("\"", "\""), ("(", ")")] {
+            let out = run(
+                &short,
+                vec![
+                    Piece::Text(&format!("в {open}")),
+                    Piece::Slot("x", slot),
+                    Piece::Text(close),
+                ],
+            );
+            let before = if glued { "в\u{a0}" } else { "в " };
+            assert_eq!(
+                out,
+                [format!("{before}{open}"), close.to_owned()],
+                "в {open}{name}"
+            );
+        }
     }
 }
 

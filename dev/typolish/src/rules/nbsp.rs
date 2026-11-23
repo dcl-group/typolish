@@ -110,9 +110,15 @@ fn glue_of(cx: &Cx<'_>, place: NarrowGlue) -> Glue {
     }
 }
 
-/// Whether a token is a slot of kind `Other`, next to which no glue sticks (sections 2.6, 8.2).
-fn other_slot(cx: &Cx<'_>, i: usize) -> bool {
-    cx.kind(i) == Some(Kind::Slot(SlotKind::Other))
+/// Whether a token is a slot of kind `Other` or belongs to a fragment that holds one: no glue
+/// sticks to such a fragment, quoted or bracketed alike (`and "{o}"`), because a nowrap group
+/// would take the whole fragment, slot included (sections 2.6, 8.2 and 11.5).
+pub(crate) fn holds_other(cx: &Cx<'_>, i: usize) -> bool {
+    let other = |j: usize| cx.kind(j) == Some(Kind::Slot(SlotKind::Other));
+    other(i)
+        || cx
+            .frag_of(i)
+            .is_some_and(|f| (f.start as usize..f.end as usize).any(other))
 }
 
 /// Whether a token separates fragments.
@@ -121,14 +127,14 @@ fn separator(cx: &Cx<'_>, i: usize) -> bool {
 }
 
 /// The tokens on each side of the pattern space `s` between two fragments on one line, neither
-/// of them an `Other` slot (section 8.2).
+/// of them holding an `Other` slot (section 8.2).
 fn sides(cx: &Cx<'_>, s: usize) -> Option<(usize, usize)> {
     if !cx.pattern_space(s) {
         return None;
     }
     let l = cx.prev(s)?;
     let r = cx.next(s)?;
-    if separator(cx, l) || separator(cx, r) || other_slot(cx, l) || other_slot(cx, r) {
+    if separator(cx, l) || separator(cx, r) || holds_other(cx, l) || holds_other(cx, r) {
         return None;
     }
     Some((l, r))
@@ -1028,7 +1034,7 @@ pub(crate) fn dash(cx: &Cx<'_>, s: usize) -> Option<Match> {
     }
     let l = cx.prev(s)?;
     let r = cx.next(s2)?;
-    if other_slot(cx, l) {
+    if holds_other(cx, l) {
         return None;
     }
     let left = if cx.in_core(l) {

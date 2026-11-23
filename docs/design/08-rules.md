@@ -121,8 +121,9 @@ Conditions that hold for every rule:
   protected span, an opening quote or the opening bracket `(` (`[` and `{` start technical notation,
   section 3.6, so `в [х]` stays), except where a rule names the next token (`nbsp.dash` before a
   dash, `nbsp.units` before a unit, `nbsp.short-words` before a sign of `signs`). Never before a
-  fragment that starts with `-` (`ls -la` stays intact whatever the lists say), and never next to an
-  `Other` slot, on either side (section 2.6).
+  fragment that starts with `-` (`ls -la` stays intact whatever the lists say), and never next to a
+  fragment that holds an `Other` slot, on either side, whatever wraps the slot (`and "{o}"` stays;
+  section 2.6).
 - A trigger word is a whole core, compared as section 7.1 (Lookups) says for its list. The wrapper
   does not hide it: `(в 2026)` → `(в⍽2026)`. A word followed by closing punctuation (`и,`) triggers
   nothing.
