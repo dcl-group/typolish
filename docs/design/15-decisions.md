@@ -133,9 +133,11 @@ Decided by the maintainer on 2026-11-23; not reopened here:
     (split into parts, never whole) stays there, and `main` is never force-pushed (item 3, section
     14.7).
 33. Code and tests refer to this design as "design section N.M" everywhere, never as a bare "section
-    N.M"; a test of `tests/documentation.rs` keeps it so.
+    N.M". The references of `src/` and `tests/` that still lack the word are being brought to this
+    form, and a test of `tests/documentation.rs` will keep it so once they are.
 34. Publishing on crates.io waits for the maintainer's command; until then only the GitHub
-    repository is pushed (items 1 and 15).
+    repository is pushed (items 1 and 15). The tag `v0.1.0` is set and pushed only on that command
+    too (section 14.7).
 
 The task itself fixes further points used throughout: the minus sign U+2212 for numbers, the
 mandatory negative cases, HTML outside the core, `thiserror` for errors, `cargo deny check` clean,
