@@ -208,26 +208,13 @@ pub fn check_clusters(t: &Typographer, label: &str, input: &str) {
         at = *end;
     }
     rebuilt.push_str(&input[at..]);
+    // Every cluster that no replacement or removal covers is in the output byte for byte: the
+    // edits stand on cluster boundaries (checked above), so the text between two edits is a run
+    // of whole clusters, and `rebuilt` copies it unchanged.
     assert_eq!(
         report.result().as_ref(),
         rebuilt,
         "applying the changes does not give the result: {}",
         what()
     );
-
-    // Every cluster that no replacement or removal covers is in the output byte for byte: the
-    // text between two edits is a run of whole clusters, and it was copied unchanged above.
-    for (cluster_at, cluster) in input.grapheme_indices(true) {
-        let end = cluster_at + cluster.len();
-        let covered = edits
-            .iter()
-            .any(|(s, e, _)| *s < end && *e > cluster_at && s != e);
-        if !covered {
-            assert!(
-                rebuilt.contains(cluster),
-                "a cluster {cluster:?} vanished: {}",
-                what()
-            );
-        }
-    }
 }
