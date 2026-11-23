@@ -179,7 +179,20 @@ const SAME_AS_PLAIN: &[&str] = &[
     "‹21› ноября ‹2026› г.",
     "Run ‹ls› in ‹the› box",
     "Open \"‹a›\" and \"‹b›\" now",
+    // An empty value between a sign and its number does not hide the sign: the number stays a
+    // label, not a quantity (sections 3.6 and 5.4).
+    "№ ‹› ‹5› т. е.",
+    "№‹› ‹› ‹100› ‹%›",
 ];
+
+#[test]
+fn an_empty_value_between_a_sign_and_its_number() {
+    // The label of section 3.6 looks past a fragment of isolates only (section 5.4).
+    for (what, t) in sets(&Language::RU_RU) {
+        check_iso(&what, &t, ("№ ‹› 5 т.", "№ ‹› 5 т."));
+        check_in(&what, &t, ("№  5 т.", "№  5 т."));
+    }
+}
 
 #[test]
 fn isolates_are_transparent_for_every_rule() {

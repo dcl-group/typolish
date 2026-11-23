@@ -412,14 +412,16 @@ on:
 
 - a `Number` or `Range` core, a core that is a Roman numeral, or a `Number` slot, whose fragment
   follows a `Sign` fragment (a sign or a doubled sign, special cases above), with nothing but spaces
-  of any kind between them on the same line (`№ 5`, `№⍽5`, `§§ 5–7`, `№ {n}`, `¶ IV`);
+  of any kind between them on the same line (`№ 5`, `№⍽5`, `§§ 5–7`, `№ {n}`, `¶ IV`); `Format` and
+  `Markup` tokens are transparent here as everywhere (section 5.4), so a fragment made of them only,
+  such as an empty Fluent value between the sign and the number, does not separate them;
 - the core of a sign attached to a number or a Roman numeral (`№5`, `§12`, `¶IV`, `№{n}`; kind
   `Word` by check 23).
 
 Both forms are labels, so the space that `nbsp.signs` inserts into `№5` or `¶IV` leaves the number a
 label (invariant I2 of section 4.3). The rules that read a quantity or a year do not take a label
 for a number (section 8.2): in `Школа №5 г. Москвы`, `г.` is a city, not a year. Marking labels
-looks at one neighbouring fragment, so it stays linear.
+looks at one neighbouring fragment (past fragments of transparent tokens), so it stays linear.
 
 Why per fragment, not per string: a technical fragment, once found, is frozen whole, and no rule,
 including a future one, can damage it. The reference implementation works with regular expressions

@@ -1267,10 +1267,21 @@ fn lone_times(text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
 
 /// The `LABEL` flag (design section 3.6, "Label numbers").
 fn labels(text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
+    // The nearest previous fragment that is not made of `Format` and `Markup` tokens only: those
+    // are transparent (design section 5.4), so an empty isolated value between a sign and its
+    // number (`№ `, U+2068, U+2069, ` 5`) does not hide the sign. Kept as the loop goes, so
+    // marking labels stays linear.
+    let mut prev: Option<Frag> = None;
     for i in 0..frags.len() {
         let Some(frag) = frags.get(i).copied() else {
             continue;
         };
+        let transparent = tokens
+            .get(frag.start as usize..frag.end as usize)
+            .is_some_and(|ts| ts.iter().all(|t| t.kind.is_transparent()));
+        if transparent {
+            continue;
+        }
         let core = tokens
             .get(frag.core_start as usize..frag.core_end as usize)
             .unwrap_or_default();
@@ -1287,13 +1298,16 @@ fn labels(text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
             ),
             _ => false,
         };
-        let after_sign = i > 0
-            && frags.get(i - 1).is_some_and(|prev| {
-                prev.kind == FragKind::Sign
-                    && tokens
-                        .get(prev.end as usize..frag.start as usize)
-                        .is_some_and(|between| between.iter().all(|t| t.kind == Kind::Space))
-            });
+        let after_sign = prev.replace(frag).is_some_and(|prev| {
+            prev.kind == FragKind::Sign
+                && tokens
+                    .get(prev.end as usize..frag.start as usize)
+                    .is_some_and(|between| {
+                        between
+                            .iter()
+                            .all(|t| t.kind == Kind::Space || t.kind.is_transparent())
+                    })
+        });
         let label = match frag.kind {
             FragKind::Number | FragKind::Range => after_sign,
             // A Roman numeral that is also a unit (`V`, `L`) is a `Dictionary` core.
