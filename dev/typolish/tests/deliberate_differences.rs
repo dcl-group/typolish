@@ -22,7 +22,9 @@ mod en_us;
 #[path = "reference/ru.rs"]
 mod ru;
 
-use common::{prose, vis};
+use std::collections::BTreeSet;
+
+use common::{Reason, prose, vis};
 use typolish::{DiagnosticKind, Language, Output, Piece, Slot};
 
 /// The output with every no-break space written as a plain one: "glue aside".
@@ -46,79 +48,121 @@ fn diagnostics(language: Language, input: &str) -> Vec<DiagnosticKind> {
 }
 
 /// Rows whose output is the whole string as the table writes it (`⍽` is U+00A0).
-const EXACT_RU: &[(&str, &str, &str)] = &[
-    ("PercentAsWritten", "Скидка 100 %.", "Скидка 100⍽%."),
-    ("Technical", "a <-> b", "a ↔ b"),
+const EXACT_RU: &[(Reason, &str, &str)] = &[
+    (Reason::PercentAsWritten, "Скидка 100 %.", "Скидка 100⍽%."),
+    (Reason::Technical, "a <-> b", "a ↔ b"),
     (
-        "NoLastShortWord",
+        Reason::NoLastShortWord,
         "-- Привет! -- сказал он.",
         "—⍽Привет!⍽— сказал он.",
     ),
     (
-        "NoLastShortWord",
+        Reason::NoLastShortWord,
         "Пушкин А. С. написал.",
         "Пушкин⍽А.⍽С. написал.",
     ),
-    ("RangeLiteral", "Страницы 10-20.", "Страницы 10–20."),
-    ("Apostrophe", "don't", "don’t"),
-    ("RuNbsp", "Г. Москва", "Г.⍽Москва"),
-    ("RuNbsp", "3 мин.", "3⍽мин."),
-    ("RuNbsp", "Пушкин А.С.", "Пушкин⍽А.С."),
-    ("RuNbsp", "над лесом", "над⍽лесом"),
-    ("RuNbsp", "20 мм и 5 м.", "20⍽мм⍽и⍽5⍽м."),
-    ("WideGlue", "Документ № 5", "Документ №⍽5"),
-    ("NoDigitChange", "5 м2", "5⍽м2"),
-    ("KeepSpaces", "Размер 10 x 5.", "Размер 10 × 5."),
-    ("KeepSpaces", "А.С. Пушкин", "А.С.⍽Пушкин"),
+    (Reason::RangeLiteral, "Страницы 10-20.", "Страницы 10–20."),
+    (Reason::Apostrophe, "don't", "don’t"),
+    (Reason::RuNbsp, "Г. Москва", "Г.⍽Москва"),
+    (Reason::RuNbsp, "3 мин.", "3⍽мин."),
+    (Reason::RuNbsp, "Пушкин А.С.", "Пушкин⍽А.С."),
+    (Reason::RuNbsp, "над лесом", "над⍽лесом"),
+    (Reason::RuNbsp, "20 мм и 5 м.", "20⍽мм⍽и⍽5⍽м."),
+    (Reason::WideGlue, "Документ № 5", "Документ №⍽5"),
+    (Reason::NoDigitChange, "5 м2", "5⍽м2"),
+    (Reason::KeepSpaces, "Размер 10 x 5.", "Размер 10 × 5."),
+    (Reason::KeepSpaces, "А.С. Пушкин", "А.С.⍽Пушкин"),
 ];
 
-const EXACT_EN: &[(&str, &str, &str)] = &[
-    ("RangeLiteral", "1941-1945", "1941–1945"),
-    ("NoLastShortWord", "Run X now.", "Run X now."),
+const EXACT_EN: &[(Reason, &str, &str)] = &[
+    (Reason::RangeLiteral, "1941-1945", "1941–1945"),
+    (Reason::NoLastShortWord, "Run X now.", "Run X now."),
     (
-        "NoLastShortWord",
+        Reason::NoLastShortWord,
         "He went to the shop",
         "He went to⍽the⍽shop",
     ),
-    ("NoLastShortWord", "a -> b", "a → b"),
-    ("Apostrophe", "'90s", "’90s"),
-    ("Apostrophe", "dogs'", "dogs’"),
-    ("Apostrophe", "rock'n'roll", "rock’n’roll"),
-    ("EnNbsp", "Mr. Smith", "Mr.⍽Smith"),
-    ("EnNbsp", "J. R. R. Tolkien", "J.⍽R.⍽R.⍽Tolkien"),
-    ("EnNbsp", "5 MB", "5⍽MB"),
+    (Reason::NoLastShortWord, "a -> b", "a → b"),
+    (Reason::Apostrophe, "'90s", "’90s"),
+    (Reason::Apostrophe, "dogs'", "dogs’"),
+    (Reason::Apostrophe, "rock'n'roll", "rock’n’roll"),
+    (Reason::EnNbsp, "Mr. Smith", "Mr.⍽Smith"),
+    (Reason::EnNbsp, "J. R. R. Tolkien", "J.⍽R.⍽R.⍽Tolkien"),
+    (Reason::EnNbsp, "5 MB", "5⍽MB"),
 ];
 
 /// Rows the table gives as "unchanged": the output equals the input byte for byte.
-const UNCHANGED_RU: &[(&str, &str)] = &[
-    ("NoSpaceEdit", "host:8080"),
-    ("NoSpaceEdit", "::1"),
-    ("NoSpaceEdit", "a,b,c"),
-    ("NoSpaceEdit", "x,y;z"),
-    ("NoDateRewrite", "2026-11-21"),
-    ("Technical", "a>>b"),
-    ("Technical", "0x1F"),
-    ("Technical", "1/2/2026"),
-    ("LegalMarkContext", "Вариант (c)"),
-    ("LegalMarkContext", "(R) знак"),
-    ("NoDigitChange", "20C"),
-    ("NoDigitChange", "$100"),
-    ("AlreadyTypeset", "Что?…"),
-    ("EllipsisDigits", "-5...5"),
-    ("NoTrim", "Строка   \nвторая\t\n\n\n\nтретья  "),
+const UNCHANGED_RU: &[(Reason, &str)] = &[
+    (Reason::NoSpaceEdit, "host:8080"),
+    (Reason::NoSpaceEdit, "::1"),
+    (Reason::NoSpaceEdit, "a,b,c"),
+    (Reason::NoSpaceEdit, "x,y;z"),
+    (Reason::NoDateRewrite, "2026-11-21"),
+    (Reason::Technical, "a>>b"),
+    (Reason::Technical, "0x1F"),
+    (Reason::Technical, "1/2/2026"),
+    (Reason::LegalMarkContext, "Вариант (c)"),
+    (Reason::LegalMarkContext, "(R) знак"),
+    (Reason::NoDigitChange, "20C"),
+    (Reason::NoDigitChange, "$100"),
+    (Reason::AlreadyTypeset, "Что?…"),
+    (Reason::EllipsisDigits, "-5...5"),
+    (Reason::NoTrim, "Строка   \nвторая\t\n\n\n\nтретья  "),
 ];
 
 /// Rows the table gives as "unchanged (glue aside)": the output equals the input once its
-/// no-break spaces are written as plain ones.
-const GLUE_ASIDE_RU: &[(&str, &str)] = &[
-    ("AuthorPunctuation", "А если.."),
-    ("AuthorPunctuation", "Конец...."),
-    ("AuthorPunctuation", "Да!!"),
-    ("AuthorPunctuation", "Да!?"),
-    ("NoSpelling", "кто то"),
-    ("NoSpelling", "из за"),
-    ("NoSpelling", "25-ый этаж"),
+/// no-break spaces are written as plain ones. The third column is the exact output of Prose, with
+/// its glue.
+const GLUE_ASIDE_RU: &[(Reason, &str, &str)] = &[
+    (Reason::AuthorPunctuation, "А если..", "А⍽если.."),
+    (Reason::AuthorPunctuation, "Конец....", "Конец...."),
+    (Reason::AuthorPunctuation, "Да!!", "Да!!"),
+    (Reason::AuthorPunctuation, "Да!?", "Да!?"),
+    (Reason::NoSpelling, "кто то", "кто то"),
+    (Reason::NoSpelling, "из за", "из⍽за"),
+    (Reason::NoSpelling, "25-ый этаж", "25-ый⍽этаж"),
 ];
+
+/// The codes of design section 8.12 that a test of their own checks:
+/// `unmatched_quotes_are_not_guessed`, `look_alike_letters_are_not_replaced`,
+/// `ambiguous_hyphen_is_left_alone_and_reported` and `slots_are_typed_elements`.
+const DEDICATED: [Reason; 4] = [
+    Reason::NoGuess,
+    Reason::LookAlike,
+    Reason::AmbiguousHyphen,
+    Reason::Slots,
+];
+
+/// Rows that the table gives as a fragment of the output.
+fn fragments() -> Vec<(Language, Reason, &'static str, &'static str)> {
+    vec![
+        (
+            Language::EN_US,
+            Reason::NestedSingle,
+            "He said \"a 'b' c\".",
+            "“a⍽‘b’ c”",
+        ),
+        (
+            Language::RU_RU,
+            Reason::Primes,
+            "Угол 30° 15' 20\"",
+            "15′ 20″",
+        ),
+        (
+            Language::EN_US,
+            Reason::DashStyleEn,
+            "Moscow - the capital",
+            "Moscow—the",
+        ),
+        (
+            Language::RU_RU,
+            Reason::MinusSign,
+            "Минус -5 градусов",
+            "−5",
+        ),
+        (Language::EN_US, Reason::MinusSign, "Temp -12 °C", "−12"),
+    ]
+}
 
 #[test]
 fn exact_rows_of_the_table() {
@@ -128,7 +172,7 @@ fn exact_rows_of_the_table() {
             let got = set(language.clone(), input);
             if got != vis(expected) {
                 failures.push(format!(
-                    "{reason}: {input:?} gives {:?}, the table says {expected:?}",
+                    "{reason:?}: {input:?} gives {:?}, the table says {expected:?}",
                     common::show(&got)
                 ));
             }
@@ -144,17 +188,20 @@ fn unchanged_rows_of_the_table() {
         let got = set(Language::RU_RU, input);
         if got != *input {
             failures.push(format!(
-                "{reason}: {input:?} gives {:?}, the table says unchanged",
+                "{reason:?}: {input:?} gives {:?}, the table says unchanged",
                 common::show(&got)
             ));
         }
     }
-    for (reason, input) in GLUE_ASIDE_RU {
+    for (reason, input, expected) in GLUE_ASIDE_RU {
+        let expected = vis(expected);
+        assert_eq!(unglued(&expected), *input, "{reason:?}: glue aside");
         let got = set(Language::RU_RU, input);
-        if unglued(&got) != *input {
+        if got != expected {
             failures.push(format!(
-                "{reason}: {input:?} gives {:?}, the table says unchanged (glue aside)",
-                common::show(&got)
+                "{reason:?}: {input:?} gives {:?}, expected {:?} (unchanged, glue aside)",
+                common::show(&got),
+                common::show(&expected)
             ));
         }
     }
@@ -205,29 +252,11 @@ fn ambiguous_hyphen_is_left_alone_and_reported() {
 
 #[test]
 fn fragments_of_the_table() {
-    // Rows that the table gives as a fragment of the output.
-    let cases: &[(Language, &str, &str, &str)] = &[
-        (
-            Language::EN_US,
-            "NestedSingle",
-            "He said \"a 'b' c\".",
-            "“a⍽‘b’ c”",
-        ),
-        (Language::RU_RU, "Primes", "Угол 30° 15' 20\"", "15′ 20″"),
-        (
-            Language::EN_US,
-            "DashStyleEn",
-            "Moscow - the capital",
-            "Moscow—the",
-        ),
-        (Language::RU_RU, "MinusSign", "Минус -5 градусов", "−5"),
-        (Language::EN_US, "MinusSign", "Temp -12 °C", "−12"),
-    ];
-    for (language, reason, input, fragment) in cases {
-        let got = set(language.clone(), input);
+    for (language, reason, input, fragment) in fragments() {
+        let got = set(language, input);
         assert!(
             got.contains(&vis(fragment)),
-            "{reason}: {input:?} gives {:?}, the table has {fragment:?}",
+            "{reason:?}: {input:?} gives {:?}, the table has {fragment:?}",
             common::show(&got)
         );
     }
@@ -274,9 +303,27 @@ fn slots_are_typed_elements() {
     );
 }
 
-/// Both generated tables start with the provenance comment of design section 13.4.
+/// Every code of design section 8.12 has a row in these tables or a test of its own.
+#[test]
+fn every_reason_of_section_8_12_is_checked() {
+    let mut checked: BTreeSet<Reason> = DEDICATED.into_iter().collect();
+    checked.extend(EXACT_RU.iter().chain(EXACT_EN).map(|r| r.0));
+    checked.extend(UNCHANGED_RU.iter().map(|r| r.0));
+    checked.extend(GLUE_ASIDE_RU.iter().map(|r| r.0));
+    checked.extend(fragments().into_iter().map(|r| r.1));
+    let all: BTreeSet<Reason> = Reason::ALL.into_iter().collect();
+    let missing: Vec<_> = all.difference(&checked).collect();
+    assert!(
+        missing.is_empty(),
+        "codes of section 8.12 without a check: {missing:?}"
+    );
+    assert_eq!(checked, all);
+}
+
+/// Both generated tables start with the same provenance comment of design section 13.4.
 #[test]
 fn the_tables_carry_their_provenance() {
+    let mut pairs = Vec::new();
     for (name, text) in [
         ("ru.rs", include_str!("reference/ru.rs")),
         ("en_us.rs", include_str!("reference/en_us.rs")),
@@ -294,7 +341,13 @@ fn the_tables_carry_their_provenance() {
             .filter(|w| w.len() == 64)
             .collect();
         assert_eq!(hashes.len(), 2, "{name}: two SHA-256 sums");
+        pairs.push((hashes[0].to_owned(), hashes[1].to_owned()));
     }
+    assert_eq!(
+        pairs[0], pairs[1],
+        "ru.rs and en_us.rs name the same corpus and recording"
+    );
+    assert_ne!(pairs[0].0, pairs[0].1, "input and output sums differ");
 }
 
 /// The corpus of 820 cases: 432 in ru, 388 in en-US, 405 of them `neg.*` (design sections 13.3,
