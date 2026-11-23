@@ -174,7 +174,9 @@ fn run_on<R: Recorder>(
                 cx.quotes = marks;
             }
             let outcome = phase::run_phase(&cx, rules.as_slice(), next, removed, &mut sink);
-            core::mem::swap(tokens, next);
+            if outcome.written {
+                core::mem::swap(tokens, next);
+            }
             if outcome.moved {
                 phase::remap(tokens, frags);
             }

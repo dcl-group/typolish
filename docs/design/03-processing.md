@@ -540,9 +540,14 @@ This is a sketch: real code has no panicking indexing. Properties of a phase:
 `Cx` gives rules read-only access: the text of a token (resolved from the call's inputs and its
 replacement), neighbours with `Format` and `Markup` tokens skipped, the fragment with its kind and
 flags, language data, settings, line and window starts, piece numbers. Two token vectors per window
-swap between phases. Every token names its fragment (`frag`, and `CORE` for a token of the core);
-after a phase that inserted or removed a `Space` token, the token ranges of the fragments are moved
-to their tokens, while the fragments, their kinds and flags stay those of the pass.
+swap between phases; a phase copies its input into the other vector only from its first match with
+edits, so a phase that edits nothing copies nothing and its input stands as its output. Every rule
+declares the token kinds at which it can match (`ANCHORS` next to `RULES`: a space, a dash, a quote,
+a word and so on); the phase calls a rule only at a token of those kinds, which changes no result,
+since the rule returns no match elsewhere (a unit test calls the rules at the other kinds too).
+Every token names its fragment (`frag`, and `CORE` for a token of the core); after a phase that
+inserted or removed a `Space` token, the token ranges of the fragments are moved to their tokens,
+while the fragments, their kinds and flags stay those of the pass.
 
 ### 3.9 Glue marks
 

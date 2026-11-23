@@ -51,6 +51,47 @@ pub(crate) const RULES: [RuleFn; 27] = [
     nbsp::dash,
 ];
 
+/// The kinds of token at which each rule of `RULES` can match, as bits of `Kind::bit`: every rule
+/// returns `None` at a token of any other kind, so the phase does not call it there (design
+/// section 3.8). The quote rules read the decisions of the quote phase, which only `Quote` tokens
+/// get. A unit test of `engine::phase` calls the rules at the other kinds too.
+pub(crate) const ANCHORS: [u32; 27] = {
+    use crate::engine::lex::{Mark, Op, WordScript};
+    let space = Kind::Space.bit();
+    let dash = Kind::Dash.bit();
+    let operator = Kind::Operator(Op::Equal).bit();
+    let punct = Kind::Punct(' ').bit();
+    [
+        Kind::LegalMark(Mark::Copyright).bit(),
+        operator,
+        operator,
+        Kind::Dots.bit(),
+        Kind::Dots.bit(),
+        dash,
+        space,
+        space,
+        dash,
+        dash,
+        dash,
+        dash,
+        dash,
+        Kind::Times.bit(),
+        Kind::Quote.bit(),
+        Kind::Quote.bit(),
+        Kind::Quote.bit(),
+        Kind::Word(WordScript::Other).bit(),
+        space,
+        space,
+        space | punct,
+        punct,
+        space,
+        space,
+        space,
+        space,
+        space,
+    ]
+};
+
 /// A word (design section 8.2): a `Word` core, a one-word `Dictionary` core, a compact
 /// abbreviation or a compound word.
 pub(crate) fn is_word(cx: &Cx<'_>, f: &Frag) -> bool {

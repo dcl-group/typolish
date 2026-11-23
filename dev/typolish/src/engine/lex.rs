@@ -179,6 +179,30 @@ impl Kind {
     pub(crate) const fn is_transparent(self) -> bool {
         matches!(self, Kind::Format | Kind::Markup)
     }
+
+    /// The bit of the kind's variant, its payload ignored, in a set of kinds (`rules::ANCHORS`).
+    pub(crate) const fn bit(self) -> u32 {
+        1 << match self {
+            Kind::Word(_) => 0,
+            Kind::Number => 1,
+            Kind::Space => 2,
+            Kind::Newline => 3,
+            Kind::Format => 4,
+            Kind::Quote => 5,
+            Kind::Dash => 6,
+            Kind::Dots => 7,
+            Kind::Operator(_) => 8,
+            Kind::LegalMark(_) => 9,
+            Kind::Times => 10,
+            Kind::Open(_) => 11,
+            Kind::Close(_) => 12,
+            Kind::Punct(_) => 13,
+            Kind::Symbol => 14,
+            Kind::Slot(_) => 15,
+            Kind::Protected => 16,
+            Kind::Markup => 17,
+        }
+    }
 }
 
 /// Operators, the same id for both forms.

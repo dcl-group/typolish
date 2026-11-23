@@ -11,7 +11,7 @@ use super::lex::{EllipsisForm, Flags, Glue, Kind, NO_FRAG, NO_PIECE, Repl, Tok};
 use super::record::{Loc, Recorder, Sink};
 use crate::lang::data::{DashData, QuotePairs, Table};
 use crate::rule::{ORDER, Phase};
-use crate::rules::RULES;
+use crate::rules::{ANCHORS, RULES};
 use crate::{DiagnosticKind, Rule, Severity, SingleQuotes, Typographer};
 
 /// The most edits one proposal holds; `nbsp.phone` glues up to five spaces.
@@ -356,6 +356,9 @@ impl PhaseRules {
 /// What a phase did.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Outcome {
+    /// The output tokens were written to `out`. Until the first match with edits nothing is
+    /// copied; a phase without one leaves `out` empty and its input stands as its output.
+    pub(crate) written: bool,
     /// An edit was applied.
     pub(crate) changed: bool,
     /// A `Space` token was inserted or removed, so the token indices of the fragments moved.
@@ -364,8 +367,8 @@ pub(crate) struct Outcome {
 
 /// One phase (design section 3.8): at each position the active rules of the phase are tried in
 /// the order of section 4.1; the first that matches takes the anchor and `consume` tokens, which
-/// are not considered again. The output goes to `out`; the source ranges of removed tokens go to
-/// `removed`.
+/// are not considered again. The output goes to `out` once a match has edits (`written`); the
+/// source ranges of removed tokens go to `removed`.
 pub(crate) fn run_phase<R: Recorder>(
     cx: &Cx<'_>,
     rules: &[Rule],
@@ -376,18 +379,40 @@ pub(crate) fn run_phase<R: Recorder>(
     out.clear();
     let input = cx.toks;
     let mut outcome = Outcome::default();
+    // The kinds at which some rule of the phase can match (`ANCHORS`).
+    let anchors = rules.iter().fold(0, |set, &rule| {
+        set | ANCHORS.get(rule as usize).copied().unwrap_or(!0)
+    });
     let mut i = 0;
     while let Some(tok) = input.get(i) {
-        let found = if tok.is_frozen() {
+        let bit = tok.kind.bit();
+        let found = if tok.is_frozen() || anchors & bit == 0 {
             None
         } else {
             rules.iter().find_map(|&rule| {
+                if ANCHORS.get(rule as usize).is_some_and(|set| set & bit == 0) {
+                    return None;
+                }
                 RULES
                     .get(rule as usize)
                     .and_then(|f| f(cx, i))
                     .map(|m| (rule, m))
             })
         };
+        #[cfg(test)]
+        if !tok.is_frozen() {
+            // `ANCHORS` holds every kind at which a rule matches.
+            for &rule in rules {
+                if ANCHORS.get(rule as usize).is_some_and(|set| set & bit == 0) {
+                    let f = RULES.get(rule as usize);
+                    assert!(
+                        f.and_then(|f| f(cx, i)).is_none(),
+                        "{rule:?} at {:?}",
+                        tok.kind
+                    );
+                }
+            }
+        }
         match found {
             Some((rule, m)) if edits_allowed(input, i, &m) => {
                 if R::TRACE {
@@ -407,11 +432,25 @@ pub(crate) fn run_phase<R: Recorder>(
                         loc(t),
                     );
                 }
-                emit(cx, input, i, rule, &m, out, removed, sink, &mut outcome);
-                i += m.consume as usize + 1;
+                let next = i + m.consume as usize + 1;
+                if m.edits.iter().next().is_none() {
+                    // A match without edits leaves its tokens as they are.
+                    if outcome.written {
+                        out.extend_from_slice(input.get(i..next).unwrap_or_default());
+                    }
+                } else {
+                    if !outcome.written {
+                        out.extend_from_slice(input.get(..i).unwrap_or_default());
+                        outcome.written = true;
+                    }
+                    emit(cx, input, i, rule, &m, out, removed, sink, &mut outcome);
+                }
+                i = next;
             }
             _ => {
-                out.push(*tok);
+                if outcome.written {
+                    out.push(*tok);
+                }
                 i += 1;
             }
         }
