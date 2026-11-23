@@ -371,15 +371,13 @@ the no-panic test.
 
 1. **Idempotence**: `f(f(x)) == f(x)` for {ru, en, COMMON} × {Prose, Interface, all, random subsets}
    × the three `SingleQuotes` modes, with fixed seeds for every split and merge of invariant I2
-   (`Школа №5 г. Москвы`, `§5 ч. 2`, `т.е.`, `и т.д...`, `Moscow - the capital`,
-   `See https://example.com/docs - the guide`, `He said - "a cat"`, `5'10"`, `90's`, `'90s`, `'tis`,
-   `""`, `"""`, `key=""`, `"He said 'hi'"`, `"a 'b c" 5'`, `"/etc/"`,
-   `Токен "SGVsbG8gd29ybGQ=" и "имя".`, `‘Note: 'beta' builds of the developers' tools`, `¶IV`,
-   `‚Wort‘` with a `LanguageBuilder` language whose pairs are `„“` and `‚‘`, `100%`, `100‰` and
-   `100 %` under every `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed
-   `word⍽- word`, `Sign in - it's free`; the sign-only pair next to a dash, `Слово - "" да`,
-   `"" - 5`, `- "" да`; the rule of three, `"--"""` and `''''- a' b'`; and a neutral typed closer
-   inside a new pair of its family, `x '"»b 5' c"`, `'"»90'"`, en `’'"”»90'„"`).
+   (every case that section 4.3 lists under I2, among them `details - a - т.е.sk` and
+   `5 - x - Moscow`; `5'10"`, `90's`, `'90s`, `'tis`, `""`, `"""`, `key=""`, `"He said 'hi'"`,
+   `"a 'b c" 5'`, `"/etc/"`, `Токен "SGVsbG8gd29ybGQ=" и "имя".`,
+   `‘Note: 'beta' builds of the developers' tools`, `‚Wort‘` with a `LanguageBuilder` language whose
+   pairs are `„“` and `‚‘`; the sign-only pair next to a dash, `Слово - "" да`, `"" - 5`, `- "" да`;
+   the rule of three, `"--"""` and `''''- a' b'`; and a neutral typed closer inside a new pair of
+   its family, `x '"»b 5' c"`, `'"»90'"`, en `’'"”»90'„"`).
 2. **Fixed-point oracle**: `f` repeated until nothing changes (at most three times) equals `f`; a
    difference prints the reports of both passes.
 3. **Invariants**, one property each: I1 (edits never change a token kind; insertions and removals
@@ -585,15 +583,16 @@ contains no `std::env`, `std::fs`, `std::net`, `std::time` or `unsafe`; the `#![
 attributes of every `tests/*.rs` list exactly the lints of section 14.5 (`tests/alloc.rs` also
 `unsafe_code`, first), and that of `tests/common/mod.rs` only `dead_code`; `src/lang/ru_ru.rs`,
 `src/lang/en_us.rs` and `src/lang/common.rs` contain no `fn`, `impl`, `match` or `if` (section 7.1);
-the characters that rules write in every built-in language with `RuleSet::ALL` (the typographic set
-of section 11.2 and the sign fields of language data that rules copy into the text, section 7.6:
-quote glyphs, dashes, ellipsis forms, minus and group signs) contain no letter and no digit; every
-character the lexer reads as `Quote` (section 3.5) other than `"` and `'` is in the table of section
-11.2, `′` and `″` in the primes row and the others in the quotes row; built-in languages × built-in
-sets build without error. A unit test next to the prefilter checks, for every built-in set and
-language, that the trigger set equals the union of the trigger constants of the active rules. Checks
-that read `docs/design/` skip when the directory is absent (the published package has no design); a
-missing file or heading inside the repository fails.
+the replacements that rules write in every built-in language with `RuleSet::ALL` on a fixed set of
+texts that reaches every replacement table (the typographic set of section 11.2, with the quote
+glyphs, dashes and minus sign that rules copy from language data) contain no letter and no digit
+(the fields of language data themselves are checked by `tests/data.rs`); every character the lexer
+reads as `Quote` (section 3.5) other than `"` and `'` is in the table of section 11.2, `′` and `″`
+in the primes row and the others in the quotes row; built-in languages × built-in sets build without
+error. A unit test next to the prefilter checks, for every built-in set and language, that the
+trigger set equals the union of the trigger constants of the active rules. Checks that read
+`docs/design/` skip when the directory is absent (the published package has no design); a missing
+file or heading inside the repository fails.
 
 `tests/package.rs` checks the package (stage 5, section 15.4): the manifests and `dev/deny.toml`
 against section 14.5, the tree of `Cargo.lock` against section 14.1, the layout of section 14.6, the
@@ -609,7 +608,8 @@ tests are known to pass without the repository. The two targets stay in the pack
 auto-discovered target makes `cargo package` warn, and the tarball check rejects any warning.
 
 `tests/data.rs` runs the validation of section 7.6 on every built-in table (so the order and
-duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,
+duplicates of `months` are checked too), checks that the validation rejects a `minus`, `group` or
+`decimal` that is a letter or a digit, and compares the CLDR values (quote pairs, decimal, group,
 minimum grouping digits, percent pattern, range pattern, `nan`, `infinity`, month names (the union
 of format wide and abbreviated forms, without duplicates), units marked "CLDR 49") with an extract
 of cldr-json 49.0.0 kept in the test (for en-US the extract holds the values of `en`, section 7.3),
