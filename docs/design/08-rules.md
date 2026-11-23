@@ -65,13 +65,14 @@ Two kinds of number name or measure something other than a quantity:
   and the sign its percent sign.
 
 Both count as numbers everywhere (operands, the "numbers on both sides" refusal of the dash rules; a
-percent sign after spaces is read there with its number or range, so `100 % - норма` reads as
-`100% - норма`), except in the rules that read a quantity or a year: `nbsp.units` (other than its
-percent handling), `nbsp.dates`, the context of `range.context` and the "directly after a number"
-exception of `nbsp.abbreviations`. There a label or a percentage is not a number, in both of its
-forms, so the space that `nbsp.signs` or the percent setting inserts or removes changes nothing for
-them (invariant I2). `nbsp.signs` itself glues a label to its sign. So `Школа №5 г. Москвы` reads
-`г.` as a city, not a year: `Школа №⍽5 г.⍽Москвы`.
+percent sign after spaces is read there with its number, label number or range, so `100 % - норма`
+reads as `100% - норма`; and the left factor of a lone `x` of `number.times`, so `10 % x 5` reads as
+`10% x 5`), except in the rules that read a quantity or a year: `nbsp.units` (other than its percent
+handling), `nbsp.dates`, the year of `symbols.copyright`, the context of `range.context` and the
+"directly after a number" exception of `nbsp.abbreviations`. There a label or a percentage is not a
+number, in both of its forms, so the space that `nbsp.signs` or the percent setting inserts or
+removes changes nothing for them (invariant I2). `nbsp.signs` itself glues a label to its sign. So
+`Школа №5 г. Москвы` reads `г.` as a city, not a year: `Школа №⍽5 г.⍽Москвы`.
 
 A **compound word** is a `Compound` core (check 21 of section 3.6: letters or digits joined by
 single hyphens, `кто-то`, `что-то`, `tls-server`, `mother-in-law`, `25-й`). It is not a technical
@@ -433,9 +434,10 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
   commands are protected with backticks.
 - **`number.times`** (Prose): a `Dimensions` core (check 16) → `×` in place of the letter
   (`1920x1080` → `1920×1080`, Cyrillic `х` too); a lone `x`, `X`, `х` or `Х` fragment between two
-  number fragments (on the left also a label number attached to its sign, `№10`, section 3.6), the
-  left one without a leading zero → `×` with the author's spaces kept (`10 x 5` → `10 × 5`). `0x1F`
-  (hex, check 10) and `x86` (identifier) never change.
+  number fragments (on the left also a label number attached to its sign, `№10`, and a number with
+  its percent sign after spaces, `10 % x 5`, section 3.6), the left one without a leading zero → `×`
+  with the author's spaces kept (`10 x 5` → `10 × 5`). `0x1F` (hex, check 10) and `x86` (identifier)
+  never change.
 - Digit grouping in text (`1000000` → `1⍽000⍽000`) is not a rule of version 1. A run of digits is
   one `Number` token, rules insert spaces only between tokens, and English groups with a comma,
   which is not a space at all; numbers in text are also often ports, years and codes (`port 65535`).
@@ -452,11 +454,13 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
   a number or a range (`Section 1001(c)`, `2026(c)`, `2020-2026(c)`), or with a range attached after
   it (`(c)2020-2026`), is not a word (section 3.6) and stays: after a number it is usually a
   subsection label. A mark attached to a word (`f(c)`, a `Word` by check 23 of section 3.6) is not a
-  copyright sign even when a year follows it: `f(c) 2026` stays. Otherwise `(c)` is a list item and
-  stays (`вариант (c)`). `(tm)`, `(TM)`, `(r)`, `(R)` → `™`, `®` after a brand name: a capitalized
-  word of at least two letters, attached (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` →
-  `Brand ®`), and not followed by an operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a
-  function argument and stays: `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
+  copyright sign even when a year follows it: `f(c) 2026` stays. A label number or a percentage is
+  not a year in either of its forms (section 8.2): `(c) 2026%`, `(c) 2026 %`, `(c) 2020-2026 %` and
+  `№2026 (c)` stay. Otherwise `(c)` is a list item and stays (`вариант (c)`). `(tm)`, `(TM)`, `(r)`,
+  `(R)` → `™`, `®` after a brand name: a capitalized word of at least two letters, attached
+  (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` → `Brand ®`), and not followed by an
+  operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a function argument and stays:
+  `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
 - **`symbols.arrows`**: an operator fragment that is exactly `->`, `<-` or `<->`, with a space on
   each side → `→`, `←`, `↔`. `=>`, `-->`, `<-->`, `->>` are not in the table; `a->b` is frozen.
 - **`symbols.math`**: an operator fragment that is exactly `>=`, `<=` or `!=`, with a space on each

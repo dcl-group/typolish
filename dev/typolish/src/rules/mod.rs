@@ -178,36 +178,45 @@ pub(crate) fn percent_range(cx: &Cx<'_>, f: &Frag) -> bool {
 }
 
 /// The fragment that the dash rules read on the left of a dash (design section 8.2: a percentage
-/// is one in both forms): for a lone `%` or `‰` after spaces, the number or range before the
-/// spaces (`100 %` reads as `100%`, `5–10 %` as `5–10%`); otherwise the fragment itself. So the
-/// space that the percent setting inserts or removes changes nothing for those rules.
+/// is one in both forms): for a lone `%` or `‰` after spaces, the number, label number or range
+/// before the spaces (`100 %` reads as `100%`, `5–10 %` as `5–10%`, `№5 %` as `№5%`); otherwise
+/// the fragment itself. So the space that the percent setting or `nbsp.signs` inserts or removes
+/// changes nothing for those rules (invariant I2).
 pub(crate) fn percent_owner<'a>(cx: &Cx<'a>, f: &'a Frag) -> &'a Frag {
-    let mut core = cx.core(f);
-    let (Some(sign), None) = (core.next(), core.next()) else {
-        return f;
-    };
-    if !matches!(cx.kind(sign), Some(Kind::Punct('%' | '‰'))) {
-        return f;
-    }
-    let first = (f.start as usize..f.end as usize)
-        .find(|&j| cx.kind(j).is_some_and(|k| !k.is_transparent()));
-    if first != Some(sign) {
-        return f;
-    }
-    let Some(space) = cx.prev(sign).filter(|&s| cx.kind(s) == Some(Kind::Space)) else {
-        return f;
-    };
-    let Some(q) = cx.prev(space).filter(|&q| cx.in_core(q)) else {
-        return f;
-    };
-    match cx.frag_of(q) {
-        Some(n) if (is_number(n) || matches!(n.kind, FragKind::Range)) && !with_sign(cx, n) => n,
+    match before_percent(cx, f) {
+        Some(n)
+            if (is_number(n) || n.label || matches!(n.kind, FragKind::Range))
+                && !with_sign(cx, n) =>
+        {
+            n
+        }
         _ => f,
     }
 }
 
+/// For a fragment that is a lone `%` or `‰` after spaces, the fragment before the spaces when its
+/// core ends there (`100 %` gives `100`); otherwise `None`. The caller decides which fragments
+/// own the sign (design section 8.2).
+pub(crate) fn before_percent<'a>(cx: &Cx<'a>, f: &'a Frag) -> Option<&'a Frag> {
+    let mut core = cx.core(f);
+    let (Some(sign), None) = (core.next(), core.next()) else {
+        return None;
+    };
+    if !matches!(cx.kind(sign), Some(Kind::Punct('%' | '‰'))) {
+        return None;
+    }
+    let first = (f.start as usize..f.end as usize)
+        .find(|&j| cx.kind(j).is_some_and(|k| !k.is_transparent()));
+    if first != Some(sign) {
+        return None;
+    }
+    let space = cx.prev(sign).filter(|&s| cx.kind(s) == Some(Kind::Space))?;
+    let q = cx.prev(space).filter(|&q| cx.in_core(q))?;
+    cx.frag_of(q)
+}
+
 /// Whether a core holds `%` or `‰`.
-fn with_sign(cx: &Cx<'_>, f: &Frag) -> bool {
+pub(crate) fn with_sign(cx: &Cx<'_>, f: &Frag) -> bool {
     cx.core(f)
         .any(|j| matches!(cx.kind(j), Some(Kind::Punct('%' | '‰'))))
 }

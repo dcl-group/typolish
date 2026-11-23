@@ -26,7 +26,9 @@ use common::{
     only, prose, without_rule,
 };
 use probe::{diagnostics_of, span_texts, tech};
-use typolish::{Language, Output, Piece, Rule, RuleSet, Slot, TechKind, Typographer};
+use typolish::{
+    Language, Output, PercentSpacing, Piece, Rule, RuleSet, Slot, TechKind, Typographer,
+};
 
 const COPYRIGHT: Rule = Rule::SymbolsCopyright;
 const ARROWS: Rule = Rule::SymbolsArrows;
@@ -158,6 +160,65 @@ fn copyright_after_a_number_is_a_technical_fragment() {
                 [(tech(TechKind::Unclassified), fragment)],
                 "{text}"
             );
+        }
+    }
+}
+
+#[test]
+fn copyright_reads_no_percentage_and_no_label_as_a_year() {
+    // A percentage and a label number are not years in either of their forms (sections 8.2 and
+    // 8.9), so the space that the percent setting or `nbsp.signs` inserts or removes changes
+    // nothing for the rule (I2 of section 4.3).
+    for language in languages() {
+        let t = only(language, &[COPYRIGHT]);
+        for text in [
+            "(c) 2026%",
+            "(c) 2026 %",
+            "(c) 2026⍽%",
+            "(c) 2026 ‰",
+            "(c)2026 %",
+            "(c) 2020-2026 %",
+            "(c) 2020–2026⍽%",
+            "2026 % (c)",
+            "№2026 (c)",
+            "№⍽2026 (c)",
+            "№ 2026 (c)",
+        ] {
+            check_unchanged("alone", &t, text);
+        }
+        // The percent sign of another number does not hide the year.
+        check_exact("alone", &t, ("(c) 2026 5 %", "© 2026 5 %"));
+    }
+    let modes = [
+        PercentSpacing::AsWritten,
+        PercentSpacing::Language,
+        PercentSpacing::Attached,
+        PercentSpacing::Spaced,
+    ];
+    for language in [Language::RU_RU, Language::EN_US] {
+        for mode in modes {
+            let t = Typographer::builder(language.clone(), RuleSet::PROSE)
+                .percent(mode)
+                .build()
+                .unwrap();
+            for text in [
+                "(c) 2026%",
+                "(c) 2026 %",
+                "(c) 2026\u{a0}%",
+                "(c) 2020-2026 %",
+                "№2026 (c)",
+            ] {
+                let once = t.typeset(text, Output::Unicode).into_owned();
+                assert!(
+                    !once.contains('\u{a9}'),
+                    "{language:?} {mode:?}: {text:?} -> {once:?}"
+                );
+                let twice = t.typeset(&once, Output::Unicode).into_owned();
+                assert_eq!(
+                    twice, once,
+                    "{language:?} {mode:?}: second pass of {text:?}"
+                );
+            }
         }
     }
 }

@@ -1259,8 +1259,28 @@ fn ends_in_number(signs: &[char], tokens: &[Tok], f: &Frag) -> bool {
             || (second == first && number(third) && fourth.is_none()))
 }
 
+/// Whether `f` is a lone `%` or `‰` after spaces that the fragment `owner` before the spaces
+/// owns: a percentage in its spaced form (`10 % x 5`), which reads as the attached form `10% x 5`
+/// for `lone_times` (invariant I2 of design section 4.3, section 8.2). The core of `f` is the
+/// sign alone and nothing visible comes before it; the owner's core runs up to the spaces and
+/// holds no percent sign of its own.
+fn spaced_percent(tokens: &[Tok], owner: &Frag, f: &Frag) -> bool {
+    let range = |a: u32, b: u32| tokens.get(a as usize..b as usize).unwrap_or_default();
+    let visible = |a: u32, b: u32| range(a, b).iter().filter(|t| !t.kind.is_transparent());
+    let percent = |t: &Tok| matches!(t.kind, Kind::Punct('%' | '‰'));
+    let mut core = visible(f.core_start, f.core_end);
+    let lone = matches!((core.next(), core.next()), (Some(t), None) if percent(t))
+        && visible(f.start, f.core_start).next().is_none();
+    let between = range(owner.end, f.start);
+    lone && !between.is_empty()
+        && between.iter().all(|t| t.kind == Kind::Space)
+        && visible(owner.core_end, owner.end).next().is_none()
+        && !visible(owner.core_start, owner.core_end).any(percent)
+}
+
 /// The special case of a lone `x`, `X`, `х`, `Х` or `×` fragment between two number fragments:
-/// kind `Times`, never frozen (design section 3.6).
+/// kind `Times`, never frozen (design section 3.6). On the left a percent sign after spaces is
+/// read with its number (`spaced_percent`).
 fn lone_times(signs: &[char], text: &str, tokens: &mut [Tok], frags: &mut [Frag]) {
     for i in 1..frags.len().saturating_sub(1) {
         let (Some(prev), Some(cur), Some(next)) =
@@ -1268,7 +1288,11 @@ fn lone_times(signs: &[char], text: &str, tokens: &mut [Tok], frags: &mut [Frag]
         else {
             continue;
         };
-        if !ends_in_number(signs, tokens, prev)
+        let left = match i.checked_sub(2).and_then(|k| frags.get(k)) {
+            Some(owner) if spaced_percent(tokens, owner, prev) => owner,
+            _ => prev,
+        };
+        if !ends_in_number(signs, tokens, left)
             || next.kind != FragKind::Number
             || cur.end != cur.start + 1
         {

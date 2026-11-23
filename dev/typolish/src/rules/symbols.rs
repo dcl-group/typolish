@@ -47,8 +47,14 @@ fn four_digits(cx: &Cx<'_>, j: usize) -> bool {
 }
 
 /// A year or a range of years (design section 8.9): a `Number` core of four digits, or a `Range`
-/// core of two of them joined by `-` or `–`.
+/// core of two of them joined by `-` or `–`. A label number and a percentage are not years in
+/// either of their forms (design section 8.2): not `№⍽2026`, and not a core that a percent sign
+/// follows after spaces (`2026 %`), so the space that `nbsp.signs` or the percent setting inserts
+/// or removes changes nothing for the rule (invariant I2).
 fn years(cx: &Cx<'_>, f: &Frag, range: bool) -> bool {
+    if f.label || percent_follows(cx, f) {
+        return false;
+    }
     let Some((core, len)) = core_of::<3>(cx, f) else {
         return false;
     };
@@ -70,6 +76,20 @@ fn ends(cx: &Cx<'_>, f: &Frag) -> Option<(usize, usize)> {
         .filter(|&j| cx.kind(j).is_some_and(|k| !k.is_transparent()));
     let first = visible.next()?;
     Some((first, visible.next_back().unwrap_or(first)))
+}
+
+/// Whether a lone `%` or `‰` after spaces follows the fragment `f` and is read with it (design
+/// section 8.2: `2026 %` and `2026⍽%` are the percentage `2026%`).
+fn percent_follows(cx: &Cx<'_>, f: &Frag) -> bool {
+    let Some((_, last)) = ends(cx, f) else {
+        return false;
+    };
+    cx.next(last)
+        .filter(|&s| cx.kind(s) == Some(Kind::Space))
+        .and_then(|s| cx.next(s))
+        .and_then(|j| cx.frag_of(j))
+        .and_then(|g| super::before_percent(cx, g))
+        .is_some_and(|owner| owner.start == f.start)
 }
 
 /// The fragment one pattern space after the fragment `f`, if its first token is in its core.
@@ -127,7 +147,12 @@ pub(crate) fn copyright(cx: &Cx<'_>, i: usize) -> Option<Match> {
         Mark::Copyright => {
             let fits = match *core {
                 // `(c)2026`: a year attached after the mark.
-                [m, year] => m == i && f.kind == FragKind::Word && four_digits(cx, year),
+                [m, year] => {
+                    m == i
+                        && f.kind == FragKind::Word
+                        && four_digits(cx, year)
+                        && !percent_follows(cx, f)
+                }
                 // `(c) 2026`, `2026 (c)`, `(c) 2020-2026`, `2020-2026 (c)`.
                 [m] => {
                     m == i

@@ -98,10 +98,17 @@ pub(crate) fn times(cx: &Cx<'_>, i: usize) -> Option<Match> {
         FragKind::Dimensions => {}
         FragKind::Times => {
             // The left factor of a lone sign, as the classifier found it (a number fragment, or
-            // a label number attached to its sign, `№10`), without a leading zero; a `Number`
-            // slot is a number (design section 8.2) whose digits are unknown.
+            // a label number attached to its sign, `№10`; before a percent sign after spaces,
+            // the number that owns it, `10 % x 5`, section 8.2), without a leading zero; a
+            // `Number` slot is a number (design section 8.2) whose digits are unknown.
             let left = cx.prev(f.start as usize).and_then(|s| cx.prev(s))?;
-            let lf = cx.frag_of(left)?;
+            let mut lf = cx.frag_of(left)?;
+            if let Some(owner) = super::before_percent(cx, lf) {
+                if super::with_sign(cx, owner) {
+                    return None;
+                }
+                lf = owner;
+            }
             if !matches!(lf.kind, FragKind::Number | FragKind::Word) {
                 return None;
             }

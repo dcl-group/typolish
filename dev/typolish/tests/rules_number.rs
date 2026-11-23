@@ -23,7 +23,9 @@ use common::{
     only, prose, vis, without_rule,
 };
 use probe::{span_texts, tech};
-use typolish::{Language, Output, Piece, Rule, RuleSet, Slot, TechKind, Typographer};
+use typolish::{
+    Language, Output, PercentSpacing, Piece, Rule, RuleSet, Slot, TechKind, Typographer,
+};
 
 const MINUS: Rule = Rule::NumberMinus;
 const TIMES: Rule = Rule::NumberTimes;
@@ -408,6 +410,52 @@ fn times_after_a_label_number() {
     check_exact("ru Prose", &t, ("№10 x 5", "№⍽10 × 5"));
     check_exact("ru Prose", &t, ("№ 10 x 5", "№⍽10 × 5"));
     check_exact("ru Prose", &t, ("№⍽10 × 5", "№⍽10 × 5"));
+}
+
+#[test]
+fn times_after_a_percentage_after_spaces() {
+    // A percentage counts as a number for `number.times` in both of its forms (sections 3.6, 8.2
+    // and 8.8), so the space that the percent setting inserts or removes changes nothing for the
+    // rule (I2 of section 4.3).
+    for language in languages() {
+        let t = only(language, &[TIMES]);
+        check_exact("alone", &t, ("10 % x 5", "10 % × 5"));
+        check_exact("alone", &t, ("10⍽% x 5", "10⍽% × 5"));
+        check_exact("alone", &t, ("10 ‰ x 5", "10 ‰ × 5"));
+        check_exact("alone", &t, ("10 %  x 5", "10 %  × 5"));
+        check_exact("alone", &t, ("10 %\" x 5", "10 %\" × 5"));
+        check_exact("alone", &t, ("№10 % x 5", "№10 % × 5"));
+        // The left one has a leading zero, a sign of its own or a closing bracket.
+        check_unchanged("alone", &t, "010 % x 5");
+        check_unchanged("alone", &t, "10% % x 5");
+        check_unchanged("alone", &t, "(10) % x 5");
+        check_unchanged("alone", &t, "10 (% x 5");
+    }
+    let rows = [
+        (Language::RU_RU, PercentSpacing::AsWritten, "10⍽% × 5"),
+        (Language::RU_RU, PercentSpacing::Language, "10⍽% × 5"),
+        (Language::RU_RU, PercentSpacing::Attached, "10% × 5"),
+        (Language::RU_RU, PercentSpacing::Spaced, "10⍽% × 5"),
+        (Language::EN_US, PercentSpacing::AsWritten, "10⍽% × 5"),
+        (Language::EN_US, PercentSpacing::Language, "10% × 5"),
+        (Language::EN_US, PercentSpacing::Attached, "10% × 5"),
+        (Language::EN_US, PercentSpacing::Spaced, "10⍽% × 5"),
+    ];
+    for (language, mode, expected) in rows {
+        let t = Typographer::builder(language.clone(), RuleSet::PROSE)
+            .percent(mode)
+            .build()
+            .unwrap();
+        let what = format!("{language:?} Prose, {mode:?}");
+        for source in ["10 % x 5", "10⍽% x 5", "10 %  x 5"] {
+            let once = t.typeset(&vis(source), Output::Unicode).into_owned();
+            assert!(once.contains('\u{d7}'), "{what}: {source:?} -> {once:?}");
+            let twice = t.typeset(&once, Output::Unicode).into_owned();
+            assert_eq!(twice, once, "{what}: second pass of {source:?}");
+        }
+        check_exact(&what, &t, ("10 % x 5", expected));
+        check_exact(&what, &t, (expected, expected));
+    }
 }
 
 #[test]
