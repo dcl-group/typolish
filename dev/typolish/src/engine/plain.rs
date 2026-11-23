@@ -22,6 +22,10 @@ use super::scratch::Scratch;
 use crate::report::{Change, Diagnostic, ProtectedKind, ProtectedSpan};
 use crate::{Rule, Typographer};
 
+/// How far apart, in bytes, two readings are tried in one forward run: farther than any rule
+/// looks (the longest pattern, `nbsp.phone`, spans at most 24 tokens).
+const REACH: usize = 256;
+
 /// The apostrophe, also the English closing single quote (design section 6.2).
 const APOSTROPHE: char = '\u{2019}';
 
@@ -310,25 +314,53 @@ fn round(
             break verdict;
         }
     };
-    let windows = boundaries.len().saturating_add(1);
-    let mut queues: Vec<std::collections::VecDeque<usize>> =
-        vec![std::collections::VecDeque::new(); windows];
-    for k in parked
+    // The candidates put aside, in order. One whose context did not change (no other candidate
+    // was put aside near it) and that has no other reading would fail again: it is not retried.
+    let mut pending: Vec<usize> = parked
         .iter()
         .enumerate()
         .filter_map(|(k, &p)| p.then_some(k))
-    {
+        .collect();
+    let near_parked = |k: usize, pending: &[usize]| {
+        let Some(c) = cands.get(k) else {
+            return false;
+        };
+        pending.iter().any(|&j| {
+            j != k
+                && cands.get(j).is_some_and(|d| {
+                    d.window == c.window
+                        && d.start < c.end.saturating_add(REACH)
+                        && c.start < d.end.saturating_add(REACH)
+                })
+        })
+    };
+    let retried: Vec<usize> = pending
+        .iter()
+        .copied()
+        .filter(|&k| near_parked(k, &pending) || cands.get(k).is_some_and(|c| c.alts.len() > 1))
+        .collect();
+    pending = retried;
+    for &k in &pending {
         if let Some(cand) = cands.get_mut(k) {
             cand.alt = 0;
-            if let Some(queue) = queues.get_mut(cand.window) {
-                queue.push_back(k);
-            }
         }
     }
-    loop {
-        let trial: Vec<usize> = queues.iter().filter_map(|q| q.front().copied()).collect();
-        if trial.is_empty() {
-            break;
+    let tried = !pending.is_empty();
+    while !pending.is_empty() {
+        // Trials far enough apart that the rules see them separately (their contexts are a few
+        // tokens wide): each problem of the run is laid at the nearest trial.
+        let mut trial: Vec<usize> = Vec::new();
+        for &k in &pending {
+            let Some(c) = cands.get(k) else {
+                continue;
+            };
+            let apart = trial
+                .last()
+                .and_then(|&t| cands.get(t))
+                .is_none_or(|t| t.window != c.window || c.start >= t.end.saturating_add(REACH));
+            if apart {
+                trial.push(k);
+            }
         }
         for &k in &trial {
             if let Some(cand) = cands.get_mut(k) {
@@ -336,52 +368,82 @@ fn round(
             }
         }
         let next = check.run(scratch, &cands);
-        let mut broken = vec![false; windows];
-        for (cand, &failed) in cands.iter().zip(&next.failed) {
-            if cand.on
-                && !cand.fixed
-                && failed
-                && let Some(b) = broken.get_mut(cand.window)
+        let mut rejected = vec![false; trial.len()];
+        let mut blame = |window: usize, start: usize, end: usize, stray: bool| {
+            let nearest = trial
+                .iter()
+                .enumerate()
+                .filter_map(|(n, &k)| Some((n, cands.get(k)?)))
+                .filter(|(_, c)| c.window == window)
+                .min_by_key(|(_, c)| {
+                    if end <= c.start {
+                        c.start - end
+                    } else {
+                        start.saturating_sub(c.end)
+                    }
+                });
+            if let Some((n, c)) = nearest
+                && !(stray && c.closed())
+                && let Some(r) = rejected.get_mut(n)
             {
-                *b = true;
+                *r = true;
+            }
+        };
+        for (cand, &failed) in cands.iter().zip(&next.failed) {
+            if cand.on && !cand.fixed && failed {
+                blame(cand.window, cand.start, cand.end, false);
             }
         }
-        for &k in &trial {
-            let Some(window) = cands.get(k).map(|c| c.window) else {
+        for s in &next.stray {
+            if !verdict.stray.contains(s) {
+                blame(s.0, s.1, s.2, true);
+            }
+        }
+        for (n, &k) in trial.iter().enumerate() {
+            let held = !rejected.get(n).copied().unwrap_or(true);
+            let Some(cand) = cands.get_mut(k) else {
                 continue;
             };
-            let broke = broken.get(window).copied().unwrap_or(true);
-            let closed = cands.get(k).is_some_and(Cand::closed);
-            let stray = !closed
-                && next
-                    .stray
-                    .iter()
-                    .any(|s| s.0 == window && !verdict.stray.contains(s));
-            if let Some(cand) = cands.get_mut(k) {
-                if !broke && !stray {
-                    if let Some(queue) = queues.get_mut(window) {
-                        queue.pop_front();
-                    }
-                    continue;
-                }
+            let done = if held {
+                true
+            } else {
                 cand.on = false;
                 cand.alt = cand.alt.saturating_add(1);
-                if cand.alt >= cand.alts.len()
-                    && let Some(queue) = queues.get_mut(window)
-                {
-                    queue.pop_front();
-                }
+                cand.alt >= cand.alts.len()
+            };
+            if done {
+                pending.retain(|&j| j != k);
             }
         }
-        // The strays of the windows whose trial held are those of the new state.
-        let held: Vec<usize> = trial
-            .iter()
-            .filter_map(|&k| cands.get(k).filter(|c| c.on).map(|c| c.window))
-            .collect();
-        verdict.stray.retain(|s| !held.contains(&s.0));
-        verdict
+        // The strays of the new state: those of the run, less those of the rejected trials,
+        // which are off again.
+        verdict.stray = next
             .stray
-            .extend(next.stray.iter().filter(|s| held.contains(&s.0)).copied());
+            .iter()
+            .filter(|s| {
+                verdict.stray.contains(s)
+                    || !trial.iter().zip(&rejected).any(|(&k, &r)| {
+                        r && cands.get(k).is_some_and(|c| {
+                            c.window == s.0
+                                && s.1 < c.end.saturating_add(REACH)
+                                && c.start < s.2.saturating_add(REACH)
+                        })
+                    })
+            })
+            .copied()
+            .collect();
+    }
+    // A last check: a candidate that a later trial broke after all is kept.
+    let mut again = tried;
+    while again {
+        let last = check.run(scratch, &cands);
+        again = false;
+        for (cand, &f) in cands.iter_mut().zip(&last.failed) {
+            if cand.on && !cand.fixed && f {
+                cand.on = false;
+                again = true;
+            }
+        }
     }
     if !cands.iter().any(|c| c.on) {
         return None;

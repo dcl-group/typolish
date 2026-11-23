@@ -55,11 +55,13 @@ the text as it was does not get, so that the round trip would break there. Glue 
 counts as glue, and the spaces that the dash style sets around a dash do not count; the restored
 spaces of a closed dash are exempt from the second test, because the closed form joins two words
 into one fragment, which by design changes the rules around it (section 8.4). A reading that failed
-only because a neighbouring reading was wrong is tried again alone, one per window (windows are
-independent, section 3.3). The whole pass repeats on its own output until nothing changes, so
-`to_plain` is stable by construction. There is no second copy of the rule patterns to drift from
-them, and P2 holds wherever the forward pass is idempotent; the price is a few forward runs per
-call, which the tooling path allows (section 2.12).
+only because a neighbouring reading was wrong is tried again alone in its neighbourhood: readings
+farther apart than any rule looks (256 bytes; the longest pattern, `nbsp.phone`, spans at most 24
+tokens) are tried in one forward run, and a problem of the run is laid at the nearest of them, so
+the number of runs does not grow with the length of the text. The whole pass repeats on its own
+output until nothing changes, so `to_plain` is stable by construction. There is no second copy of
+the rule patterns to drift from them, and P2 holds wherever the forward pass is idempotent; the
+price is a few forward runs per call, which the tooling path allows (section 2.12).
 
 **Which `’` is an apostrophe** (English, where `’` is both the apostrophe and the nested closing
 quote). A `’` in a fixed apostrophe context of section 6.2 (between letters, after a digit before a
