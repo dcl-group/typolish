@@ -1378,13 +1378,14 @@ proptest! {
 // The corpus (design section 13.7)
 // ---------------------------------------------------------------------------------------------
 
-/// The inputs of `roundtrip-known.tsv` of a language: a corpus line listed there may diverge.
-fn known_inputs(lang: &str) -> Vec<String> {
-    known_rows()
-        .into_iter()
-        .filter(|r| r.lang == lang)
-        .map(|r| r.input)
-        .collect()
+/// Fails when fewer than half of the lines of a file change: P1 and P2 would also pass on a
+/// `typeset` that returns its input (design section 12.2).
+#[track_caller]
+fn assert_most_change(what: &str, changed: usize, total: usize) {
+    assert!(
+        changed * 2 > total,
+        "{what}: only {changed} of {total} lines change; P1/P2 would pass on an identity typeset"
+    );
 }
 
 #[test]
@@ -1458,32 +1459,45 @@ fn the_corpus_holds_no_marker_and_no_typographic_character() {
 fn p1_on_the_corpus() {
     let mut failures: Vec<String> = Vec::new();
     for lang in LANGS {
-        let known = known_inputs(lang);
-        // `prose.txt` and `ui.tmpl` with both sets, `tech.txt` with Interface only (section 12.2).
+        // `prose.txt` and `ui.tmpl` with both sets, `tech.txt` with Interface only (design section
+        // 12.2). Every mismatch fails.
         for (set_name, _) in SETS {
             let t = typographer(lang, set_name);
             for file in ["prose.txt", "tech.txt"] {
                 if file == "tech.txt" && set_name != "interface" {
                     continue;
                 }
-                for line in text_lines(lang, file) {
-                    if let Err(error) = p1(&t, &line)
-                        && !known.contains(&line)
-                    {
+                let lines = text_lines(lang, file);
+                let mut changed = 0;
+                for line in &lines {
+                    changed += usize::from(t.typeset(line, Output::Unicode) != line.as_str());
+                    if let Err(error) = p1(&t, line) {
                         failures.push(format!("{lang}/{file} {set_name}: {error}"));
                     }
                 }
+                assert_most_change(&format!("{lang}/{file} {set_name}"), changed, lines.len());
             }
-            for message in messages(lang) {
-                if let Err(error) = p1_template(&t, &message) {
+            let messages = messages(lang);
+            let mut changed = 0;
+            for message in &messages {
+                changed += usize::from(
+                    t.typeset_template(message.pieces(), Output::Unicode)
+                        .changed(),
+                );
+                if let Err(error) = p1_template(&t, message) {
                     failures.push(format!("{lang}/ui.tmpl {set_name}: {error}"));
                 }
             }
+            assert_most_change(
+                &format!("{lang}/ui.tmpl {set_name}"),
+                changed,
+                messages.len(),
+            );
         }
     }
     assert!(
         failures.is_empty(),
-        "{} corpus lines break P1 and are not in roundtrip-known.tsv:\n{}",
+        "{} corpus lines break P1:\n{}",
         failures.len(),
         failures.join("\n")
     );
@@ -1496,17 +1510,32 @@ fn p2_on_the_corpus() {
         for (set_name, _) in SETS {
             let t = typographer(lang, set_name);
             for file in ["prose.txt", "tech.txt"] {
-                for line in text_lines(lang, file) {
-                    if let Err(error) = p2(&t, &line) {
+                let lines = text_lines(lang, file);
+                let mut changed = 0;
+                for line in &lines {
+                    changed += usize::from(t.typeset(line, Output::Unicode) != line.as_str());
+                    if let Err(error) = p2(&t, line) {
                         failures.push(format!("{lang}/{file} {set_name}: {error}"));
                     }
                 }
+                assert_most_change(&format!("{lang}/{file} {set_name}"), changed, lines.len());
             }
-            for message in messages(lang) {
-                if let Err(error) = p2_template(&t, &message) {
+            let messages = messages(lang);
+            let mut changed = 0;
+            for message in &messages {
+                changed += usize::from(
+                    t.typeset_template(message.pieces(), Output::Unicode)
+                        .changed(),
+                );
+                if let Err(error) = p2_template(&t, message) {
                     failures.push(format!("{lang}/ui.tmpl {set_name}: {error}"));
                 }
             }
+            assert_most_change(
+                &format!("{lang}/ui.tmpl {set_name}"),
+                changed,
+                messages.len(),
+            );
         }
     }
     assert!(
