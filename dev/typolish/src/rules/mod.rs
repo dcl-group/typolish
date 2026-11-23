@@ -67,9 +67,90 @@ pub(crate) fn is_number(f: &Frag) -> bool {
     f.kind == FragKind::Number
 }
 
-/// A range: a `Range` or `YearMonth` core.
-pub(crate) fn is_range(f: &Frag) -> bool {
-    matches!(f.kind, FragKind::Range | FragKind::YearMonth)
+/// A range: a `Range` or `YearMonth` core, or a percentage range (`5–10%`, design section 8.2).
+pub(crate) fn is_range(cx: &Cx<'_>, f: &Frag) -> bool {
+    matches!(f.kind, FragKind::Range | FragKind::YearMonth) || percent_range(cx, f)
+}
+
+/// A percentage range (design section 8.2): a `Joined` core made of the two sides of a range of
+/// check 17 joined by `–` and a `%` or `‰` attached to the last side (`5–10%`, `{a}–{b}%`). It is
+/// what a range followed by a percent sign becomes when the percent setting removes the space,
+/// and it reads as the range does, except where a percentage is not a number.
+pub(crate) fn percent_range(cx: &Cx<'_>, f: &Frag) -> bool {
+    if f.kind != FragKind::Joined {
+        return false;
+    }
+    let mut core = [0usize; 8];
+    let mut len = 0;
+    for j in cx.core(f) {
+        let Some(slot) = core.get_mut(len) else {
+            return false;
+        };
+        *slot = j;
+        len += 1;
+    }
+    let Some((&sign, rest)) = core.get(..len).and_then(<[usize]>::split_last) else {
+        return false;
+    };
+    if !matches!(cx.kind(sign), Some(Kind::Punct('%' | '‰'))) {
+        return false;
+    }
+    let Some(at) = rest
+        .iter()
+        .position(|&j| cx.kind(j) == Some(Kind::Dash) && cx.is(j, "\u{2013}"))
+    else {
+        return false;
+    };
+    let side = |part: &[usize]| match part {
+        [one] => matches!(
+            cx.kind(*one),
+            Some(Kind::Number | Kind::Slot(crate::SlotKind::Number))
+        ),
+        [a, sep, b] => {
+            let separator = match cx.data.numbers.decimal {
+                '.' => cx.kind(*sep) == Some(Kind::Dots) && cx.is(*sep, "."),
+                c => cx.kind(*sep) == Some(Kind::Punct(c)),
+            };
+            cx.kind(*a) == Some(Kind::Number) && separator && cx.kind(*b) == Some(Kind::Number)
+        }
+        _ => false,
+    };
+    side(rest.get(..at).unwrap_or_default()) && side(rest.get(at + 1..).unwrap_or_default())
+}
+
+/// The fragment that the dash rules read on the left of a dash (design section 8.2: a percentage
+/// is one in both forms): for a lone `%` or `‰` after spaces, the number or range before the
+/// spaces (`100 %` reads as `100%`, `5–10 %` as `5–10%`); otherwise the fragment itself. So the
+/// space that the percent setting inserts or removes changes nothing for those rules.
+pub(crate) fn percent_owner<'a>(cx: &Cx<'a>, f: &'a Frag) -> &'a Frag {
+    let mut core = cx.core(f);
+    let (Some(sign), None) = (core.next(), core.next()) else {
+        return f;
+    };
+    if !matches!(cx.kind(sign), Some(Kind::Punct('%' | '‰'))) {
+        return f;
+    }
+    let first = (f.start as usize..f.end as usize)
+        .find(|&j| cx.kind(j).is_some_and(|k| !k.is_transparent()));
+    if first != Some(sign) {
+        return f;
+    }
+    let Some(space) = cx.prev(sign).filter(|&s| cx.kind(s) == Some(Kind::Space)) else {
+        return f;
+    };
+    let Some(q) = cx.prev(space).filter(|&q| cx.in_core(q)) else {
+        return f;
+    };
+    match cx.frag_of(q) {
+        Some(n) if (is_number(n) || matches!(n.kind, FragKind::Range)) && !with_sign(cx, n) => n,
+        _ => f,
+    }
+}
+
+/// Whether a core holds `%` or `‰`.
+fn with_sign(cx: &Cx<'_>, f: &Frag) -> bool {
+    cx.core(f)
+        .any(|j| matches!(cx.kind(j), Some(Kind::Punct('%' | '‰'))))
 }
 
 /// A technical fragment (design section 3.6): its core is frozen, whole or in part, and it is not
@@ -81,7 +162,7 @@ pub(crate) fn is_technical(f: &Frag) -> bool {
 /// An operand (design section 8.2): a word, a number, a range, a slot, a protected span or a
 /// technical fragment. A slot or a protected span alone is a `Word` or `Number` core.
 pub(crate) fn is_operand(cx: &Cx<'_>, f: &Frag) -> bool {
-    is_word(cx, f) || is_number(f) || is_range(f) || is_technical(f)
+    is_word(cx, f) || is_number(f) || is_range(cx, f) || is_technical(f)
 }
 
 /// A word of one letter (`a`, `x`); a slot or a compound word is not one.

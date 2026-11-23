@@ -904,6 +904,83 @@ fn percent_spacing_inserts_and_removes_through_report() {
 }
 
 #[test]
+fn percent_spacing_of_a_range() {
+    // A range is a quantity (section 8.2): the percent setting inserts the space before an
+    // attached sign as it glues or removes a typed one (section 8.7), and the output is stable.
+    use typolish::PercentSpacing::{Attached, Language as Lang, Spaced};
+    let rows: &[(Language, typolish::PercentSpacing, &str, &str)] = &[
+        (ru(), Spaced, "5–10%", "5–10⍽%"),
+        (ru(), Spaced, "5–10 %", "5–10⍽%"),
+        (ru(), Spaced, "5–10‰", "5–10⍽‰"),
+        (ru(), Lang, "5–10%", "5–10⍽%"),
+        (ru(), Lang, "Рост на 5–10%.", "Рост на 5–10⍽%."),
+        (ru(), Attached, "5–10 %", "5–10%"),
+        (ru(), Attached, "5–10%", "5–10%"),
+        (en(), Spaced, "5–10%", "5–10⍽%"),
+        (en(), Lang, "5–10%", "5–10%"),
+        (en(), Lang, "5–10 %", "5–10%"),
+    ];
+    for (language, spacing, input, expected) in rows {
+        let t = with(language.clone(), &[UNITS], |b| b.percent(*spacing));
+        let what = format!("{language} {spacing:?}");
+        check_in(&what, &t, (input, expected));
+        check_unchanged(&format!("{what}, second pass"), &t, expected);
+    }
+    // A template range of two `Number` slots: the sign is in the last text.
+    let pieces = || {
+        vec![
+            Piece::Slot("a", Slot::NUMBER),
+            Piece::Text("–"),
+            Piece::Slot("b", Slot::NUMBER),
+            Piece::Text("%"),
+        ]
+    };
+    for (language, spacing, last) in [
+        (ru(), Spaced, "\u{a0}%"),
+        (ru(), Lang, "\u{a0}%"),
+        (en(), Lang, "%"),
+    ] {
+        let t = with(language.clone(), &[UNITS], |b| b.percent(spacing));
+        assert_eq!(
+            texts(&t, pieces()),
+            ["", "–", last],
+            "{language} {spacing:?}"
+        );
+    }
+}
+
+#[test]
+fn percent_spacing_and_the_dash_rules() {
+    // A percentage is one in both forms (section 8.2, invariant I2 of section 4.3): the dash rules
+    // read a percent sign after spaces with its number, so the space that the setting inserts or
+    // removes changes nothing for them, and a second pass returns the output.
+    use typolish::PercentSpacing::{AsWritten, Attached, Spaced};
+    let rows: &[(typolish::PercentSpacing, &str, &str)] = &[
+        (AsWritten, "100 % - норма", "100⍽%⍽— норма"),
+        (AsWritten, "100% - норма", "100%⍽— норма"),
+        (Attached, "100 % - норма", "100%⍽— норма"),
+        (Spaced, "100% - норма", "100⍽%⍽— норма"),
+        (Spaced, "5–10% - норма", "5–10⍽%⍽— норма"),
+        (Attached, "5–10 % - норма", "5–10%⍽— норма"),
+        (Spaced, "Рост - 5–10% за год", "Рост⍽— 5–10⍽% за⍽год"),
+        (AsWritten, "Рост - 5–10% за год", "Рост⍽— 5–10% за⍽год"),
+        // Numbers on both sides are refused in both forms.
+        (Attached, "5 % - 10 %", "5% - 10%"),
+        (Spaced, "5% - 10%", "5⍽% - 10⍽%"),
+        (Spaced, "5 - 5–10%", "5 - 5–10⍽%"),
+    ];
+    for (spacing, input, expected) in rows {
+        let t = Typographer::builder(ru(), RuleSet::PROSE)
+            .percent(*spacing)
+            .build()
+            .unwrap();
+        let what = format!("ru Prose {spacing:?}");
+        check_in(&what, &t, (input, expected));
+        check_unchanged(&format!("{what}, second pass"), &t, expected);
+    }
+}
+
+#[test]
 fn percent_spacing_in_the_sets() {
     // With a non-default setting `nbsp.units` also inserts and removes in Interface (section 9.1).
     for set_ in [RuleSet::PROSE, RuleSet::INTERFACE] {

@@ -11,7 +11,9 @@
 use super::dash::{closing_punct, lone_dash};
 use super::quotes::{Role, local_role};
 use super::range::roman_value;
-use super::{Frag, FragKind, Triggers, folded_in, is_operand, is_word};
+use super::{
+    Frag, FragKind, Triggers, folded_in, is_operand, is_word, percent_owner, percent_range,
+};
 use crate::engine::lex::{Glue, Kind, NO_FRAG, script_bit};
 use crate::engine::phase::{Cx, Edit, Edits, Match};
 use crate::lang::data::{Bind, List, MonthPosition, Script, fold_char};
@@ -814,14 +816,15 @@ fn units_at_space(cx: &Cx<'_>, s: usize) -> Option<Match> {
     glue_one(cx, s, Glue::NoBreak)
 }
 
-/// An attached `%` or `‰` of a number with a setting that wants it spaced: a glued space is
-/// inserted before it.
+/// An attached `%` or `‰` of a number or of a percentage range (`5–10%`, section 8.2) with a
+/// setting that wants it spaced: a glued space is inserted before it.
 fn percent_attached(cx: &Cx<'_>, i: usize) -> Option<Match> {
     if percent_spaced(cx) != Some(true) {
         return None;
     }
     let f = cx.frag_of(i)?;
-    if f.kind != FragKind::Number || f.label || !cx.in_core(i) {
+    let kind = f.kind == FragKind::Number || percent_range(cx, f);
+    if !kind || f.label || !cx.in_core(i) {
         return None;
     }
     let p = cx.prev(i)?;
@@ -1066,7 +1069,8 @@ pub(crate) fn dash(cx: &Cx<'_>, s: usize) -> Option<Match> {
         return None;
     }
     let left = if cx.in_core(l) {
-        cx.frag_of(l).is_some_and(|f| is_operand(cx, f))
+        cx.frag_of(l)
+            .is_some_and(|f| is_operand(cx, percent_owner(cx, f)))
     } else {
         closing_punct(cx, l)
     };

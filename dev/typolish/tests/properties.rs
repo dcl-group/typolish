@@ -92,6 +92,12 @@ const SEEDS: &[&str] = &[
     "100‰",
     "100 %",
     "100\u{a0}%",
+    // A percentage range and a percent sign after spaces next to a dash (section 8.2).
+    "5–10%",
+    "5–10 %",
+    "100 % - норма",
+    "5–10% - норма",
+    "Рост - 5–10%",
     "word\u{a0}- word",
     "Sign in - it's free",
     "Подождите...\nДальше",

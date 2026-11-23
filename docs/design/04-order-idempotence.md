@@ -88,31 +88,34 @@ agree and that every rule appears once.
     stop); `№5` → `№` and `5` (a label number in both forms, section 3.6, so no rule that reads a
     quantity or a year starts to match; the sign alone is a `Sign` fragment); `¶IV` → `¶` and `IV`
     (a Roman numeral after a sign is a label in both forms); `100%` → `100` and `%`, `100‰` → `100`
-    and `‰` with `PercentSpacing::Language` (ru) or `Spaced` (a percentage in both forms, section
-    8.2; a lone `%` is an `OperatorRun` by check 7, a lone `‰` falls through to check 24 and is
-    frozen, but no rule edits the sign, and the space before it lies outside its fragment, section
-    3.7);
+    and `‰`, `5–10%` → `5–10` and `%` with `PercentSpacing::Language` (ru) or `Spaced` (a percentage
+    or a percentage range in both forms, section 8.2, the dash rules reading the sign after spaces
+    with its number or range; a lone `%` is an `OperatorRun` by check 7, a lone `‰` falls through to
+    check 24 and is frozen, but no rule edits the sign, and the space before it lies outside its
+    fragment, section 3.7);
   - a removed space merges fragments only into a non-technical `Joined` fragment (the closed-style
-    dash) or a percentage into a percentage (the percent setting). The closed-style dash removes its
-    two spaces, each a single U+0020, only between two plain words (section 8.4), so `word`, `—`,
-    `word` become one `Joined` fragment (check 22), never a technical one; a compound word is not a
-    plain word, because its hyphens would make the merged core fail check 22. On the next pass no
-    rule matches across the removed spaces: `dash.spaced-hyphen` and `dash.double-hyphen` need a
-    dash fragment with a space on each side (section 8.4), and a trigger word of a no-break rule
-    must be a whole core (section 8.2), so `the` in `Moscow—the` triggers nothing. The edits of the
-    first pass stay, because no rule changes a typographic form or a glued space (I3): the dash
-    stays `—`, and so does the glue that `nbsp.short-words` set after `the` in the same pass from
-    the classification of its input (section 3.6; `Moscow - the capital` → `Moscow—the⍽capital`). No
-    rule that did not match before matches now: the only rule that looks inside a `Joined` fragment
-    is `ellipsis.inner`, which reads only the two words around its `...` or `…`, and the merge does
-    not change them. `100 %` → `100%` with `PercentSpacing::Attached` or `Language` (en) merges a
+    dash) or a percentage into a percentage, a range and its sign into a percentage range (the
+    percent setting). The closed-style dash removes its two spaces, each a single U+0020, only
+    between two plain words (section 8.4), so `word`, `—`, `word` become one `Joined` fragment
+    (check 22), never a technical one; a compound word is not a plain word, because its hyphens
+    would make the merged core fail check 22. On the next pass no rule matches across the removed
+    spaces: `dash.spaced-hyphen` and `dash.double-hyphen` need a dash fragment with a space on each
+    side (section 8.4), and a trigger word of a no-break rule must be a whole core (section 8.2), so
+    `the` in `Moscow—the` triggers nothing. The edits of the first pass stay, because no rule
+    changes a typographic form or a glued space (I3): the dash stays `—`, and so does the glue that
+    `nbsp.short-words` set after `the` in the same pass from the classification of its input
+    (section 3.6; `Moscow - the capital` → `Moscow—the⍽capital`). No rule that did not match before
+    matches now: the only rule that looks inside a `Joined` fragment is `ellipsis.inner`, which
+    reads only the two words around its `...` or `…`, and the merge does not change them (and
+    `nbsp.units` at the sign of a percentage range, which inserts only with the settings that never
+    remove that space). `100 %` → `100%` with `PercentSpacing::Attached` or `Language` (en) merges a
     percentage into a percentage.
 
   Each case has a fixed seed in the idempotence property (section 13.5): `Школа №5 г. Москвы`,
   `§5 ч. 2`, `¶IV`, `т.е.`, `и т.д...`, `Moscow - the capital`,
-  `See https://example.com/docs - the guide`, `He said - "a cat"`, `100%`, `100‰` and `100 %` under
-  every `PercentSpacing`, `100⍽%` under `Attached` and `Language` (en), en Closed `word⍽- word`,
-  `Sign in - it's free`.
+  `See https://example.com/docs - the guide`, `He said - "a cat"`, `100%`, `100‰`, `100 %`, `5–10%`,
+  `5–10 %`, `100 % - норма`, `5–10% - норма` and `Рост - 5–10%` under every `PercentSpacing`,
+  `100⍽%` under `Attached` and `Language` (en), en Closed `word⍽- word`, `Sign in - it's free`.
 
 - **I3. Products are not triggers.** A rule changes only plain forms: straight `"` and `'`, `-`,
   `--`, `---`, a run of exactly three full stops, `(c)` `(C)` `(с)` `(С)` `(r)` `(R)` `(tm)` `(TM)`,

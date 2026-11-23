@@ -58,15 +58,20 @@ measure something other than a quantity:
 
 - A **label number** follows a sign (`№5`, `№ 5`, `§⍽12`, `№ {n}`, and a Roman numeral such as `¶IV`
   or `¶ IV`; flag `LABEL`, section 3.6).
-- A **percentage** is a number with `%` or `‰`, attached (`5%`) or after spaces (`5 %`, `5⍽%`).
+- A **percentage** is a number with `%` or `‰`, attached (`5%`) or after spaces (`5 %`, `5⍽%`). A
+  range with the sign attached to its last side (`5–10%`, `{a}–{b}%`: the two sides of check 17
+  joined by `–`, a `Joined` core by check 22 of section 3.6) is a **percentage range**: it counts as
+  a range, and as a percentage, in the same way; after spaces (`5–10 %`) the range is a `Range` core
+  and the sign its percent sign.
 
-Both count as numbers everywhere (operands, the "numbers on both sides" refusal of the dash rules),
-except in the rules that read a quantity or a year: `nbsp.units` (other than its percent handling),
-`nbsp.dates`, the context of `range.context` and the "directly after a number" exception of
-`nbsp.abbreviations`. There a label or a percentage is not a number, in both of its forms, so the
-space that `nbsp.signs` or the percent setting inserts or removes changes nothing for them
-(invariant I2). `nbsp.signs` itself glues a label to its sign. So `Школа №5 г. Москвы` reads `г.` as
-a city, not a year: `Школа №⍽5 г.⍽Москвы`.
+Both count as numbers everywhere (operands, the "numbers on both sides" refusal of the dash rules; a
+percent sign after spaces is read there with its number or range, so `100 % - норма` reads as
+`100% - норма`), except in the rules that read a quantity or a year: `nbsp.units` (other than its
+percent handling), `nbsp.dates`, the context of `range.context` and the "directly after a number"
+exception of `nbsp.abbreviations`. There a label or a percentage is not a number, in both of its
+forms, so the space that `nbsp.signs` or the percent setting inserts or removes changes nothing for
+them (invariant I2). `nbsp.signs` itself glues a label to its sign. So `Школа №5 г. Москвы` reads
+`г.` as a city, not a year: `Школа №⍽5 г.⍽Москвы`.
 
 A **compound word** is a `Compound` core (check 21 of section 3.6: letters or digits joined by
 single hyphens, `кто-то`, `что-то`, `tls-server`, `mother-in-law`, `25-й`). It is not a technical
@@ -337,7 +342,9 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   `Language` applies the CLDR pattern (`NumberData::percent_spaced`; ru `100%` → `100⍽%`, en `100 %`
   → `100%` (only a single U+0020 is removed)); `Attached` removes a single U+0020 between the number
   and the sign; a U+00A0 or U+202F typed by the author, a tab or a run of spaces stays (section
-  5.3); `Spaced` glues or inserts. Settled in section 15.5, item 11.
+  5.3); `Spaced` glues or inserts. A range takes the setting as a number does (`5–10%` → `5–10⍽%`
+  with ru `Language` or `Spaced`, `5–10 %` → `5–10%` with `Attached`). Settled in section 15.5,
+  item 11.
 - **`nbsp.signs`.** `№`, `§`, `¶` before a number (its label number, section 8.2), a Roman numeral
   or a slot (not `Other`): a space is glued, a missing space is inserted (`№5` → `№⍽5`, `¶IV` →
   `¶⍽IV`; the attached forms are words by check 23 of section 3.6, and the sign alone is a `Sign`

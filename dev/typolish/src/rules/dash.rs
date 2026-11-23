@@ -5,7 +5,9 @@
 //! space after it.
 
 use super::quotes::{Role, local_role};
-use super::{Frag, FragKind, Triggers, foreign, is_number, is_operand, is_range, is_technical};
+use super::{
+    Frag, FragKind, Triggers, foreign, is_number, is_operand, is_range, is_technical, percent_owner,
+};
 use super::{is_word, single_letter};
 use crate::DashStyle;
 use crate::SlotKind;
@@ -118,7 +120,7 @@ pub(crate) fn closing_punct(cx: &Cx<'_>, l: usize) -> bool {
 
 /// A number, a range or a single-letter word: one side of the first refusal.
 fn small(cx: &Cx<'_>, f: &Frag) -> bool {
-    is_number(f) || is_range(f) || single_letter(cx, f)
+    is_number(f) || is_range(cx, f) || single_letter(cx, f)
 }
 
 /// A flag or another fragment that starts with `-`.
@@ -177,7 +179,8 @@ fn between(cx: &Cx<'_>, i: usize, double: bool) -> Option<Match> {
     }
     let l = cx.prev(i)?;
     let r = cx.next(s2)?;
-    let fl = cx.frag_of(l)?;
+    // A percent sign after spaces is read with its number (section 8.2).
+    let fl = percent_owner(cx, cx.frag_of(l)?);
     let fr = cx.frag_of(r)?;
     let left = if cx.in_core(l) {
         is_operand(cx, fl)
