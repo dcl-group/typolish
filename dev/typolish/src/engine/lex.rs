@@ -749,10 +749,10 @@ mod tests {
 
     #[test]
     fn simple_characters_never_join() {
-        // Every simple character breaks before and after `a`, before the Hangul jamo L, V and T,
-        // a regional indicator and a line feed, so its `Grapheme_Cluster_Break` is `Other`,
-        // `Control` or `LF`, and no rule of UAX #29 joins two simple characters (design section
-        // 3.5).
+        // Every simple character breaks before and after `a`, the Hangul jamo L, V and T, a
+        // regional indicator and a line feed, so its `Grapheme_Cluster_Break` is `Other`,
+        // `Control` or `LF`, and no rule of UAX #29 joins two simple characters (design sections
+        // 3.5 and 13.6).
         let after = ['a', '\u{1100}', '\u{1161}', '\u{11a8}', '\u{1f1e6}', '\n'];
         for c in (0..=0xffff)
             .filter_map(char::from_u32)
@@ -763,6 +763,8 @@ mod tests {
             }
             for x in after {
                 let text = format!("{c}{x}");
+                assert_eq!(text.graphemes(true).count(), 2, "{}", text.escape_unicode());
+                let text = format!("{x}{c}");
                 assert_eq!(text.graphemes(true).count(), 2, "{}", text.escape_unicode());
             }
             let text = format!("a{c}");
