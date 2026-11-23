@@ -22,7 +22,7 @@ use std::borrow::Cow;
 
 use common::decode::{TYPOGRAPHIC, all_outputs, check_safe_alphabet, decode};
 use common::show;
-use common::strategies::{self, GenPiece, any_text, borrow, pieces, risky_text, rule_set};
+use common::strategies::{GenPiece, any_text, borrow, pieces, risky_text, rule_set};
 use proptest::prelude::*;
 use typolish::{
     Change, Diagnostic, DiagnosticKind, EscapeStyle, HtmlStyle, Language, LanguageBuilder, Output,
@@ -446,7 +446,6 @@ fn no_panic_on_hand_picked_hard_strings() {
             let _ = t.typeset(text, output);
         }
     }
-    let _ = strategies::RISKY.len();
 }
 
 // The invariants of design section 4.3 (properties 3 of design section 13.5), observed through
