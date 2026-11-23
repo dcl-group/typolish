@@ -510,6 +510,25 @@ mod tests {
     }
 
     #[test]
+    fn a_spaced_range_pattern_glues_both_sides_of_its_dash() {
+        // Design section 2.7: no built-in language has spaces in its range pattern.
+        let language = crate::LanguageBuilder::from_language(&Language::COMMON, "xx")
+            .numbers(NumberData::new().with_range_spaced(true))
+            .build()
+            .unwrap();
+        let t = Typographer::new(language, RuleSet::EMPTY);
+        assert_eq!(
+            t.format_range(1, 2, Output::Unicode).to_string(),
+            "1\u{a0}\u{2013}\u{a0}2"
+        );
+        let nowrap = Output::Html(crate::HtmlStyle::NAMED.nowrap_style());
+        assert_eq!(
+            t.format_range(1, 2, nowrap).to_string(),
+            "<span style=\"white-space:nowrap\">1 &ndash; 2</span>"
+        );
+    }
+
+    #[test]
     fn isize_and_usize_convert() {
         let t = Typographer::new(Language::EN_US, RuleSet::EMPTY);
         assert_eq!(
