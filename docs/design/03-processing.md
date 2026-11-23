@@ -606,14 +606,17 @@ pub(crate) struct Journal;      // everything (report)
 
 The engine is generic over `R: Recorder` and monomorphized: `typeset` uses `NoRecord`, so the plain
 path contains no recording code; `lint` uses `Diagnostics`; `report` uses `Journal`. Rules do not
-depend on the recorder; a test compares the three modes on the corpus. The engine resolves the
-positions of the call's text to pieces before it calls the recorder, and splits a span that crosses
-piece boundaries: a change becomes one record per piece in input order, the first holding the whole
-replacement and the others an empty replacement (a deletion); a protected span becomes one record
-per piece it covers; a diagnostic is reported at its first piece, with the range clipped to that
-piece. A span or a diagnostic that starts at a slot or a protected piece is reported at that piece.
-`Diagnostics` gets diagnostics clipped the same way, so `lint` and `report` give equal diagnostics
-(section 12.3).
+depend on the recorder; a test compares the three modes on the corpus. An insertion belongs to the
+text on its left when a text token precedes it or no text token follows it (a slot, a protected
+piece or markup follows): `№<b>{n}` → `№⍽<b>{n}`; otherwise it belongs to the text on its right
+(`5<b>%` → `5<b>⍽%`). The output texts (section 2.6) and the records place it alike. The engine
+resolves the positions of the call's text to pieces before it calls the recorder, and splits a span
+that crosses piece boundaries: a change becomes one record per piece in input order, the first
+holding the whole replacement and the others an empty replacement (a deletion); a protected span
+becomes one record per piece it covers; a diagnostic is reported at its first piece, with the range
+clipped to that piece. A span or a diagnostic that starts at a slot or a protected piece is reported
+at that piece. `Diagnostics` gets diagnostics clipped the same way, so `lint` and `report` give
+equal diagnostics (section 12.3).
 
 ### 3.12 Complexity and pathological input
 

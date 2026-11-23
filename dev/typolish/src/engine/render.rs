@@ -42,8 +42,8 @@ pub(crate) struct REdit {
     pub(crate) start: u32,
     pub(crate) end: u32,
     pub(crate) text: RText,
-    /// For an insertion: the token before it is text, so it belongs to the piece that ends at
-    /// its position.
+    /// For an insertion: the token before it is text, or no text token follows it, so it belongs
+    /// to the piece that ends at its position (design section 3.11).
     pub(crate) left: bool,
 }
 
@@ -51,13 +51,16 @@ pub(crate) struct REdit {
 pub(crate) fn collect(tokens: &[Tok], removed: &[(u32, u32)], out: &mut Vec<REdit>) {
     let base = out.len();
     let mut prev_text = false;
-    for tok in tokens {
+    for (i, tok) in tokens.iter().enumerate() {
         if tok.flags.contains(Flags::INSERTED) {
+            // An insertion belongs to the text on its left when a text token precedes it or no
+            // text token follows it (design section 3.11).
+            let next_text = tokens.get(i + 1).is_some_and(|t| t.piece == NO_PIECE);
             out.push(REdit {
                 start: tok.src.start,
                 end: tok.src.start,
                 text: RText::Char(glue_char(tok.glue)),
-                left: prev_text,
+                left: prev_text || !next_text,
             });
         } else if tok.flags.contains(Flags::CHANGED) {
             let text = match tok.repl {

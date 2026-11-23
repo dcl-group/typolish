@@ -258,6 +258,34 @@ fn markup_is_transparent_and_a_protected_piece_is_a_word() {
     }
 }
 
+#[test]
+fn glue_before_markup_and_a_slot_stays_in_the_text_on_the_left() {
+    // Design section 3.11: an insertion with no text token after it (markup, then a slot) belongs
+    // to the text on its left, as it does without the markup.
+    for (what, t) in sets(&Language::RU_RU) {
+        let out = t.typeset_template(
+            [
+                Piece::Text("Дом №"),
+                Piece::Markup("<b>"),
+                Piece::Slot((), Slot::NUMBER),
+                Piece::Markup("</b>"),
+                Piece::Text(" готов"),
+            ],
+            Output::Unicode,
+        );
+        assert_eq!(texts(&out), ["Дом №\u{a0}<b>", "</b> готов"], "{what}");
+        let out = t.typeset_template(
+            [
+                Piece::Text("№"),
+                Piece::Markup("<b>"),
+                Piece::Slot((), Slot::NUMBER),
+            ],
+            Output::Unicode,
+        );
+        assert_eq!(texts(&out), ["№\u{a0}<b>", ""], "{what}");
+    }
+}
+
 // Tokens across pieces (section 3.4).
 
 #[test]

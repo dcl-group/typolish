@@ -29,8 +29,8 @@ use common::strategies::{
 use probe::{SETS, records, tech};
 use proptest::prelude::*;
 use typolish::{
-    DiagnosticKind, Language, Output, Piece, ProtectedKind, RuleSet, Severity, Slot, TechKind,
-    Typographer,
+    DiagnosticKind, Language, Output, Piece, ProtectedKind, Rule, RuleSet, Severity, Slot,
+    TechKind, Typographer,
 };
 
 const D: ProtectedKind = ProtectedKind::Delimited;
@@ -398,6 +398,32 @@ fn label_and_sign_cores_with_slots_are_not_frozen() {
         ],
     ] {
         assert!(technical(&t, pieces).is_empty());
+    }
+}
+
+#[test]
+fn glue_before_markup_and_a_slot_is_recorded_in_the_text_on_the_left() {
+    // Design section 3.11: the record names the piece and the position that the text gets.
+    for t in [
+        interface(),
+        Typographer::new(Language::RU_RU, RuleSet::PROSE),
+    ] {
+        let report = t.report_template(
+            vec![
+                Piece::Text("Дом №"),
+                Piece::Markup("<b>"),
+                Piece::Slot("n", Slot::NUMBER),
+                Piece::Markup("</b>"),
+                Piece::Text(" готов"),
+            ],
+            Output::Unicode,
+        );
+        let records: Vec<_> = report
+            .changes()
+            .iter()
+            .map(|c| (c.rule(), c.piece(), c.range(), c.replacement().to_owned()))
+            .collect();
+        assert_eq!(records, [(Rule::NbspSigns, 0, 10..10, "\u{a0}".to_owned())]);
     }
 }
 
