@@ -419,9 +419,14 @@ fn texts_are_american_english() {
         repo_dir().join("README.md"),
         repo_dir().join("CHANGELOG.md"),
     ];
+    // Every Rust file of the crate; this file holds the list of British words and is skipped.
     let mut sources = Vec::new();
-    rust_files(&crate_dir().join("src"), &mut sources);
-    files.extend(sources);
+    for dir in ["src", "tests", "examples", "benches"] {
+        rust_files(&crate_dir().join(dir), &mut sources);
+    }
+    let this = crate_dir().join("tests/documentation.rs");
+    assert!(sources.len() > 80, "only {} Rust files", sources.len());
+    files.extend(sources.into_iter().filter(|p| *p != this));
     if let Ok(dir) = fs::read_dir(repo_dir().join("docs/design")) {
         files.extend(dir.map(|e| e.unwrap().path()));
     }
