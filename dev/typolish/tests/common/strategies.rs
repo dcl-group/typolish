@@ -1,5 +1,5 @@
-//! `proptest` generators of design section 13.5: a grammar of risky pieces, templates and rule
-//! sets.
+//! `proptest` generators of design section 13.5: a grammar of risky pieces, lines of the corpus
+//! with risky pieces inserted, templates and rule sets.
 
 #![allow(dead_code, clippy::unwrap_used, clippy::indexing_slicing)]
 
@@ -163,9 +163,42 @@ pub fn risky_text() -> impl Strategy<Value = String> {
     prop::collection::vec(prop::sample::select(RISKY), 0..14).prop_map(|v| v.concat())
 }
 
-/// Arbitrary Unicode text, with a bias to risky pieces.
+/// The `.txt` files of the corpus (design section 13.7).
+const CORPUS: [&str; 4] = [
+    include_str!("../corpus/ru-RU/prose.txt"),
+    include_str!("../corpus/ru-RU/tech.txt"),
+    include_str!("../corpus/en-US/prose.txt"),
+    include_str!("../corpus/en-US/tech.txt"),
+];
+
+/// A line of the corpus with one to three risky pieces inserted at character boundaries (design
+/// section 13.5, "strings from the corpus with insertions").
+pub fn corpus_with_insertions() -> impl Strategy<Value = String> {
+    let lines: Vec<&'static str> = CORPUS.iter().flat_map(|f| f.lines()).collect();
+    (
+        prop::sample::select(lines),
+        prop::collection::vec(
+            (any::<prop::sample::Index>(), prop::sample::select(RISKY)),
+            1..4,
+        ),
+    )
+        .prop_map(|(line, inserts)| {
+            let mut line = line.to_owned();
+            for (at, piece) in inserts {
+                let bounds: Vec<usize> = line
+                    .char_indices()
+                    .map(|(i, _)| i)
+                    .chain([line.len()])
+                    .collect();
+                line.insert_str(*at.get(&bounds), piece);
+            }
+            line
+        })
+}
+
+/// Arbitrary Unicode text, with a bias to risky pieces and lines of the corpus.
 pub fn any_text() -> impl Strategy<Value = String> {
-    prop_oneof![risky_text(), ".*", "\\PC*"]
+    prop_oneof![risky_text(), corpus_with_insertions(), ".*", "\\PC*"]
 }
 
 /// A slot kind.
