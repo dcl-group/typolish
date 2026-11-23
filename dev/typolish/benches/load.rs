@@ -275,7 +275,7 @@ fn scaling() {
 
 fn pathological() {
     println!(
-        "\n== pathological inputs, ns/B (median of 3; 1 run at 16 MiB), ru-RU prose and en-US interface =="
+        "\n== pathological inputs, ns/B (median of 9 at 64 KiB, 3 at 1 MiB; 1 run at 16 MiB), ru-RU prose and en-US interface =="
     );
     println!(
         "{:<34} {:<16} {:>9} {:>9} {:>9} {:>7}",
@@ -308,8 +308,10 @@ fn pathological() {
                     .collect();
                 let per = median(&mut times).as_secs_f64() * 1e9 / text.len() as f64;
                 cells.push(per);
-                // A quadratic input would not finish at 16 MiB: stop after 1 MiB.
-                if size == 1 << 20 && per > cells[0] * 20.0 {
+                // A quadratic input would not finish at 16 MiB: stop after 1 MiB. Time per byte
+                // grows 16 times from 64 KiB to 1 MiB for a quadratic input, so the budget is 8,
+                // as in tests/load.rs.
+                if size == 1 << 20 && per > cells[0] * 8.0 {
                     break;
                 }
             }
