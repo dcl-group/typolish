@@ -26,6 +26,8 @@ Nothing released yet. Version 0.1.0 is in development.
   building output: they return the diagnostics of `report` with `Output::Unicode` (never
   `NowrapFallback`) and a `TypographicChar` for every character that `to_plain` would change, so a
   source has such an entry exactly when `to_plain` changes it.
+- `examples/fluent_generator.rs` shows the build-time flow with Fluent: messages as pieces,
+  `report_template` with `Output::Escaped(EscapeStyle::RUST)`, warnings as `cargo::warning` lines.
 - The phase engine applies the rules to strings and templates for `ru-RU`, `en-US` and
   `Language::COMMON`: quotes by nesting level, apostrophes and primes (`quotes.apostrophe`,
   `quotes.pairs`, `quotes.primes`, with `UnmatchedQuote`, `CrossingQuotes` and `AmbiguousQuote`),
