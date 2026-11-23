@@ -503,29 +503,29 @@ fn row_10_in_prose() {
 
 #[test]
 fn stress_strings_in_prose() {
-    // Prose glues and changes the telephone fragments (section 10.8) and sets the arrows (symbols
-    // are a rule of the same stage: both outputs are accepted until they exist); every other
-    // string stays, borrowed.
-    let changed: &[(&str, &[&str])] = &[
-        ("+7 495 123-4567", &["+7⍽495⍽123–4567"]),
-        ("+1 300 200 100 50", &["+1⍽300⍽200⍽100⍽50"]),
-        ("123-4567", &["123–4567"]),
-        // `symbols.arrows` is stage 3: unchanged until then.
-        ("x -> y; z => w", &["x -> y; z => w", "x → y; z => w"]),
-        ("a <-> b", &["a <-> b", "a ↔ b"]),
+    // Prose glues and changes the telephone fragments (section 10.8) and sets the arrows that
+    // section 10.7 names (`symbols.arrows`: `->` and `<->`, while `=>` stays); every other string
+    // stays, borrowed.
+    let changed: &[(&str, &str)] = &[
+        ("+7 495 123-4567", "+7⍽495⍽123–4567"),
+        ("+1 300 200 100 50", "+1⍽300⍽200⍽100⍽50"),
+        ("123-4567", "123–4567"),
+        ("x -> y; z => w", "x → y; z => w"),
+        ("a <-> b", "a ↔ b"),
     ];
     for (language, _) in languages() {
         let t = prose(language.clone());
         for text in STRESS {
             match changed.iter().find(|c| c.0 == *text) {
                 None => check_unchanged(&format!("{language} Prose"), &t, text),
-                Some((_, allowed)) => {
+                Some((_, expected)) => {
                     let got = t.typeset(text, Output::Unicode);
                     assert!(
-                        allowed.iter().any(|a| vis(a) == *got),
-                        "{language} Prose: {} came back as {}",
+                        vis(expected) == *got,
+                        "{language} Prose: {} came back as {}, expected {}",
                         show(text),
-                        show(&got)
+                        show(&got),
+                        show(&vis(expected))
                     );
                 }
             }
@@ -738,9 +738,8 @@ fn unglued(text: &str) -> String {
 }
 
 /// The output that Prose gives for a case: unchanged, except where section 10.5 and section 10.7
-/// allow the token to change (a port range, the lone `--` between words, an arrow). Several
-/// entries mean that the output depends on whether the rule of a later stage exists yet.
-fn prose_options(r: &RefRow, ru: bool, token: &Option<Range<usize>>) -> Vec<String> {
+/// let the token change (a port range, the lone `--` between words, an arrow).
+fn prose_output(r: &RefRow, ru: bool, token: &Option<Range<usize>>) -> String {
     let input = r.input;
     let token_text = token.as_ref().map(|t| &input[t.clone()]);
     let mut out = input.to_owned();
@@ -763,34 +762,36 @@ fn prose_options(r: &RefRow, ru: bool, token: &Option<Range<usize>>) -> Vec<Stri
                 };
             }
         }
+        // Section 10.7: `->` becomes an arrow, `=>` stays.
         "x -> y; z => w" => {
-            return vec![input.to_owned(), input.replace("x -> y", "x → y")];
+            out = input.replace("x -> y", "x → y");
         }
         _ => {}
     }
-    vec![out]
+    out
 }
 
-/// Checks a case through `report` with `t`: the result against the allowed ones, and every edit
-/// either a glue mark of an `nbsp.*` rule outside the token or an edit that the case names.
+/// Checks a case through `report` with `t`: the result against `expected` (glue read as ordinary
+/// spaces), and every edit either a glue mark of an `nbsp.*` rule outside the token or an edit
+/// that the case names.
 #[track_caller]
 fn check_case(
     what: &str,
     t: &Typographer,
     r: &RefRow,
     frames: &[&str; 2],
-    allowed: &[String],
+    expected: &str,
     edits: &[Rule],
 ) {
     let report = t.report(r.input, Output::Unicode);
     let token = token_range(r, frames);
     let got = report.result().to_string();
     assert!(
-        allowed.iter().any(|a| *a == unglued(&got)),
-        "{what}: {}: {}\nexpected one of {:?}\ngot      {}",
+        expected == unglued(&got),
+        "{what}: {}: {}\nexpected {}\ngot      {}",
         r.id,
         show(r.input),
-        allowed,
+        show(expected),
         show(&got)
     );
     assert_eq!(
@@ -902,13 +903,12 @@ fn corpus_cases_keep_their_token_in_interface() {
     ] {
         let t = interface(language.clone());
         for r in rows {
-            let allowed = [r.input.to_owned()];
             check_case(
                 &format!("{language} Interface"),
                 &t,
                 r,
                 &frames,
-                &allowed,
+                r.input,
                 &[],
             );
             let report = t.report(r.input, Output::Unicode);
@@ -928,7 +928,7 @@ fn corpus_cases_keep_their_token_in_interface() {
 #[test]
 fn corpus_cases_keep_their_token_in_prose() {
     // In Prose the token may also change in the groups that section 10.5 allows (the lone `--`
-    // between words, literal ranges, arrows), and only as `prose_options` records.
+    // between words, literal ranges, arrows), and only as `prose_output` records.
     for (language, frames, rows) in [
         (Language::RU_RU, FRAMES_RU, negative_rows(ru::ROWS)),
         (Language::EN_US, FRAMES_EN, negative_rows(en_us::ROWS)),
@@ -945,20 +945,20 @@ fn corpus_cases_keep_their_token_in_prose() {
         let mut changed = 0;
         for r in rows {
             let token = token_range(r, &frames);
-            let allowed = prose_options(r, ru, &token);
+            let expected = prose_output(r, ru, &token);
             check_case(
                 &format!("{language} Prose"),
                 &t,
                 r,
                 &frames,
-                &allowed,
+                &expected,
                 &edits,
             );
-            changed += usize::from(allowed.len() == 1 && allowed[0] != r.input);
+            changed += usize::from(expected != r.input);
         }
-        // `8000-8100` and `ports 8000-8100` with their frames, and the lone `--` in its first
-        // frame: 3 + 3 + 1 rows change (the arrow row is the one that waits for stage 3).
-        assert_eq!(changed, 7, "{language}");
+        // `8000-8100` and `ports 8000-8100` with their frames, the lone `--` in its first frame
+        // and `x -> y; z => w` with its frames: 3 + 3 + 1 + 3 rows change.
+        assert_eq!(changed, 10, "{language}");
     }
 }
 
