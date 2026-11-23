@@ -1229,6 +1229,16 @@ fn a_dollar_before_a_slot_or_at_the_end_is_escaped() {
 }
 
 #[test]
+fn typeset_into_leaves_the_text_already_in_the_buffer_to_the_caller() {
+    // Design section 11.1: a leading `{` stays raw; the caller keeps a raw `$` out of the end of
+    // `buf`.
+    let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    let mut buf = String::from("a");
+    t.typeset_into("{x}", JS, &mut buf);
+    assert_eq!(buf, "a{x}");
+}
+
+#[test]
 fn typeset_with_and_typeset_into_write_the_kind() {
     let t = ru_ui();
     let mut scratch = Scratch::new();

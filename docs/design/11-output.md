@@ -28,9 +28,11 @@ run-time values are inserted as plain Unicode with no escaping, and `format_numb
 is HTML, so values are HTML-escaped and numbers are formatted with the same `Output::Html`. The
 safety statements of sections 11.4 and 11.6 and the decoding guarantee of section 11.8 are about the
 texts the crate writes. For `JS`, `JS_HEX` and `JS_CODE_POINT` a value encoded with the same output
-kind (`typeset`, `format_number`) never ends in a raw `$`. A value encoded by other means must
-neither end in a raw `$` nor start with a raw `{` where it can meet a text across a slot boundary. A
-value with spaces inserted into a nowrap element (section 11.5) cannot break inside the element.
+kind (`typeset`, `format_number`) never ends in a raw `$`. Content encoded by other means — a slot
+value, the text already in the buffer of `typeset_into`, or a string the caller places next to a
+crate text in generated code — must neither end in a raw `$` nor start with a raw `{` where it meets
+a crate text. A value with spaces inserted into a nowrap element (section 11.5) cannot break inside
+the element.
 
 ### 11.2 Typographic set
 

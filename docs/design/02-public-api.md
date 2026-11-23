@@ -398,7 +398,8 @@ impl Typographer {
     /// The same with working memory supplied by the caller.
     #[must_use]
     pub fn typeset_with<'a>(&self, scratch: &mut Scratch, text: &'a str, output: Output) -> Cow<'a, str>;
-    /// Appends the typeset text to `buf`; no allocation when `buf` has room.
+    /// Appends the typeset text to `buf`; no allocation when `buf` has room; the composition rule of
+    /// section 11.1 applies to the text already in `buf`.
     pub fn typeset_into(&self, text: &str, output: Output, buf: &mut String);
 }
 ```

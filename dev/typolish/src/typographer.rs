@@ -743,6 +743,10 @@ impl Typographer {
 
     /// Appends the typeset text to `buf`; no allocation when `buf` has room.
     ///
+    /// The text already in `buf` is not checked. In the JavaScript styles of `Output::Escaped` the
+    /// appended text never ends in a raw `$` but may start with `{`, so `buf` must not end in a raw
+    /// `$` (design section 11.1).
+    ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
     ///
