@@ -392,6 +392,11 @@ fn class_of(cluster: &str) -> Class {
             Class::Single(Kind::Symbol)
         };
     }
+    class_of_char(c)
+}
+
+/// The class of a cluster of the one character `c`.
+fn class_of_char(c: char) -> Class {
     if is_word_char(c) {
         return Class::Letter;
     }
@@ -614,18 +619,31 @@ fn lex_text(text: &str, clusters: &[(u32, u32)], out: &mut Vec<Tok>) {
             continue;
         }
         let cluster = slice((s, e));
-        let class = class_of(cluster);
+        let mut rest = cluster.chars();
+        let first = rest.next();
+        let (class, scripts, chars) = match first {
+            // Most clusters are one character.
+            Some(c) if rest.as_str().is_empty() => {
+                let class = class_of_char(c);
+                let letter = class == Class::Letter && is_alphabetic(c);
+                (class, if letter { script_bit(c) } else { 0 }, 1)
+            }
+            _ => {
+                let class = class_of(cluster);
+                let mut scripts = 0;
+                if class == Class::Letter {
+                    for c in cluster.chars().filter(|&c| is_alphabetic(c)) {
+                        scripts |= script_bit(c);
+                    }
+                }
+                let chars = u32::try_from(cluster.chars().count()).unwrap_or(u32::MAX);
+                (class, scripts, chars)
+            }
+        };
         let joins = matches!(
             class,
             Class::Letter | Class::Digit | Class::Hyphen | Class::Dot | Class::Space
         );
-        let mut scripts = 0;
-        if class == Class::Letter {
-            for c in cluster.chars().filter(|&c| is_alphabetic(c)) {
-                scripts |= script_bit(c);
-            }
-        }
-        let chars = u32::try_from(cluster.chars().count()).unwrap_or(u32::MAX);
         match pending.as_mut() {
             Some(p) if joins && p.class == class => {
                 p.end = e;
@@ -642,7 +660,7 @@ fn lex_text(text: &str, clusters: &[(u32, u32)], out: &mut Vec<Tok>) {
                     end: e,
                     scripts,
                     chars,
-                    first: cluster.chars().next().unwrap_or(' '),
+                    first: first.unwrap_or(' '),
                 });
                 if !joins && let Some(p) = pending.take() {
                     out.push(p.finish());
