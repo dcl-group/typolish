@@ -138,6 +138,143 @@ impl<'a, T> Report<'a, T> {
     }
 }
 
+impl<T> fmt::Display for Report<'_, T> {
+    /// A table for reports of differences (design section 12.5): one line per record of
+    /// `changes()` (rule, `piece:range`, the input text, `->`, the replacement), then one line per
+    /// record of `protected()` (`protected`, the kind, `piece:range`, the protected text). Each
+    /// column is as wide as its longest entry plus two spaces, separately for the two parts. A
+    /// text that is a single invisible character (a space other than U+0020, a control or a
+    /// format character) is written as `U+XXXX`, any other text in quotes, with `"`, `\` and
+    /// invisible characters escaped. The text is not part of the API contract (design section
+    /// 2.13).
+    ///
+    /// ```
+    /// use typolish::{Language, Output, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let r = RU.report("Цена - 5 руб.", Output::Unicode);
+    /// assert_eq!(r.to_string(), "\
+    /// nbsp.dash           0:8..9    \" \" -> U+00A0
+    /// dash.spaced-hyphen  0:9..10   \"-\" -> \"—\"
+    /// nbsp.units          0:12..13  \" \" -> U+00A0
+    /// ");
+    /// ```
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let place =
+            |piece: usize, range: &Range<usize>| format!("{piece}:{}..{}", range.start, range.end);
+        let rule_width = self
+            .changes
+            .iter()
+            .map(|c| c.rule.id().len())
+            .max()
+            .unwrap_or(0)
+            .saturating_add(2);
+        let place_width = self
+            .changes
+            .iter()
+            .map(|c| place(c.piece, &c.range).len())
+            .max()
+            .unwrap_or(0)
+            .saturating_add(2);
+        for change in &self.changes {
+            writeln!(
+                f,
+                "{:<rule_width$}{:<place_width$}{} -> {}",
+                change.rule.id(),
+                place(change.piece, &change.range),
+                Shown(self.original(change)),
+                Shown(&change.replacement),
+            )?;
+        }
+        let kind_width = self
+            .protected
+            .iter()
+            .map(|s| format!("{:?}", s.kind).len())
+            .max()
+            .unwrap_or(0)
+            .saturating_add(2);
+        let place_width = self
+            .protected
+            .iter()
+            .map(|s| place(s.piece, &s.range).len())
+            .max()
+            .unwrap_or(0)
+            .saturating_add(2);
+        for span in &self.protected {
+            let text = self
+                .inputs
+                .get(span.piece)
+                .and_then(|text| text.get(span.range.clone()))
+                .unwrap_or("");
+            let line = format!(
+                "protected  {:<kind_width$}{:<place_width$}{}",
+                format!("{:?}", span.kind),
+                place(span.piece, &span.range),
+                Raw(text),
+            );
+            writeln!(f, "{}", line.trim_end_matches(' '))?;
+        }
+        Ok(())
+    }
+}
+
+/// Whether a character is invisible in a table: a space other than U+0020, a control or a format
+/// character (design section 5.4).
+fn invisible(c: char) -> bool {
+    (c.is_whitespace() && c != ' ')
+        || c.is_control()
+        || matches!(
+            c,
+            '\u{ad}'
+                | '\u{200b}'..='\u{200f}'
+                | '\u{2060}'..='\u{2064}'
+                | '\u{2066}'..='\u{2069}'
+                | '\u{feff}'
+        )
+}
+
+/// A text of the change table: `U+XXXX` for a single invisible character, otherwise quoted.
+struct Shown<'s>(&'s str);
+
+impl fmt::Display for Shown<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut chars = self.0.chars();
+        if let (Some(c), None) = (chars.next(), chars.next())
+            && invisible(c)
+        {
+            return write!(f, "U+{:04X}", u32::from(c));
+        }
+        f.write_str("\"")?;
+        for c in self.0.chars() {
+            match c {
+                '"' => f.write_str("\\\"")?,
+                '\\' => f.write_str("\\\\")?,
+                c if invisible(c) => write!(f, "\\u{{{:x}}}", u32::from(c))?,
+                c => write!(f, "{c}")?,
+            }
+        }
+        f.write_str("\"")
+    }
+}
+
+/// A protected text in the table: as it is, with invisible characters escaped, so that a record
+/// stays on one line.
+struct Raw<'s>(&'s str);
+
+impl fmt::Display for Raw<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for c in self.0.chars() {
+            if invisible(c) {
+                write!(f, "\\u{{{:x}}}", u32::from(c))?;
+            } else {
+                write!(f, "{c}")?;
+            }
+        }
+        Ok(())
+    }
+}
+
 /// The records of one call, collected by the journal (design section 3.11).
 #[derive(Debug, Default)]
 pub(crate) struct Records {

@@ -9,7 +9,7 @@ use crate::engine::{self, Input, scratch::Scratch};
 use crate::lang::data::{
     DashData, DashStyle, List, QUOTE_GLYPHS, QuotePairs, fold_char, is_valid_group, is_valid_minus,
 };
-use crate::report::Report;
+use crate::report::{Diagnostic, Report};
 use crate::rules::{self, Triggers};
 use crate::{Error, Language, Output, Piece, Rule, RuleSet, Template};
 
@@ -660,6 +660,60 @@ impl Typographer {
             })
             .collect();
         Report::new(Template::from_parts(texts, slots, changed), records, inputs)
+    }
+
+    /// Source check (design section 12.3): the diagnostics that typesetting would produce, plus a
+    /// [`DiagnosticKind::TypographicChar`](crate::DiagnosticKind::TypographicChar) for every
+    /// character that [`Typographer::to_plain`] would change, outside protected spans. No output
+    /// is built, so there is never a `NowrapFallback`; the other diagnostics are those of
+    /// `report(text, Output::Unicode)`, in the same order (design section 12.4).
+    ///
+    /// So `lint(text)` has a `TypographicChar` exactly when `to_plain(text) != text`, and
+    /// `to_plain` is the matching fix. Like `to_plain`, it uses the thread-local working memory
+    /// and makes no allocation promise.
+    ///
+    /// ```
+    /// use typolish::{DiagnosticKind, Language, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// assert!(RU.lint("Файл \"report.pdf\" не найден - проверьте").is_empty());
+    /// let found: Vec<_> = RU
+    ///     .lint("Файл «report.pdf» не найден")
+    ///     .iter()
+    ///     .map(|d| d.kind().clone())
+    ///     .collect();
+    /// assert!(matches!(found[0], DiagnosticKind::TypographicChar { found: '«', .. }));
+    /// assert_eq!(found.len(), 2);
+    /// ```
+    #[must_use]
+    pub fn lint(&self, text: &str) -> Vec<Diagnostic> {
+        let input = [Input::Text(text)];
+        engine::scratch::with_thread_scratch(|scratch| engine::lint(self, scratch, &input))
+    }
+
+    /// [`Typographer::lint`] for the pieces of a message template: the diagnostics of
+    /// `report_template(pieces, Output::Unicode)` without `NowrapFallback`, plus a
+    /// `TypographicChar` for every character of a `Text` piece that
+    /// [`Typographer::to_plain_template`] would change. A diagnostic over several pieces is
+    /// reported at its first piece (design section 3.11).
+    ///
+    /// ```
+    /// use typolish::{DiagnosticKind, Language, Piece, RuleSet, Severity, Slot, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// let d = RU.lint_template([Piece::Slot("n", Slot::NUMBER), Piece::Text("МБ")]);
+    /// assert_eq!(d[0].kind(), &DiagnosticKind::SlotGlue);
+    /// assert_eq!((d[0].severity(), d[0].piece(), d[0].range()), (Severity::Warning, 0, 0..0));
+    /// ```
+    #[must_use]
+    pub fn lint_template<'t, S>(
+        &self,
+        pieces: impl IntoIterator<Item = Piece<'t, S>>,
+    ) -> Vec<Diagnostic> {
+        let (input, _) = split_pieces(pieces);
+        engine::scratch::with_thread_scratch(|scratch| engine::lint(self, scratch, &input))
     }
 
     /// Maps typeset Unicode text back to the canonical plain form, undoing exactly the enabled

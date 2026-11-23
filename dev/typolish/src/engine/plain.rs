@@ -145,7 +145,36 @@ fn plain_texts(
     scratch: &mut Scratch,
     input: &[Input<'_>],
 ) -> Vec<Option<String>> {
+    passes(typographer, scratch, input, None)
+}
+
+/// Every character of the input that `to_plain` changes, as its piece, its byte range in that
+/// piece and the character: what `lint` reports as `TypographicChar` (design section 12.3). It is
+/// read from the passes of `to_plain` themselves, so the two cannot disagree (design section
+/// 13.5, property 15).
+pub(crate) fn changed_chars(
+    typographer: &Typographer,
+    scratch: &mut Scratch,
+    input: &[Input<'_>],
+) -> Vec<(usize, core::ops::Range<usize>, char)> {
+    let mut found = Vec::new();
+    passes(typographer, scratch, input, Some(&mut found));
+    found.sort_unstable_by_key(|(piece, range, _)| (*piece, range.start));
+    found
+}
+
+/// The passes of `to_plain` until nothing changes. With `found`, it also collects every
+/// character of the input that a pass undid, at its place in the input piece.
+fn passes(
+    typographer: &Typographer,
+    scratch: &mut Scratch,
+    input: &[Input<'_>],
+    mut found: Option<&mut Vec<(usize, core::ops::Range<usize>, char)>>,
+) -> Vec<Option<String>> {
     let mut owned: Vec<Option<String>> = vec![None; input.len()];
+    // For a piece that changed, the input byte of every byte of its current text (`usize::MAX`
+    // for a byte that a reading wrote); kept only when `found` asks for it.
+    let mut origins: Vec<Option<Vec<usize>>> = vec![None; input.len()];
     loop {
         let current: Vec<Input<'_>> = input
             .iter()
@@ -157,9 +186,40 @@ fn plain_texts(
             .collect();
         // Every round that changes something turns at least one non-ASCII character into ASCII
         // text, so the loop ends.
-        let Some(changed) = round(typographer, scratch, &current) else {
+        let Some((changed, undone)) = round(typographer, scratch, &current) else {
             break;
         };
+        if let Some(found) = found.as_deref_mut() {
+            for u in &undone {
+                let Some(Input::Text(now)) = current.get(u.piece) else {
+                    continue;
+                };
+                let origin = origins.get(u.piece).and_then(Option::as_ref);
+                let at = |pos: usize| match origin {
+                    Some(map) => map.get(pos).copied().unwrap_or(usize::MAX),
+                    None => pos,
+                };
+                // A candidate is a non-ASCII character and a reading is ASCII text, so the bytes
+                // of a candidate always come from the input.
+                let (from, last) = (at(u.start), at(u.end.saturating_sub(1)));
+                let c = now.get(u.start..u.end).and_then(|s| s.chars().next());
+                if let Some(c) = c
+                    && from != usize::MAX
+                    && last != usize::MAX
+                {
+                    found.push((u.piece, from..last.saturating_add(1), c));
+                }
+            }
+            for &(index, _) in &changed {
+                let Some(Input::Text(now)) = current.get(index) else {
+                    continue;
+                };
+                if let Some(slot) = origins.get_mut(index) {
+                    let old = slot.take();
+                    *slot = Some(remap(now, old, &undone, index));
+                }
+            }
+        }
         drop(current);
         for (index, text) in changed {
             if let Some(slot) = owned.get_mut(index) {
@@ -170,13 +230,42 @@ fn plain_texts(
     owned
 }
 
-/// One pass: the candidates of the text, checked against the forward rules. Returns the new text
-/// of every `Text` piece that changed, by input index, or `None` when nothing changed.
-fn round(
-    typographer: &Typographer,
-    scratch: &mut Scratch,
-    input: &[Input<'_>],
-) -> Option<Vec<(usize, String)>> {
+/// The input byte of every byte of the text of piece `index` after the candidates `undone` of
+/// `now` were replaced by their readings (`usize::MAX` for a byte of a reading); `old` maps the
+/// bytes of `now`, and no map means that `now` is the input piece itself.
+fn remap(now: &str, old: Option<Vec<usize>>, undone: &[Undone], index: usize) -> Vec<usize> {
+    let of = |pos: usize| match &old {
+        Some(map) => map.get(pos).copied().unwrap_or(usize::MAX),
+        None => pos,
+    };
+    let mut map = Vec::with_capacity(now.len());
+    let mut pos = 0usize;
+    for u in undone.iter().filter(|u| u.piece == index) {
+        map.extend((pos..u.start).map(of));
+        map.extend(core::iter::repeat_n(usize::MAX, u.written));
+        pos = u.end;
+    }
+    map.extend((pos..now.len()).map(of));
+    map
+}
+
+/// A candidate that a pass undid: its piece, its byte range in the piece's text of that pass, and
+/// the length of the reading written in its place.
+#[derive(Clone, Copy, Debug)]
+struct Undone {
+    piece: usize,
+    start: usize,
+    end: usize,
+    written: usize,
+}
+
+/// The result of one pass: the new text of every `Text` piece that changed, by input index, and
+/// the candidates it undid, in order.
+type Pass = (Vec<(usize, String)>, Vec<Undone>);
+
+/// One pass: the candidates of the text, checked against the forward rules. Returns `None` when
+/// nothing changed.
+fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) -> Option<Pass> {
     let settings = Reading::of(typographer);
     let any = input.iter().any(|item| match item {
         Input::Text(text) => text.chars().any(|c| settings.is_candidate(c)),
@@ -441,7 +530,22 @@ fn round(
         .filter(|(p, t)| p.text != t.as_str())
         .map(|(p, t)| (p.index, t))
         .collect();
-    (!changed.is_empty()).then_some(changed)
+    let undone: Vec<Undone> = cands
+        .iter()
+        .filter(|c| c.on)
+        .filter_map(|c| {
+            let piece = pieces
+                .iter()
+                .rfind(|p| p.start <= c.start && c.start < p.start.saturating_add(p.text.len()))?;
+            Some(Undone {
+                piece: piece.index,
+                start: c.start.saturating_sub(piece.start),
+                end: c.end.saturating_sub(piece.start),
+                written: c.plain().len(),
+            })
+        })
+        .collect();
+    (!changed.is_empty()).then_some((changed, undone))
 }
 
 /// What one forward run says about the candidates.

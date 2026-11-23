@@ -230,6 +230,18 @@ nbsp.abbreviations  0:24..25  " " -> U+00A0
 protected  Technical(Colon)  0:25..34  host:8080
 ```
 
+The table has one line per record of `changes()` (rule id, `piece:range`, the input text, `->`, the
+replacement), then one line per record of `protected()` (the word `protected`, the kind,
+`piece:range`, the protected text). Each column is as wide as its longest entry plus two spaces,
+computed separately for the two parts, which gives the widths of both examples (section 2.9 and
+above). A text that is a single invisible character (a space other than U+0020, a control or a
+format character) is written as `U+XXXX`; any other text of a change is written in double quotes,
+with `"`, `\` and invisible characters escaped (`\"`, `\\`, `\u{a0}`). A protected text is written
+as it is, with invisible characters escaped the same way, so that every record stays on one line,
+and trailing spaces are not written (a `Slot` record ends after its range). A report without records
+prints nothing. Like the `Display` of `Diagnostic`, the text is not part of the contract (section
+2.13).
+
 `report` runs the same engine as `typeset`, so its result equals `typeset` byte for byte (a property
 test), and applying `changes()` to the input reproduces the result. In stage 5 the comparison with
 the reference implementation prints, for every case that differs and is not in the table of expected

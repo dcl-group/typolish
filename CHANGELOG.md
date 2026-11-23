@@ -20,7 +20,12 @@ Nothing released yet. Version 0.1.0 is in development.
   diagnostics (`Diagnostic`, `DiagnosticKind`, `Severity`): those of protection and the fragment
   classifier (backtick spans, fenced blocks and own delimiter pairs, paragraph windows, and
   technical fragments such as flags, paths, addresses, versions and identifiers) and those of the
-  rules. `Report` has no `Display` yet.
+  rules. The `Display` of `Report` prints a table of the edits and the protected spans, one line per
+  record, and the `Display` of `Diagnostic` prints its severity, rule, piece, range and a message.
+- `Typographer::lint` and `Typographer::lint_template` check a source that must stay plain without
+  building output: they return the diagnostics of `report` with `Output::Unicode` (never
+  `NowrapFallback`) and a `TypographicChar` for every character that `to_plain` would change, so a
+  source has such an entry exactly when `to_plain` changes it.
 - The phase engine applies the rules to strings and templates for `ru-RU`, `en-US` and
   `Language::COMMON`: quotes by nesting level, apostrophes and primes (`quotes.apostrophe`,
   `quotes.pairs`, `quotes.primes`, with `UnmatchedQuote`, `CrossingQuotes` and `AmbiguousQuote`),

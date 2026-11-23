@@ -2,8 +2,7 @@
 //!
 //! The engine is generic over `R: Recorder` and monomorphized: `typeset` uses `NoRecord`, whose
 //! `ACTIVE` is false, so the plain path skips the work of building records; `lint` uses
-//! `Diagnostics` (stage 4 adds `lint`; the recorder is here with the others); `report` uses
-//! `Journal`. The engine resolves positions to pieces before it calls a recorder (one record per
+//! `Diagnostics`; `report` uses `Journal`. The engine resolves positions to pieces before it calls a recorder (one record per
 //! piece for a change or a span, the first piece for a diagnostic), so a recorder only collects.
 
 use core::ops::Range;
@@ -58,14 +57,12 @@ impl Recorder for NoRecord {
     fn diagnostic(&mut self, _diagnostic: Diagnostic) {}
 }
 
-/// Records diagnostics only: the path of `lint` (design section 12.3), which stage 4 adds.
-#[cfg_attr(not(test), expect(dead_code, reason = "`lint` of stage 4 uses it"))]
+/// Records diagnostics only: the path of `lint` (design section 12.3).
 #[derive(Debug, Default)]
 pub(crate) struct Diagnostics {
     diagnostics: Vec<Diagnostic>,
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "`lint` of stage 4 uses it"))]
 impl Diagnostics {
     /// The diagnostics in the order of design section 12.4.
     pub(crate) fn finish(mut self) -> Vec<Diagnostic> {

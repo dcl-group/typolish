@@ -424,6 +424,29 @@ pub(crate) fn report_template<'t>(
     (texts, changed, journal.finish())
 }
 
+/// `Typographer::lint` and `Typographer::lint_template` (design section 12.3): the whole pipeline
+/// with the `Diagnostics` recorder and no rendering (so no `NowrapFallback`), plus a
+/// `TypographicChar` for every character that `to_plain` changes, in the order of design section
+/// 12.4.
+pub(crate) fn lint(
+    typographer: &Typographer,
+    scratch: &mut Scratch,
+    input: &[Input<'_>],
+) -> Vec<crate::Diagnostic> {
+    let mut diagnostics = record::Diagnostics::default();
+    let _ = run(typographer, scratch, input, &mut diagnostics);
+    for (piece, range, found) in plain::changed_chars(typographer, scratch, input) {
+        diagnostics.diagnostic(crate::Diagnostic::new(
+            DiagnosticKind::TypographicChar { found },
+            Severity::Info,
+            None,
+            piece,
+            range,
+        ));
+    }
+    diagnostics.finish()
+}
+
 /// `Typographer::to_plain` (design section 12.1).
 pub(crate) fn to_plain<'a>(
     typographer: &Typographer,

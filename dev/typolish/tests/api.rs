@@ -565,7 +565,8 @@ fn a_report_without_records_prints_nothing() {
 
 #[test]
 fn the_display_of_a_template_report_names_the_piece() {
-    // One record per edit; the column widths are not fixed here, so compare the fields.
+    // One record per edit; the column widths are not fixed here, so compare the fields. The
+    // range is in bytes of the piece (section 2.9): `Он ` is five bytes.
     let t = Typographer::new(Language::RU_RU, RuleSet::EMPTY.with(Rule::DashSpacedHyphen));
     let r = t.report_template::<()>(
         [Piece::Markup("<b>"), Piece::Text("Он - врач")],
@@ -579,7 +580,7 @@ fn the_display_of_a_template_report_names_the_piece() {
     let fields: Vec<&str> = lines[0].split_whitespace().collect();
     assert_eq!(
         fields,
-        ["dash.spaced-hyphen", "1:3..4", "\"-\"", "->", "\"—\""]
+        ["dash.spaced-hyphen", "1:5..6", "\"-\"", "->", "\"—\""]
     );
 }
 
