@@ -66,8 +66,10 @@ readings farther apart than any rule looks (256 bytes; the longest pattern, `nbs
 most 24 tokens) are tried in one forward run, and a problem of the run is laid at the nearest of
 them, so the number of runs does not grow with the length of the text. The whole pass repeats on its
 own output until nothing changes, so `to_plain` is stable by construction. There is no second copy
-of the rule patterns to drift from them; the price is a few forward runs per call, which the tooling
-path allows (section 2.12).
+of the rule patterns to drift from them. The price is up to about (readings within 256 bytes) ×
+(readings of a character) forward runs per pass, each over the whole text: on dense typographic text
+that is hundreds of runs, so the time is linear in the length of the text but about 100 to 200 times
+that of `typeset`, which the tooling path allows (section 2.12).
 
 **Which `’` is an apostrophe** (English, where `’` is both the apostrophe and the nested closing
 quote). A `’` in a fixed apostrophe context of section 6.2 (between letters, after a digit before a
