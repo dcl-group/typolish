@@ -754,7 +754,9 @@ fn utf16<O: Out>(o: &mut O, cp: u32, upper: bool) -> Res {
     Ok(())
 }
 
-/// Writes `value` in base 10 or 16 with at least `width` digits, without allocation.
+/// Writes `value` in base 10 or 16 with at least `width` digits, without allocation. Base 10 or 16
+/// and width at most 10 cover every u32; anything wider stops the writer (`Err(Stop)`) instead of
+/// writing a cut number.
 fn digits<O: Out>(o: &mut O, value: u32, base: u32, width: usize, upper: bool) -> Res {
     let table: &[u8; 16] = if upper {
         b"0123456789ABCDEF"
@@ -770,6 +772,9 @@ fn digits<O: Out>(o: &mut O, value: u32, base: u32, width: usize, upper: bool) -
             *slot = *digit;
         }
         v /= base;
+    }
+    if v > 0 || width > buf.len() {
+        return Err(Stop);
     }
     match buf.get(start..).map(core::str::from_utf8) {
         Some(Ok(s)) => o.put(s),
@@ -817,6 +822,15 @@ mod tests {
             let lead = c.encode_utf8(&mut buf).as_bytes()[0];
             assert!(SET_BYTES.contains(lead), "{c:?}");
         }
+    }
+
+    #[test]
+    fn digits_that_do_not_fit_stop_the_writer() {
+        assert!(digits(&mut String::new(), u32::MAX, 2, 1, true).is_err());
+        assert!(digits(&mut String::new(), 0xa0, 16, 11, true).is_err());
+        let mut s = String::new();
+        assert!(digits(&mut s, u32::MAX, 10, 10, true).is_ok());
+        assert_eq!(s, "4294967295");
     }
 
     #[test]
