@@ -26,8 +26,9 @@ pub const PATHOLOGICAL: &[Pathological] = &[
         repeat_to("ab.cd/ef_gh-ij", n)
     }),
     ("quote nesting", |n| {
-        // `"x "x "x ... x" x" x"`: a quote opens after a space and closes after a letter.
-        let depth = n / 8 + 1;
+        // `"x "x "x ... x" x" x"`: a quote opens after a space and closes after a letter; each
+        // level takes six bytes.
+        let depth = n / 6 + 1;
         let mut s = "\"x ".repeat(depth);
         s.push_str(&"x\" ".repeat(depth));
         s

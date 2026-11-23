@@ -1,6 +1,7 @@
 //! Linearity of the pathological inputs (design sections 3.12 and 13.8): `load_is_linear` is
 //! `#[ignore]`, because it needs a release build and time:
 //! `cargo test --release -p typolish --test load -- --ignored` from `dev/`.
+//! `generators_keep_their_size` checks the sizes of the generated inputs in every run.
 //!
 //! The time per byte for 16 MiB is at most twice that for 64 KiB, separately for each input. There
 //! are no absolute thresholds: the machine is shared.
@@ -39,6 +40,20 @@ fn per_byte(t: &Typographer, scratch: &mut Scratch, text: &str, runs: usize) -> 
         .collect();
     times.sort();
     times[times.len() / 2].as_secs_f64() / text.len() as f64
+}
+
+#[test]
+fn generators_keep_their_size() {
+    // The contract of `PATHOLOGICAL`: never fewer than `size` bytes, at most a few dozen more.
+    for (name, make) in PATHOLOGICAL {
+        for size in [1, 7, 100, 4096, 65536] {
+            let len = make(size).len();
+            assert!(
+                size <= len && len <= size + 64,
+                "{name}: {len} bytes for {size}"
+            );
+        }
+    }
 }
 
 #[test]
