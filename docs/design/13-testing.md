@@ -263,14 +263,17 @@ gives the output of the whole set.
 
 `tests/negative.rs`:
 
-- one function per row of section 10.5 (`neg_flag_force`, `neg_ls_la`, `neg_lone_double_hyphen`,
-  ..., `neg_identifier_underscore`), for ru and en, alone, in the two sentence frames of each
-  language, and as `Piece::Text` next to slots. Through `report`, the tokens of the case stay byte
-  for byte with no edit but glue outside them. In Interface the output also equals the input and is
-  `Cow::Borrowed`, except for the two cases that section 10.5 names (row 24's `if a<b and c>d` in
-  English, with its expected glue; row 25, checked in English with short Cyrillic words); in Prose
-  the expectation is the last column of section 10.5. The comment of each test names its mechanisms,
-  and the test also checks that `report` lists the expected `TechKind` for frozen fragments;
+- a table of the rows of section 10.5, each with its number, a name (`flag_force`, `ls_la`,
+  `lone_double_hyphen`, …, `underscore_identifier`), its mechanisms and the `TechKind` of its frozen
+  fragments, run for ru and en, alone, in the two sentence frames of each language, as `Piece::Text`
+  between two slots with spaces, and as `Piece::Text` glued to a `Number` slot (the output equals
+  the input where the row stays unchanged; row 10 glued to a slot keeps its hyphen in both sets,
+  section 10.6). Through `report`, the tokens of the case stay byte for byte with no edit but glue
+  outside them, and the frozen fragments have the expected `TechKind`. In Interface the output also
+  equals the input and is `Cow::Borrowed`, except for the two cases that section 10.5 names (row
+  24's `if a<b and c>d` in English, with its expected glue; row 25, checked in English with short
+  Cyrillic words); in Prose the expectation is the last column of section 10.5. A failure prints the
+  row's number, name and mechanisms;
 - the stress strings of section 10.7; the interaction strings of section 10.7 are compared by exact
   output in both sets, written by hand where the form is not in the scouting corpus; `@user` and
   `@here` come out unchanged in Interface, and `report` lists `Technical(Email)` for them;

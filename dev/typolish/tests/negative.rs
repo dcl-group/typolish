@@ -37,105 +37,219 @@ use typolish::{
     Typographer,
 };
 
-/// A case of section 10.5: the row number, the texts for both languages and whether Prose leaves
-/// it unchanged.
+/// A case of design section 10.5: the row number, its name, the mechanisms that keep it unchanged
+/// in Interface, the texts for both languages, the `TechKind` of the frozen fragments of each text
+/// in the order of `protected()`, and whether Prose leaves it unchanged.
 struct Row {
     no: u8,
     name: &'static str,
+    mechanisms: &'static str,
     texts: &'static [&'static str],
+    kinds: &'static [&'static [TechKind]],
     prose_unchanged: bool,
 }
 
-const fn row(no: u8, name: &'static str, texts: &'static [&'static str]) -> Row {
+const fn row(
+    no: u8,
+    name: &'static str,
+    mechanisms: &'static str,
+    texts: &'static [&'static str],
+    kinds: &'static [&'static [TechKind]],
+) -> Row {
     Row {
         no,
         name,
+        mechanisms,
         texts,
+        kinds,
         prose_unchanged: true,
     }
 }
 
+impl Row {
+    /// The row with the expectation of the last column of design section 10.5 for Prose.
+    const fn changed_in_prose(self) -> Self {
+        Self {
+            prose_unchanged: false,
+            ..self
+        }
+    }
+
+    /// The label of a text of the row in a failure message: language, number, name, mechanisms.
+    fn what(&self, lang: &str, text: &str) -> String {
+        format!(
+            "{lang} row {} {} [{}] {text:?}",
+            self.no, self.name, self.mechanisms
+        )
+    }
+}
+
+use TechKind::{
+    Angle, Colon, CompoundHyphens, Dotted, Email, Flag, Hex, Identifier, IsoDate, List, Operator,
+    Path, Unclassified, Url, Uuid, Version,
+};
+
 const ROWS: &[Row] = &[
-    row(1, "flag_force", &["--force", "--long-opt=value"]),
-    row(2, "ls_la", &["ls -la"]),
-    Row {
-        no: 3,
-        name: "lone_double_hyphen",
-        texts: &["--", "git checkout -- file"],
-        prose_unchanged: false,
-    },
-    row(4, "shift_operator", &["a>>b"]),
-    row(5, "fat_arrow", &["=>"]),
-    row(6, "host_port", &["host:8080"]),
-    row(7, "ipv6", &["::1", "fe80::1%eth0", "[::1]:8080"]),
-    row(8, "cidr", &["10.0.0.0/8"]),
-    row(9, "colon_word", &["a:b"]),
-    Row {
-        no: 10,
-        name: "port_range",
-        texts: &["8000-8100"],
-        prose_unchanged: false,
-    },
-    row(11, "iso_date", &["2026-11-21", "2026-11-21T10:20:30Z"]),
-    row(12, "version", &["0.2.27"]),
-    row(13, "version_pre", &["v1.2.3-rc.1", "1.2.3-beta.2+build.5"]),
+    row(
+        1,
+        "flag_force",
+        "M1, M2, M8",
+        &["--force", "--long-opt=value"],
+        &[&[Flag], &[Flag]],
+    ),
+    row(2, "ls_la", "M1, M2, M5", &["ls -la"], &[&[Flag]]),
+    row(
+        3,
+        "lone_double_hyphen",
+        "M8 (dash.double-hyphen), M2",
+        &["--", "git checkout -- file"],
+        &[&[], &[]],
+    )
+    .changed_in_prose(),
+    row(4, "shift_operator", "M1, M3, M8", &["a>>b"], &[&[Operator]]),
+    row(5, "fat_arrow", "M3, M8", &["=>"], &[&[]]),
+    row(6, "host_port", "M1, M6", &["host:8080"], &[&[Colon]]),
+    row(
+        7,
+        "ipv6",
+        "M1, M6",
+        &["::1", "fe80::1%eth0", "[::1]:8080"],
+        &[&[Colon], &[Colon], &[Colon]],
+    ),
+    row(8, "cidr", "M1", &["10.0.0.0/8"], &[&[Path]]),
+    row(9, "colon_word", "M1, M6", &["a:b"], &[&[Colon]]),
+    row(
+        10,
+        "port_range",
+        "M8 (range.digits, range.context), M4",
+        &["8000-8100"],
+        &[&[]],
+    )
+    .changed_in_prose(),
+    row(
+        11,
+        "iso_date",
+        "M1, M4, M6",
+        &["2026-11-21", "2026-11-21T10:20:30Z"],
+        &[&[IsoDate], &[Colon]],
+    ),
+    row(12, "version", "M1", &["0.2.27"], &[&[Version]]),
+    row(
+        13,
+        "version_pre",
+        "M1",
+        &["v1.2.3-rc.1", "1.2.3-beta.2+build.5"],
+        &[&[Version], &[Operator]],
+    ),
     row(
         14,
         "hex",
+        "M1, M4, M7",
         &[
             "0x1F",
             "deadbeef0123",
             "d41d8cd98f00b204e9800998ecf8427e",
             "deadbeef",
         ],
+        &[&[Hex], &[Hex], &[Hex], &[]],
     ),
-    row(15, "uuid", &["550e8400-e29b-41d4-a716-446655440000"]),
+    row(
+        15,
+        "uuid",
+        "M1",
+        &["550e8400-e29b-41d4-a716-446655440000"],
+        &[&[Uuid]],
+    ),
     row(
         16,
         "fingerprint",
+        "M1",
         &[
             "SHA256:47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU",
             "43:51:43:a1:b5:fc:8b:b7",
         ],
+        &[&[Path], &[Colon]],
     ),
-    row(17, "base64", &["SGVsbG8gd29ybGQ=", "a+b/c=="]),
+    row(
+        17,
+        "base64",
+        "M1",
+        &["SGVsbG8gd29ybGQ=", "a+b/c=="],
+        &[&[Unclassified], &[Path]],
+    ),
     row(
         18,
         "path",
+        "M1",
         &["/etc/hosts", "C:\\Users\\x", "~/.config/app", "../x"],
+        &[&[Path], &[Path], &[Path], &[Path]],
     ),
-    row(19, "url", &["https://example.com/a?b=c", "www.example.com"]),
+    row(
+        19,
+        "url",
+        "M1",
+        &["https://example.com/a?b=c", "www.example.com"],
+        &[&[Url], &[Url]],
+    ),
     row(
         20,
         "email",
+        "M1",
         &["user@example.com", "git@example.com:org/repo.git"],
+        &[&[Email], &[Email]],
     ),
     row(
         21,
         "host_name",
+        "M1, M7",
         &["db.example.internal", "db-01.example.com", "localhost"],
+        &[&[Dotted], &[Dotted], &[]],
     ),
-    row(22, "list", &["a,b,c", "x,y;z", "1,2,3", "red,green,blue"]),
+    row(
+        22,
+        "list",
+        "M1, M6",
+        &["a,b,c", "x,y;z", "1,2,3", "red,green,blue"],
+        &[&[List], &[List], &[List], &[List]],
+    ),
     // Latin letters next to Cyrillic: Latin `o` in `Москва`, Latin `C` in `Сервер`, Latin `x` in `хлеб`.
     row(
         23,
         "lookalike",
+        "M6, M7",
         &[
             "\u{41c}o\u{441}\u{43a}\u{432}\u{430}",
             "C\u{435}\u{440}\u{432}\u{435}\u{440}",
             "x\u{43b}\u{435}\u{431}",
         ],
+        &[&[], &[], &[]],
     ),
     row(
         24,
         "angle",
+        "M1, M10",
         &["<word>", "vec<int>", "a <b> c", "if a<b and c>d"],
+        &[&[Angle], &[Operator], &[Angle], &[Operator, Operator]],
     ),
-    row(26, "hyphen_identifier", &["tls-server", "agent-ca"]),
-    row(27, "underscore_identifier", &["kv_lang"]),
+    row(
+        26,
+        "hyphen_identifier",
+        "M1 (hyphens frozen), M2",
+        &["tls-server", "agent-ca"],
+        &[&[CompoundHyphens], &[CompoundHyphens]],
+    ),
+    row(
+        27,
+        "underscore_identifier",
+        "M1",
+        &["kv_lang"],
+        &[&[Identifier]],
+    ),
 ];
 
-/// Row 25: short Latin words in Russian text; Cyrillic short words in English text.
+/// Row 25: short Latin words in Russian text; Cyrillic short words in English text. Mechanisms:
+/// M5 (`short_words_any_script(false)`), M8 (`nbsp.short-length`); no frozen fragment.
+const SHORT_MECHANISMS: &str = "M5, M8 (nbsp.short-length)";
 const SHORT_LATIN_RU: &[&str] = &["ls", "a", "go", "db", "to"];
 const SHORT_CYRILLIC_EN: &[&str] = &["\u{438}", "\u{432}", "\u{43a}"];
 
@@ -279,12 +393,7 @@ fn interface_leaves_every_row_unchanged_except_the_two_that_section_10_5_names()
         let t = interface(lang.clone());
         for r in ROWS {
             for text in r.texts {
-                run_row(
-                    &t,
-                    &frames,
-                    text,
-                    &format!("{lang} row {} {} {text:?}", r.no, r.name),
-                );
+                run_row(&t, &frames, text, &r.what(&lang.to_string(), text));
             }
         }
         let short: &[&str] = if lang == Language::RU_RU {
@@ -293,7 +402,12 @@ fn interface_leaves_every_row_unchanged_except_the_two_that_section_10_5_names()
             SHORT_CYRILLIC_EN
         };
         for text in short {
-            run_row(&t, &frames, text, &format!("{lang} row 25 {text:?}"));
+            run_row(
+                &t,
+                &frames,
+                text,
+                &format!("{lang} row 25 [{SHORT_MECHANISMS}] {text:?}"),
+            );
         }
     }
 }
@@ -358,12 +472,7 @@ fn prose_leaves_the_unchanged_rows_unchanged() {
         let t = prose(lang.clone());
         for r in ROWS.iter().filter(|r| r.prose_unchanged) {
             for text in r.texts {
-                run_row(
-                    &t,
-                    &frames,
-                    text,
-                    &format!("{lang} prose row {} {} {text:?}", r.no, r.name),
-                );
+                run_row(&t, &frames, text, &r.what(&format!("{lang} prose"), text));
             }
         }
         // Row 25 in Prose: unchanged (M5), the length rule counts only words of the script.
@@ -373,7 +482,12 @@ fn prose_leaves_the_unchanged_rows_unchanged() {
             SHORT_CYRILLIC_EN
         };
         for text in short {
-            run_row(&t, &frames, text, &format!("{lang} prose row 25 {text:?}"));
+            run_row(
+                &t,
+                &frames,
+                text,
+                &format!("{lang} prose row 25 [{SHORT_MECHANISMS}] {text:?}"),
+            );
         }
         // Row 3 in Prose: the lone `--` alone is unchanged.
         unchanged(&t, "--", &format!("{lang} prose row 3"));
@@ -400,6 +514,41 @@ fn interface_leaves_the_whitespace_cases_unchanged() {
     let ru = interface(Language::RU_RU);
     for text in ["т.  е.", "№\t5"] {
         unchanged(&ru, text, text);
+    }
+}
+
+#[test]
+fn rows_report_the_expected_tech_kinds() {
+    // Design sections 10.5 (column "Classification") and 13.3: `report` lists the expected
+    // `TechKind` for the frozen fragments of each text, in both sets and both languages; a text
+    // without frozen fragments has no protected span at all.
+    for (lang, _) in languages() {
+        for (set, t) in [
+            ("Interface", interface(lang.clone())),
+            ("Prose", prose(lang.clone())),
+        ] {
+            for r in ROWS {
+                assert_eq!(r.kinds.len(), r.texts.len(), "row {}", r.no);
+                for (text, expected) in r.texts.iter().zip(r.kinds) {
+                    let what = r.what(&format!("{lang} {set}"), text);
+                    let kinds: Vec<TechKind> = spans_of(&t, text)
+                        .into_iter()
+                        .map(|(kind, _, range)| match kind {
+                            ProtectedKind::Technical(k) => k,
+                            other => panic!("{what}: {other:?} at {range:?} is not technical"),
+                        })
+                        .collect();
+                    assert_eq!(kinds, *expected, "{what}");
+                }
+            }
+            for text in SHORT_LATIN_RU.iter().chain(SHORT_CYRILLIC_EN) {
+                assert_eq!(
+                    spans_of(&t, text),
+                    [],
+                    "{lang} {set} row 25 [{SHORT_MECHANISMS}] {text:?}"
+                );
+            }
+        }
     }
 }
 
@@ -683,7 +832,11 @@ fn swiss_grouping_is_frozen_in_both_sets() {
             }
             let spans = spans_of(&t, "1'000'000");
             assert_eq!(spans.len(), 1, "{language}");
-            assert!(matches!(spans[0].0, ProtectedKind::Technical(_)));
+            assert_eq!(
+                spans[0].0,
+                ProtectedKind::Technical(TechKind::Unclassified),
+                "{language}"
+            );
         }
     }
 }
