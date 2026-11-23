@@ -61,7 +61,7 @@ fn pieces(input: &str) -> Vec<Piece<'_, &str>> {
 }
 
 /// Our output for a row in Prose, a template written out with its slots, and a description of the
-/// `report` for a failure message; the diagnostics of a string input come with it.
+/// `report` for a failure message, and the kinds of the diagnostics of the report.
 fn ours(t: &Typographer, row: &RefRow) -> (String, String, Vec<DiagnosticKind>) {
     if row.input.contains('{') {
         let out = t.typeset_template(pieces(row.input), Output::Unicode);
@@ -74,10 +74,13 @@ fn ours(t: &Typographer, row: &RefRow) -> (String, String, Vec<DiagnosticKind>) 
                 text.push('}');
             }
         }
-        let report = t
-            .report_template(pieces(row.input), Output::Unicode)
-            .to_string();
-        (text, report, Vec::new())
+        let report = t.report_template(pieces(row.input), Output::Unicode);
+        let kinds = report
+            .diagnostics()
+            .iter()
+            .map(|d| d.kind().clone())
+            .collect();
+        (text, report.to_string(), kinds)
     } else {
         let report = t.report(row.input, Output::Unicode);
         let kinds = report
@@ -148,9 +151,8 @@ fn run(
                 }
                 for reason in reasons {
                     *counts.entry(*reason).or_default() += 1;
-                    // The diagnostic of section 8.12 on a plain string whose only reason it is.
-                    if let (Some(kind), [_]) = (named_diagnostic(*reason), reasons)
-                        && !row.input.contains('{')
+                    // The diagnostic that section 8.12 names for a reason of the row.
+                    if let Some(kind) = named_diagnostic(*reason)
                         && !diagnostics.contains(&kind)
                     {
                         fail(&format!("DIVERGE: no {kind:?} diagnostic"));
