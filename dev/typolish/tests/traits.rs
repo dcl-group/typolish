@@ -204,7 +204,7 @@ fn output_kinds_are_distinct_values() {
 fn pieces_are_copy_when_the_payload_is() {
     let piece: Piece<'_, u8> = Piece::Slot(3, Slot::NUMBER);
     let again = piece;
-    assert_eq!(piece, again);
+    assert_eq!(again, Piece::Slot(3, Slot::NUMBER));
     assert_ne!(Piece::<u8>::Text("a"), Piece::Protected("a"));
     assert_ne!(Piece::<u8>::Text("a"), Piece::Markup("a"));
     assert_ne!(Piece::<u8>::Slot(1, Slot::WORD), Piece::Slot(2, Slot::WORD));
