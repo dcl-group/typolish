@@ -28,8 +28,8 @@ use common::corpus::{
 use common::{configs, interface, parse_tmpl, prose, show, vis, without_rule};
 use proptest::prelude::*;
 use typolish::{
-    DashStyle, Language, LanguageData, NumberData, Output, PercentSpacing, Piece, QuotePairs, Rule,
-    RuleSet, SingleQuotes, Slot, SlotKind, Template, Typographer,
+    DashStyle, Language, LanguageBuilder, LanguageData, NumberData, Output, PercentSpacing, Piece,
+    QuotePairs, Rule, RuleSet, SingleQuotes, Slot, SlotKind, Template, Typographer,
 };
 
 fn ru() -> Language {
@@ -499,6 +499,16 @@ fn ranges() {
         Piece::Slot("b", Slot::NUMBER),
     ]);
     assert_eq!(back.texts(), ["", "-", ""]);
+    // Between Roman numerals the range dash `—` has letters on both sides and still reads `-`.
+    let xx = LanguageBuilder::from_language(&Language::RU_RU, "xx")
+        .numbers(NumberData::new().with_range_dash('\u{2014}'))
+        .build()
+        .unwrap();
+    let t = Typographer::new(xx, RuleSet::PROSE);
+    assert_eq!(t.typeset("XIX-XX века", Output::Unicode), "XIX—XX века");
+    check_plain("xx Roman range", &t, ("XIX—XX века", "XIX-XX века"));
+    check_plain("xx Roman range", &t, ("в XI—XX веках", "в XI-XX веках"));
+    assert_eq!(t.lint("XIX—XX века").len(), 1);
     // Interface has no range rule for literal numbers.
     check_plain(
         "ru Interface",

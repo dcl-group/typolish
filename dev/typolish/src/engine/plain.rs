@@ -3,7 +3,8 @@
 //!
 //! The inverse tables of section 12.1 give a reading (the plain text it came from) for every
 //! typographic character outside the spans of `protected()`; a closed or spaced dash has a second
-//! reading with `--`. A closed dash reads with spaces only between two letters of words; between
+//! reading with `--`. A closed dash reads with spaces only between two letters of words, and then
+//! `-` is its last reading (the range dash `—` of a language between Roman numerals); between
 //! other non-blank neighbors its only reading is `-`, the range dash of a language whose range dash
 //! is `—`. Quote glyphs and apostrophes are undone by the tables and the rule for `’`
 //! alone. Every other character is undone only where the enabled rules produce it: the engine runs
@@ -1158,9 +1159,11 @@ fn candidates(
             };
             let letter_after =
                 matches!(after, Near::Char(c) if c.is_alphabetic()) && !text.is_frozen(right_at);
-            // `--` is the reading when only `dash.double-hyphen` produces the dash.
+            // `--` is the reading when only `dash.double-hyphen` produces the dash. Between two
+            // letters the last reading is `-`: the range dash of a language whose range dash is
+            // `—` stands between Roman numerals (design section 8.5).
             if letter_before && letter_after {
-                &[" - ", " -- "]
+                &[" - ", " -- ", "-"]
             } else if !blank(before) && !blank(after) {
                 // The range dash of a language whose range dash is `—` (design section 8.5).
                 &["-"]

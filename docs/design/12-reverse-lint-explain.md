@@ -38,8 +38,10 @@ to the word before it (section 8.7). A typed `–` with spaces (`Москва⍽
 a product of the range rules and stays; only the glue that `nbsp.dash` set before it becomes a space
 (section 8.7). A closed `—` next to a number, a slot, a sign or a protected span is no product of
 the dash rules and stays (`word—5`, `in 2020—the year`), unless it is the range dash of the language
-(section 8.5). A lone `©`, `®` or `™` outside those contexts (`© Example Corp`, `® знак`) is not a
-product of the rule and stays.
+(section 8.5). Between two letters the closed `—` reads with spaces first and `-` last, so the range
+dash `—` of a declared language between Roman numerals (`XIX—XX века`) comes back as `-`. A lone
+`©`, `®` or `™` outside those contexts (`© Example Corp`, `® знак`) is not a product of the rule and
+stays.
 
 `to_plain` changes only the typographic characters of the table above. Plain forms (`--`, `т.д.`,
 `?...`, `(C)`) are not normalized: `to_plain("a -- b")` returns the input. Its output contains no
