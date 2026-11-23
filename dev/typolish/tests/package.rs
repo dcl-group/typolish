@@ -760,9 +760,14 @@ fn package_builds_from_its_own_tarball() {
     // `cargo package` builds the tarball and then compiles it in a clean directory. It does not
     // publish: `cargo publish` is the only command that does, and nothing here runs it. Both
     // cargo runs of this test build in a directory of their own under the target directory of
-    // the tests.
+    // the tests. That directory is named `target`, so the unpacked package lies in
+    // `…/target/package/<name>-<version>`, where Cargo stops looking for a parent workspace;
+    // with the default target directory `dev/target` the package would otherwise be taken for an
+    // undeclared member of the workspace `dev/`, and `cargo test` in it would refuse to run.
     let version = env!("CARGO_PKG_VERSION");
-    let target = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("package-check");
+    let target = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join("package-check")
+        .join("target");
     let target_arg = target.to_str().unwrap();
     let out = run_cargo(&[
         "package",
@@ -787,8 +792,8 @@ fn package_builds_from_its_own_tarball() {
         "cargo package warns:\n{stderr}"
     );
     // The checks of this target and of `tests/documentation.rs` read the repository; in the
-    // unpacked package they skip what is not there and pass (design section 13.10). Cargo
-    // verifies the package in `<target-dir>/package/<name>-<version>` and leaves it there.
+    // unpacked package they skip what is not there and pass (design sections 13.9 and 13.10).
+    // Cargo verifies the package in `<target-dir>/package/<name>-<version>` and leaves it there.
     let unpacked = target.join("package").join(format!("typolish-{version}"));
     assert!(unpacked.join("Cargo.toml.orig").is_file(), "{unpacked:?}");
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());

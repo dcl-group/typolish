@@ -602,9 +602,10 @@ those of `tests/*.rs` are checked by `tests/conformance.rs`), the record of the 
 runs the three examples. The checks of the repository skip outside it: the crate must be the
 repository's `dev/typolish/` and `docs/design/README.md` must exist. The tarball check then runs
 `cargo test` for `tests/documentation.rs` and `tests/package.rs` in the package that `cargo package`
-unpacked and verified, so the published tests are known to pass without the repository. The two
-targets stay in the package: excluding an auto-discovered target makes `cargo package` warn, and the
-tarball check rejects any warning.
+unpacked and verified (under `<target-dir>/tmp/package-check/target/package/`, where Cargo does not
+look for the workspace `dev/`, so the check passes with any target directory), so the published
+tests are known to pass without the repository. The two targets stay in the package: excluding an
+auto-discovered target makes `cargo package` warn, and the tarball check rejects any warning.
 
 `tests/data.rs` runs the validation of section 7.6 on every built-in table (so the order and
 duplicates of `months` are checked too) and compares the CLDR values (quote pairs, decimal, group,
