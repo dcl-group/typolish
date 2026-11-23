@@ -341,7 +341,8 @@ cannot reach a user.
   or a dash (U+2010 to U+2015, U+2212), the signs that check 15 of section 3.6 reads as the sign of
   a number; `range_dash` is `–` U+2013 or `—` U+2014, the dashes that a second pass and `to_plain`
   read back (sections 3.6 and 12.1); signs are characters of the lexer's `Punct` class (section
-  3.5), so no letter, digit or whitespace; ellipsis forms consist of `?`, `!`, `.` and `…` only.
+  3.5), so no letter, digit or whitespace; each ellipsis form is non-empty and consists of `?`, `!`,
+  `.` and `…` only.
 
 ### 7.7 Adding a language
 

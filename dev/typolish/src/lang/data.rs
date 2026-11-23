@@ -1720,7 +1720,7 @@ impl Table<'_> {
         if [e.question, e.exclamation, e.both].iter().any(|form| {
             form.is_empty() || !form.chars().all(|c| matches!(c, '?' | '!' | '.' | '…'))
         }) {
-            return Err("ellipsis: forms must consist of ?, !, . and … only");
+            return Err("ellipsis: forms must be non-empty and consist of ?, !, . and … only");
         }
         Ok(())
     }

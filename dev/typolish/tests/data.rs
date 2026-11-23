@@ -1333,6 +1333,10 @@ fn ellipsis_forms_consist_of_question_exclamation_and_dots_only() {
         EllipsisForms::new("?…", "! ", "?!…"),
         EllipsisForms::new("?…", "!…", "?!a"),
         EllipsisForms::new("?-", "!…", "?!…"),
+        // An empty form would erase the author's mark (design section 7.6).
+        EllipsisForms::new("", "!…", "?!…"),
+        EllipsisForms::new("?…", "", "?!…"),
+        EllipsisForms::new("?…", "!…", ""),
     ] {
         rejected(base().with_ellipsis(forms), "ellipsis");
     }
