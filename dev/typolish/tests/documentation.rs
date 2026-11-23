@@ -360,6 +360,10 @@ fn the_crate_has_its_own_example_and_the_readme_is_run() {
             .any(|l| l.contains("does not normalize Unicode")),
         "the crate docs of lib.rs do not state that there is no normalization"
     );
+    assert!(
+        !lib.contains("gets no no-break space; nothing else"),
+        "the crate docs of lib.rs again say that an NFD word gets no glue at all (design section 5.5)"
+    );
     // Design section 13.10: the code blocks of the README run through a `#[cfg(doctest)]` item.
     let compact: String = lib.split_whitespace().collect();
     assert!(

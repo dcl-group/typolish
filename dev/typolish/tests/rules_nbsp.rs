@@ -1574,6 +1574,16 @@ fn a_word_in_nfd_does_not_match_a_list() {
 }
 
 #[test]
+fn a_unit_in_nfd_does_not_match_the_list_and_short_length_reads_no_list() {
+    // Design section 5.5: a list entry in NFD does not match; a rule without a list applies.
+    let p = set(ru(), RuleSet::PROSE);
+    check_in("ru prose", &p, ("5 дюйм.", "5⍽дюйм."));
+    check_in("ru prose", &p, ("5 дюи\u{306}м.", "5 дюи\u{306}м."));
+    check_in("ru prose", &p, ("и\u{306} слово", "и\u{306}⍽слово"));
+    check_in("ru prose", &p, ("й слово", "й⍽слово"));
+}
+
+#[test]
 fn short_words_never_glue_before_a_flag() {
     // `ls -la` stays whatever the lists say (design section 8.2).
     let t = with(ru(), &[SHORT_WORDS], |b| {

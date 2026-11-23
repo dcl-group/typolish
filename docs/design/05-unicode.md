@@ -108,8 +108,11 @@ is not treated as glue (a caller who wants glue writes U+00A0).
 ### 5.5 No normalization
 
 The crate does not normalize Unicode (NFC needs large tables). A word in NFD (`и` + U+0306 instead
-of `й`) does not match a language list, so it gets no no-break space; nothing breaks. The rustdoc of
-the crate states this; callers that need matching normalize before typesetting.
+of `й`) does not match an entry of a language list: `5 дюйм.` with the unit in NFD gets no glue from
+`nbsp.units`, and a word added with `add_short_words` gets none from `nbsp.short-words`. Rules that
+read no list still apply: `й слово` gets glue from `nbsp.short-length` in `PROSE` in either form.
+Nothing breaks. The rustdoc of the crate states this; callers that need matching normalize before
+typesetting.
 
 ### 5.6 Unicode versions
 
