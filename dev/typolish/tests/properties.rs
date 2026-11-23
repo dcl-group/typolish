@@ -1016,6 +1016,49 @@ proptest! {
 }
 
 proptest! {
+    #![proptest_config(ProptestConfig::with_cases(1_000_000))]
+
+    /// 14, the long run: no panic of `to_plain` on arbitrary strings, whatever the settings.
+    #[test]
+    #[ignore = "long run of design section 13.5, property 14"]
+    fn no_panic_of_to_plain_on_strings_long(
+        text in any_text(), lang in 0usize..3, set in rule_set(), quotes in 0u8..3, percent in 0u8..4,
+    ) {
+        let t = typographer(lang, set, quotes, percent);
+        let _ = t.to_plain(&text);
+    }
+
+    /// 14, the long run: no panic of `to_plain` on arbitrary Unicode.
+    #[test]
+    #[ignore = "long run of design section 13.5, property 14"]
+    fn no_panic_of_to_plain_on_arbitrary_unicode_long(text in "\\PC*|.*", lang in 0usize..3) {
+        let t = typographer(lang, RuleSet::ALL, 0, 0);
+        let _ = t.to_plain(&text);
+    }
+
+    /// 14, the long run: no panic of `to_plain_template` on arbitrary pieces; slots keep their
+    /// order and kinds.
+    #[test]
+    #[ignore = "long run of design section 13.5, property 14"]
+    fn no_panic_of_to_plain_on_pieces_long(parts in pieces(), lang in 0usize..3, set in rule_set()) {
+        let t = typographer(lang, set, 0, 0);
+        let input = borrow(&parts);
+        let out = t.to_plain_template(input);
+        prop_assert_eq!(out.texts().len(), out.slots().len() + 1);
+        let want: Vec<(u32, typolish::SlotKind)> = parts
+            .iter()
+            .filter_map(|p| match p {
+                GenPiece::Slot(id, kind) => Some((*id, *kind)),
+                _ => None,
+            })
+            .collect();
+        let got: Vec<(u32, typolish::SlotKind)> =
+            out.slots().iter().map(|(id, slot)| (*id, slot.kind())).collect();
+        prop_assert_eq!(got, want);
+    }
+}
+
+proptest! {
     #![proptest_config(ProptestConfig::with_cases(2_000))]
 
     /// 16. `to_plain` is stable: `to_plain(to_plain(x)) == to_plain(x)` for {ru, en} x {Prose,
