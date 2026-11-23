@@ -96,8 +96,8 @@ Decided by the maintainer on 2026-11-22; not reopened here:
 Decided by the maintainer on 2026-11-23; not reopened here:
 
 18. A particle is glued to the word before it, and a word glued backward as a particle does not glue
-    the next word to itself: there is no chain. `Знаешь ли ты` → `Знаешь⍽ли ты`, not `Знаешь⍽ли⍽ты`.
-    The rule holds for every particle of the list, not only `ли` (sections 7.2, 8.7).
+    the next word to itself: there is no chain. `Знаешь ли ты` → `Знаешь⍽ли ты`, not `Знаешь⍽ли⍽ты`
+    (sections 7.2, 8.7; the lead reads it for every particle of the list, section 15.3, C34).
 19. A particle is glued to the word before it also when punctuation follows the particle: `Что ж,` →
     `Что⍽ж,` (sections 8.2, 8.7).
 
@@ -146,6 +146,7 @@ that the maintainer settled in section 15.5 name the item.
 | C31 | `to_plain` checks every reading with forward runs of the engine: a character goes back only where an enabled rule produces it                                                                                                                                                                         | inverse patterns per rule, a second copy that drifts from the forward rules                     | 12.1      |
 | C32 | A nested quote pair whose double-quote reading does not pair again (`«x „“.»`) reads as `'`, so P2 holds for it                                                                                                                                                                                       | double quotes at every level and a known loss of P2                                             | 12.1      |
 | C33 | A particle is bound (15.2, item 18) by the particle list and its place whichever rules are enabled, as quote roles are (section 6), so the short-word rules read a text alike in every set; in a run each particle is bound to the word before it (`что⍽же⍽бы ты`), so a particle never starts a line | binding only while `nbsp.particles` is enabled; no glue between two particles (`что⍽же бы ты`)  | 8.7       |
+| C34 | Item 18 of section 15.2 holds for every particle of the list, not only `ли` that it names: `Он⍽же пришёл`, `Я⍽б пошёл`, `Как⍽бы то⍽ни⍽было`                                                                                                                                                           | the decision for `ли` alone, the other particles chained as before (`Как⍽бы⍽то`)                | 7.2, 8.7  |
 
 ### 15.4 Stage plan
 

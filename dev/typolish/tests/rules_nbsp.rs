@@ -1723,7 +1723,8 @@ fn particles_inside_the_sets() {
         &[("сказал бы", "сказал⍽бы"), ("Знаешь ли", "Знаешь⍽ли")],
     );
     // Section 8.7: particles and short words. The two-letter `бы` belongs to `Как`, so
-    // `nbsp.short-length` does not glue it to what follows in Prose (section 15.2, item 18).
+    // `nbsp.short-length` does not glue it to what follows in Prose (section 15.2, item 18, read
+    // for every particle, section 15.3, C34).
     both_sets(ru(), &[("Как бы то ни было", "Как⍽бы то⍽ни⍽было")]);
     let t = set(ru(), RuleSet::INTERFACE.without(PARTICLES));
     check_in("ru", &t, ("сказал бы", "сказал бы"));
@@ -1751,7 +1752,8 @@ fn particles_bind_to_the_word_before() {
             ("«Знаешь ли» ты", "«Знаешь⍽ли» ты", "«Знаешь⍽ли» ты"),
             // A dash glues itself to the particle (`nbsp.dash`); that is no glue after it.
             ("Что ж - ладно", "Что⍽ж⍽— ладно", "Что⍽ж⍽— ладно"),
-            // Two particles: each belongs to the word before it, the run glues nothing after.
+            // Two particles: each belongs to the word before it, the run glues nothing after
+            // (section 15.3, C33).
             ("что же бы ты", "что⍽же⍽бы ты", "что⍽же⍽бы ты"),
             // No word before the particle: it is an ordinary short word.
             ("Ли ты знал", "Ли⍽ты⍽знал", "Ли ты знал"),

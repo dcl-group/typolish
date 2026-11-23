@@ -397,14 +397,16 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   `Ну что⍽ж. Ладно`. A particle in this place is **bound** to the word before it and glues nothing
   after itself: `nbsp.short-words` and `nbsp.short-length` do not take it as a trigger word, so
   there is no chain: `Знаешь ли ты` → `Знаешь⍽ли ты`, also with `ли` added to the short words
-  (section 15.2, item 18). Each particle of a run is bound to the word before it, the run to the
-  first word: `что⍽же⍽бы ты`. A dash after a bound particle is glued to it by `nbsp.dash` as to any
-  operand: `Что⍽ж⍽— ладно`. A particle with no word or slot one pattern space before it (at a line
-  start, after punctuation, a tab or an `Other` slot) is not bound and is an ordinary word: Prose
-  `Ли ты знал` → `Ли⍽ты⍽знал`. A particle is bound by the list of particles whichever rules are
-  enabled (section 15.3, C33): with `nbsp.short-length` alone `Знаешь ли ты` stays unchanged, and
-  after `remove_particles(["ли"])` Prose gives `Знаешь ли⍽ты`. A no-break space the author typed
-  after a particle stays (section 4.3, I3): `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`.
+  (section 15.2, item 18), and so for every particle of the list (section 15.3, C34). Each particle
+  of a run is bound to the word before it, the run to the first word: `что⍽же⍽бы ты` (section 15.3,
+  C33: `бы` is glued to the word before it, `же`, by the first half of item 18). A dash after a
+  bound particle is glued to it by `nbsp.dash` as to any operand: `Что⍽ж⍽— ладно`. A particle with
+  no word or slot one pattern space before it (at a line start, after punctuation, a tab or an
+  `Other` slot) is not bound and is an ordinary word: Prose `Ли ты знал` → `Ли⍽ты⍽знал`. A particle
+  is bound by the list of particles whichever rules are enabled (section 15.3, C33): with
+  `nbsp.short-length` alone `Знаешь ли ты` stays unchanged, and after `remove_particles(["ли"])`
+  Prose gives `Знаешь ли⍽ты`. A no-break space the author typed after a particle stays (section 4.3,
+  I3): `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`.
 - **`nbsp.dash`.** The space before a dash fragment that stands for a spaced dash (a produced or
   typed `—`, or a typed `–`, section 8.4) in the context of `dash.spaced-hyphen` (an operand or
   closing punctuation on the left, an operand, an opening quote or an opening bracket on the right,

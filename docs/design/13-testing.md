@@ -131,14 +131,14 @@ gives the output of the whole set.
   `the⍽90's` and `of⍽don't`, ru `и don't` → `и⍽don't` (a core of kind `Word` is a word whatever its
   number of tokens, section 8.2); ru `кто-то же` with `nbsp.particles` alone → `кто-то⍽же` (a
   compound word is a word, section 8.2); the particles of section 15.2, items 18 and 19, in both
-  sets: `Знаешь ли ты` → `Знаешь⍽ли ты`, `Что ж,` → `Что⍽ж,`, `что же бы ты` → `что⍽же⍽бы ты`,
-  `Что ж - ладно` → `Что⍽ж⍽— ладно`, an initial whose letter is a particle `Иван Б. Петров` →
-  `Иван Б.⍽Петров`, typed `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`, a particle after a `Word` slot
-  (`{x}⍽же ты`) and after an `Other` slot (`{x} же⍽ты`), and with `nbsp.short-length` alone
-  `Знаешь ли ты` → unchanged (section 15.3, C33); ru `21 Ноября` → `21⍽Ноября`; en
-  `chapter 5 may be` → unchanged; en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both sets); ru
-  `Привезли 5 т груза` → `Привезли 5⍽т груза`; en with `PercentSpacing::Attached`: `100⍽%` →
-  unchanged (only a single U+0020 is removed, section 8.7); ru `1990–2000 г. Затем`,
+  sets: `Знаешь ли ты` → `Знаешь⍽ли ты`, `Что ж,` → `Что⍽ж,`, `что же бы ты` → `что⍽же⍽бы ты`
+  (section 15.3, C33), `Что ж - ладно` → `Что⍽ж⍽— ладно`, an initial whose letter is a particle
+  `Иван Б. Петров` → `Иван Б.⍽Петров`, typed `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`, a particle after a
+  `Word` slot (`{x}⍽же ты`) and after an `Other` slot (Prose `{x} же⍽ты`, Interface unchanged), and
+  with `nbsp.short-length` alone `Знаешь ли ты` → unchanged (section 15.3, C33); ru `21 Ноября` →
+  `21⍽Ноября`; en `chapter 5 may be` → unchanged; en `on 5 May` → `on 5⍽May` (`on⍽5⍽May` in both
+  sets); ru `Привезли 5 т груза` → `Привезли 5⍽т груза`; en with `PercentSpacing::Attached`: `100⍽%`
+  → unchanged (only a single U+0020 is removed, section 8.7); ru `1990–2000 г. Затем`,
   `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or `ч.`, while `§§ 5-7 г. Москвы` →
   `г.⍽Москвы` (a label range); ru `21.11.2026 г.` → `21.11.2026⍽г.`; ru
   `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and `report().protected()` lists
