@@ -609,18 +609,20 @@ the same pairs `Error::InvalidSetting`; that `Language::from_data` with the tag 
 
 Every public item has rustdoc with an example (`missing_docs = "deny"`); examples are doctests and
 run with `cargo test`. "Public item" here is every public type, function, method and constant,
-associated constants included. Enum variants and struct fields have rustdoc (`missing_docs` checks
-it) and are shown by the example of their type; an example per variant would repeat the type's. The
-rustdoc lint `missing_doc_code_examples` is unstable and skips items re-exported from private
-modules, which is every item of this crate. Therefore `tests/documentation.rs` checks inside the
-gates, from the source text, that every `pub` item of `src/` has an example and that every example
-of `src/` is run (no `ignore`, `no_run` or other language); the stage 5 report cross-checks the
-count with the rustdoc JSON of a nightly toolchain, outside the gates. README and CHANGELOG are in
-English, and every text of the repository (README, CHANGELOG, the design and every Rust file of the
-crate) is in American English. The README states the known limits of section 10.8 and how to protect
-commands; its code blocks run as doctests through a `#[cfg(doctest)]` item of `lib.rs` that includes
-it. `tests/documentation.rs` also checks that every README block is a `rust` block, that the numbers
-the README states (rules, version, MSRV) are those of the code, that its links point at files of the
+associated constants included, and every variant of a public enum: the example of the type does not
+stand for its variants (decided by the maintainer, section 15.2, item 29). Struct fields have
+rustdoc (`missing_docs` checks it) and are shown by the example of their type. The rustdoc lint
+`missing_doc_code_examples` is unstable and skips items re-exported from private modules, which is
+every item of this crate. Therefore `tests/documentation.rs` checks inside the gates, from the
+source text, that every `pub` item of `src/` has an example (the variants of public enums are being
+given theirs, and the check covers them once they have) and that every example of `src/` is run (no
+`ignore`, `no_run` or other language); the stage 5 report cross-checks the count with the rustdoc
+JSON of a nightly toolchain, outside the gates. README and CHANGELOG are in English, and every text
+of the repository (README, CHANGELOG, the design and every Rust file of the crate) is in American
+English. The README states the known limits of section 10.8 and how to protect commands; its code
+blocks run as doctests through a `#[cfg(doctest)]` item of `lib.rs` that includes it.
+`tests/documentation.rs` also checks that every README block is a `rust` block, that the numbers the
+README states (rules, version, MSRV) are those of the code, that its links point at files of the
 repository, that its known limits are those of section 10.8 and are what the crate does, and that
 the CHANGELOG has the prepared `0.1.0` entry naming every rule. It reads the README through the
 crate's `README.md`, which the package holds; the checks that need the CHANGELOG, the design or the
