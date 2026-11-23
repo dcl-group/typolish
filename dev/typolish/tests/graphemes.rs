@@ -107,7 +107,9 @@ fn the_segmenter_agrees_with_the_fixture() {
         eprintln!("GraphemeBreakTest.txt is absent: skipped");
         return;
     };
-    for case in parse(&source) {
+    let cases = parse(&source);
+    assert!(cases.len() > 700);
+    for case in cases {
         let mut got: BTreeSet<usize> = case.text.grapheme_indices(true).map(|(i, _)| i).collect();
         got.insert(case.text.len());
         assert_eq!(
@@ -166,6 +168,7 @@ fn every_line_of_the_fixture_inside_sentence_frames() {
         return;
     };
     let cases = parse(&source);
+    assert!(cases.len() > 700);
     let ru = Typographer::new(Language::RU_RU, RuleSet::PROSE);
     let en = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
     for case in &cases {
@@ -194,6 +197,7 @@ fn every_line_of_the_fixture_as_a_part_of_ascii_text() {
         return;
     };
     let cases = parse(&source);
+    assert!(cases.len() > 700);
     let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
     for case in &cases {
         for (before, after) in [

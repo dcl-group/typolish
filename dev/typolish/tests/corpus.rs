@@ -117,9 +117,8 @@ fn the_snapshot_directory_has_no_stray_files() {
     let mut found: BTreeSet<String> = BTreeSet::new();
     let root = corpus_dir().join("expected");
     for lang in LANGS {
-        let Ok(entries) = fs::read_dir(root.join(lang)) else {
-            continue;
-        };
+        let dir = root.join(lang);
+        let entries = fs::read_dir(&dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display()));
         for entry in entries {
             let entry = entry.unwrap();
             found.insert(format!("{lang}/{}", entry.file_name().to_string_lossy()));
@@ -132,9 +131,12 @@ fn the_snapshot_directory_has_no_stray_files() {
     );
 }
 
-/// Writes every snapshot. Run by hand, never in a normal run.
+/// Writes every snapshot. Run by hand, never in a normal run, and alone:
+/// `cargo test --test corpus update_snapshots -- --ignored`; never with `--include-ignored`, where
+/// it would write the snapshots while `snapshots_match_byte_for_byte` reads them.
 #[test]
-#[ignore = "rewrites tests/corpus/expected/; run by hand after a deliberate change"]
+#[ignore = "rewrites tests/corpus/expected/; run alone by hand after a deliberate change: \
+            cargo test --test corpus update_snapshots -- --ignored; never with --include-ignored"]
 fn update_snapshots() {
     for (lang, file, set_name, output_name, output) in all_snapshots() {
         let path = snapshot_path(lang, file, set_name, output_name);
