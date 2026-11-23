@@ -239,7 +239,7 @@ fn markup_is_transparent_and_a_protected_piece_is_a_word() {
             Output::Unicode,
         );
         // Prose glues the two-letter `Он` to the word after it (`nbsp.short-length`).
-        let expected = if what.contains("Prose") {
+        let expected = if t.rules().contains(Rule::NbspShortLength) {
             "Он\u{a0}сказал «<b>да</b>»"
         } else {
             "Он сказал «<b>да</b>»"
@@ -469,7 +469,7 @@ fn row_prime_after_a_slot() {
             ],
             Output::Unicode,
         );
-        let expected = if what.contains("Prose") {
+        let expected = if t.rules().contains(Rule::NbspShortLength) {
             ["Он\u{a0}сказал «диагональ ", "»."]
         } else {
             ["Он сказал «диагональ ", "»."]
