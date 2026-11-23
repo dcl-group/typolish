@@ -139,8 +139,9 @@ agree and that every rule appears once.
   the merged fragment may not recur: the dash match that covered a removed space, and a no-break
   match triggered by a word that is now inside the `Joined` core (`nbsp.short-words` on `the` in
   `Moscow—the⍽capital`); their edits stay (I2, I3); where an inserted space split a fragment, the
-  rules that read the parts match them with empty edits. So on f(x) no rule matches with a non-empty
-  edit.
+  rules that read the parts match them with empty edits. A dash that `dash.double-hyphen` wrote is
+  matched on f(x) by `dash.spaced-hyphen` (section 8.4), and by no rule when that rule is off; no
+  edit is lost either way. So on f(x) no rule matches with a non-empty edit.
 - **I5. Quotes are all or nothing per window** (section 6.6).
 
 ### 4.4 Proof sketch

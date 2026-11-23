@@ -663,10 +663,14 @@ mod tests {
                 prop_assert!(!m.4, "I4: {:?} has an edit on {:?} (from {:?})", m, out, text);
             }
             let quotes = [Rule::QuotesApostrophe, Rule::QuotesPairs, Rule::QuotesPrimes];
+            // The dash that `dash.double-hyphen` writes is matched by `dash.spaced-hyphen`, never by
+            // itself (section 8.4): with `dash.spaced-hyphen` off, no rule matches it on f(x).
+            let spaced = set.contains(Rule::DashSpacedHyphen);
             for m in tx
                 .matches
                 .iter()
                 .filter(|m| !quotes.contains(&m.0))
+                .filter(|m| spaced || m.0 != Rule::DashDoubleHyphen)
                 .filter(|m| !touches(&sx, i64::from(m.1), i64::from(m.2)))
             {
                 let rule = if m.0 == Rule::DashDoubleHyphen { Rule::DashSpacedHyphen } else { m.0 };
