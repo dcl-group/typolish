@@ -546,7 +546,11 @@ swap between phases; a phase copies its input into the other vector only from it
 edits, so a phase that edits nothing copies nothing and its input stands as its output. Every rule
 declares the token kinds at which it can match (`ANCHORS` next to `RULES`: a space, a dash, a quote,
 a word and so on); the phase calls a rule only at a token of those kinds, which changes no result,
-since the rule returns no match elsewhere (a unit test calls the rules at the other kinds too).
+since the rule returns no match elsewhere (a unit test calls the rules at the other kinds too). A
+phase none of whose rules anchors at a kind of token present in the window is skipped (the symbol
+phase in a window without operators and legal marks, the quote phase in one without quotes): edits
+never change a kind and insert only spaces, so the kinds present are known before the first phase.
+The typographer computes the active rules of each phase and their kinds once, with its trigger set.
 Every token names its fragment (`frag`, and `CORE` for a token of the core); after a phase that
 inserted or removed a `Space` token, the token ranges of the fragments are moved to their tokens,
 while the fragments, their kinds and flags stay those of the pass.
@@ -618,9 +622,10 @@ piece. A span or a diagnostic that starts at a slot or a protected piece is repo
   O(log k) per fragment with k the longest list (hundreds); rendering O(n). Total O(n log k). There
   is no recursion and no backtracking. Abbreviations are sorted by their parts: `nbsp.abbreviations`
   tries only the entries whose first part starts with the text of the word at its anchor (or with
-  that text with its first letter folded), a range narrowed by one binary search per character;
-  check 0 compares a key with the abbreviation entries one by one, but only when the key's signature
-  is present among the abbreviations (section 3.6), and the list holds tens of entries.
+  that text with its first letter folded), a range narrowed by one binary search per character,
+  after a set of 64 bits of the folded first letters of the entries has let the word through; check
+  0 compares a key with the abbreviation entries one by one, but only when the key's signature is
+  present among the abbreviations (section 3.6), and the list holds tens of entries.
 - Protection delimiters: fenced blocks are found in one pass over the input, other delimiters in one
   pass per window. If the closing delimiter of a pair is not found from position p, it is not found
   further on either, so the search for that pair stops. A hundred thousand unclosed backticks are

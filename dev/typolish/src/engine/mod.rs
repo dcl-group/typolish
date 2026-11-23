@@ -19,12 +19,12 @@ use crate::rule::Phase;
 use crate::rules::Triggers;
 use crate::rules::quotes;
 use crate::{DiagnosticKind, Output, Rule, Severity, Slot, Typographer};
-use phase::{Cx, PhaseRules};
+use phase::Cx;
 use record::{Journal, Loc, NoRecord, Recorder, Sink};
 use scratch::Scratch;
 
 /// The phases in their order (design section 3.8).
-const PHASES: [Phase; 7] = [
+pub(crate) const PHASES: [Phase; 7] = [
     Phase::Symbols,
     Phase::Ellipsis,
     Phase::Dash,
@@ -113,8 +113,8 @@ fn run_on<R: Recorder>(
     );
     core::mem::swap(atoms, next_atoms);
 
-    let active = typographer.compiled().active;
-    let phases = PHASES.map(|phase| (phase, PhaseRules::of(phase, active)));
+    let compiled = typographer.compiled();
+    let active = compiled.active;
     let report_pairs = R::ACTIVE && active.contains(Rule::QuotesPairs);
     let data = typographer.language().data();
     let pairs = typographer.quote_pairs();
@@ -150,11 +150,13 @@ fn run_on<R: Recorder>(
             }
         }
         // The phases (design section 3.8): each one pass over a snapshot of the tokens, with the
-        // classification of the pass.
+        // classification of the pass. A phase none of whose rules can match at a kind of token
+        // of the window is skipped; edits keep the kinds of tokens and insert only spaces.
         removed.clear();
         let mut changed = false;
-        for (phase, rules) in &phases {
-            if rules.is_empty() {
+        let mut kinds = tokens.iter().fold(0, |set, t| set | t.kind.bit());
+        for (phase, rules) in PHASES.iter().zip(&compiled.phases) {
+            if rules.anchors() & kinds == 0 {
                 continue;
             }
             let frags = &mut classify.frags;
@@ -174,12 +176,13 @@ fn run_on<R: Recorder>(
                 quotes::analyze(&cx, quote_work, marks, &mut sink, report_pairs);
                 cx.quotes = marks;
             }
-            let outcome = phase::run_phase(&cx, rules.as_slice(), next, removed, &mut sink);
+            let outcome = phase::run_phase(&cx, rules, next, removed, &mut sink);
             if outcome.written {
                 core::mem::swap(tokens, next);
             }
             if outcome.moved {
                 phase::remap(tokens, frags);
+                kinds |= lex::Kind::Space.bit();
             }
             changed |= outcome.changed;
         }

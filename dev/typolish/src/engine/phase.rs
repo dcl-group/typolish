@@ -325,10 +325,12 @@ pub(crate) fn ellipsis_tail(data: &Table<'_>, form: EllipsisForm) -> &'static st
 }
 
 /// The active rules of one phase, in the order of design section 4.1.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct PhaseRules {
     len: usize,
     rules: [Rule; 10],
+    /// The kinds at which some of the rules can match (`ANCHORS`).
+    anchors: u32,
 }
 
 impl PhaseRules {
@@ -337,6 +339,7 @@ impl PhaseRules {
         let mut out = PhaseRules {
             len: 0,
             rules: [Rule::SymbolsCopyright; 10],
+            anchors: 0,
         };
         for (rule, p) in ORDER {
             if p == phase
@@ -345,17 +348,19 @@ impl PhaseRules {
             {
                 *slot = rule;
                 out.len += 1;
+                out.anchors |= ANCHORS.get(rule as usize).copied().unwrap_or(!0);
             }
         }
         out
     }
 
-    pub(crate) fn as_slice(&self) -> &[Rule] {
-        self.rules.get(..self.len).unwrap_or_default()
+    /// The kinds at which some rule of the phase can match, as bits of `Kind::bit`.
+    pub(crate) const fn anchors(&self) -> u32 {
+        self.anchors
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
-        self.len == 0
+    pub(crate) fn as_slice(&self) -> &[Rule] {
+        self.rules.get(..self.len).unwrap_or_default()
     }
 }
 
@@ -377,7 +382,7 @@ pub(crate) struct Outcome {
 /// source ranges of removed tokens go to `removed`.
 pub(crate) fn run_phase<R: Recorder>(
     cx: &Cx<'_>,
-    rules: &[Rule],
+    phase: &PhaseRules,
     out: &mut Vec<Tok>,
     removed: &mut Vec<(u32, u32)>,
     sink: &mut Sink<'_, R>,
@@ -385,10 +390,8 @@ pub(crate) fn run_phase<R: Recorder>(
     out.clear();
     let input = cx.toks;
     let mut outcome = Outcome::default();
-    // The kinds at which some rule of the phase can match (`ANCHORS`).
-    let anchors = rules.iter().fold(0, |set, &rule| {
-        set | ANCHORS.get(rule as usize).copied().unwrap_or(!0)
-    });
+    let rules = phase.as_slice();
+    let anchors = phase.anchors();
     let mut i = 0;
     while let Some(tok) = input.get(i) {
         let bit = tok.kind.bit();

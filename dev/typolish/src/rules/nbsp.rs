@@ -17,6 +17,7 @@ use super::{
 use crate::engine::lex::{Glue, Kind, NO_FRAG, is_alphabetic, script_bit};
 use crate::engine::phase::{Cx, Edit, Edits, Match};
 use crate::lang::data::{Bind, List, MonthPosition, Script, WordList, fold_char};
+use crate::typographer::letter_bit;
 use crate::{NarrowGlue, PercentSpacing, SlotKind};
 
 const SPACE: Triggers = Triggers::of(b" ");
@@ -491,6 +492,8 @@ pub(crate) fn abbreviations(cx: &Cx<'_>, i: usize) -> Option<Match> {
     // are read in the order of the list.
     let word = cx.visible(i, i);
     let ranges = match word.clone().next() {
+        // No entry starts with the letter or its folding.
+        Some(c) if cx.t.compiled().abbreviation_letters & letter_bit(c) == 0 => return None,
         Some(c) => {
             let exact = list.with_prefix(word.clone());
             let folded = fold_char(c);

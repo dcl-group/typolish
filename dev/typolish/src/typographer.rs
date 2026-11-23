@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::sync::OnceLock;
 
+use crate::engine::phase::PhaseRules;
 use crate::engine::{self, Input, scratch::Scratch};
 use crate::lang::data::{
     DashData, DashStyle, List, QUOTE_GLYPHS, QuotePairs, Signatures, WordList, fold_char,
@@ -248,6 +249,11 @@ impl fmt::Debug for Typographer {
     }
 }
 
+/// A bit of a set of 64 for the folding of `c`: a character and its folding share it.
+pub(crate) fn letter_bit(c: char) -> u64 {
+    1 << (u32::from(fold_char(c)) % 64)
+}
+
 /// What a typographer computes once from its language, rules and settings.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Compiled {
@@ -255,6 +261,10 @@ pub(crate) struct Compiled {
     pub(crate) active: RuleSet,
     /// The union of the trigger bytes of the active rules (design section 3.2).
     pub(crate) triggers: Triggers,
+    /// The active rules of each phase of `engine::PHASES`, in the order of design section 4.1.
+    pub(crate) phases: [PhaseRules; 7],
+    /// The folded first letters of the abbreviations of the language, as bits of `letter_bit`.
+    pub(crate) abbreviation_letters: u64,
     /// The signatures of the entries of check 0 of the classifier (design section 3.6), the
     /// short words and the particles, with the builder's additions.
     pub(crate) signatures: Signatures,
@@ -380,6 +390,12 @@ impl Typographer {
         Compiled {
             active,
             triggers,
+            phases: engine::PHASES.map(|phase| PhaseRules::of(phase, active)),
+            abbreviation_letters: data
+                .abbreviations
+                .iter()
+                .filter_map(|(parts, _)| parts.get(0)?.chars().next())
+                .fold(0, |set, c| set | letter_bit(c)),
             signatures,
         }
     }
