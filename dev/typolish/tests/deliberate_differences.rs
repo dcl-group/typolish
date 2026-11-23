@@ -315,7 +315,7 @@ fn every_reason_of_section_8_12_is_checked() {
     let missing: Vec<_> = all.difference(&checked).collect();
     assert!(
         missing.is_empty(),
-        "codes of section 8.12 without a check: {missing:?}"
+        "codes of design section 8.12 without a check: {missing:?}"
     );
     assert_eq!(checked, all);
 }
