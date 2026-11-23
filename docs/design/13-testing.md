@@ -172,8 +172,9 @@ gives the output of the whole set.
   grouping for `1234567890`), `min_grouping_digits(4)` (`123456` ungrouped, `1234567` grouped),
   `COMMON` (`1234567` ungrouped), `Number::fixed` ties, every output kind, and nowrap with and
   without glue (`123` in ru has no element); the builder rejects `group_separator(' ')`,
-  `group_separator('\u{2009}')`, `minus_sign(' ')` and `minus_sign('"')` with `InvalidSetting`;
-  `group_separator('\u{202F}')` builds, and nowrap output wraps `12⎵345` in one element.
+  `group_separator('\u{2009}')`, `group_separator('-')`, `minus_sign(' ')` and `minus_sign('"')`
+  with `InvalidSetting`; `group_separator('\u{202F}')` and `group_separator('’')` build, and nowrap
+  output wraps `12⎵345` in one element.
 - `tests/output.rs`: every output kind on a fixed set of inputs, including unpaired quotes,
   backslashes in protected spans, line breaks, U+2028, U+2029 and blank lines between paragraphs
   with quotes on both sides, in every output kind, `<script>`, `${`, characters above the BMP;

@@ -256,6 +256,16 @@ fn number_settings() {
             ..
         }
     ));
+    // Design section 7.6: a dash as the group separator would make `12-345` a range on a second
+    // pass; a quote character is followed by three digits and stays.
+    assert!(matches!(
+        build(base().group_separator('-')),
+        Error::InvalidSetting {
+            setting: "group_separator",
+            ..
+        }
+    ));
+    assert!(base().group_separator('\u{2019}').build().is_ok());
     // Design sections 2.11 and 7.6: the group separator differs from the decimal separator of
     // the language, or `1,234,567,25` could not be read.
     assert!(matches!(

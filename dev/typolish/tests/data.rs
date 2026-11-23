@@ -1292,11 +1292,19 @@ fn number_data_is_checked() {
     ] {
         accepted(with(NumberData::new().with_minus(good)));
     }
-    // The group separator is U+00A0, U+202F or not whitespace; not a letter or a digit.
-    for bad in ['a', '5', ' ', '\u{2009}', '\u{3000}', '\t'] {
+    // The group separator is U+00A0, U+202F or a visible character of its own: not a letter, a
+    // digit, whitespace, a dash or a character that hides between two digits (design section
+    // 7.6).
+    for bad in [
+        'a', '5', ' ', '\u{2009}', '\u{3000}', '\t', '-', '\u{2010}', '\u{2013}', '\u{2014}',
+        '\u{2212}', '\u{ff0d}', '\0', '\u{ad}', '\u{200b}', '\u{200d}', '\u{feff}', '\u{301}',
+        '\u{2065}',
+    ] {
         rejected(with(NumberData::new().with_group(bad)), "numbers");
     }
-    for good in ['\u{a0}', '\u{202f}', ',', '\'', '.', '_'] {
+    for good in [
+        '\u{a0}', '\u{202f}', ',', '\'', '.', '_', '\u{2019}', '\u{66c}',
+    ] {
         accepted(with(NumberData::new().with_decimal('!').with_group(good)));
     }
     // The range dash is `–` or `—`, the dashes a second pass and `to_plain` read back; the
@@ -1311,10 +1319,10 @@ fn number_data_is_checked() {
         rejected(with(NumberData::new().with_decimal(bad)), "numbers");
     }
     // Nor a character that hides it between two digits (`1\u{ad}5` shows as `15`): a control or
-    // format character (the whole category `Cf`), a joiner, a mark that joins a digit; nor a
-    // character with the Unicode `Dash` property, which would read as a range or a minus (`1–5`,
-    // `1－5`); nor a quote character, which the quote rules rewrite between two digits (`1'5` would
-    // become `1′5`).
+    // format character (the whole category `Cf` and the reserved default-ignorable code points),
+    // a joiner, a mark that joins a digit; nor a character with the Unicode `Dash` property, which
+    // would read as a range or a minus (`1–5`, `1－5`); nor a quote character, which the quote
+    // rules rewrite between two digits (`1'5` would become `1′5`).
     for bad in [
         '\0',
         '\u{ad}',
@@ -1328,6 +1336,14 @@ fn number_data_is_checked() {
         '\u{13430}',
         '\u{1343f}',
         '\u{e0041}',
+        '\u{e0001}',
+        '\u{e007f}',
+        '\u{e0000}',
+        '\u{e0080}',
+        '\u{e0fff}',
+        '\u{2065}',
+        '\u{fff0}',
+        '\u{fff8}',
         '\u{301}',
         '\u{fe0f}',
         '\u{600}',
@@ -1351,7 +1367,7 @@ fn number_data_is_checked() {
     ] {
         rejected(with(NumberData::new().with_decimal(bad)), "numbers");
     }
-    for good in [',', '.', '\u{66b}', '\u{b7}', '\u{2396}', '!'] {
+    for good in [',', '.', '\u{66b}', '\u{b7}', '\u{2396}', '!', '\u{fffc}'] {
         accepted(with(
             NumberData::new().with_decimal(good).with_group('\u{a0}'),
         ));

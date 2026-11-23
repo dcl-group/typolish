@@ -746,6 +746,8 @@ fn the_builder_rejects_separators_and_signs_that_break_the_text() {
     invalid(base().group_separator('\t'), "group_separator");
     invalid(base().group_separator('5'), "group_separator");
     invalid(base().group_separator('a'), "group_separator");
+    // A dash would make `12-345` the range `12–345` on a second pass (design section 7.6).
+    invalid(base().group_separator('-'), "group_separator");
     invalid(base().minus_sign(' '), "minus_sign");
     invalid(base().minus_sign('\u{a0}'), "minus_sign");
     invalid(base().minus_sign('"'), "minus_sign");
@@ -762,7 +764,8 @@ fn the_builder_rejects_separators_and_signs_that_break_the_text() {
 fn the_builder_accepts_the_glue_characters_and_the_whole_scale() {
     // `,` is the decimal separator of ru-RU and no group separator there (design sections 2.11
     // and 7.6, `decimal != group`); en-US takes it.
-    for separator in ['\u{a0}', '\u{202f}', '.', '_'] {
+    // A quote character is followed by three digits and is not read as a prime (`’` of de-CH).
+    for separator in ['\u{a0}', '\u{202f}', '.', '_', '\u{2019}'] {
         assert!(
             base().group_separator(separator).build().is_ok(),
             "{separator:?}"

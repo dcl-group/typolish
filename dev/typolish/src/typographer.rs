@@ -1402,8 +1402,9 @@ impl TypographerBuilder {
     }
 
     /// Sets the group separator of `format_number` and `format_range`. `build()` rejects a digit,
-    /// a letter, whitespace other than U+00A0 and U+202F, and the decimal separator of the
-    /// language (design sections 2.11 and 7.6).
+    /// a letter, whitespace other than U+00A0 and U+202F, a character with the Unicode `Dash`
+    /// property, a character that does not show on its own between two digits, and the decimal
+    /// separator of the language (design sections 2.11 and 7.6).
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
@@ -1523,7 +1524,7 @@ impl TypographerBuilder {
             return Err(invalid(
                 "group_separator",
                 format!(
-                    "{:?} is a digit, a letter or whitespace other than U+00A0 and U+202F",
+                    "{:?} is not U+00A0, U+202F or a visible character of its own (a digit, a letter, whitespace or a dash)",
                     c
                 ),
             ));

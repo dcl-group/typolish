@@ -338,17 +338,21 @@ cannot reach a user.
   must be listed in `ambiguous_units`.
 - `decimal != group` (a group separator set on the typographer's builder is held to it too, section
   2.11); `min_grouping_digits <= 4`; `minus`, `group` and `decimal` are not letters or digits;
-  `decimal` is not whitespace, not a control or format character (the whole general category `Cf`),
-  not a joiner and not a mark that joins a digit next to it (each would hide it: `1\u{AD}5` shows as
-  `15`), not a character with the Unicode `Dash` property (`-`, U+2010 to U+2015, U+2212 and
-  look-alikes such as U+FE63 and U+FF0D), which would read as a range or a minus (`1–5`, `1－5`),
-  and not a quote character of the lexer (section 3.5), which the quote rules rewrite between two
-  digits (the second `'` of `1'5–2'5` would become a prime); `group` is U+00A0, U+202F or not
-  whitespace; `minus` is `-` or a dash (U+2010 to U+2015, U+2212), the signs that check 15 of
-  section 3.6 reads as the sign of a number; `range_dash` is `–` U+2013 or `—` U+2014, the dashes
-  that a second pass and `to_plain` read back (sections 3.6 and 12.1); signs are characters of the
-  lexer's `Punct` class (section 3.5), so no letter, digit or whitespace; each ellipsis form is
-  non-empty and consists of `?`, `!`, `.` and `…` only.
+  `decimal` is not whitespace, not a control or format character (the whole general category `Cf`,
+  and the code points Unicode 15.1 reserves as default ignorable without assigning them: U+2065,
+  U+FFF0 to U+FFF8 and the unassigned code points of U+E0000 to U+E0FFF), not a joiner and not a
+  mark that joins a digit next to it (each would hide it: `1\u{AD}5` shows as `15`), not a character
+  with the Unicode `Dash` property (`-`, U+2010 to U+2015, U+2212 and look-alikes such as U+FE63 and
+  U+FF0D), which would read as a range or a minus (`1–5`, `1－5`), and not a quote character of the
+  lexer (section 3.5), which the quote rules rewrite between two digits (the second `'` of `1'5–2'5`
+  would become a prime); `group` is U+00A0, U+202F or a character that passes the checks of
+  `decimal` other than the quote check (a quote character such as `’` of de-CH has three digits
+  after it and is not read as a prime): a dash would turn `12-345` from `format_number` into the
+  range `12–345` on a second pass; `minus` is `-` or a dash (U+2010 to U+2015, U+2212), the signs
+  that check 15 of section 3.6 reads as the sign of a number; `range_dash` is `–` U+2013 or `—`
+  U+2014, the dashes that a second pass and `to_plain` read back (sections 3.6 and 12.1); signs are
+  characters of the lexer's `Punct` class (section 3.5), so no letter, digit or whitespace; each
+  ellipsis form is non-empty and consists of `?`, `!`, `.` and `…` only.
 
 ### 7.7 Adding a language
 

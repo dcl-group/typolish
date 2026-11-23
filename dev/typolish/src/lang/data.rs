@@ -470,7 +470,9 @@ impl NumberData {
         self
     }
 
-    /// Sets the group separator.
+    /// Sets the group separator: U+00A0, U+202F or a visible character of its own that is not a
+    /// letter, a digit, whitespace or a character with the Unicode `Dash` property (design section
+    /// 7.6).
     ///
     /// ```
     /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
@@ -1846,7 +1848,7 @@ impl Table<'_> {
         }
         if !is_valid_group(n.group) {
             return Err(
-                "numbers: the group separator must not be a letter, a digit or whitespace other than U+00A0 and U+202F",
+                "numbers: the group separator must be U+00A0, U+202F or a visible character of its own, not a letter, a digit, whitespace or a dash",
             );
         }
         if !is_valid_minus(n.minus) {
@@ -2132,18 +2134,9 @@ fn is_lowercase(word: &str) -> bool {
     word.chars().all(|c| fold_char(c) == c)
 }
 
-/// A group separator of design section 7.6.
-pub(crate) fn is_valid_group(c: char) -> bool {
-    !c.is_alphanumeric() && (!c.is_whitespace() || c == '\u{a0}' || c == '\u{202f}')
-}
-
-/// A decimal separator of design section 7.6: a visible character of its own that is not a letter,
-/// a digit, whitespace, a quote character, or a character with the Unicode `Dash` property. A
-/// control or format character, or a mark that joins a digit next to it, would hide the separator
-/// (`1\u{ad}5` shows as `15`); a dash would read as a range or a minus (`1–5` is also the range from
-/// 1 to 5); a quote character between two digits is rewritten by the quote rules (`1'5` becomes the
-/// prime of `1′5`), so the number would not keep its meaning.
-pub(crate) fn is_valid_decimal(c: char) -> bool {
+/// A separator that shows on its own between two digits and reads neither as a range nor as a
+/// minus (design section 7.6).
+fn is_visible_separator(c: char) -> bool {
     use unicode_segmentation::UnicodeSegmentation;
     // Between two digits the separator is a cluster of its own.
     let alone = ['0', c, '0']
@@ -2157,14 +2150,31 @@ pub(crate) fn is_valid_decimal(c: char) -> bool {
         && !c.is_whitespace()
         && !c.is_control()
         && !is_format_category(c)
+        && !is_reserved_default_ignorable(c)
         && !crate::engine::lex::is_joiner(c)
-        && !crate::engine::lex::is_quote_char(c)
         && !is_dash_property(c)
 }
 
+/// A group separator of design section 7.6: U+00A0, U+202F, or a visible separator; a quote
+/// character is allowed (`’` in de-CH), since the three digits after it keep it from being read
+/// as a prime.
+pub(crate) fn is_valid_group(c: char) -> bool {
+    matches!(c, '\u{a0}' | '\u{202f}') || is_visible_separator(c)
+}
+
+/// A decimal separator of design section 7.6: a visible character of its own that is not a letter,
+/// a digit, whitespace, a quote character, or a character with the Unicode `Dash` property. A
+/// control or format character, or a mark that joins a digit next to it, would hide the separator
+/// (`1\u{ad}5` shows as `15`); a dash would read as a range or a minus (`1–5` is also the range from
+/// 1 to 5); a quote character between two digits is rewritten by the quote rules (`1'5` becomes the
+/// prime of `1′5`), so the number would not keep its meaning.
+pub(crate) fn is_valid_decimal(c: char) -> bool {
+    is_visible_separator(c) && !crate::engine::lex::is_quote_char(c)
+}
+
 /// Whether `c` is of general category `Cf` (format), all of them invisible, by the Unicode 15.1
-/// tables; the tag block is taken whole (U+E0000 to U+E0FFF).
-const fn is_format_category(c: char) -> bool {
+/// tables.
+pub(crate) const fn is_format_category(c: char) -> bool {
     matches!(
         c,
         '\u{ad}'
@@ -2186,7 +2196,22 @@ const fn is_format_category(c: char) -> bool {
             | '\u{13430}'..='\u{1343f}'
             | '\u{1bca0}'..='\u{1bca3}'
             | '\u{1d173}'..='\u{1d17a}'
-            | '\u{e0000}'..='\u{e0fff}'
+            | '\u{e0001}'
+            | '\u{e0020}'..='\u{e007f}'
+    )
+}
+
+/// Whether `c` is a code point that Unicode 15.1 reserves as default ignorable without assigning
+/// it (`DerivedCoreProperties.txt`): a later version may assign it as an invisible character.
+pub(crate) const fn is_reserved_default_ignorable(c: char) -> bool {
+    matches!(
+        c,
+        '\u{2065}'
+            | '\u{fff0}'..='\u{fff8}'
+            | '\u{e0000}'
+            | '\u{e0002}'..='\u{e001f}'
+            | '\u{e0080}'..='\u{e00ff}'
+            | '\u{e01f0}'..='\u{e0fff}'
     )
 }
 
