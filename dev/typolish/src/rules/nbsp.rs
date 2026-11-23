@@ -228,6 +228,16 @@ fn letters(cx: &Cx<'_>, f: &Frag) -> (u8, usize) {
         .fold((0, 0), |(mask, n), c| (mask | script_bit(c), n + 1))
 }
 
+/// `letters` over at most the first `most` letters of the core.
+fn letters_up_to(cx: &Cx<'_>, f: &Frag, most: usize) -> (u8, usize) {
+    cx.core(f)
+        .filter(|&j| matches!(cx.kind(j), Some(Kind::Word(_))))
+        .flat_map(|j| cx.visible(j, j))
+        .filter(|&c| is_alphabetic(c))
+        .take(most)
+        .fold((0, 0), |(mask, n), c| (mask | script_bit(c), n + 1))
+}
+
 /// Whether a word is in the language's script; a word of two scripts is a word of each (section
 /// 8.2).
 fn in_script(cx: &Cx<'_>, f: &Frag) -> bool {
@@ -1065,9 +1075,11 @@ pub(crate) fn short_length(cx: &Cx<'_>, s: usize) -> Option<Match> {
     if !is_word(cx, f) {
         return None;
     }
-    let (scripts, n) = letters(cx, f);
+    // A longer word fails whatever its letters: they are read only up to one past the length.
+    let length = usize::from(cx.t.short_word_length());
+    let (scripts, n) = letters_up_to(cx, f, length + 1);
     let found = n >= 1
-        && n <= usize::from(cx.t.short_word_length())
+        && n <= length
         && (cx.t.short_words_any_script() || scripts & language_bit(cx) != 0)
         && glueable(cx, r, true);
     found.then(|| glue_one(cx, s, Glue::NoBreak)).flatten()

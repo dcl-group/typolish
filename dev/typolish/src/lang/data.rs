@@ -793,26 +793,46 @@ impl<'a> Abbreviations<'a> {
     /// entries are sorted by their parts (design section 7.6), so they form one range, narrowed by
     /// one binary search per character; reading stops when the range is empty.
     pub(crate) fn with_prefix(self, prefix: impl Iterator<Item = char>) -> core::ops::Range<usize> {
-        let (mut lo, mut hi) = (0, self.len());
-        // Every entry in `lo..hi` has a first part that starts with the first `bytes` bytes of
-        // `prefix`.
-        let mut bytes = 0;
-        for c in prefix {
-            let next = |i: usize| {
-                self.get(i)
-                    .and_then(|(parts, _)| parts.get(0))
-                    .and_then(|part| part.get(bytes..))
-                    .and_then(|rest| rest.chars().next())
-            };
-            lo = partition(lo, hi, |i| next(i) < Some(c));
-            hi = partition(lo, hi, |i| next(i) <= Some(c));
-            if lo >= hi {
-                return lo..lo;
-            }
-            bytes += c.len_utf8();
+        match self {
+            Abbreviations::Static(list) => prefix_range(
+                list.len(),
+                |i| list.get(i).and_then(|a| a.parts.first().copied()),
+                prefix,
+            ),
+            Abbreviations::Owned(list) => prefix_range(
+                list.len(),
+                |i| list.get(i).and_then(|a| a.parts.first()).map(|p| &**p),
+                prefix,
+            ),
         }
-        lo..hi
     }
+}
+
+/// The indices among `len` entries sorted by their first part (`first`) whose first part starts
+/// with the characters of `prefix`, as `Abbreviations::with_prefix` describes.
+fn prefix_range<'l>(
+    len: usize,
+    first: impl Fn(usize) -> Option<&'l str>,
+    prefix: impl Iterator<Item = char>,
+) -> core::ops::Range<usize> {
+    let (mut lo, mut hi) = (0, len);
+    // Every entry in `lo..hi` has a first part that starts with the first `bytes` bytes of
+    // `prefix`.
+    let mut bytes = 0;
+    for c in prefix {
+        let next = |i: usize| {
+            first(i)
+                .and_then(|part| part.get(bytes..))
+                .and_then(|rest| rest.chars().next())
+        };
+        lo = partition(lo, hi, |i| next(i) < Some(c));
+        hi = partition(lo, hi, |i| next(i) <= Some(c));
+        if lo >= hi {
+            return lo..lo;
+        }
+        bytes += c.len_utf8();
+    }
+    lo..hi
 }
 
 impl PartialEq for Abbreviations<'_> {
@@ -1210,6 +1230,25 @@ impl Shape {
         shape
     }
 
+    /// The shape of the characters `chars`, unless there are more than `most` of them: the
+    /// characters after those are not read.
+    pub(crate) fn of_at_most(mut chars: impl Iterator<Item = char>, most: u64) -> Option<Shape> {
+        let first = chars.next();
+        let mut shape = Shape {
+            len: u64::from(first.is_some()),
+            first,
+            last: first,
+        };
+        for c in chars {
+            if shape.len >= most {
+                return None;
+            }
+            shape.last = Some(c);
+            shape.len += 1;
+        }
+        (shape.len <= most).then_some(shape)
+    }
+
     /// The shape of the key with `c` appended.
     pub(crate) fn then(self, c: char) -> Shape {
         Shape {
@@ -1237,11 +1276,23 @@ impl Shape {
 /// lookups can be skipped. A present signature proves nothing. Computed once per typographer,
 /// with the active rules, without allocation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Signatures([u64; 64]);
+pub(crate) struct Signatures {
+    bits: [u64; 64],
+    /// The length in characters of the longest entry of each list: a longer key is no entry.
+    longest: [u64; 7],
+}
 
 impl Signatures {
     /// No signature.
-    pub(crate) const NONE: Signatures = Signatures([0; 64]);
+    pub(crate) const NONE: Signatures = Signatures {
+        bits: [0; 64],
+        longest: [0; 7],
+    };
+
+    /// The length in characters of the longest entry of `list`.
+    pub(crate) fn longest(&self, list: WordList) -> u64 {
+        self.longest.get(list as usize).copied().unwrap_or(u64::MAX)
+    }
 
     /// The two bits of the signature of a key of this shape in `list`.
     fn bits(list: WordList, shape: Shape) -> [usize; 2] {
@@ -1260,8 +1311,12 @@ impl Signatures {
 
     /// Adds the signature of an entry of `list`.
     pub(crate) fn add(&mut self, list: WordList, chars: impl Iterator<Item = char>) {
-        for bit in Signatures::bits(list, Shape::of(chars)) {
-            if let Some(word) = self.0.get_mut(bit / 64) {
+        let shape = Shape::of(chars);
+        if let Some(longest) = self.longest.get_mut(list as usize) {
+            *longest = (*longest).max(shape.len);
+        }
+        for bit in Signatures::bits(list, shape) {
+            if let Some(word) = self.bits.get_mut(bit / 64) {
                 *word |= 1 << (bit % 64);
             }
         }
@@ -1269,16 +1324,18 @@ impl Signatures {
 
     /// Whether some entry of `list` may have the characters `chars`; `false` means that none has.
     pub(crate) fn may_hold(&self, list: WordList, chars: impl Iterator<Item = char>) -> bool {
-        self.may_hold_shape(list, Shape::of(chars))
+        Shape::of_at_most(chars, self.longest(list))
+            .is_some_and(|shape| self.may_hold_shape(list, shape))
     }
 
     /// `may_hold` for a key of this shape.
     pub(crate) fn may_hold_shape(&self, list: WordList, shape: Shape) -> bool {
-        Signatures::bits(list, shape).iter().all(|&bit| {
-            self.0
-                .get(bit / 64)
-                .is_some_and(|word| word & (1 << (bit % 64)) != 0)
-        })
+        shape.len <= self.longest(list)
+            && Signatures::bits(list, shape).iter().all(|&bit| {
+                self.bits
+                    .get(bit / 64)
+                    .is_some_and(|word| word & (1 << (bit % 64)) != 0)
+            })
     }
 
     /// Adds an entry of a list of check 0, to its list and to `Dictionary`.

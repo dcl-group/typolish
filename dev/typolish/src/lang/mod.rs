@@ -105,6 +105,10 @@ mod tests {
         set.add_table(&ru_ru::RU_RU.table());
         assert!(!set.may_hold(WordList::Dictionary, "изменения".chars()));
         assert!(!set.may_hold(WordList::ShortWords, "Сохранить".chars()));
+        // A key longer than every entry of a list is not in it.
+        assert_eq!(set.longest(WordList::ShortWords), 4);
+        assert!(set.may_hold(WordList::ShortWords, "если".chars()));
+        assert!(!set.may_hold(WordList::ShortWords, "еслии".chars()));
         // Units keep their case: `в` is a short word, `В` (volt) a unit.
         assert!(set.may_hold(WordList::Units, "В".chars()));
         assert!(!set.may_hold(WordList::Units, "в".chars()));
@@ -121,6 +125,18 @@ mod tests {
                 Shape::of(key.chars()).after('\''),
                 Shape::of(elided.chars())
             );
+            let len = key.chars().count() as u64;
+            assert_eq!(
+                Shape::of_at_most(key.chars(), len),
+                Some(Shape::of(key.chars()))
+            );
+            assert_eq!(
+                Shape::of_at_most(key.chars(), len + 1),
+                Some(Shape::of(key.chars()))
+            );
+            if len > 0 {
+                assert_eq!(Shape::of_at_most(key.chars(), len - 1), None);
+            }
         }
     }
 

@@ -514,7 +514,11 @@ fn dictionary(
     // built only for the lookups.
     let chars = visible(text, first.src.start, last.src.end);
     let signatures = &t.compiled().signatures;
-    let shape = Shape::of(chars.clone());
+    // A key longer than every entry, with or without its stop or apostrophe, is none.
+    let Some(shape) = Shape::of_at_most(chars.clone(), signatures.longest(WordList::Dictionary))
+    else {
+        return false;
+    };
     let held = |stop: bool| {
         let key = if stop { shape.then('.') } else { shape };
         signatures.may_hold_shape(WordList::Dictionary, key)
