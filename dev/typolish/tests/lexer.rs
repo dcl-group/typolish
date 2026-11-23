@@ -114,19 +114,19 @@ fn a_space_with_a_mark_is_a_frozen_space_that_still_separates() {
 #[test]
 fn spaces_with_marks_come_out_unchanged() {
     for (name, t) in sweep() {
-        for input in [
-            "в \u{301}доме",
-            "Он \u{200d}сказал",
-            "5 \u{301}МБ",
-            "т. \u{301}е.",
-            "Слово - \u{301}слово",
-            "а \u{200d}б",
-            "№ \u{301}5",
+        for (input, mark) in [
+            ("в \u{301}доме", '\u{301}'),
+            ("Он \u{200d}сказал", '\u{200d}'),
+            ("5 \u{301}МБ", '\u{301}'),
+            ("т. \u{301}е.", '\u{301}'),
+            ("Слово - \u{301}слово", '\u{301}'),
+            ("а \u{200d}б", '\u{200d}'),
+            ("№ \u{301}5", '\u{301}'),
         ] {
             let got = t.typeset(input, Output::Unicode);
             // The mark and the space stay; a rule may glue other spaces, not this one.
             assert!(
-                got.contains(" \u{301}") || got.contains(" \u{200d}"),
+                got.contains(&format!(" {mark}")),
                 "{name}: {} came back as {}",
                 show(input),
                 show(&got)
