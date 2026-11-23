@@ -1071,6 +1071,22 @@ fn a_group_is_split_at_markup_with_a_diagnostic() {
         .collect();
     assert_eq!(fallback.len(), 1, "{:?}", report.diagnostics());
     assert_eq!(fallback[0].severity(), Severity::Info);
+    // At the `Markup` piece, with its whole range (section 11.5).
+    assert_eq!((fallback[0].piece(), fallback[0].range()), (1, 0..3));
+    // A group with its joint on the left of the markup only is split there too.
+    let pieces_left = [
+        Piece::Text("а\u{a0}б"),
+        Piece::Markup("<i>"),
+        Piece::Text("в"),
+    ];
+    let report = t.report_template::<()>(pieces_left, nowrap());
+    let fallback: Vec<_> = report
+        .diagnostics()
+        .iter()
+        .filter(|d| d.kind() == &DiagnosticKind::NowrapFallback)
+        .map(|d| (d.piece(), d.range()))
+        .collect();
+    assert_eq!(fallback, [(1, 0..3)], "{:?}", report.diagnostics());
     // No fallback where nothing is split, and none in the other kinds.
     let report = t.report_template::<()>(pieces(), NAMED);
     assert!(
