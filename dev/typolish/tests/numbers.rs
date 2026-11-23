@@ -761,12 +761,20 @@ fn the_builder_rejects_separators_and_signs_that_break_the_text() {
 
 #[test]
 fn the_builder_accepts_the_glue_characters_and_the_whole_scale() {
-    for separator in ['\u{a0}', '\u{202f}', ',', '.', '_'] {
+    // `,` is the decimal separator of ru-RU and no group separator there (design sections 2.11
+    // and 7.6, `decimal != group`); en-US takes it.
+    for separator in ['\u{a0}', '\u{202f}', '.', '_'] {
         assert!(
             base().group_separator(separator).build().is_ok(),
             "{separator:?}"
         );
     }
+    assert!(
+        Typographer::builder(Language::EN_US, RuleSet::PROSE)
+            .group_separator(',')
+            .build()
+            .is_ok()
+    );
     for digits in 0..=4 {
         assert!(
             base().min_grouping_digits(digits).build().is_ok(),

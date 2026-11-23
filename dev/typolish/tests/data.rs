@@ -1304,6 +1304,34 @@ fn number_data_is_checked() {
     for bad in ['a', '7', ' '] {
         rejected(with(NumberData::new().with_decimal(bad)), "numbers");
     }
+    // Nor a character that hides it between two digits (`1\u{ad}5` shows as `15`): a control or
+    // format character, a joiner, a mark that joins a digit; nor `-` or a dash, which would read as
+    // a range or a minus (`1–5`).
+    for bad in [
+        '\0',
+        '\u{ad}',
+        '\u{200b}',
+        '\u{200d}',
+        '\u{2068}',
+        '\u{feff}',
+        '\u{61c}',
+        '\u{e0041}',
+        '\u{301}',
+        '\u{fe0f}',
+        '\u{600}',
+        '-',
+        '\u{2010}',
+        '\u{2013}',
+        '\u{2014}',
+        '\u{2212}',
+    ] {
+        rejected(with(NumberData::new().with_decimal(bad)), "numbers");
+    }
+    for good in [',', '.', '\u{66b}', '\u{b7}', '\'', '!'] {
+        accepted(with(
+            NumberData::new().with_decimal(good).with_group('\u{a0}'),
+        ));
+    }
 }
 
 #[test]

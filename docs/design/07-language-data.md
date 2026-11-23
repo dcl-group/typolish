@@ -336,13 +336,16 @@ cannot reach a user.
   7.1). Units do not start with an ASCII digit (0-9); ambiguous units are also in `units`.
 - A unit equal to a short word or a particle (compared with case: `с` must be listed, `В` need not)
   must be listed in `ambiguous_units`.
-- `decimal != group`; `min_grouping_digits <= 4`; `minus`, `group` and `decimal` are not letters or
-  digits; `decimal` is not whitespace; `group` is U+00A0, U+202F or not whitespace; `minus` is `-`
-  or a dash (U+2010 to U+2015, U+2212), the signs that check 15 of section 3.6 reads as the sign of
-  a number; `range_dash` is `–` U+2013 or `—` U+2014, the dashes that a second pass and `to_plain`
-  read back (sections 3.6 and 12.1); signs are characters of the lexer's `Punct` class (section
-  3.5), so no letter, digit or whitespace; each ellipsis form is non-empty and consists of `?`, `!`,
-  `.` and `…` only.
+- `decimal != group` (a group separator set on the typographer's builder is held to it too, section
+  2.11); `min_grouping_digits <= 4`; `minus`, `group` and `decimal` are not letters or digits;
+  `decimal` is not whitespace, not a control or format character, not a joiner and not a mark that
+  joins a digit next to it (each would hide it: `1\u{AD}5` shows as `15`), and not `-` or a dash
+  (U+2010 to U+2015, U+2212), which would read as a range or a minus (`1–5`); `group` is U+00A0,
+  U+202F or not whitespace; `minus` is `-` or a dash (U+2010 to U+2015, U+2212), the signs that
+  check 15 of section 3.6 reads as the sign of a number; `range_dash` is `–` U+2013 or `—` U+2014,
+  the dashes that a second pass and `to_plain` read back (sections 3.6 and 12.1); signs are
+  characters of the lexer's `Punct` class (section 3.5), so no letter, digit or whitespace; each
+  ellipsis form is non-empty and consists of `?`, `!`, `.` and `…` only.
 
 ### 7.7 Adding a language
 

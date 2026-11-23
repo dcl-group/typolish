@@ -279,6 +279,20 @@ fn build_validates_like_from_data() {
             .build(),
         "decimal == group",
     );
+    // Design section 7.6: a decimal separator that would hide the number or read as a range.
+    for (decimal, what) in [
+        ('\u{ad}', "decimal that is a soft hyphen"),
+        ('\u{2013}', "decimal equal to the range dash"),
+        ('-', "decimal that is a hyphen-minus"),
+        ('\u{2212}', "decimal equal to the minus"),
+    ] {
+        invalid(
+            LanguageBuilder::from_language(&Language::RU_RU, "xx")
+                .numbers(NumberData::new().with_decimal(decimal))
+                .build(),
+            what,
+        );
+    }
     invalid(
         LanguageBuilder::new("xx").signs(['a']).build(),
         "sign that is a letter",

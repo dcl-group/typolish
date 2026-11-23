@@ -1324,7 +1324,9 @@ impl TypographerBuilder {
         self
     }
 
-    /// Sets the group separator of `format_number` and `format_range`.
+    /// Sets the group separator of `format_number` and `format_range`. `build()` rejects a digit,
+    /// a letter, whitespace other than U+00A0 and U+202F, and the decimal separator of the
+    /// language (design sections 2.11 and 7.6).
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
@@ -1447,6 +1449,13 @@ impl TypographerBuilder {
                     "{:?} is a digit, a letter or whitespace other than U+00A0 and U+202F",
                     c
                 ),
+            ));
+        }
+        let decimal = language.data().numbers.decimal;
+        if let Some(c) = settings.group_separator.filter(|c| *c == decimal) {
+            return Err(invalid(
+                "group_separator",
+                format!("{c:?} is the decimal separator of the language"),
             ));
         }
         if let Some(c) = settings.minus_sign.filter(|c| !is_valid_minus(*c)) {

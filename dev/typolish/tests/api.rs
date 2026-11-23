@@ -256,6 +256,28 @@ fn number_settings() {
             ..
         }
     ));
+    // Design sections 2.11 and 7.6: the group separator differs from the decimal separator of
+    // the language, or `1,234,567,25` could not be read.
+    assert!(matches!(
+        build(base().group_separator(',')),
+        Error::InvalidSetting {
+            setting: "group_separator",
+            ..
+        }
+    ));
+    assert!(matches!(
+        build(Typographer::builder(Language::EN_US, RuleSet::PROSE).group_separator('.')),
+        Error::InvalidSetting {
+            setting: "group_separator",
+            ..
+        }
+    ));
+    assert!(
+        Typographer::builder(Language::EN_US, RuleSet::PROSE)
+            .group_separator(',')
+            .build()
+            .is_ok()
+    );
     assert!(matches!(
         build(base().minus_sign('\'')),
         Error::InvalidSetting {

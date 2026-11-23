@@ -308,7 +308,8 @@ impl NumberData {
         }
     }
 
-    /// Sets the decimal separator: not a letter, a digit or whitespace (design section 7.6).
+    /// Sets the decimal separator: a visible character of its own that is not a letter, a digit,
+    /// whitespace, `-` or a dash (design section 7.6).
     ///
     /// ```
     /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
@@ -1711,9 +1712,9 @@ impl Table<'_> {
         if !matches!(n.range_dash, '\u{2013}' | '\u{2014}') {
             return Err("numbers: the range dash must be U+2013 or U+2014");
         }
-        if n.decimal.is_alphanumeric() || n.decimal.is_whitespace() {
+        if !is_valid_decimal(n.decimal) {
             return Err(
-                "numbers: the decimal separator must not be a letter, a digit or whitespace",
+                "numbers: the decimal separator must be a visible character of its own, not a letter, a digit, whitespace, `-` or a dash",
             );
         }
         let e = &self.ellipsis;
@@ -1991,6 +1992,40 @@ fn is_lowercase(word: &str) -> bool {
 /// A group separator of design section 7.6.
 pub(crate) fn is_valid_group(c: char) -> bool {
     !c.is_alphanumeric() && (!c.is_whitespace() || c == '\u{a0}' || c == '\u{202f}')
+}
+
+/// A decimal separator of design section 7.6: a visible character of its own that is not a letter,
+/// a digit, whitespace, `-` or a dash. A control or format character, or a mark that joins a digit
+/// next to it, would hide the separator (`1\u{ad}5` shows as `15`); `-` or a dash would read as a
+/// range or a minus (`1–5` is also the range from 1 to 5), so the number would not keep its meaning.
+pub(crate) fn is_valid_decimal(c: char) -> bool {
+    use unicode_segmentation::UnicodeSegmentation;
+    // Between two digits the separator is a cluster of its own.
+    let alone = ['0', c, '0']
+        .iter()
+        .collect::<String>()
+        .graphemes(true)
+        .count()
+        == 3;
+    // The format characters (`Cf`) that the lexer does not list, all invisible.
+    let format = matches!(
+        c,
+        '\u{61c}'
+            | '\u{180e}'
+            | '\u{fff9}'..='\u{fffb}'
+            | '\u{1bca0}'..='\u{1bca3}'
+            | '\u{1d173}'..='\u{1d17a}'
+            | '\u{e0000}'..='\u{e0fff}'
+    );
+    alone
+        && !format
+        && !c.is_alphanumeric()
+        && !c.is_whitespace()
+        && !c.is_control()
+        && !crate::engine::lex::is_format_char(c)
+        && !crate::engine::lex::is_joiner(c)
+        && c != '-'
+        && !crate::engine::lex::is_dash_char(c)
 }
 
 /// A minus sign of design section 7.6: `-` or a dash character of the lexer (U+2010 to U+2015,

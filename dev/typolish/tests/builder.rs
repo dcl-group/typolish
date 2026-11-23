@@ -407,9 +407,15 @@ fn units_may_not_start_with_a_digit_but_may_contain_one() {
 
 #[test]
 fn group_separators() {
-    for ok in ['\u{a0}', '\u{202f}', ',', '.', '\'', '_', '\u{2019}'] {
+    for ok in ['\u{a0}', '\u{202f}', '.', '\'', '_', '\u{2019}'] {
         assert!(base().group_separator(ok).build().is_ok(), "{ok:?}");
     }
+    // The decimal separator of the language is no group separator (`decimal != group`, design
+    // sections 2.11 and 7.6): `,` is the decimal of ru-RU, `.` that of en-US.
+    assert_eq!(setting_of(base().group_separator(',')), "group_separator");
+    let en = || Typographer::builder(Language::EN_US, RuleSet::PROSE);
+    assert_eq!(setting_of(en().group_separator('.')), "group_separator");
+    assert!(en().group_separator(',').build().is_ok());
     for bad in [
         ' ', '\t', '\n', '\u{2009}', '\u{2002}', '\u{3000}', '5', '٣', 'a', 'я',
     ] {
