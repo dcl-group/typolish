@@ -345,6 +345,43 @@ impl Typographer {
         found(&units.added) || (self.language.data().units.contains(text) && !found(&units.removed))
     }
 
+    /// Calls `found` with every unit of the language with the builder's additions and removals
+    /// that is a prefix of `text`, compared with case (design section 7.1), and its length in
+    /// characters. A unit of any length is found; `text` is read only as long as some unit
+    /// continues it, so the cost is bounded by the longest unit, not by `text`.
+    pub(crate) fn unit_prefixes<'s>(
+        &'s self,
+        text: impl Iterator<Item = char> + Clone,
+        mut found: impl FnMut(usize, &'s str),
+    ) {
+        let units = &self.settings.units;
+        let removed = |unit: &str| {
+            units
+                .removed
+                .binary_search_by(|u| u.as_str().cmp(unit))
+                .is_ok()
+        };
+        let data = self.language.data();
+        let list = data.units;
+        crate::lang::data::prefix_entries(
+            list.len(),
+            |i| list.get(i),
+            text.clone(),
+            |k, unit| {
+                if !removed(unit) {
+                    found(k, unit);
+                }
+            },
+        );
+        let added = &units.added;
+        crate::lang::data::prefix_entries(
+            added.len(),
+            |i| added.get(i).map(String::as_str),
+            text,
+            &mut found,
+        );
+    }
+
     /// Whether the characters of a core are a short word of the language with the builder's
     /// additions and removals, compared without case (design section 7.1).
     pub(crate) fn has_short_word(&self, key: impl Iterator<Item = char> + Clone) -> bool {

@@ -832,6 +832,45 @@ fn units_by_setting() {
     check_in("ru", &t, ("5 ГБ", "5⍽ГБ"));
 }
 
+#[test]
+fn units_of_any_length() {
+    // The unit list has no length limit (sections 7.6 and 8.7): a long unit added by the builder
+    // or by `LanguageBuilder` is matched whole, as the longest prefix followed by a non-letter.
+    let long: String = "абвгдежзийклмнопрстуфхцчшщъыьэюя".repeat(2);
+    let short: String = long.chars().take(25).collect();
+    for unit in [short.as_str(), long.as_str()] {
+        let t = with(ru(), &[UNITS], |b| b.add_units([unit]));
+        check_in(
+            "ru add_units",
+            &t,
+            (&format!("5 {unit}"), &format!("5⍽{unit}")),
+        );
+        check_in(
+            "ru add_units",
+            &t,
+            (&format!("5 {unit}."), &format!("5⍽{unit}.")),
+        );
+        // Not a prefix of a longer word.
+        check_unchanged("ru add_units", &t, &format!("5 {unit}а"));
+        let language = typolish::LanguageBuilder::from_language(&ru(), "ru-KZ")
+            .units([unit])
+            .ambiguous_units(Vec::<&str>::new())
+            .build()
+            .unwrap();
+        let t = alone(language, UNITS);
+        check_in(
+            "LanguageBuilder",
+            &t,
+            (&format!("5 {unit}"), &format!("5⍽{unit}")),
+        );
+    }
+    // The longest unit wins over a shorter one that is its prefix.
+    let t = with(ru(), &[UNITS], |b| b.add_units([short.as_str(), "абв"]));
+    check_in("ru", &t, (&format!("5 {short}"), &format!("5⍽{short}")));
+    check_in("ru", &t, ("5 абв", "5⍽абв"));
+    check_unchanged("ru", &t, "5 абвг");
+}
+
 /// Rows of `PercentSpacing` for one language: `(input, expected)` per setting.
 type Percent = &'static [(&'static str, &'static str)];
 

@@ -708,60 +708,23 @@ fn quantity(cx: &Cx<'_>, f: &Frag) -> bool {
         }
 }
 
-/// The first characters of a text, at most 24, and whether that is all of it.
-struct Chars {
-    buf: [char; 24],
-    len: usize,
-    whole: bool,
-}
-
-impl Chars {
-    fn of(chars: impl Iterator<Item = char>) -> Chars {
-        let mut out = Chars {
-            buf: ['\0'; 24],
-            len: 0,
-            whole: true,
-        };
-        for c in chars {
-            let Some(slot) = out.buf.get_mut(out.len) else {
-                out.whole = false;
-                break;
-            };
-            *slot = c;
-            out.len += 1;
-        }
-        out
-    }
-}
-
 /// The unit that starts a fragment at token `r`: the longest entry of the unit list that is a
 /// prefix of its visible text and is followed by a character that is neither a letter nor a
-/// digit, or by the end of the fragment. Returns whether the unit ends the fragment and whether
-/// it is an ambiguous unit.
+/// digit, or by the end of the fragment; a unit of any length (section 8.7). Returns whether the
+/// unit ends the fragment and whether it is an ambiguous unit.
 fn unit_at(cx: &Cx<'_>, r: usize, f: &Frag) -> Option<(bool, bool)> {
     let last = last_visible(cx, f)?;
-    let text = Chars::of(cx.visible(r, last));
-    let chars = text.buf.get(..text.len)?;
-    for k in (1..=chars.len()).rev() {
-        let after = chars.get(k);
-        if after.is_some_and(|c| c.is_alphanumeric()) || (after.is_none() && !text.whole) {
-            continue;
+    let text = cx.visible(r, last);
+    let mut best: Option<(usize, bool, &str)> = None;
+    cx.t.unit_prefixes(text.clone(), |k, unit| {
+        let after = text.clone().nth(k);
+        if after.is_some_and(char::is_alphanumeric) || best.is_some_and(|(len, ..)| len >= k) {
+            return;
         }
-        let prefix = chars.get(..k)?;
-        let mut buf = [0u8; 96];
-        let mut n = 0;
-        for c in prefix {
-            let slot = buf.get_mut(n..n + c.len_utf8())?;
-            c.encode_utf8(slot);
-            n += c.len_utf8();
-        }
-        let key = core::str::from_utf8(buf.get(..n)?).ok()?;
-        if cx.t.has_unit(key) {
-            let ambiguous = cx.data.ambiguous_units.contains(key);
-            return Some((after.is_none(), ambiguous));
-        }
-    }
-    None
+        best = Some((k, after.is_none(), unit));
+    });
+    let (_, ends, unit) = best?;
+    Some((ends, cx.data.ambiguous_units.contains(unit)))
 }
 
 /// The percent setting in effect: `Language` read as the CLDR pattern of the language.

@@ -668,6 +668,53 @@ impl<'a> List<'a> {
     }
 }
 
+/// Calls `found` with every entry of a list sorted by code point (`len` entries, read through
+/// `entry`) that is a prefix of `text`, and its length in characters, shortest first. The entries
+/// that start with the characters read so far are a range of the list, narrowed by one binary
+/// search per character; reading stops when the range is empty, so a long `text` costs no more
+/// than the longest entry.
+pub(crate) fn prefix_entries<'l>(
+    len: usize,
+    entry: impl Fn(usize) -> Option<&'l str>,
+    text: impl Iterator<Item = char>,
+    mut found: impl FnMut(usize, &'l str),
+) {
+    let (mut lo, mut hi) = (0, len);
+    // Every entry in `lo..hi` starts with the first `bytes` bytes of `text`.
+    let mut bytes = 0;
+    for (k, c) in text.enumerate() {
+        // After the common prefix, an entry that ends there comes first, then the entries by
+        // their next character.
+        let next = |i: usize| {
+            entry(i)
+                .and_then(|e| e.get(bytes..))
+                .and_then(|rest| rest.chars().next())
+        };
+        lo = partition(lo, hi, |i| next(i) < Some(c));
+        hi = partition(lo, hi, |i| next(i) <= Some(c));
+        if lo >= hi {
+            return;
+        }
+        bytes += c.len_utf8();
+        if let Some(e) = entry(lo).filter(|e| e.len() == bytes) {
+            found(k + 1, e);
+        }
+    }
+}
+
+/// The first index of `lo..hi` where `pred` is false, `pred` being true on a prefix of the range.
+fn partition(mut lo: usize, mut hi: usize, pred: impl Fn(usize) -> bool) -> usize {
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if pred(mid) {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    lo
+}
+
 impl PartialEq for List<'_> {
     fn eq(&self, other: &List<'_>) -> bool {
         self.len() == other.len() && self.iter().eq(other.iter())
