@@ -231,16 +231,14 @@ fn crossing_quotes() {
         &[(CrossingQuotes, Warning, Some(Rule::QuotesPairs), 4..5)],
     );
     // A neutral typed closer inside a new pair of its family (section 6.6).
-    let text = "Он сказал \"a » b\"";
-    for (what, t) in sets(&RU) {
-        let got = string_exp(&t.lint(text));
-        assert!(
-            got.iter()
-                .any(|d| d.0 == CrossingQuotes && d.1 == Warning && d.2 == Some(Rule::QuotesPairs)),
-            "{what}: {got:?}"
-        );
-        assert!(got.iter().any(|d| d.0 == UnmatchedQuote && d.1 == Info));
-    }
+    check_in_sets(
+        &RU,
+        "Он сказал \"a » b\"",
+        &[
+            (UnmatchedQuote, Info, Some(Rule::QuotesPairs), 21..23),
+            (CrossingQuotes, Warning, Some(Rule::QuotesPairs), 21..23),
+        ],
+    );
     // Not firing: a typed pair and a straight pair side by side.
     check_in_sets(&RU, "«a» \"b\" c", &[]);
 }
@@ -918,7 +916,23 @@ fn diagnostics_are_ordered_by_piece_start_end_and_kind() {
     let text = "«a» — «b» …";
     let linted = prose(RU).lint(text);
     assert_ordered("chars", &linted);
-    assert!(linted.len() >= 4, "{linted:?}");
+    // The complete list: five `TypographicChar` entries at `Info` without a rule, and nothing else.
+    assert!(
+        linted
+            .iter()
+            .all(|d| is_char(d.kind()) && d.severity() == Info && d.rule().is_none()),
+        "{linted:?}"
+    );
+    assert_eq!(
+        chars(&linted),
+        [
+            (0, 0..2, '«'),
+            (0, 3..5, '»'),
+            (0, 10..12, '«'),
+            (0, 13..15, '»'),
+            (0, 16..19, '…'),
+        ]
+    );
 }
 
 #[test]
