@@ -55,7 +55,8 @@ const RU_DOTS: &[(&str, &str)] = &[
     // The dots attach to a number or a sign as well as to a word (design section 8.6).
     ("Осталось 5...", "Осталось 5…"),
     ("10%...", "10%…"),
-    // Not three full stops, or digits on both sides, or not at a word end: nothing changes.
+    // Not three full stops, digits on both sides, or dots that touch what follows them: nothing
+    // changes.
     ("А если..", "А если.."),
     ("../x", "../x"),
     ("0..5", "0..5"),
@@ -204,7 +205,8 @@ fn inner_is_not_in_interface() {
 
 #[test]
 fn prose_runs_both_rules() {
-    // `ellipsis.dots` takes the word end, `ellipsis.inner` the rest; the report names each.
+    // `ellipsis.dots` takes the dots attached to what precedes them, `ellipsis.inner` those that
+    // touch what follows; the report names each.
     let t = prose(Language::RU_RU);
     check_in(
         "Prose",
