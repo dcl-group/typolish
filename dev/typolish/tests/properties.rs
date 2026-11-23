@@ -998,8 +998,8 @@ proptest! {
     /// infinities are the symbols of the language.
     #[test]
     fn numbers_are_the_digits_grouped(
-        lang in 0usize..3, digits in 0u8..5, i in any::<i128>(), u in any::<u128>(), f in any::<f64>(),
-        g in any::<f32>(), d in "[+-]?[0-9]{1,40}(\\.[0-9]{1,20})?", places in 0u8..12,
+        lang in 0usize..3, digits in 0u8..5, i in any::<i128>(), u in any::<u128>(),
+        f in prop::num::f64::ANY, g in prop::num::f32::ANY, d in "[+-]?[0-9]{1,40}(\\.[0-9]{1,20})?", places in 0u8..12,
     ) {
         use typolish::Number;
         let t = number_typographer(lang, digits);
@@ -1013,10 +1013,30 @@ proptest! {
             let fixed = format!("{:.*}", usize::from(places), f);
             let zero = fixed.trim_start_matches('-').chars().all(|c| matches!(c, '0' | '.'));
             prop_assert_eq!(show(Number::fixed(f, places)), model(&fixed, lang, digits, zero));
+        } else {
+            // NaN (whatever its sign) and the infinities are the symbols of the language.
+            let symbol = if f.is_nan() {
+                if lang.is_multiple_of(3) { "не\u{a0}число" } else { "NaN" }
+            } else if f > 0.0 {
+                "∞"
+            } else {
+                "\u{2212}∞"
+            };
+            prop_assert_eq!(show(Number::from(f)), symbol);
         }
         if g.is_finite() {
             let zero = g == 0.0;
             prop_assert_eq!(show(Number::from(g)), model(&format!("{g}"), lang, digits, zero));
+        } else {
+            // NaN (whatever its sign) and the infinities are the symbols of the language.
+            let symbol = if g.is_nan() {
+                if lang.is_multiple_of(3) { "не\u{a0}число" } else { "NaN" }
+            } else if g > 0.0 {
+                "∞"
+            } else {
+                "\u{2212}∞"
+            };
+            prop_assert_eq!(show(Number::from(g)), symbol);
         }
         let parsed = Number::decimal(&d).unwrap();
         let zero = d.trim_start_matches(['+', '-']).chars().all(|c| matches!(c, '0' | '.'));
@@ -1027,7 +1047,8 @@ proptest! {
     /// `format_range` is the two numbers around the range dash.
     #[test]
     fn numbers_decode_in_every_kind(
-        lang in 0usize..3, digits in 0u8..5, i in any::<i64>(), f in any::<f64>(), j in any::<i128>(),
+        lang in 0usize..3, digits in 0u8..5, i in any::<i64>(), f in prop::num::f64::ANY,
+        j in any::<i128>(),
     ) {
         use typolish::Number;
         let t = number_typographer(lang, digits);
