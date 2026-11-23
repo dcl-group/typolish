@@ -1,7 +1,7 @@
 //! Repository facts and API conformance (design section 13.9).
 //!
-//! Checks that read `docs/design/` skip when the file is absent: the published package has no
-//! design.
+//! Checks that read `docs/design/` skip when `docs/design/` is absent: the published package has
+//! no design. A missing file or heading inside the repository fails.
 
 #![allow(
     clippy::unwrap_used,
@@ -32,15 +32,15 @@ fn read(path: &Path) -> String {
     fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
-/// A file of `docs/design/`, or `None` when the design is not there.
+/// A file of `docs/design/`, or `None` when the design is not there (the published package). A
+/// missing file inside the repository fails.
 fn design(file: &str) -> Option<String> {
-    let path = repo_dir().join("docs/design").join(file);
-    if path.exists() {
-        Some(read(&path))
-    } else {
-        eprintln!("skipped: {} is absent", path.display());
-        None
+    let dir = repo_dir().join("docs/design");
+    if !dir.is_dir() {
+        eprintln!("skipped: {} is absent", dir.display());
+        return None;
     }
+    Some(read(&dir.join(file)))
 }
 
 /// The cells of a Markdown table row, trimmed; `None` for other lines.
@@ -251,8 +251,12 @@ proptest! {
 /// The rows of the table of design section 4.1: id, Prose, Interface.
 fn order_table() -> Option<Vec<(String, bool, bool)>> {
     let text = design("04-order-idempotence.md")?;
-    let start = text.find("### 4.1")?;
-    let end = text.find("### 4.2")?;
+    let start = text
+        .find("### 4.1")
+        .expect("04-order-idempotence.md: no heading ### 4.1");
+    let end = text
+        .find("### 4.2")
+        .expect("04-order-idempotence.md: no heading ### 4.2");
     let rows = text[start..end]
         .lines()
         .filter_map(cells)
@@ -268,8 +272,12 @@ type RuleRow = (String, Vec<String>, bool, bool);
 /// The rows of the table of design section 8.1.
 fn rule_table() -> Option<Vec<RuleRow>> {
     let text = design("08-rules.md")?;
-    let start = text.find("### 8.1")?;
-    let end = text.find("### 8.2")?;
+    let start = text
+        .find("### 8.1")
+        .expect("08-rules.md: no heading ### 8.1");
+    let end = text
+        .find("### 8.2")
+        .expect("08-rules.md: no heading ### 8.2");
     let rows = text[start..end]
         .lines()
         .filter_map(cells)
