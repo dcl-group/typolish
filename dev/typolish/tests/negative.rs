@@ -379,8 +379,8 @@ fn run_row(t: &typolish::Typographer, frames: &[&str; 2], text: &str, what: &str
         assert_eq!(out.texts()[1], expected, "{what}: next to slots");
         assert!(out.changed(), "{what}");
     }
-    // Glued to a slot the case is one fragment with the slot (design section 3.6); it stays
-    // unchanged where its row stays unchanged.
+    // Glued to a slot the case is one fragment with the slot (design section 3.6); it gets the
+    // expected output of its row.
     let prefix = frames[0].split('X').next().unwrap();
     let glued = [
         Piece::Text(prefix),

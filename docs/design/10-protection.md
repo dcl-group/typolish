@@ -101,14 +101,14 @@ Every case of the task's list, with the mechanisms that keep it unchanged in Int
 languages. Every row is a test (section 13.3): alone, inside the sentence frames
 `Запустите X сейчас.` and `Значение: X, затем далее.` (ru) and `Run X now.` and
 `Value: X, then more.` (en), and as a `Piece::Text` between two slots, separated from them by spaces
-(`{a} X {b}`); glued to a slot, a case is a different fragment (section 3.6) and is checked only for
-staying unchanged where its row stays unchanged (Interface, and Prose outside rows 3 and 10). The
-frames contain no listed short word. In Interface every row is checked through `report`: the tokens
-of the case stay byte for byte, and no edit other than glue outside them occurs; the expected output
-also equals the input byte for byte and is `Cow::Borrowed`, with two exceptions that come from the
-case itself, not from the frame (below). In Prose the same check through `report` applies, except
-where the last column says that Prose changes the tokens of the case (rows 3 and 10): there the
-expected output is the one that column gives, and `report` names the rules it names.
+(`{a} X {b}`); glued to a slot, a case is a different fragment (section 3.6) and is checked against
+the row's expected output, the exceptions below included (Interface, and Prose outside rows 3 and
+10). The frames contain no listed short word. In Interface every row is checked through `report`:
+the tokens of the case stay byte for byte, and no edit other than glue outside them occurs; the
+expected output also equals the input byte for byte and is `Cow::Borrowed`, with two exceptions that
+come from the case itself, not from the frame (below). In Prose the same check through `report`
+applies, except where the last column says that Prose changes the tokens of the case (rows 3 and
+10): there the expected output is the one that column gives, and `report` names the rules it names.
 
 The two exceptions in Interface:
 
