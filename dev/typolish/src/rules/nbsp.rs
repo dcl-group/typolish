@@ -256,6 +256,23 @@ fn percentage(cx: &Cx<'_>, f: &Frag) -> bool {
             .any(|j| matches!(cx.kind(j), Some(Kind::Punct('%' | '‰'))))
 }
 
+/// Whether a lone `%` or `‰` after spaces follows the fragment `f` and is read with it (section
+/// 8.2: `100 %` and `100⍽%` are the percentage `100%`).
+fn percent_after(cx: &Cx<'_>, f: &Frag) -> bool {
+    let Some(last) = (f.start as usize..f.end as usize)
+        .rev()
+        .find(|&j| cx.kind(j).is_some_and(|k| !k.is_transparent()))
+    else {
+        return false;
+    };
+    cx.next(last)
+        .filter(|&s| cx.kind(s) == Some(Kind::Space))
+        .and_then(|s| cx.next(s))
+        .and_then(|j| cx.frag_of(j))
+        .and_then(|g| super::before_percent(cx, g))
+        .is_some_and(|owner| owner.start == f.start)
+}
+
 /// The core tokens of a fragment, `Format` and `Markup` tokens skipped, at most eight.
 fn core_tokens(cx: &Cx<'_>, f: &Frag) -> Option<([usize; 8], usize)> {
     let mut out = [0usize; 8];
@@ -891,6 +908,11 @@ fn phone_group(cx: &Cx<'_>, f: &Frag) -> Option<(usize, bool)> {
     let (core, n) = core_tokens(cx, f)?;
     let core = core.get(..n)?;
     if first_visible(cx, f) != core.first().copied() {
+        return None;
+    }
+    // A percentage is not a group, in both of its forms (section 8.2): `100 %` and `100⍽%` read as
+    // `100%`, so the space that the percent setting inserts changes nothing (invariant I2).
+    if percentage(cx, f) || percent_after(cx, f) {
         return None;
     }
     let digits = digit_count(cx, core);

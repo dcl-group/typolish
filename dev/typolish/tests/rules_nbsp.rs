@@ -24,8 +24,8 @@ use std::ops::Range;
 
 use common::{assert_changed_by, change_rules, check_exact as check_in, only, show, vis};
 use typolish::{
-    DashStyle, Language, LanguageData, MonthPosition, NarrowGlue, Output, Piece, Rule, RuleSet,
-    Slot, Typographer,
+    DashStyle, Language, LanguageData, MonthPosition, NarrowGlue, Output, PercentSpacing, Piece,
+    Rule, RuleSet, Slot, Typographer,
 };
 
 const ABBR: Rule = Rule::NbspAbbreviations;
@@ -1286,6 +1286,10 @@ const PHONE_ROWS: &[(&str, &str)] = &[
     // Not a telephone number.
     ("5 мая 2026", "5 мая 2026"),
     ("1 2 3", "1 2 3"),
+    // A percentage is not a group, in both of its forms (section 8.2).
+    ("+7 495 123-45-67 100%", "+7⍽495⍽123-45-67 100%"),
+    ("+7 495 123-45-67 100 %", "+7⍽495⍽123-45-67 100 %"),
+    ("+7 495 123-45-67 100⍽%", "+7⍽495⍽123-45-67 100⍽%"),
 ];
 
 #[test]
@@ -1330,6 +1334,25 @@ fn phone_numbers_in_the_sets() {
             !set(language.clone(), RuleSet::INTERFACE)
                 .rules()
                 .contains(PHONE)
+        );
+    }
+}
+
+#[test]
+fn phone_reads_a_percentage_alike_in_both_forms() {
+    // The percent setting of ru glues `100%` into `100⍽%`; the number stays outside the telephone
+    // number in both forms, so a second pass changes nothing (section 8.2, invariant I2).
+    let t = Typographer::builder(ru(), RuleSet::PROSE)
+        .percent(PercentSpacing::Language)
+        .build()
+        .unwrap();
+    for text in ["+7 495 123-45-67 100%", "+7 495 123-45-67 100 %"] {
+        check_in("ru Prose", &t, (text, "+7⍽495⍽123-45-67 100⍽%"));
+        let once = t.typeset(text, Output::Unicode).into_owned();
+        assert_eq!(
+            t.typeset(&once, Output::Unicode),
+            once,
+            "idempotence: {text}"
         );
     }
 }

@@ -68,11 +68,12 @@ Both count as numbers everywhere (operands, the "numbers on both sides" refusal 
 percent sign after spaces is read there with its number, label number or range, so `100 % - норма`
 reads as `100% - норма`; and the left factor of a lone `x` of `number.times`, so `10 % x 5` reads as
 `10% x 5`), except in the rules that read a quantity or a year: `nbsp.units` (other than its percent
-handling), `nbsp.dates`, the year of `symbols.copyright`, the context of `range.context` and the
-"directly after a number" exception of `nbsp.abbreviations`. There a label or a percentage is not a
-number, in both of its forms, so the space that `nbsp.signs` or the percent setting inserts or
-removes changes nothing for them (invariant I2). `nbsp.signs` itself glues a label to its sign. So
-`Школа №5 г. Москвы` reads `г.` as a city, not a year: `Школа №⍽5 г.⍽Москвы`.
+handling), `nbsp.dates`, the year of `symbols.copyright`, the context of `range.context`, the
+"directly after a number" exception of `nbsp.abbreviations` and the digit groups of `nbsp.phone`.
+There a label or a percentage is not a number, in both of its forms, so the space that `nbsp.signs`
+or the percent setting inserts or removes changes nothing for them (invariant I2). `nbsp.signs`
+itself glues a label to its sign. So `Школа №5 г. Москвы` reads `г.` as a city, not a year:
+`Школа №⍽5 г.⍽Москвы`.
 
 A **compound word** is a `Compound` core (check 21 of section 3.6: letters or digits joined by
 single hyphens, `кто-то`, `что-то`, `tls-server`, `mother-in-law`, `25-й`). It is not a technical
@@ -366,13 +367,14 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   code `+D` (one to three digits) or with an area code in brackets `(DDD)` (optionally after a
   one-digit trunk prefix: `8 (800)`), followed by one to four further fragments, each a group of two
   to four digits, a bracketed code `(DDD)` or a hyphenated group (`123-45-67`, `123-4567`; a
-  `Compound` or a `Range` fragment, counted as one), with 10 to 15 digits in total. Every space
-  inside is glued: `+7 495 123-45-67` → `+7⍽495⍽123-45-67`, rendered in nowrap output as
-  `<span class="nowrap">+7 495 123-45-67</span>`. This rule changes no hyphen; in Prose
-  `range.digits` has already turned the hyphen of a two-group fragment into an en dash
-  (`+7 495 123-4567` → `+7⍽495⍽123–4567`, section 10.8), and the pattern reads both forms (invariant
-  I4). Not in Interface: the pattern is a heuristic (section 15.5, item 15). A number typed with
-  U+00A0 or U+2011 by the caller forms a nowrap group in every set.
+  `Compound` or a `Range` fragment, counted as one; a percentage is not a group, in both of its
+  forms, section 8.2: `+7 495 123-45-67 100%` and `… 100 %` glue the telephone number only), with 10
+  to 15 digits in total. Every space inside is glued: `+7 495 123-45-67` → `+7⍽495⍽123-45-67`,
+  rendered in nowrap output as `<span class="nowrap">+7 495 123-45-67</span>`. This rule changes no
+  hyphen; in Prose `range.digits` has already turned the hyphen of a two-group fragment into an en
+  dash (`+7 495 123-4567` → `+7⍽495⍽123–4567`, section 10.8), and the pattern reads both forms
+  (invariant I4). Not in Interface: the pattern is a heuristic (section 15.5, item 15). A number
+  typed with U+00A0 or U+2011 by the caller forms a nowrap group in every set.
 - **`nbsp.short-words`.** A word of the list (no case), one space, then an operand, an opening quote
   or bracket, or a sign of the language's `signs` (`№`, `§`, `¶`) → glue. Chains glue whole:
   `и в Москве` → `и⍽в⍽Москве`. With `short_words_any_script(false)` (default) the word must be in
