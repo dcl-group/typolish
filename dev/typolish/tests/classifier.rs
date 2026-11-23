@@ -192,6 +192,10 @@ const DICTIONARY: &[Row] = &[
     ru("т.е\u{2069}. да", &[]),
     en("e.g\u{ad}...", &[]),
     en("e.g\u{AD}. foo", &[]),
+    // A `Format` token after the core with no stop after it is no stop: the core stays protected.
+    ru("т.е\u{200b}", &[(DOTTED, "т.е")]),
+    ru("т.е\u{ad}", &[(DOTTED, "т.е")]),
+    ru("т.е\u{200b} да", &[(DOTTED, "т.е")]),
     ru("т.е…", &[]),
     ru("т.д.", &[]),
     ru("т.п.", &[]),
