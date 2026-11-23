@@ -17,6 +17,8 @@
 )]
 
 mod common;
+#[path = "common/probe.rs"]
+mod probe;
 
 use std::ops::Range;
 
@@ -634,6 +636,33 @@ fn dates_in_russian() {
     let t = alone(ru(), DATES);
     for text in ["21 ноября", "2026 г.", "XIX в."] {
         assert_changed_by("ru dates", &t, text, DATES);
+    }
+}
+
+#[test]
+fn a_date_core_before_a_year_word_is_protected_as_a_version() {
+    // Section 13.2: `Договор от 21.11.2026 г. Затем` gets no glue after `г.`, and the date is a
+    // `Technical(Version)` span (check 13 of section 3.6) in both sets.
+    const TEXT: &str = "Договор от 21.11.2026 г. Затем";
+    let version = probe::tech(typolish::TechKind::Version);
+    for (what, t, expected) in [
+        (
+            "Prose",
+            set(ru(), RuleSet::PROSE),
+            "Договор от⍽21.11.2026⍽г. Затем",
+        ),
+        (
+            "Interface",
+            set(ru(), RuleSet::INTERFACE),
+            "Договор от⍽21.11.2026⍽г. Затем",
+        ),
+    ] {
+        check_in(what, &t, (TEXT, expected));
+        assert_eq!(
+            probe::span_texts(&t, TEXT),
+            [(version, "21.11.2026")],
+            "{what}"
+        );
     }
 }
 
