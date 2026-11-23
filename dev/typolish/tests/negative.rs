@@ -771,9 +771,34 @@ fn prose_output(r: &RefRow, ru: bool, token: &Option<Range<usize>>) -> String {
     out
 }
 
+/// The short words of the built-in languages, as design sections 7.2 and 7.3 list them.
+const SHORT_WORDS_RU: &[&str] = &[
+    "а", "без", "близ", "в", "вне", "во", "да", "для", "до", "если", "за", "и", "из", "изо", "или",
+    "к", "как", "ко", "на", "над", "не", "ни", "но", "о", "об", "обо", "от", "ото", "по", "под",
+    "подо", "при", "про", "с", "со", "то", "у",
+];
+const SHORT_WORDS_EN: &[&str] = &[
+    "a", "an", "and", "as", "at", "but", "by", "for", "if", "in", "nor", "not", "of", "off", "on",
+    "or", "per", "so", "the", "to", "up", "via", "yet",
+];
+
+/// Whether a range of the input lies inside a protected span or overlaps one; an insertion
+/// counts when it falls strictly inside the span.
+fn touches_protected(spans: &[typolish::ProtectedSpan], range: &Range<usize>) -> bool {
+    spans.iter().any(|span| {
+        let s = span.range();
+        if range.is_empty() {
+            s.start < range.start && range.start < s.end
+        } else {
+            range.start < s.end && s.start < range.end
+        }
+    })
+}
+
 /// Checks a case through `report` with `t`: the result against `expected` (glue read as ordinary
-/// spaces), and every edit either a glue mark of an `nbsp.*` rule outside the token or an edit
-/// that the case names.
+/// spaces; every glue mark is checked edit by edit), and every edit either a glue mark of an
+/// `nbsp.*` rule outside the token, glue after a listed short word between the fragments of the
+/// case (section 13.3), or an edit that the case names; no edit touches a protected span.
 #[track_caller]
 fn check_case(
     what: &str,
@@ -800,34 +825,69 @@ fn check_case(
         "{what}: {}: Cow::Borrowed exactly when unchanged",
         r.id
     );
+    let short_words = if *t.language() == Language::RU_RU {
+        SHORT_WORDS_RU
+    } else {
+        SHORT_WORDS_EN
+    };
+    // The output position of each edit: the edits are sorted by position and do not overlap.
+    let mut shift = 0isize;
     for change in report.changes() {
         let range = change.range();
-        let glue = matches!(change.replacement(), "\u{a0}" | "\u{202f}")
-            && matches!(report.original(change), "" | " ");
+        let original = report.original(change);
+        let at = range.start.checked_add_signed(shift).unwrap();
+        shift += change.replacement().len() as isize - original.len() as isize;
+        assert!(
+            got[at..].starts_with(change.replacement()),
+            "{what}: {}: the edit is not at byte {at} of {}: {change:?}",
+            r.id,
+            show(&got)
+        );
+        assert!(
+            !touches_protected(report.protected(), &range),
+            "{what}: {}: an edit inside a protected span: {change:?}",
+            r.id
+        );
         if change.rule().id().starts_with("nbsp.") {
+            let glue = matches!(change.replacement(), "\u{a0}" | "\u{202f}")
+                && matches!(original, "" | " ");
             assert!(
                 glue,
                 "{what}: {}: an nbsp edit that is not glue: {change:?}",
                 r.id
             );
-            // A case of several fragments with a listed short word between them gets its glue
-            // outside the frozen fragments, as row 24 of section 10.5 (`if⍽a<b and⍽c>d`).
+            // Inside the token only `nbsp.short-words` glues, at the space after a listed short
+            // word that is a fragment of the case, before the next fragment of the case, as row
+            // 24 of section 10.5 (`if⍽a<b and⍽c>d`, section 13.3).
             if let Some(token) = &token {
-                let between =
-                    change.rule() == Rule::NbspShortWords && report.original(change) == " ";
+                let inside = range.end > token.start && range.start < token.end;
+                let between = change.rule() == Rule::NbspShortWords
+                    && original == " "
+                    && r.input[token.start..range.start]
+                        .rsplit(' ')
+                        .next()
+                        .is_some_and(|w| short_words.contains(&w.to_lowercase().as_str()))
+                    && r.input[range.end..token.end]
+                        .chars()
+                        .next()
+                        .is_some_and(|c| !c.is_whitespace());
                 assert!(
-                    range.end <= token.start || range.start >= token.end || between,
+                    !inside || between,
                     "{what}: {}: glue inside the token {token:?}: {change:?}",
                     r.id
                 );
             }
-            // Never before a fragment that starts with `-`, except `nbsp.dash` before the dash it
-            // glues to (sections 8.2 and 8.7).
-            assert!(
-                change.rule() == Rule::NbspDash || !r.input[range.end..].starts_with('-'),
-                "{what}: {}: glue before a hyphen: {change:?}",
-                r.id
-            );
+            // Never before a fragment that starts with `-`, except `nbsp.dash` before the dash
+            // that the `-` became; a `-` that stays a hyphen gets no glue (sections 8.2 and 8.7).
+            if r.input[range.end..].starts_with('-') {
+                let after = got[at + change.replacement().len()..].chars().next();
+                assert!(
+                    change.rule() == Rule::NbspDash && matches!(after, Some('—' | '–')),
+                    "{what}: {}: glue before a hyphen: {change:?} in {}",
+                    r.id,
+                    show(&got)
+                );
+            }
         } else {
             assert!(
                 edits.contains(&change.rule()),
@@ -837,19 +897,18 @@ fn check_case(
             );
         }
     }
-    // The text that no edit covers stays: the frozen fragments appear in the output in order.
+    // The text that no edit covers stays: every protected span, explicit or frozen, appears in
+    // the output byte for byte and in order.
     let mut at = 0;
     for span in report.protected() {
-        if let ProtectedKind::Technical(_) = span.kind() {
-            let text = &r.input[span.range()];
-            match got[at..].find(text) {
-                Some(i) => at += i + text.len(),
-                None => panic!(
-                    "{what}: {}: the frozen {text:?} is not in {}",
-                    r.id,
-                    show(&got)
-                ),
-            }
+        let text = &r.input[span.range()];
+        match got[at..].find(text) {
+            Some(i) => at += i + text.len(),
+            None => panic!(
+                "{what}: {}: the protected {text:?} is not in {}",
+                r.id,
+                show(&got)
+            ),
         }
     }
 }
