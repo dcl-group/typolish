@@ -47,10 +47,11 @@ Nothing released yet. Version 0.1.0 is in development.
   `symbols.math`).
 - A Russian particle (`б бы ж же ли ль`, or the caller's list) is glued to the word or slot before
   it also when closing punctuation follows it (`Что ж,` gets a no-break space after `Что`; before,
-  it stayed as typed), and a particle so placed glues nothing after itself: `nbsp.short-words` and
-  `nbsp.short-length` no longer glue the next word to it, so Prose gives `Знаешь ли ты` a no-break
-  space after `Знаешь` only (before, after `ли` too). Each particle of a run is glued to the word
-  before it (`что же бы ты`: after `что` and `же`).
+  it stayed as typed; a capital letter with a full stop stays an initial, `Иван Б.⍽Петров`), and a
+  particle so placed glues nothing after itself: `nbsp.short-words` and `nbsp.short-length` no
+  longer glue the next word to it, so Prose gives `Знаешь ли ты` a no-break space after `Знаешь`
+  only (before, after `ли` too). Each particle of a run is glued to the word before it
+  (`что же бы ты`: after `что` and `же`).
 - `Typographer::format_number` and `Typographer::format_range` format a `Number` (every integer
   type, `f32`, `f64`, `Number::decimal` for digits as written, `Number::fixed` for a float rounded
   to a number of fraction digits) by the language: decimal separator, grouping from

@@ -1089,7 +1089,8 @@ pub(crate) fn short_length(cx: &Cx<'_>, s: usize) -> Option<Match> {
 }
 
 /// `nbsp.particles`: a word or a slot (not `Other`), one space, then a particle of the list (a
-/// whole core, closing punctuation after it or not) → glue. Anchors at the space.
+/// whole core, closing punctuation after it or not, not an initial) → glue. Anchors at the
+/// space.
 pub(crate) fn particles(cx: &Cx<'_>, s: usize) -> Option<Match> {
     let (l, r) = sides(cx, s)?;
     particle_after(cx, l, r)
@@ -1100,11 +1101,14 @@ pub(crate) fn particles(cx: &Cx<'_>, s: usize) -> Option<Match> {
 /// Whether the tokens `l` and `r` on the two sides of a pattern space are the end of a word or a
 /// slot (not `Other`) and the start of a particle of the list: the place that `nbsp.particles`
 /// glues (section 8.7). Closing punctuation after the particle does not matter (`Что⍽ж,`,
-/// section 15.2, item 19).
+/// section 15.2, item 19), but a capital letter with a full stop is an initial of
+/// `nbsp.initials`, not a particle (`Иван Б.⍽Петров`).
 fn particle_after(cx: &Cx<'_>, l: usize, r: usize) -> bool {
     let left =
         tail(cx, l).is_some_and(|fl| is_word(cx, fl) || matches!(cx.kind(l), Some(Kind::Slot(_))));
-    left && head(cx, r).is_some_and(|fr| cx.t.has_particle(cx.core_chars(fr)))
+    left && head(cx, r).is_some_and(|fr| {
+        cx.t.has_particle(cx.core_chars(fr)) && initials(cx, fr, false, true).is_none()
+    })
 }
 
 /// Whether the word `f` is a particle that belongs to the word or slot before it, one pattern

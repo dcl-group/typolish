@@ -391,18 +391,20 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
 - **`nbsp.particles`.** A word or a slot (not `Other`), one space, then a particle of the list (a
   whole core, section 8.2; closing punctuation after it does not matter) → glue: `сказал⍽бы`,
   `Знаешь⍽ли`, `{name}⍽же`, `кто-то⍽же` (a compound word is a word, section 8.2), `Что⍽ж,`,
-  `«Знаешь⍽ли» ты`, `Что⍽ж` at the end of a window (section 15.2, item 19). A particle in this place
-  is **bound** to the word before it and glues nothing after itself: `nbsp.short-words` and
-  `nbsp.short-length` do not take it as a trigger word, so there is no chain: `Знаешь ли ты` →
-  `Знаешь⍽ли ты`, also with `ли` added to the short words (section 15.2, item 18). Each particle of
-  a run is bound to the word before it, the run to the first word: `что⍽же⍽бы ты`. A dash after a
-  bound particle is glued to it by `nbsp.dash` as to any operand: `Что⍽ж⍽— ладно`. A particle with
-  no word or slot one pattern space before it (at a line start, after punctuation, a tab or an
-  `Other` slot) is not bound and is an ordinary word: Prose `Ли ты знал` → `Ли⍽ты⍽знал`. A particle
-  is bound by the list of particles whichever rules are enabled (section 15.3, C33): with
-  `nbsp.short-length` alone `Знаешь ли ты` stays unchanged, and after `remove_particles(["ли"])`
-  Prose gives `Знаешь ли⍽ты`. A no-break space the author typed after a particle stays (section 4.3,
-  I3): `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`.
+  `«Знаешь⍽ли» ты`, `Что⍽ж` at the end of a window (section 15.2, item 19). A capital letter with a
+  full stop is an initial of `nbsp.initials`, not a particle, even when its letter is on the list:
+  `Иван Б.⍽Петров`, `роман Б.⍽Акунина`, as `Иван А.⍽Петров`; a lowercase letter stays a particle:
+  `Ну что⍽ж. Ладно`. A particle in this place is **bound** to the word before it and glues nothing
+  after itself: `nbsp.short-words` and `nbsp.short-length` do not take it as a trigger word, so
+  there is no chain: `Знаешь ли ты` → `Знаешь⍽ли ты`, also with `ли` added to the short words
+  (section 15.2, item 18). Each particle of a run is bound to the word before it, the run to the
+  first word: `что⍽же⍽бы ты`. A dash after a bound particle is glued to it by `nbsp.dash` as to any
+  operand: `Что⍽ж⍽— ладно`. A particle with no word or slot one pattern space before it (at a line
+  start, after punctuation, a tab or an `Other` slot) is not bound and is an ordinary word: Prose
+  `Ли ты знал` → `Ли⍽ты⍽знал`. A particle is bound by the list of particles whichever rules are
+  enabled (section 15.3, C33): with `nbsp.short-length` alone `Знаешь ли ты` stays unchanged, and
+  after `remove_particles(["ли"])` Prose gives `Знаешь ли⍽ты`. A no-break space the author typed
+  after a particle stays (section 4.3, I3): `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`.
 - **`nbsp.dash`.** The space before a dash fragment that stands for a spaced dash (a produced or
   typed `—`, or a typed `–`, section 8.4) in the context of `dash.spaced-hyphen` (an operand or
   closing punctuation on the left, an operand, an opening quote or an opening bracket on the right,

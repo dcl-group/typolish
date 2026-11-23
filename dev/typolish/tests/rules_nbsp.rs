@@ -1672,6 +1672,12 @@ const RU_PARTICLES: &[(&str, &str)] = &[
     ("Что ж\nдалее", "Что⍽ж\nдалее"),
     ("Что ж — ладно", "Что⍽ж — ладно"),
     ("что же бы ты", "что⍽же⍽бы ты"),
+    // A capital letter with a full stop is an initial, not a particle (section 8.7); a small
+    // particle letter with a full stop is a particle.
+    ("Иван Б. Петров", "Иван Б. Петров"),
+    ("писатель Ж. Верн", "писатель Ж. Верн"),
+    ("Ну что ж. Ладно", "Ну что⍽ж. Ладно"),
+    ("Пошёл бы.", "Пошёл⍽бы."),
     // An opening bracket before the particle: no whole core after the space.
     ("сказал (бы)", "сказал (бы)"),
     // No left word.
@@ -1752,6 +1758,25 @@ fn particles_bind_to_the_word_before() {
             // Glue typed by the author stays where it is.
             ("Знаешь⍽ли ты", "Знаешь⍽ли ты", "Знаешь⍽ли ты"),
             ("Знаешь ли⍽ты", "Знаешь⍽ли⍽ты", "Знаешь⍽ли⍽ты"),
+        ],
+    );
+    // An initial whose letter is on the particle list is an initial: the forward form of
+    // `nbsp.initials` takes it and the word before stays apart, as for any other letter
+    // (section 8.7).
+    set_rows(
+        ru(),
+        &[
+            ("Иван Б. Петров", "Иван Б.⍽Петров", "Иван Б.⍽Петров"),
+            ("Иван А. Петров", "Иван А.⍽Петров", "Иван А.⍽Петров"),
+            (
+                "Пушкин Б. С. Иванов",
+                "Пушкин Б.⍽С.⍽Иванов",
+                "Пушкин Б.⍽С.⍽Иванов",
+            ),
+            ("роман Б. Акунина", "роман Б.⍽Акунина", "роман Б.⍽Акунина"),
+            ("писатель Ж. Верн", "писатель Ж.⍽Верн", "писатель Ж.⍽Верн"),
+            ("вариант Б. После", "вариант Б.⍽После", "вариант Б.⍽После"),
+            ("Ну что ж. Ладно", "Ну⍽что⍽ж. Ладно", "Ну что⍽ж. Ладно"),
         ],
     );
     let prose = set(ru(), RuleSet::PROSE);
