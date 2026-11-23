@@ -52,7 +52,9 @@ supported Rust version: 1.100.
   requires the range dash to be `–` or `—`, the decimal separator to be a visible character of its
   own that is not a letter, a digit, whitespace, a quote character or a character with the Unicode
   `Dash` property, the group separator to be U+00A0, U+202F or a visible character of its own that
-  is not a letter, a digit, whitespace or a dash, and signs to be punctuation characters.
+  is not a letter, a digit, whitespace or a dash, and signs to be punctuation characters. The
+  `Display` of a `Language` escapes invisible characters of a tag that `from_static` did not
+  validate.
 - Protection: backtick spans and fenced blocks, delimiters of one's own, `Piece::Protected`, and the
   technical fragments that the classifier recognizes by their shape (URLs, e-mail addresses and
   mentions, flags, paths, `host:port`, operators, UUIDs, hex numbers, ISO dates, versions, dotted

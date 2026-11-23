@@ -75,7 +75,7 @@ impl Language {
 }
 /// The same as `from_tag`.
 impl core::str::FromStr for Language { type Err = Error; }
-impl core::fmt::Display for Language { /* the tag */ }
+impl core::fmt::Display for Language { /* the tag, invisible characters escaped as in errors (section 2.11) */ }
 ```
 
 The caller chooses between an error and the common rules for an unknown language with one line;
@@ -996,9 +996,11 @@ Choices:
   `char::is_alphanumeric` holds. A unit's leading digit, by contrast, is an ASCII digit (0-9),
   matching `Kind::Number` (section 3.5): a unit that starts with another digit, such as `٣px`, is
   accepted.
-- The `Display` of an error writes the caller's string with invisible characters (controls, line
-  separators, format characters) as `\u{…}` (`Raw` in the sketch, the escaping of the report table,
-  section 12.5), so a message stays on one line; the fields hold the string as given.
+- The `Display` of an error, and the `Display` of a `Language` (a tag given to `from_static` is not
+  validated), write the caller's string with invisible characters (controls, line separators, every
+  character of general category `Cf` and the reserved default-ignorable code points of section 7.6)
+  as `\u{…}` (`Raw` in the sketch, the escaping of the report table, section 12.5), so a message
+  stays on one line; the fields hold the string as given.
 
 ### 2.12 Allocation, Cow and scratch memory
 

@@ -219,13 +219,15 @@ impl<T> fmt::Display for Report<'_, T> {
     }
 }
 
-/// Whether a character is invisible in a table: a space other than U+0020, a control or a format
-/// character (design section 5.4).
+/// Whether a character is invisible in a table or an error message: a space other than U+0020,
+/// a control, a character of general category `Cf` or a reserved default-ignorable code point
+/// (design sections 2.11, 7.6 and 12.5; a wider set than the format characters of the lexer,
+/// design section 5.4).
 pub(crate) fn invisible(c: char) -> bool {
     (c.is_whitespace() && c != ' ')
         || c.is_control()
-        || crate::engine::lex::is_format_char(c)
-        || crate::engine::lex::is_joiner(c)
+        || crate::lang::data::is_format_category(c)
+        || crate::lang::data::is_reserved_default_ignorable(c)
 }
 
 /// A text of the change table: `U+XXXX` for a single invisible character, otherwise quoted.

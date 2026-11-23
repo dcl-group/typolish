@@ -13,7 +13,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-use typolish::{DashStyle, Error, Language, QuotePairs, Rule, RuleSet, Typographer};
+use typolish::{DashStyle, Error, Language, LanguageData, QuotePairs, Rule, RuleSet, Typographer};
 
 fn hash_of<T: Hash>(value: &T) -> u64 {
     let mut hasher = DefaultHasher::new();
@@ -33,6 +33,15 @@ fn tags() {
     assert_eq!(Language::RU_RU.to_string(), "ru-RU");
     assert_eq!(Language::EN_US.to_string(), "en-US");
     assert_eq!(Language::COMMON.to_string(), "und");
+}
+
+#[test]
+fn display_of_an_unvalidated_tag_stays_on_one_line() {
+    // Design section 2.11: the `Display` of a language escapes invisible characters.
+    static BAD: LanguageData = LanguageData::new("x\r\nFAKE\u{2028}y");
+    let lang = Language::from_static(&BAD);
+    assert_eq!(lang.to_string(), "x\\u{d}\\u{a}FAKE\\u{2028}y");
+    assert_eq!(lang.tag(), "x\r\nFAKE\u{2028}y");
 }
 
 #[test]

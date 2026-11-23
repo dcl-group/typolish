@@ -879,10 +879,10 @@ impl FromStr for Language {
     }
 }
 
-/// Writes the tag.
+/// Writes the tag, with invisible characters escaped as in the messages of errors.
 impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.tag())
+        write!(f, "{}", crate::report::Raw(self.tag()))
     }
 }
 

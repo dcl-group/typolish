@@ -453,6 +453,45 @@ fn error_messages_stay_on_one_line() {
     assert!(matches!(&errors[3], Error::InvalidNumber { input, .. } if input == "1\r\n2"));
 }
 
+#[test]
+fn error_messages_escape_every_format_character() {
+    // Design sections 2.11 and 7.6: the `Display` of an error escapes every character of general
+    // category `Cf` and every reserved default-ignorable code point, not only the format
+    // characters of the lexer (design section 5.4); the fields hold the string as given.
+    for c in [
+        '\u{61c}',
+        '\u{600}',
+        '\u{180e}',
+        '\u{206e}',
+        '\u{fff9}',
+        '\u{e0001}',
+        '\u{e0041}',
+        '\u{2065}',
+        '\u{200d}',
+        '\u{202e}',
+    ] {
+        let tag = format!("a{c}b");
+        let err = Language::from_tag(&tag).unwrap_err();
+        let message = err.to_string();
+        assert_eq!(
+            message,
+            format!("unknown language tag `a\\u{{{:x}}}b`", u32::from(c)),
+            "{c:?}"
+        );
+        assert!(!message.contains(c), "{c:?}: {message:?}");
+        assert!(
+            matches!(err, Error::UnknownLanguage { tag: ref given, .. } if *given == tag),
+            "{c:?}"
+        );
+    }
+    let message = "nbsp.\u{206e}x".parse::<Rule>().unwrap_err().to_string();
+    assert!(message.contains("nbsp.\\u{206e}x"), "{message:?}");
+    assert!(!message.contains('\u{206e}'), "{message:?}");
+    let message = Number::decimal("1\u{e0041}2").unwrap_err().to_string();
+    assert!(message.contains("1\\u{e0041}2"), "{message:?}");
+    assert!(!message.contains('\u{e0041}'), "{message:?}");
+}
+
 /// An iterator whose `size_hint` lower bound is above its length (a caller bug).
 struct LyingPieces(Option<Piece<'static, u8>>, usize);
 
@@ -656,6 +695,28 @@ quotes.pairs        0:16..17  \"\\\"\" -> \"»\"
 nbsp.abbreviations  0:24..25  \" \" -> U+00A0
 protected  Technical(Colon)  0:25..34  host:8080
 "
+    );
+}
+
+#[test]
+fn the_display_escapes_format_characters_beyond_section_5_4() {
+    // Design sections 7.6 and 12.5: a protected text escapes every character of general category
+    // `Cf` and every reserved default-ignorable code point, also those the lexer does not treat
+    // as format characters (U+206E, the tag characters).
+    let printed = PROSE
+        .report("см. \u{206e}http://a.b/\u{e0041}c - да", Output::Unicode)
+        .to_string();
+    let line = printed
+        .lines()
+        .find(|line| line.starts_with("protected  Technical(Url)"))
+        .unwrap();
+    assert!(
+        line.ends_with("\\u{206e}http://a.b/\\u{e0041}c"),
+        "{line:?}"
+    );
+    assert!(
+        !printed.contains('\u{206e}') && !printed.contains('\u{e0041}'),
+        "{printed:?}"
     );
 }
 
