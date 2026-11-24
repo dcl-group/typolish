@@ -601,6 +601,10 @@ impl NumberData {
 
     /// Sets the symbol of not-a-number.
     ///
+    /// Validation (design section 7.6) requires a non-empty symbol without digits (no character
+    /// with `char::is_numeric`), control or format characters and without whitespace at either
+    /// end: `format_number` writes it as it is.
+    ///
     /// ```
     /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
     ///
@@ -621,6 +625,10 @@ impl NumberData {
     }
 
     /// Sets the symbol of infinity.
+    ///
+    /// Validation (design section 7.6) requires a non-empty symbol without digits (no character
+    /// with `char::is_numeric`), control or format characters and without whitespace at either
+    /// end: `format_number` writes it as it is.
     ///
     /// ```
     /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
@@ -1893,6 +1901,23 @@ impl Table<'_> {
         {
             return Err(
                 "ellipsis: a form is its own signs (none, `?`, `!`, `?!` or `!?`), then only `.` and `…`, not ending in `…` and three full stops",
+            );
+        }
+        // `format_number` writes these symbols as they are: each must show, and must not read as a
+        // number.
+        let shows = |symbol: &str| {
+            !symbol.is_empty()
+                && symbol.trim() == symbol
+                && !symbol.chars().any(|c| {
+                    c.is_numeric()
+                        || c.is_control()
+                        || is_format_category(c)
+                        || is_reserved_default_ignorable(c)
+                })
+        };
+        if !shows(n.nan) || !shows(n.infinity) {
+            return Err(
+                "numbers: nan and infinity must be non-empty, without digits, control or format characters and without whitespace at the ends",
             );
         }
         Ok(())

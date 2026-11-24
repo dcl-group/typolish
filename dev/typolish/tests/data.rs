@@ -1372,6 +1372,30 @@ fn number_data_is_checked() {
             NumberData::new().with_decimal(good).with_group('\u{a0}'),
         ));
     }
+    // The symbols of not-a-number and infinity are visible text without digits: an empty symbol
+    // would print nothing, a digit would read as a number, and an invisible character or
+    // whitespace at an end would hide in the output of `format_number` (design section 7.6).
+    for bad in [
+        "",
+        "1",
+        "NaN1",
+        "\u{2167}",
+        " NaN",
+        "NaN ",
+        "\u{a0}∞",
+        "a\u{200b}",
+        "\u{ad}",
+        "\n",
+        "a\u{7}b",
+        "\u{e0041}",
+        "\u{2065}",
+    ] {
+        rejected(with(NumberData::new().with_nan(bad)), "numbers");
+        rejected(with(NumberData::new().with_infinity(bad)), "numbers");
+    }
+    for good in ["не\u{a0}число", "∞", "NaN", "inf", "не число"] {
+        accepted(with(NumberData::new().with_nan(good).with_infinity(good)));
+    }
 }
 
 #[test]
