@@ -57,9 +57,9 @@ unpaired (section 6.6), so `Press '42' to confirm` and `'12:30'` keep a pair of 
 not in the elision list, because `Press 'y' to confirm, 'n' to cancel` quotes a letter. An elision
 closed at once by a straight `'` (`'round'`, followed by a `'` that no letter or digit follows)
 waits for pairing, like `'n'`: `Choose the 'round' button` keeps its straight pair, and
-`"Say 'twas' or 'tis'"` gives nested pairs. `rock'n'roll` gets apostrophes between letters;
-`rock 'n' roll` with spaces is a top-level single pair and stays straight under `NestedOnly`
-(section 10.8).
+`"Say 'twas' or 'tis'"` gives nested pairs; unpaired, it is an apostrophe (section 6.6).
+`rock'n'roll` gets apostrophes between letters; `rock 'n' roll` with spaces is a top-level single
+pair and stays straight under `NestedOnly` (section 10.8).
 
 ### 6.3 Roles
 
@@ -191,7 +191,10 @@ Then, when the window converges:
 - a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
   section 6.8, are in a pair and stay straight) at a word start before exactly two digits and then a
   character that is neither a letter nor a digit, or the end of the window, becomes `’` if the
-  language has the decade flag (`the class of '26`).
+  language has the decade flag (`the class of '26`);
+- a straight `'` that is in no pair after pass 2 at the start of an elision of the language's list
+  that a straight `'` closes at once (section 6.2) becomes `’`: unpaired, it is the elision
+  (`Never`: `'twas'` → `’twas’`, the last `'` a trailing possessive).
 
 If the window does **not** converge, no straight quote of the window changes; the edits of step 1
 (section 6.2) are kept. The caller gets a diagnostic at the position of the first cause.
@@ -228,11 +231,11 @@ rejected: Russian has no single-quote pair to map `'` to.
   `She said 'he told “no”'`: nested glyphs never appear where the outer quotes stayed straight. A
   straight `'` in plain text is more often an apostrophe or code than a quote.
 - `Everywhere`: pairs of `'` get glyphs by level like pairs of `"` (`'hi'` → `“hi”` in English).
-- `Never`: straight `'` never pairs; only step 1, the trailing possessive and the decade apostrophe
-  of section 6.6 and the primes of section 6.5 apply. Every `'` is unpaired (the caller said that
-  `'` is never a quote), so in `'42'` the first `'` is a decade apostrophe and the last one, a weak
-  quote that pairs with nothing, is a prime: `’42′` with `quotes.primes` enabled (Prose), `’42'`
-  without it (Interface).
+- `Never`: straight `'` never pairs; only step 1, the trailing possessive, the decade apostrophe and
+  the elision that waited for pairing of section 6.6 and the primes of section 6.5 apply. Every `'`
+  is unpaired (the caller said that `'` is never a quote), so in `'42'` the first `'` is a decade
+  apostrophe and the last one, a weak quote that pairs with nothing, is a prime: `’42′` with
+  `quotes.primes` enabled (Prose), `’42'` without it (Interface).
 
 Settled in section 15.5, item 9.
 

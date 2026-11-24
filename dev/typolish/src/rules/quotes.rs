@@ -746,7 +746,8 @@ pub(crate) fn analyze<R: Recorder>(
         return;
     }
 
-    // Primes, the trailing possessive and the decade apostrophe (design sections 6.5 and 6.6).
+    // Primes, the trailing possessive, the decade apostrophe and an elision that waited for
+    // pairing (design sections 6.2, 6.5 and 6.6).
     let data = cx.data;
     for q in qs.iter() {
         let i = q.tok as usize;
@@ -776,7 +777,9 @@ pub(crate) fn analyze<R: Recorder>(
             && !next
                 .and_then(|n| cx.next(cx.number_end(n)))
                 .is_some_and(|a| matches!(cx.kind(a), Some(Kind::Word(_) | Kind::Number)));
-        if (possessive || decade)
+        // An elision that a straight `'` closed waited for pairing (design section 6.2).
+        let elided = elision(cx, i) == Some(true);
+        if (possessive || decade || elided)
             && let Some(m) = marks.get_mut(i)
         {
             *m = Mark::Apostrophe;
@@ -1007,34 +1010,10 @@ fn step1(cx: &Cx<'_>, i: usize, glyph: char) -> Option<Mark> {
     }
     let data = cx.data;
     let n = next?;
-    // An elision of the language's list (`'tis`).
-    if letter_right && !data.elisions.is_empty() {
-        // The word runs on across `Format` and `Markup` tokens (design section 3.6).
-        let mut last = n;
-        while let Some(j) = cx.next(last)
-            && j > last + 1
-            && matches!(cx.kind(j), Some(Kind::Word(_)))
-        {
-            last = j;
-        }
-        // A straight `'` that closes the word (`'round'`) means the elision is a quoted word: it
-        // waits for pairing, as `'n'` does (design section 6.2).
-        let closed = cx.next(last).is_some_and(|c| {
-            is_quote(cx, c)
-                && cx.chr(c) == Some('\'')
-                && !cx
-                    .next(c)
-                    .is_some_and(|a| matches!(cx.kind(a), Some(Kind::Word(_) | Kind::Number)))
-        });
-        let key = core::iter::once('\'').chain(cx.visible(n, last).map(fold_char));
-        if !closed
-            && data
-                .elisions
-                .binary_search_by(|e| e.chars().cmp(key.clone()))
-                .is_ok()
-        {
-            return Some(Mark::Apostrophe);
-        }
+    // An elision of the language's list (`'tis`); one closed at once by a straight `'` waits for
+    // pairing (design section 6.2).
+    if elision(cx, i) == Some(false) {
+        return Some(Mark::Apostrophe);
     }
     // A decade: two digits, then `s` (`'90s`).
     if data.decade_apostrophe
@@ -1050,6 +1029,40 @@ fn step1(cx: &Cx<'_>, i: usize, glyph: char) -> Option<Mark> {
         return Some(Mark::Apostrophe);
     }
     None
+}
+
+/// Whether the quote `i` at a word start begins an elision of the language's list (`'tis`), and
+/// if so whether a straight `'` closes the word at once (`'round'`): such an elision may open a
+/// quoted word, so it waits for pairing, as `'n'` does, and is an apostrophe only unpaired
+/// (design sections 6.2 and 6.6). `None` when it is no elision.
+fn elision(cx: &Cx<'_>, i: usize) -> Option<bool> {
+    let data = cx.data;
+    if data.elisions.is_empty() || !word_start(cx, i) {
+        return None;
+    }
+    let n = cx.next(i)?;
+    if !matches!(cx.kind(n), Some(Kind::Word(_))) {
+        return None;
+    }
+    // The word runs on across `Format` and `Markup` tokens (design section 3.6).
+    let mut last = n;
+    while let Some(j) = cx.next(last)
+        && j > last + 1
+        && matches!(cx.kind(j), Some(Kind::Word(_)))
+    {
+        last = j;
+    }
+    let key = core::iter::once('\'').chain(cx.visible(n, last).map(fold_char));
+    data.elisions
+        .binary_search_by(|e| e.chars().cmp(key.clone()))
+        .ok()?;
+    Some(cx.next(last).is_some_and(|c| {
+        is_quote(cx, c)
+            && cx.chr(c) == Some('\'')
+            && !cx
+                .next(c)
+                .is_some_and(|a| matches!(cx.kind(a), Some(Kind::Word(_) | Kind::Number)))
+    }))
 }
 
 /// Sign-only pairs (design section 6.3) whose first quote is in the series `qs[start..end]`, which

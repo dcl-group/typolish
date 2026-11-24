@@ -273,6 +273,19 @@ fn an_elision_closed_by_a_straight_quote_waits_for_pairing() {
             check_exact(&format!("en {}", t.rules()), t, (input, full));
         }
     }
+    // Unpaired, it is the elision (design section 6.6): with `Never` every `'` is unpaired, and the
+    // output is a fixed point.
+    let never = Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+        .single_quotes(SingleQuotes::Never)
+        .build()
+        .unwrap();
+    for (input, expected) in [
+        ("\"Say 'twas' or 'tis'\"", "“Say ’twas’ or ’tis’”"),
+        ("Go 'round'", "Go ’round'"),
+    ] {
+        check_exact("en Never", &never, (input, expected));
+        check_unchanged("en Never", &never, expected);
+    }
 }
 
 // The rows of design section 6.12 that need `quotes.primes`: Prose (design section 6.5), and what
