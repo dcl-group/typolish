@@ -197,6 +197,8 @@ fn quotes_pairs_and_apostrophe_together() {
                 "\"He said \"THE DOGS' bowl is empty\"\"",
             ),
             ("“‘DOGS’ bowl’”", "\"\"DOGS' bowl\"\""),
+            // Every candidate follows `s` or `S`: the first one closes (design section 12.1).
+            ("“a ‘THE DOGS’ BOWLS’ b”", "\"a \"THE DOGS\" BOWLS' b\""),
         ],
     );
     // Embeddings and overrides are format characters too (design section 5.4).

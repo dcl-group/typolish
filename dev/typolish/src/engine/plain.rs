@@ -1109,7 +1109,7 @@ struct QuoteAt {
     window: usize,
     /// The neighbors of its series allow a closing role (design section 6.3).
     closing: bool,
-    /// It follows `s`, where the forward algorithm puts a trailing possessive.
+    /// It follows `s` or `S`, where the forward algorithm puts a trailing possessive.
     after_s: bool,
     /// It is a `’` that closes the nested opener before it as the second quote of a sign-only
     /// pair would (design sections 6.3 and 12.1).
@@ -1369,9 +1369,9 @@ fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<&'static [&'stat
 }
 
 /// Whether a later `’` of the same depth, before the next opener of that depth and before the
-/// closer of the enclosing pair, has a closing role and does not follow `s` (design section 12.1).
-/// The pairs opened after the `’` are followed by their kind, as in `quote_readings`: a `’` inside
-/// a deeper primary pair closes nothing there and leaves the scan where it is.
+/// closer of the enclosing pair, has a closing role and does not follow `s` or `S` (design section
+/// 12.1). The pairs opened after the `’` are followed by their kind, as in `quote_readings`: a `’`
+/// inside a deeper primary pair closes nothing there and leaves the scan where it is.
 fn later_closer(quotes: &[QuoteAt], k: usize, glyphs: [char; 4], nested: bool) -> bool {
     let [open1, close1, open2, close2] = glyphs;
     let (own_open, own_close) = if nested {

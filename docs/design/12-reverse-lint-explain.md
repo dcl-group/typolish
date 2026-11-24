@@ -94,15 +94,16 @@ not count. Any other `’` with a closing role closes the innermost open `‘` o
 the forward algorithm, with one exception: a `’` after `s` or `S` and before a non-letter, where the
 forward algorithm puts a trailing possessive, leaves the `‘` open if a later `’` of the same depth,
 before the next `‘` of that depth and before the closer of the enclosing pair, has a closing role
-and does not follow `s`; that later `’` closes it. The pairs opened after the first `’` are followed
-by their kind: a `’` inside a deeper `“…”` closes nothing there (it is an apostrophe), so it neither
-ends that pair nor the search (`“‘a dogs’ b “c dogs’ d” e’ f”` → `""a dogs' b "c dogs' d" e" f"`). A
-`’` that closes nothing is an apostrophe. So `“He said ‘the dogs’ bowl is empty’”` →
-`"He said "the dogs' bowl is empty""`, and `“‘Hi,’ said the dogs’ owner”` →
-`""Hi," said the dogs' owner"`. When every candidate follows `s` (`‘the dogs’ bowls’`), the first
-one closes, and the round trip lists the case as a known loss (`NestedPossessive`, section 12.2).
-The classes of the neighbors are those of section 6.3: a character inside a protected span (a frozen
-core, a delimited span) is of class `Word`, so the `’` of `“x ‘y 2026{’”` closes.
+and does not follow `s` or `S`; that later `’` closes it. The pairs opened after the first `’` are
+followed by their kind: a `’` inside a deeper `“…”` closes nothing there (it is an apostrophe), so
+it neither ends that pair nor the search (`“‘a dogs’ b “c dogs’ d” e’ f”` →
+`""a dogs' b "c dogs' d" e" f"`). A `’` that closes nothing is an apostrophe. So
+`“He said ‘the dogs’ bowl is empty’”` → `"He said "the dogs' bowl is empty""`, and
+`“‘Hi,’ said the dogs’ owner”` → `""Hi," said the dogs' owner"`. When every candidate follows `s` or
+`S` (`‘the dogs’ bowls’`, `‘THE DOGS’ BOWLS’`), the first one closes, and the round trip lists the
+case as a known loss (`NestedPossessive`, section 12.2). The classes of the neighbors are those of
+section 6.3: a character inside a protected span (a frozen core, a delimited span) is of class
+`Word`, so the `’` of `“x ‘y 2026{’”` closes.
 
 The canonical plain form, for the enabled rules, is the Plain column of the table above, with these
 choices: no typographic character that the rules produce; a dash between words written `-` (not
@@ -125,8 +126,8 @@ Two properties and one table, for both languages and the rule sets of section 13
 trip"):
 
 - **P1**: `to_plain(typeset(x)) == x` for every `x` in the canonical plain form (section 12.1) for
-  the settings under test, except the pattern of `NestedPossessive` (two `s'` at the same depth of
-  one nested pair). Every mismatch fails: inside the canonical form there is no other loss.
+  the settings under test, except the pattern of `NestedPossessive` (two `s'` or `S'` at the same
+  depth of one nested pair). Every mismatch fails: inside the canonical form there is no other loss.
 - **P2**: `typeset(to_plain(y)) == y` for `y = typeset(x)` and any plain `x`, the rows of the table
   below included.
 
