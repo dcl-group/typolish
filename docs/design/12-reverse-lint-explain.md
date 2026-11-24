@@ -140,7 +140,7 @@ trip"):
   the settings under test, except the pattern of `NestedPossessive` (two `s'` or `S'` at the same
   depth of one nested pair). Every mismatch fails: inside the canonical form there is no other loss.
 - **P2**: `typeset(to_plain(y)) == y` for `y = typeset(x)` and any plain `x`, the rows of the table
-  below included.
+  below included, except the defect of sign-only pairs that share a quote listed in section 10.8.
 
 There is no external corpus (decided by the maintainer on 2026-11-21); stage reports say that the
 corpus is the project's own. P1 runs on a generator of canonical strings and on the corpus files of

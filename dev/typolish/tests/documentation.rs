@@ -908,6 +908,9 @@ fn limits() -> Vec<Limit> {
         limit(RU, Both, "сказал: \"привет\"", "сказал: «привет»"),
         limit(RU, Both, "key: \"\"", "key: «»"),
         limit(RU, Both, "key=\"\"", "key=\"\""),
+        // Sign-only pairs that share a quote: a defect, not idempotent.
+        limit(RU, Both, "\"x ''-'' y\"", "«x ''-„“ y»"),
+        limit(EN, Both, "\"x ''-'' y\"", "“x ''-‘’ y”"),
         // A quoted value with a space glued to `=`.
         limit(
             EN,

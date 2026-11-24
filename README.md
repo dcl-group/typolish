@@ -288,6 +288,10 @@ The rules read the shape of the text, not its meaning. These cases are known and
   fragment and stays straight; with the space (`сказал: "привет"`) the quotes are placed. An empty
   value glued the same way (`key:""`) leaves the paragraph's quotes straight with an
   `UnmatchedQuote` warning; `key=""` stays as written.
+- Sign-only pairs that share a quote, as in `''-''`, are not idempotent: in Russian `"x ''-'' y"`
+  gives `«x ''-„“ y»`, and a second pass gives `«x „“-„“ y»`. For the same reason in English
+  `"x ''-'' y"` gives `“x ''-‘’ y”`, and its plain form `"x ''-"" y"` gives `“x ‘’-‘’ y”`. This is a
+  defect, not a choice.
 - In a declared language whose primary pair is `‘’` (en-GB), `PROSE` is not idempotent on a
   sign-only pair inside straight single quotes before a number: `'a ""-3'` gives `'a⍽‘’-3'`, and a
   second pass gives `'a⍽‘’-3′`. This is a defect, not a choice.

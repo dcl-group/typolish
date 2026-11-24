@@ -251,6 +251,12 @@ expectation):
   `key: ""` gives `key: «»`. A frozen core that does not end in `=` keeps its wrapper quotes as
   candidates, so `Путь /etc/"" и "да".` fails the paragraph the same way, with `UnmatchedQuote`
   (warning, section 6.1), while `key=""` stays as written.
+- Sign-only pairs that share a quote (section 6.3; in `''-''` the second `'` closes the pair `''`
+  and opens the pair `'-'`) are not idempotent: a later pair overrides the roles of an earlier one,
+  so in Russian `"x ''-'' y"` gives `«x ''-„“ y»`, and a second pass, where the glyphs cut the
+  chain, pairs the first two quotes (`«x „“-„“ y»`). The same class breaks P2 (section 12.2) in
+  English: `"x ''-'' y"` gives `“x ''-‘’ y”`, whose `to_plain` `"x ''-"" y"` is typeset as
+  `“x ‘’-‘’ y”`. This is a defect of the quote phase (sections 6.3 and 6.11), not a choice.
 - In a declared language whose primary pair is `‘’` (en-GB), Prose, a sign-only pair inside a
   top-level straight single pair before a number is not idempotent: `'a ""-3'` gives `'a⍽‘’-3'`, and
   a second pass reads the last `'` as a prime (`'a⍽‘’-3′`). This is a defect of the quote phase
