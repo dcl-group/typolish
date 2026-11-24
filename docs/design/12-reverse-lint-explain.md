@@ -69,7 +69,8 @@ two words into one fragment, which by design changes the rules around it (sectio
 that failed only because a neighboring reading was wrong is tried again alone in its neighborhood:
 readings farther apart than any rule looks (256 bytes; the longest pattern, `nbsp.phone`, spans at
 most 24 tokens) are tried in one forward run, and a problem of the run is laid at the nearest of
-them, so the number of runs does not grow with the length of the text. The whole pass repeats on its
+them, so the number of runs does not grow with the length of the text, and the bookkeeping of the
+candidates is linear (a reading is compared with its neighbors only). The whole pass repeats on its
 own output until nothing changes, so `to_plain` is stable by construction. There is no second copy
 of the rule patterns to drift from them. The price is up to about (readings within 256 bytes) ×
 (readings of a character) forward runs per pass, each over the whole text: on dense typographic text

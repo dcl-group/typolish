@@ -916,7 +916,7 @@ impl Typographer {
     /// `to_plain` is the matching fix. Like `to_plain`, it uses the thread-local working memory and
     /// makes no allocation promise. It is the tooling path: the time is linear on ordinary text,
     /// but a long run of ambiguous characters in one paragraph can make it quadratic in that
-    /// paragraph (design section 12.3); split untrusted text into paragraphs or limit its length.
+    /// paragraph (design section 12.1); split untrusted text into paragraphs or limit its length.
     ///
     /// ```
     /// use typolish::{DiagnosticKind, Language, RuleSet, Typographer};
@@ -944,7 +944,7 @@ impl Typographer {
     /// [`Typographer::to_plain_template`] would change. A diagnostic over several pieces is
     /// reported at its first piece (design section 3.11). It is the tooling path: the time is
     /// linear on ordinary text, but a long run of ambiguous characters in one paragraph can make it
-    /// quadratic in that paragraph (design section 12.3); split untrusted text into paragraphs or
+    /// quadratic in that paragraph (design section 12.1); split untrusted text into paragraphs or
     /// limit its length.
     ///
     /// ```
@@ -976,7 +976,7 @@ impl Typographer {
     /// such characters comes back borrowed. It uses the thread-local working memory and makes no
     /// allocation promise. It is the tooling path: the time is linear on ordinary text, but a long
     /// run of ambiguous characters in one paragraph can make it quadratic in that paragraph (design
-    /// section 12.3); split untrusted text into paragraphs or limit its length.
+    /// section 12.1); split untrusted text into paragraphs or limit its length.
     ///
     /// ```
     /// use typolish::{Language, RuleSet, Typographer};
@@ -997,7 +997,7 @@ impl Typographer {
     /// order with their payloads, `Protected` and `Markup` pieces are left alone, and the texts are
     /// in the n + 1 form of [`Template`] (design section 2.10). It is the tooling path: the time is
     /// linear on ordinary text, but a long run of ambiguous characters in one paragraph can make it
-    /// quadratic in that paragraph (design section 12.3); split untrusted text into paragraphs or
+    /// quadratic in that paragraph (design section 12.1); split untrusted text into paragraphs or
     /// limit its length.
     ///
     /// ```

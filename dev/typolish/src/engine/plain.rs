@@ -191,7 +191,7 @@ fn passes(
             .collect();
         // Every round that changes something turns at least one non-ASCII character into ASCII
         // text, so the loop ends; the number of rounds is bounded by the number of non-ASCII
-        // characters, so the worst case is quadratic (design section 12.3).
+        // characters, so the worst case is quadratic (design section 12.1).
         let Some((changed, undone)) = round(typographer, scratch, &current) else {
             break;
         };
@@ -266,6 +266,65 @@ struct Undone {
     start: usize,
     end: usize,
     written: usize,
+}
+
+/// The end of the chain of links from `n`: a link that leads to itself ends it. The links on
+/// the way are shortened, so that a chain is walked about once.
+fn find(links: &mut [usize], mut n: usize) -> usize {
+    while let Some(&next) = links.get(n) {
+        if next == n {
+            break;
+        }
+        let after = links.get(next).copied().unwrap_or(next);
+        if let Some(l) = links.get_mut(n) {
+            *l = after;
+        }
+        n = next;
+    }
+    n
+}
+
+/// The trial nearest to the range `start..end` in `window`, as its index in `trial` and its
+/// candidate: the distance is the gap between the two ranges, and of two at the same distance the
+/// first. `trial` is in text order, and so are its windows, so the nearest one is next to where
+/// the range falls among them.
+fn nearest_trial<'c>(
+    cands: &'c [Cand],
+    trial: &[usize],
+    window: usize,
+    start: usize,
+    end: usize,
+) -> Option<(usize, &'c Cand)> {
+    let at = |n: usize| trial.get(n).and_then(|&k| cands.get(k));
+    let lo = trial.partition_point(|&k| cands.get(k).is_some_and(|c| c.window < window));
+    let hi = trial.partition_point(|&k| cands.get(k).is_some_and(|c| c.window <= window));
+    let span = trial.get(lo..hi)?;
+    // Before `p` a trial starts before `end`: its gap shrinks as its end grows, down to 0 from
+    // the first one that reaches `start`. From `p` on, the gap grows with the start.
+    let p = span.partition_point(|&k| cands.get(k).is_some_and(|c| c.start < end));
+    let z = span
+        .get(..p)?
+        .partition_point(|&k| cands.get(k).is_some_and(|c| c.end < start));
+    let left = if z < p {
+        Some((lo + z, 0))
+    } else {
+        p.checked_sub(1)
+            .and_then(|n| Some((lo + n, start.saturating_sub(at(lo + n)?.end))))
+    };
+    let right = (p < span.len())
+        .then(|| Some((lo + p, at(lo + p)?.start.saturating_sub(end))))
+        .flatten();
+    let (n, _) = match (left, right) {
+        (Some(l), Some(r)) => {
+            if r.1 < l.1 {
+                r
+            } else {
+                l
+            }
+        }
+        (l, r) => l.or(r)?,
+    };
+    Some((n, at(n)?))
 }
 
 /// The result of one pass: the new text of every `Text` piece that changed, by input index, and
@@ -382,11 +441,40 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
         // dash are exempt: the closed form joins two words into one fragment, which by design
         // changes the rules around it, and `to_plain` restores them (design section 8.4).
         let mut blamed = false;
+        // The candidates that can be blamed, in text order (and so in window order): the nearest
+        // on each side of an edit is next to where the edit falls among them. A blamed one is
+        // off, so later edits skip it; the skips are links that jump over the blamed ones.
+        let suspects: Vec<usize> = cands
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.on && !c.fixed && !c.closed())
+            .map(|(k, _)| k)
+            .collect();
+        // `to_left[n]` leads to the nearest suspect at or before position `n - 1` (0: none);
+        // `to_right[n]` to the nearest at or after `n` (`len`: none).
+        let mut to_left: Vec<usize> = (0..=suspects.len()).collect();
+        let mut to_right: Vec<usize> = (0..=suspects.len()).collect();
         for &(window, ys, yt) in &verdict.stray {
-            let suspect = |c: &Cand| c.on && !c.fixed && !c.closed() && c.window == window;
-            let left = cands.iter().rposition(|c| suspect(c) && c.end <= ys);
-            let right = cands.iter().position(|c| suspect(c) && c.start >= yt);
-            for k in left.into_iter().chain(right) {
+            let in_window = |n: &usize| {
+                suspects
+                    .get(*n)
+                    .and_then(|&k| cands.get(k))
+                    .is_some_and(|c| c.window == window)
+            };
+            let at = suspects.partition_point(|&k| cands.get(k).is_some_and(|c| c.end <= ys));
+            let left = find(&mut to_left, at).checked_sub(1).filter(in_window);
+            let from = suspects.partition_point(|&k| cands.get(k).is_some_and(|c| c.start < yt));
+            let right = Some(find(&mut to_right, from)).filter(in_window);
+            for n in left.into_iter().chain(right) {
+                if let Some(l) = to_left.get_mut(n.saturating_add(1)) {
+                    *l = n;
+                }
+                if let Some(r) = to_right.get_mut(n) {
+                    *r = n.saturating_add(1);
+                }
+                let Some(&k) = suspects.get(n) else {
+                    continue;
+                };
                 if let (Some(cand), Some(p)) = (cands.get_mut(k), parked.get_mut(k)) {
                     cand.on = false;
                     *p = true;
@@ -405,23 +493,26 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
         .enumerate()
         .filter_map(|(k, &p)| p.then_some(k))
         .collect();
-    let near_parked = |k: usize, pending: &[usize]| {
-        let Some(c) = cands.get(k) else {
-            return false;
-        };
-        pending.iter().any(|&j| {
-            j != k
-                && cands.get(j).is_some_and(|d| {
-                    d.window == c.window
-                        && d.start < c.end.saturating_add(REACH)
-                        && c.start < d.end.saturating_add(REACH)
-                })
+    // `pending` is in text order and the candidates do not overlap, so a candidate put aside
+    // within reach of this one is next to it in `pending`, or none is.
+    let near = |c: &Cand, j: Option<&usize>| {
+        j.and_then(|&j| cands.get(j)).is_some_and(|d| {
+            d.window == c.window
+                && d.start < c.end.saturating_add(REACH)
+                && c.start < d.end.saturating_add(REACH)
         })
     };
     let retried: Vec<usize> = pending
         .iter()
-        .copied()
-        .filter(|&k| near_parked(k, &pending) || cands.get(k).is_some_and(|c| c.alts.len() > 1))
+        .enumerate()
+        .filter(|&(n, &k)| {
+            cands.get(k).is_some_and(|c| {
+                c.alts.len() > 1
+                    || near(c, n.checked_sub(1).and_then(|m| pending.get(m)))
+                    || near(c, pending.get(n.saturating_add(1)))
+            })
+        })
+        .map(|(_, &k)| k)
         .collect();
     pending = retried;
     for &k in &pending {
@@ -430,6 +521,7 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
         }
     }
     let tried = !pending.is_empty();
+    let mut gone = vec![false; cands.len()];
     while !pending.is_empty() {
         // Trials far enough apart that the rules see them separately (their contexts are a few
         // tokens wide): each problem of the run is laid at the nearest trial.
@@ -454,18 +546,7 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
         let next = check.run(scratch, &cands);
         let mut rejected = vec![false; trial.len()];
         let mut blame = |window: usize, start: usize, end: usize, stray: bool| {
-            let nearest = trial
-                .iter()
-                .enumerate()
-                .filter_map(|(n, &k)| Some((n, cands.get(k)?)))
-                .filter(|(_, c)| c.window == window)
-                .min_by_key(|(_, c)| {
-                    if end <= c.start {
-                        c.start - end
-                    } else {
-                        start.saturating_sub(c.end)
-                    }
-                });
+            let nearest = nearest_trial(&cands, &trial, window, start, end);
             if let Some((n, c)) = nearest
                 && !(stray && c.closed())
                 && let Some(r) = rejected.get_mut(n)
@@ -478,8 +559,10 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
                 blame(cand.window, cand.start, cand.end, false);
             }
         }
+        let mut known = verdict.stray.clone();
+        known.sort_unstable();
         for s in &next.stray {
-            if !verdict.stray.contains(s) {
+            if known.binary_search(s).is_err() {
                 blame(s.0, s.1, s.2, true);
             }
         }
@@ -495,24 +578,35 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
                 cand.alt = cand.alt.saturating_add(1);
                 cand.alt >= cand.alts.len()
             };
-            if done {
-                pending.retain(|&j| j != k);
+            if done && let Some(g) = gone.get_mut(k) {
+                *g = true;
             }
         }
+        pending.retain(|&j| !gone.get(j).copied().unwrap_or(true));
         // The strays of the new state: those of the run, less those of the rejected trials,
         // which are off again.
+        // The rejected trials, in text order: the one that can reach a stray is the first whose
+        // end reaches it.
+        let off: Vec<&Cand> = trial
+            .iter()
+            .zip(&rejected)
+            .filter(|&(_, &r)| r)
+            .filter_map(|(&k, _)| cands.get(k))
+            .collect();
         verdict.stray = next
             .stray
             .iter()
             .filter(|s| {
-                verdict.stray.contains(s)
-                    || !trial.iter().zip(&rejected).any(|(&k, &r)| {
-                        r && cands.get(k).is_some_and(|c| {
-                            c.window == s.0
-                                && s.1 < c.end.saturating_add(REACH)
-                                && c.start < s.2.saturating_add(REACH)
-                        })
+                known.binary_search(s).is_ok() || {
+                    let q = off.partition_point(|c| {
+                        c.window < s.0 || (c.window == s.0 && c.end.saturating_add(REACH) <= s.1)
+                    });
+                    !off.get(q).is_some_and(|c| {
+                        c.window == s.0
+                            && s.1 < c.end.saturating_add(REACH)
+                            && c.start < s.2.saturating_add(REACH)
                     })
+                }
             })
             .copied()
             .collect();

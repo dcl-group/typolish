@@ -6,7 +6,7 @@ Every pass of the reverse transformation that changes something turns at least o
 character into ASCII text, and the pass repeats until nothing changes (design section 12.1). On a
 long run of ambiguous characters in one paragraph (`’`, nested quotes) a pass may settle only a few
 readings, so the number of passes grows with the run and the time is quadratic in the length of the
-paragraph (design section 12.3).
+paragraph (design section 12.1).
 
 Measured in a release build with `Language::RU_RU` and `RuleSet::PROSE`:
 
@@ -30,3 +30,4 @@ where `to_plain` changes the text.
 An `#[ignore]` test in `tests/load.rs`, after the pattern of `load_is_linear`, for `’` repeated n
 times and for `«„` repeated n times, then `x`, then `“»` repeated n times: the time per byte at 512
 KiB is at most twice that at 64 KiB. The test is added together with the change of the code.
+`to_plain_is_linear_on_prose` covers ordinary prose and passes; the runs of `’` remain.

@@ -553,6 +553,10 @@ U+00A0 and must not be normalized.
   between 64 KiB and 1 MiB, where the token buffers of one window leave the caches, is most of it.
   The faster the passes, the larger that memory-bound share, so the margin to the bound of 2 is
   smaller than it was.
+- `#[ignore]` test `to_plain_is_linear_on_prose`: time per byte of `to_plain` for 512 KiB of
+  ordinary en-US prose with spaced dashes, one line and in paragraphs, is at most twice that for 64
+  KiB (section 12.1; `lint` runs the same check). A long run of `’` in one paragraph is not covered:
+  it stays quadratic (section 12.1).
 - `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` (the only file with
   `#![allow(unsafe_code)]`, section 14.5; the allocator counts and delegates to
   `std::alloc::System`) checks the table of section 2.12: zero allocations for an unchanged string

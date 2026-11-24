@@ -1,7 +1,9 @@
 //! Linearity of the pathological inputs (design sections 3.12 and 13.8): `load_is_linear` is
 //! `#[ignore]`, because it needs a release build and time:
 //! `cargo test --release -p typolish --test load -- --ignored` from `dev/`.
-//! `generators_keep_their_size` checks the sizes of the generated inputs in every run.
+//! `to_plain_is_linear_on_prose` (also `#[ignore]`) does the same for `to_plain` on ordinary prose
+//! (design section 12.1). `generators_keep_their_size` checks the sizes of the generated inputs in
+//! every run.
 //!
 //! The time per byte for 16 MiB is at most twice that for 64 KiB, separately for each input. There
 //! are no absolute thresholds: the machine is shared.
@@ -95,6 +97,50 @@ fn load_is_linear() {
             if ratio > 2.0 {
                 failures.push(format!("{config} / {name}: ratio {ratio:.2} > 2"));
             }
+        }
+    }
+    assert!(failures.is_empty(), "nonlinear inputs: {failures:#?}");
+}
+
+/// The median of `runs` timings of `to_plain` on one text, in seconds per byte.
+fn plain_per_byte(t: &Typographer, text: &str, runs: usize) -> f64 {
+    let mut times: Vec<Duration> = (0..runs)
+        .map(|_| {
+            let start = Instant::now();
+            black_box(t.to_plain(black_box(text)));
+            start.elapsed()
+        })
+        .collect();
+    times.sort();
+    times[times.len() / 2].as_secs_f64() / text.len() as f64
+}
+
+/// `to_plain` on ordinary prose whose readings the forward check rejects (an English dash with
+/// spaces, which the closed style would not write) is linear in one call, whether the text is one
+/// line or many paragraphs (design section 12.1); `lint` runs the same check. The time per byte
+/// for 512 KiB is at most twice that for 64 KiB.
+#[test]
+#[ignore = "needs a release build and time; run with --release -- --ignored"]
+fn to_plain_is_linear_on_prose() {
+    let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    let sentences = [
+        "The answer — as always — is no. ",
+        "This is an ordinary sentence of English prose that has a spaced dash — like this one — \
+         and goes on for a while before it ends.\n\n",
+    ];
+    let mut failures = Vec::new();
+    for sentence in sentences {
+        let make = |size: usize| sentence.repeat(size / sentence.len() + 1);
+        let small = plain_per_byte(&t, &make(SMALL), 3);
+        let large = plain_per_byte(&t, &make(8 * SMALL), 1);
+        let ratio = large / small;
+        println!(
+            "{sentence:?}: 64 KiB {:.1} ns/B, 512 KiB {:.1} ns/B, ratio {ratio:.2}",
+            small * 1e9,
+            large * 1e9
+        );
+        if ratio > 2.0 {
+            failures.push(format!("{sentence:?}: ratio {ratio:.2} > 2"));
         }
     }
     assert!(failures.is_empty(), "nonlinear inputs: {failures:#?}");
