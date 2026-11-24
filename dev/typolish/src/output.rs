@@ -260,6 +260,10 @@ impl EscapeStyle {
     /// JavaScript: `\u00A0`; above the BMP a surrogate pair. Safe in every kind of JavaScript
     /// string literal and inside an HTML `<script>` element.
     ///
+    /// Text the crate writes never ends in a raw `$`, but it may start with `{`: a value placed
+    /// next to it (a slot value, the text already in the buffer of `typeset_into`) must not end in
+    /// a raw `$` (design section 11.1).
+    ///
     /// ```
     /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
     ///
@@ -271,7 +275,12 @@ impl EscapeStyle {
     /// );
     /// ```
     pub const JS: EscapeStyle = EscapeStyle::of(Syntax::Js);
-    /// JavaScript: `\xA0` up to U+00FF, `\u2014` above, surrogate pairs above the BMP.
+    /// JavaScript: `\xA0` up to U+00FF, `\u2014` above, surrogate pairs above the BMP. Safe where
+    /// [`EscapeStyle::JS`] is.
+    ///
+    /// Text the crate writes never ends in a raw `$`, but it may start with `{`: a value placed
+    /// next to it (a slot value, the text already in the buffer of `typeset_into`) must not end in
+    /// a raw `$` (design section 11.1).
     ///
     /// ```
     /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
@@ -284,7 +293,12 @@ impl EscapeStyle {
     /// );
     /// ```
     pub const JS_HEX: EscapeStyle = EscapeStyle::of(Syntax::JsHex);
-    /// JavaScript (ES2015): `\u{A0}`, no surrogate pairs.
+    /// JavaScript (ES2015): `\u{A0}`, no surrogate pairs. Safe where [`EscapeStyle::JS`] is, in
+    /// engines that read ES2015 escapes.
+    ///
+    /// Text the crate writes never ends in a raw `$`, but it may start with `{`: a value placed
+    /// next to it (a slot value, the text already in the buffer of `typeset_into`) must not end in
+    /// a raw `$` (design section 11.1).
     ///
     /// ```
     /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};

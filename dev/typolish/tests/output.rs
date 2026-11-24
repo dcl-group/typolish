@@ -1219,6 +1219,28 @@ fn the_filled_template_is_the_encoded_text() {
 }
 
 #[test]
+fn a_crate_text_may_start_with_a_brace_but_never_ends_in_a_dollar() {
+    // The rustdoc of the JavaScript styles (design section 11.1): a text the crate writes may
+    // start with a raw `{`, so a value placed before it must not end in a raw `$`; the crate's own
+    // texts never end in one.
+    let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    for style in [
+        EscapeStyle::JS,
+        EscapeStyle::JS_HEX,
+        EscapeStyle::JS_CODE_POINT,
+    ] {
+        let output = Output::Escaped(style);
+        let out = t.typeset_template([Piece::Slot("x", Slot::WORD), Piece::Text("{x}")], output);
+        assert_eq!(out.texts(), ["", "{x}"], "{style:?}");
+        let got = t.typeset("cost $", output);
+        assert!(
+            got.starts_with("cost ") && !got.ends_with('$'),
+            "{style:?}: {got}"
+        );
+    }
+}
+
+#[test]
 fn a_dollar_before_a_slot_or_at_the_end_is_escaped() {
     // Design section 11.6: the character after a `$` that ends a text is not known (a slot value
     // or the text after a slot may start with `{`), so the JavaScript styles escape it and no
