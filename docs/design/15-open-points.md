@@ -132,7 +132,7 @@ short words of section 7.3; (a) for Russian, the lists of section 7.2. Rejected:
 release. The Russian lists and the norms "glue before a dash", "glue after a dialogue dash" and
 `?..` rest on Wikipedia articles (Mil'chin's handbook and GOST were not read); the English lists,
 elisions, abbreviations and the closed dash rest on project choices and secondary sources (the
-Chicago Manual of Style was not read). After 0.1.0 list changes follow the output stability policy
+Chicago Manual of Style was not read). After 0.1.1 list changes follow the output stability policy
 (section 15.1).
 
 **17.** **Digit grouping in text** (`1000000 рублей` → `1⍽000⍽000 рублей`). Settled 2026-11-22: (a)

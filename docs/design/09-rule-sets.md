@@ -23,7 +23,7 @@ The two sets differ only in their rule lists; settings and language data are the
 
 ### 9.2 Composition
 
-`PROSE` holds all 27 rules of version 1. It equals `ALL` in 0.1.0 only: a rule added in a later
+`PROSE` holds all 27 rules of version 1. It equals `ALL` in 0.1.1 only: a rule added in a later
 release joins `ALL` but not the built-in sets; the sets change only in a release that raises the
 breaking number (section 15.1).
 

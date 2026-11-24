@@ -8,10 +8,10 @@ All notable changes to this crate are recorded in this file. The format follows
 
 Nothing yet.
 
-## 0.1.0 - unreleased
+## 0.1.1 - unreleased
 
-The first version, prepared and not published; the date is set when the version is tagged. Minimum
-supported Rust version: 1.100.
+The first version, prepared and not published; the date is set when the version is tagged. Version
+0.1.0 was prepared but never published. Minimum supported Rust version: 1.100.
 
 ### Added
 

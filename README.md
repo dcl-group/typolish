@@ -21,7 +21,7 @@ the limits listed under Languages.
 
 ## Status
 
-Version 0.1.0 is prepared and not published yet. The design is in
+Version 0.1.1 is prepared and not published yet. The design is in
 [`docs/design/`](https://github.com/dcl-group/typolish/tree/main/docs/design). The minimum supported
 Rust version is 1.100.
 

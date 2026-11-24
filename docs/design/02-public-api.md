@@ -1108,7 +1108,7 @@ included); streaming without a buffer (quote pairing defers decisions to the end
   subtag such as `ru`, or `und`), with that built-in language or `COMMON`, which is not equal to the
   caller's language when their data differ.
 - The policy for changes of output, for new built-in languages and for the MSRV is section 15.1.
-- `cargo-semver-checks` is not installed on the development machine. For 0.1.0 there is no previous
+- `cargo-semver-checks` is not installed on the development machine. For 0.1.1 there is no previous
   release; the public surface is fixed by the doctests. From the second release on, the preparation
   of each release compares the public surface with the previous release (`cargo semver-checks` where
   installed, otherwise a review of `cargo doc` output).

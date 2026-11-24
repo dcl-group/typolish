@@ -6,9 +6,10 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 
 ### 15.1 Versioning and output stability
 
-- The first release is `0.1.0`. SemVer as Cargo applies it: before 1.0 the second number is the
-  breaking one. "A release that raises the breaking number" below means `0.1.x` → `0.2.0` before 1.0
-  and `1.x.y` → `2.0.0` after it.
+- The first release is `0.1.1`; the prepared `0.1.0` is never published (decided by the maintainer
+  on 2026-11-24). SemVer as Cargo applies it: before 1.0 the second number is the breaking one. "A
+  release that raises the breaking number" below means `0.1.x` → `0.2.0` before 1.0 and `1.x.y` →
+  `2.0.0` after it.
 - API changes follow SemVer; the commitments of section 2.13 keep extensions additive.
 - **Output changes.** The output of `PROSE` and `INTERFACE` for built-in languages changes only in a
   release that raises the breaking number (new rules in a set, changed lists, changed language
@@ -136,8 +137,12 @@ Decided by the maintainer on 2026-11-23; not reopened here:
     N.M". `design_references_say_design` in `tests/documentation.rs` checks the comments of every
     Rust file of the crate (section 13.10).
 34. Publishing on crates.io waits for the maintainer's command; until then only the GitHub
-    repository is pushed (items 1 and 15). The tag `v0.1.0` is set and pushed only on that command
+    repository is pushed (items 1 and 15). The tag `v0.1.1` is set and pushed only on that command
     too (section 14.7).
+35. After the fixes of the review of 2026-11-24 the version is raised to `0.1.1`, a patch: the first
+    published release is `0.1.1`, and `0.1.0` is never published. Publication on crates.io and the
+    tag `v0.1.1` wait for a separate command of the maintainer (item 34, section 15.1). Decided by
+    the maintainer on 2026-11-24.
 
 The task itself fixes further points used throughout: the minus sign U+2212 for numbers, the
 mandatory negative cases, HTML outside the core, `thiserror` for errors, `cargo deny check` clean,
@@ -298,7 +303,7 @@ and `report_template` exist since stage 2); the own corpus (section 13.7) with s
 `AGREE`/`DIVERGE` groups with reason codes of all 820 rows of `tests/reference/{ru,en_us}.rs`, and
 the target `tests/reference.rs` that compares them (section 13.4); `benches/load.rs` and the
 linearity test `load_is_linear` of `tests/load.rs` (section 13.8); rustdoc with an example on every
-public item; README (with the known limits of section 10.8) and CHANGELOG (a prepared `0.1.0`
+public item; README (with the known limits of section 10.8) and CHANGELOG (a prepared `0.1.1`
 entry); `cargo package --list` reviewed; the name check on crates.io (section 15.5, item 3). Ready
 when:
 

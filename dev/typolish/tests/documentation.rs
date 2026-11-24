@@ -726,7 +726,7 @@ fn design_references_say_design() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// CHANGELOG (design sections 15.2 and 15.4: a prepared 0.1.0 entry).
+// CHANGELOG (design sections 15.2 and 15.4: a prepared 0.1.1 entry).
 
 fn changelog_entry(text: &str, version: &str) -> String {
     let mut out = String::new();
@@ -762,7 +762,7 @@ fn changelog_has_the_prepared_entry() {
         "the first entry is Unreleased"
     );
     let version = env!("CARGO_PKG_VERSION");
-    assert_eq!(version, "0.1.0");
+    assert_eq!(version, "0.1.1");
     assert!(
         headings[1].starts_with(&format!("## {version}")),
         "the second entry is the version of Cargo.toml: {}",
@@ -782,7 +782,7 @@ fn changelog_has_the_prepared_entry() {
         !headings
             .iter()
             .any(|h| h.contains("-rc") || h.contains("yanked")),
-        "no other versions before 0.1.0"
+        "no other versions before 0.1.1"
     );
 }
 
@@ -795,7 +795,7 @@ fn changelog_names_every_rule_and_its_counts() {
     for rule in Rule::ALL {
         assert!(
             entry.contains(&format!("`{}`", rule.id())),
-            "the 0.1.0 entry does not name the rule {}",
+            "the 0.1.1 entry does not name the rule {}",
             rule.id()
         );
     }
@@ -827,7 +827,7 @@ fn changelog_names_every_rule_and_its_counts() {
     ] {
         assert!(
             entry.contains(name),
-            "the 0.1.0 entry does not mention {name}"
+            "the 0.1.1 entry does not mention {name}"
         );
     }
 }

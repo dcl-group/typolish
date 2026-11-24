@@ -385,7 +385,7 @@ fn rule_table_matches_rule_all() {
 #[test]
 fn set_composition_matches_section_9_2() {
     assert_eq!(RuleSet::PROSE.len(), 27);
-    assert_eq!(RuleSet::PROSE, RuleSet::ALL, "PROSE equals ALL in 0.1.0");
+    assert_eq!(RuleSet::PROSE, RuleSet::ALL, "PROSE equals ALL in 0.1.1");
     assert_eq!(RuleSet::INTERFACE.len(), 13);
     let Some(text) = design("09-rule-sets.md") else {
         return;

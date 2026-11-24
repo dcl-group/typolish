@@ -132,7 +132,7 @@ fn package_manifest_matches_section_14_5() {
     let package = table(&toml, "package");
     let has = |line: &str| package.iter().any(|l| l == line);
     assert!(has("name = \"typolish\""));
-    assert!(has("version = \"0.1.0\""));
+    assert!(has("version = \"0.1.1\""));
     assert!(has("readme = \"README.md\""));
     assert!(has(
         "keywords = [\"typography\", \"typesetting\", \"quotes\", \"nbsp\", \"i18n\"]"
@@ -163,7 +163,7 @@ fn package_manifest_matches_section_14_5() {
     assert_eq!(table(&toml, "features"), ["default = []"]);
     // Cargo reads the same values.
     assert_eq!(env!("CARGO_PKG_NAME"), "typolish");
-    assert_eq!(env!("CARGO_PKG_VERSION"), "0.1.0");
+    assert_eq!(env!("CARGO_PKG_VERSION"), "0.1.1");
     assert_eq!(env!("CARGO_PKG_LICENSE"), "MIT OR Apache-2.0");
     assert_eq!(
         env!("CARGO_PKG_REPOSITORY"),
