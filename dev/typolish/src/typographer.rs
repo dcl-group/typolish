@@ -708,9 +708,10 @@ impl Typographer {
     ///
     /// Uses a thread-local working buffer; after the first call on a thread an unchanged string
     /// costs no allocation while the buffer stays under 4 MiB, that is for an input up to about 50
-    /// KiB (design section 2.12). Memory is linear in the input, up to about 110 bytes per byte of
-    /// a paragraph (design section 3.12); for longer inputs use [`Typographer::typeset_with`] with
-    /// a [`Scratch`] of your own, which is never shrunk.
+    /// KiB (design section 2.12). Memory is linear in the input, about 20 to 230 bytes per byte of
+    /// a paragraph, the most for text of one-letter words and quotes (design section 3.12); for
+    /// longer inputs use [`Typographer::typeset_with`] with a [`Scratch`] of your own, which is
+    /// never shrunk.
     ///
     /// ```
     /// use std::borrow::Cow;

@@ -648,14 +648,16 @@ equal diagnostics (section 12.3).
 - Memory: the token buffers of the longest window (about 40 bytes per token), the output string, and
   the journal only when recording. For text with paragraphs, memory does not grow with the input. A
   10 MB paragraph without line breaks is the pathological case: memory is linear in its length. The
-  heap peak of `typeset` is about 30 to 110 bytes per byte of such a paragraph (measured in a
-  release build on paragraphs of 1 and 4 MB: 32 for Russian words, 39 for English words, 61 and 110
-  for Russian and English prose with quotes, dashes and numbers), output string included. Cost is
-  per token, not per byte: a paragraph of 10^5 emoji clusters holds about 4 MB of tokens, in one
-  buffer only, since no phase edits it and a phase without edits copies nothing (section 3.8), and
-  the engine as a whole takes about 7 MB for it (measured, section 13.8: about 70 bytes per cluster
-  for the tokens, the clusters and the rest of the scratch together; the result is borrowed, so no
-  output string). A window that a phase edits fills the second buffer too.
+  heap peak of `typeset` is about 20 to 230 bytes per byte of such a paragraph, the most for text of
+  one-letter words and quotes (measured with a fresh `Scratch` in a release build on paragraphs of 1
+  and 4 MB, output string included: 20 for `слово ` repeated, 39 for `word `, 61 and 110 for Russian
+  and English prose with quotes, dashes and numbers, 96 for `а и в, о. `, 176 for `a b, c. `, 192
+  for `a `, 218 for `"a" 'b' ` and 228 for `"a" `, the last two in English). Cost is per token, not
+  per byte: a paragraph of 10^5 emoji clusters holds about 4 MB of tokens, in one buffer only, since
+  no phase edits it and a phase without edits copies nothing (section 3.8), and the engine as a
+  whole takes about 7 MB for it (measured, section 13.8: about 70 bytes per cluster for the tokens,
+  the clusters and the rest of the scratch together; the result is borrowed, so no output string). A
+  window that a phase edits fills the second buffer too.
 - Inputs exercised by the load tests (section 13.8): long runs of `"`, `'`, backticks, `-`, `.`,
   `(`; alternating Cyrillic and Latin letters; a string of ZWJ emoji; one 1 MiB line without spaces
   (one fragment: the classifier is linear, freezing is one pass); quote nesting whose depth grows
