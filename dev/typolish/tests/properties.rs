@@ -1080,6 +1080,90 @@ proptest! {
         prop_assert_eq!(got, want.join("</p><p>"), "{:?}", texts);
     }
 
+    /// The same for templates with slots, protected pieces and inline markup next to the
+    /// `BlockMarkup` pieces: the texts of the template, in Unicode and HTML output and of
+    /// `to_plain_template`, are those of a separate call per block, joined at the block. Escaped
+    /// output is left out: a `$` at the end of a separate call is escaped, since the next
+    /// character is not known there, and a `$` before the block is not (design section 11.6).
+    #[test]
+    fn block_markup_splits_a_template_into_separate_calls(
+        blocks in prop::collection::vec(pieces(), 1..4), lang in 0usize..3, set in rule_set(),
+        quotes in 0u8..3, edges in prop::collection::vec((0u8..3, 0u8..3), 4),
+    ) {
+        // Each block may start and end with a slot or a protected piece, so that one stands next
+        // to the `BlockMarkup` piece more often than the generator of pieces makes it.
+        let edge = |kind: u8| match kind {
+            1 => Some(GenPiece::Slot(0, typolish::SlotKind::Word)),
+            2 => Some(GenPiece::Protected("p".to_owned())),
+            _ => None,
+        };
+        let blocks: Vec<Vec<GenPiece>> = blocks
+            .into_iter()
+            .zip(edges)
+            .map(|(block, (start, end))| {
+                edge(start)
+                    .into_iter()
+                    .chain(block.into_iter().filter(|p| !matches!(p, GenPiece::Block(_))))
+                    .chain(edge(end))
+                    .collect()
+            })
+            .collect();
+        prop_assume!(blocks.iter().flatten().all(|p| match p {
+            GenPiece::Text(text) => !text.contains("```"),
+            _ => true,
+        }));
+        let t = typographer(lang, set, quotes, 0);
+        let mut all: Vec<GenPiece> = Vec::new();
+        for (i, block) in blocks.iter().enumerate() {
+            if i > 0 {
+                all.push(GenPiece::Block("</p><p>".to_owned()));
+            }
+            all.extend(block.iter().cloned());
+        }
+        let all = borrow(&all);
+        // The texts of separate calls, the last text of one block and the first of the next
+        // joined by `mark`.
+        let join = |calls: Vec<Vec<String>>, mark: &str| {
+            let mut out: Vec<String> = Vec::new();
+            for (i, texts) in calls.into_iter().enumerate() {
+                let mut texts = texts.into_iter();
+                if i > 0
+                    && let (Some(last), Some(first)) = (out.last_mut(), texts.next())
+                {
+                    last.push_str(mark);
+                    last.push_str(&first);
+                }
+                out.extend(texts);
+            }
+            out
+        };
+        let owned = |texts: &[Cow<'_, str>]| -> Vec<String> {
+            texts.iter().map(|text| text.to_string()).collect()
+        };
+        for output in all_outputs().into_iter().filter(|o| !matches!(o, Output::Escaped(_))) {
+            let mark = t.typeset_template([Piece::<u32>::BlockMarkup("</p><p>")], output);
+            let mark = mark.texts().concat();
+            let got = t.typeset_template(all.iter().copied(), output);
+            let want = join(
+                blocks
+                    .iter()
+                    .map(|block| owned(t.typeset_template(borrow(block), output).texts()))
+                    .collect(),
+                &mark,
+            );
+            prop_assert_eq!(owned(got.texts()), want, "{:?} {:?}", output, all);
+        }
+        let got = t.to_plain_template(all.iter().copied());
+        let want = join(
+            blocks
+                .iter()
+                .map(|block| owned(t.to_plain_template(borrow(block)).texts()))
+                .collect(),
+            "</p><p>",
+        );
+        prop_assert_eq!(owned(got.texts()), want, "{:?}", all);
+    }
+
     /// 8. Cow for templates (design section 2.6, output contract items 1 and 2): the text of a gap
     /// between slots with at most one non-empty piece is borrowed exactly when it equals that
     /// piece; a merged text is never borrowed; `changed()` says whether any text differs from the

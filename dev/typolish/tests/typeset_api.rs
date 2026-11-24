@@ -19,8 +19,8 @@ use std::thread;
 
 use common::{check, vis};
 use typolish::{
-    DiagnosticKind, EscapeStyle, HtmlStyle, Language, Output, Piece, RuleSet, Scratch, Slot,
-    SlotKind, Template, Typographer,
+    DiagnosticKind, EscapeStyle, HtmlStyle, Language, Output, Piece, RuleSet, Scratch,
+    SingleQuotes, Slot, SlotKind, Template, Typographer,
 };
 
 static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
@@ -581,6 +581,155 @@ fn to_plain_template_reads_no_neighbor_across_block_markup() {
             Piece::Text("'a.-"),
         ]);
         assert_eq!(template.texts(), ["\"\"|'a.-"], "{set}");
+    }
+}
+
+#[test]
+fn to_plain_template_reads_a_slot_next_to_block_markup_as_a_slot() {
+    // Design sections 2.6 and 12.1: a slot or a protected piece between the text and a
+    // `BlockMarkup` piece is the neighbor of that text, as in a separate call that ends with it,
+    // not the edge of the text that the block makes on its other side.
+    let everywhere = Typographer::builder(Language::EN_US, RuleSet::ALL)
+        .single_quotes(SingleQuotes::Everywhere)
+        .build()
+        .unwrap();
+    let never = Typographer::builder(Language::EN_US, RuleSet::INTERFACE)
+        .single_quotes(SingleQuotes::Never)
+        .build()
+        .unwrap();
+    // The typographer, the pieces before the block, the pieces after it and the texts.
+    type Case<'a> = (
+        &'a Typographer,
+        Vec<Piece<'a, ()>>,
+        Vec<Piece<'a, ()>>,
+        &'a [&'a str],
+    );
+    let word = || Piece::Slot((), Slot::new(SlotKind::Word));
+    let cases: [Case<'_>; 3] = [
+        (
+            &everywhere,
+            vec![Piece::Text("‘x’"), word()],
+            vec![Piece::Text("y")],
+            &["\"x’", "</p><p>y"],
+        ),
+        (
+            &everywhere,
+            vec![Piece::Text("‘x’"), Piece::Protected("p")],
+            vec![Piece::Text("y")],
+            &["\"x’p</p><p>y"],
+        ),
+        (
+            &never,
+            vec![Piece::Text("!30 с10-5:")],
+            vec![word(), Piece::Text("„‘\u{ad}’")],
+            &["!30 с10-5:</p><p>", "„\"\u{ad}\""],
+        ),
+    ];
+    for (t, before, after, want) in cases {
+        let mut pieces = before.clone();
+        pieces.push(Piece::BlockMarkup("</p><p>"));
+        pieces.extend(after.iter().copied());
+        let got = t.to_plain_template(pieces.iter().copied());
+        assert_eq!(got.texts(), want, "{pieces:?}");
+        // The same texts as two separate calls joined at the block.
+        let mut joined: Vec<String> = t
+            .to_plain_template(before.iter().copied())
+            .texts()
+            .iter()
+            .map(|text| text.to_string())
+            .collect();
+        let rest = t.to_plain_template(after.iter().copied());
+        let mut rest = rest.texts().iter();
+        if let (Some(last), Some(first)) = (joined.last_mut(), rest.next()) {
+            last.push_str("</p><p>");
+            last.push_str(first);
+        }
+        joined.extend(rest.map(|text| text.to_string()));
+        assert_eq!(got.texts(), joined, "{pieces:?}");
+    }
+}
+
+#[test]
+fn to_plain_template_with_block_markup_agrees_with_separate_calls() {
+    // Design sections 2.6 and 12.1: every short text of quotes and letters, with a slot, a
+    // protected piece or nothing on either side of a `BlockMarkup` piece, reads as two separate
+    // calls joined at the block.
+    const PARTS: [&str; 8] = ["‘", "’", "“", "”", "'", "\"", "x", " "];
+    let mut texts: Vec<String> = vec![String::new()];
+    for _ in 0..3 {
+        let longer: Vec<String> = texts
+            .iter()
+            .flat_map(|text| PARTS.iter().map(move |part| format!("{text}{part}")))
+            .collect();
+        texts.extend(longer);
+    }
+    texts.sort();
+    texts.dedup();
+    let mut typographers = Vec::new();
+    for quotes in [
+        SingleQuotes::Everywhere,
+        SingleQuotes::NestedOnly,
+        SingleQuotes::Never,
+    ] {
+        for language in [Language::EN_US, Language::RU_RU] {
+            typographers.push(
+                Typographer::builder(language, RuleSet::ALL)
+                    .single_quotes(quotes)
+                    .build()
+                    .unwrap(),
+            );
+        }
+    }
+    let edge = |kind: usize| match kind {
+        1 => Some(Piece::Slot((), Slot::new(SlotKind::Word))),
+        2 => Some(Piece::Protected("p")),
+        _ => None,
+    };
+    let owned = |template: Template<'_, ()>| -> Vec<String> {
+        template
+            .texts()
+            .iter()
+            .map(|text| text.to_string())
+            .collect()
+    };
+    for t in &typographers {
+        for text in &texts {
+            for kind in 0..3 {
+                // The text, the slot or protected piece and the block, or the block, the slot or
+                // protected piece and the text.
+                for text_first in [true, false] {
+                    let (before, after): (Vec<Piece<'_, ()>>, Vec<Piece<'_, ()>>) = if text_first {
+                        (
+                            [Piece::Text(text.as_str())]
+                                .into_iter()
+                                .chain(edge(kind))
+                                .collect(),
+                            vec![Piece::Text("y")],
+                        )
+                    } else {
+                        (
+                            vec![Piece::Text("y")],
+                            edge(kind)
+                                .into_iter()
+                                .chain([Piece::Text(text.as_str())])
+                                .collect(),
+                        )
+                    };
+                    let mut pieces = before.clone();
+                    pieces.push(Piece::BlockMarkup("|"));
+                    pieces.extend(after.iter().copied());
+                    let got = owned(t.to_plain_template(pieces.iter().copied()));
+                    let mut want = owned(t.to_plain_template(before.iter().copied()));
+                    let mut rest = owned(t.to_plain_template(after.iter().copied())).into_iter();
+                    if let (Some(last), Some(first)) = (want.last_mut(), rest.next()) {
+                        last.push('|');
+                        last.push_str(&first);
+                    }
+                    want.extend(rest);
+                    assert_eq!(got, want, "{pieces:?}");
+                }
+            }
+        }
     }
 }
 

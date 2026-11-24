@@ -378,26 +378,28 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
     super::run(typographer, scratch, input, &mut spans);
     let mut base: Vec<REdit> = scratch.edits.clone();
     base.sort_unstable_by_key(|e| (e.start, e.end));
-    let mut walls: Vec<usize> = Vec::new();
+    let mut stops: Vec<(usize, Near)> = Vec::new();
     let mut boundaries: Vec<usize> = Vec::new();
-    let mut cuts: Vec<usize> = Vec::new();
     for atom in &scratch.atoms {
         match *atom {
-            Atom::Slot { at, .. } | Atom::Protected { at, .. } => walls.push(at as usize),
+            Atom::Slot { at, .. } | Atom::Protected { at, .. } => {
+                stops.push((at as usize, Near::Wall));
+            }
             Atom::Boundary { start, end } => {
                 boundaries.push(start as usize);
                 // A `BlockMarkup` piece: a boundary without characters, which no neighbor is
                 // read across.
                 if start == end {
-                    cuts.push(start as usize);
+                    stops.push((start as usize, Near::Edge));
                 }
             }
             _ => {}
         }
     }
-    walls.sort_unstable();
+    // The atoms come in the order of the input; a stable sort keeps that order among the stops at
+    // one position, which decides what stands next to the text on either side of them.
+    stops.sort_by_key(|&(at, _)| at);
     boundaries.sort_unstable();
-    cuts.sort_unstable();
     let mut protected: Vec<(usize, usize)> = spans
         .spans
         .iter()
@@ -420,8 +422,7 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
 
     let text = Flat {
         text: &flat,
-        walls: &walls,
-        cuts: &cuts,
+        stops: &stops,
         frozen: &protected,
     };
     let mut cands = candidates(&settings, &text, &protected, &boundaries);
@@ -1040,15 +1041,16 @@ fn fixed(c: char) -> Option<&'static [&'static str]> {
     })
 }
 
-/// The call's text with the positions of slots and protected pieces, which have no text, and the
-/// protected spans of the text, in order.
+/// The call's text with the pieces that have no text in it, and the protected spans of the text,
+/// in order.
 #[derive(Clone, Copy, Debug)]
 struct Flat<'s> {
     text: &'s str,
-    walls: &'s [usize],
-    /// The positions of `BlockMarkup` pieces: a paragraph ends there, so a neighbor read across
-    /// one is the edge of the text, as for the forward rules (design section 3.3).
-    cuts: &'s [usize],
+    /// The pieces without text that stop a walk to a neighbor, by position and in the order of the
+    /// input among those at one position: a slot or a protected piece is `Near::Wall`; a
+    /// `BlockMarkup` piece is `Near::Edge`, since a paragraph ends there and a neighbor read across
+    /// it is the edge of the text, as for the forward rules (design section 3.3).
+    stops: &'s [(usize, Near)],
     frozen: &'s [(usize, usize)],
 }
 
@@ -1069,6 +1071,20 @@ fn is_format(c: char) -> bool {
 }
 
 impl Flat<'_> {
+    /// The last of the stops at `at`, the one next to the character that starts there.
+    fn stop_before(&self, at: usize) -> Option<Near> {
+        let end = self.stops.partition_point(|&(p, _)| p <= at);
+        let (p, near) = *self.stops.get(end.checked_sub(1)?)?;
+        (p == at).then_some(near)
+    }
+
+    /// The first of the stops at `at`, the one next to the character that ends there.
+    fn stop_after(&self, at: usize) -> Option<Near> {
+        let start = self.stops.partition_point(|&(p, _)| p < at);
+        let &(p, near) = self.stops.get(start)?;
+        (p == at).then_some(near)
+    }
+
     /// What stands before `at`, skipping format characters and the characters `skip` accepts.
     fn before(&self, at: usize, skip: impl Fn(char) -> bool) -> Near {
         self.before_at(at, skip).0
@@ -1077,11 +1093,8 @@ impl Flat<'_> {
     /// `before`, with the start of the character found.
     fn before_at(&self, mut at: usize, skip: impl Fn(char) -> bool) -> (Near, usize) {
         loop {
-            if self.cuts.binary_search(&at).is_ok() {
-                return (Near::Edge, at);
-            }
-            if self.walls.binary_search(&at).is_ok() {
-                return (Near::Wall, at);
+            if let Some(near) = self.stop_before(at) {
+                return (near, at);
             }
             let Some(c) = self.text.get(..at).and_then(|s| s.chars().next_back()) else {
                 return (Near::Edge, at);
@@ -1097,11 +1110,8 @@ impl Flat<'_> {
     /// `after`, with the start of the character found.
     fn after_at(&self, mut at: usize, skip: impl Fn(char) -> bool) -> (Near, usize) {
         loop {
-            if self.cuts.binary_search(&at).is_ok() {
-                return (Near::Edge, at);
-            }
-            if self.walls.binary_search(&at).is_ok() {
-                return (Near::Wall, at);
+            if let Some(near) = self.stop_after(at) {
+                return (near, at);
             }
             let Some(c) = self.text.get(at..).and_then(|s| s.chars().next()) else {
                 return (Near::Edge, at);
@@ -1234,7 +1244,7 @@ fn sign_only_close(
     let mut p = at;
     let mut adjacent = true;
     loop {
-        if text.walls.binary_search(&p).is_ok() || text.cuts.binary_search(&p).is_ok() {
+        if text.stop_before(p).is_some() {
             return false;
         }
         let Some(c) = text.text.get(..p).and_then(|s| s.chars().next_back()) else {

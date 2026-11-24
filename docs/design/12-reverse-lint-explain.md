@@ -16,7 +16,11 @@ typographer: it undoes exactly the rules that are enabled, so the round trip of 
 P2) holds for every rule set on its own. Characters that no enabled rule produces are left alone (a
 `©` stays when `symbols.copyright` is off). The spans of `protected()` (section 12.5: delimited
 spans, with delimiters working as in `typeset`, protected pieces, slots and frozen fragments) and
-markup are never touched.
+markup are never touched. In a template a slot or a protected piece next to a quote reads as a word,
+and a `BlockMarkup` piece as the edge of the text, since the paragraph ends there (choice C9a).
+Where such pieces stand together, the one next to the character decides: in `‘x’`, a slot,
+`</p><p>`, the `’` is read before a word, as in a separate call that ends with the slot, and in
+`</p><p>`, a slot, `’x`, the `’` is read after a word.
 
 | Rule                                       | Typeset                                                                                                                                                                                                                                                                                                                                                 | Plain                                                                                                          |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
