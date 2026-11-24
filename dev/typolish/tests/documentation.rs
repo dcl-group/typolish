@@ -877,6 +877,8 @@ fn limits() -> Vec<Limit> {
         limit(RU, Both, "key=\"\"", "key=\"\""),
         // Straight quotes nested out of order: a defect, not idempotent.
         limit(EN, Both, "\"\"s' 'x.\"'\"", "“‘s’ 'x.’'”"),
+        // The same class with an unpaired `'s` after a nested trailing possessive: P2 fails.
+        limit(EN, Both, "\"a \"dogs' 's\" b\"", "“a⍽‘dogs’ 's’ b”"),
     ]
 }
 

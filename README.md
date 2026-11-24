@@ -12,8 +12,8 @@ numbers. The built-in languages are `ru-RU` and `en-US`; other languages are add
 - 27 rules with stable ids, two ready sets (`PROSE` and `INTERFACE`), and sets of your own.
 - Protection of commands, paths and code: backticks, delimiters of your own, protected pieces, and
   technical fragments the crate recognizes by itself.
-- Deterministic, and idempotent except for one case of mis-nested straight quotes listed under Known
-  limits; an unchanged string is returned borrowed and, after the first call on a thread, without
+- Deterministic, and idempotent except for the cases of straight quotes listed under Known limits;
+  an unchanged string is returned borrowed and, after the first call on a thread, without
   allocation.
 - Explanation of every edit, a check of plain sources, and the reverse transformation.
 - No `unsafe`, no regular expressions, no panics, and nothing read from the environment.
@@ -269,8 +269,13 @@ The rules read the shape of the text, not its meaning. These cases are known and
   value glued the same way (`key:""`) leaves the paragraph's quotes straight with an
   `UnmatchedQuote` warning; `key=""` stays as written.
 - Straight quotes nested out of order around a trailing possessive are not idempotent in English:
-  `""s' 'x."'"` gives `“‘s’ 'x.’'”`, and a second pass pairs the remaining `'` (`“‘s’ ‘x.’’”`). This
-  is a defect, not a choice.
+  `""s' 'x."'"` gives `“‘s’ 'x.’'”`, and a second pass pairs the remaining `'` (`“‘s’ ‘x.’’”`). For
+  the same reason `to_plain` does not give back what typesets to the same text when an unpaired `'s`
+  follows a nested trailing possessive: `"a "dogs' 's" b"` gives `“a⍽‘dogs’ 's’ b”`, and its plain
+  form `"a "dogs" 's' b"` gives `“a⍽‘dogs’ ‘s’ b”`. This is a defect, not a choice.
+- In a declared language whose primary pair is `‘’` (en-GB), `PROSE` is not idempotent on a
+  sign-only pair inside straight single quotes before a number: `'a ""-3'` gives `'a⍽‘’-3'`, and a
+  second pass gives `'a⍽‘’-3′`. This is a defect, not a choice.
 
 Here `⍽` stands for a no-break space. The full list, with the reasons, is in section 10.8 of the
 design.
