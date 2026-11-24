@@ -108,15 +108,18 @@ Conditions that hold for every rule:
   asks whether a word has one letter it reads the part next to the other side: the last part on the
   left of a dash, the first part on the right (`5 - т.е.` is refused as `5 - т. е.` is).
 - A **dictionary sign** is a `Dictionary` core that is not a word and has no full stop inside
-  (`км/ч`, `МБ/с`, `кВт⋅ч`, `°C`, `₽`, `м2`). The dash rules and `nbsp.dash` read it as the core
-  that checks 1 to 24 of section 3.6 give the same text without the list: one of letters and digits
-  only (`м2`) as a word, any other as a technical fragment (`бит/с`, which no list holds, is a
-  `Path` core). So an entry of `units`, built in or added with `add_units`, changes no dash:
-  `Скорость 5 кбит/с - это мало` → `Скорость 5⍽кбит/с⍽— это мало`, as `5 бит/с` gives
-  `5⍽бит/с⍽— это мало`, and `км/ч - м/с` is refused as two technical fragments are (section 8.4). A
-  `Dictionary` core with a full stop inside that is not a compact abbreviation (`e.g.`, `a.m.`) is
-  not an operand, as the `Abbreviation` core it would be is not one: `See - e.g. this` stays, as
-  `See - U.S. policy` does.
+  (`км/ч`, `МБ/с`, `кВт⋅ч`, `°C`, `₽`, `м2`, `г-жа`). The dash rules (`dash.dialogue` included) and
+  `nbsp.dash` read it as the core that checks 1 to 24 of section 3.6 give the same text without the
+  list: one of letters and digits only (`м2`) as a word; one of letters or digits joined by single
+  hyphens (`г-жа`, `г-н`, a unit `kW-h` added with `add_units`) as a compound word (check 21), which
+  counts by the script of its letters; any other as a technical fragment (`бит/с`, which no list
+  holds, is a `Path` core). So an entry of `units` or `abbreviations`, built in or added, changes no
+  dash: `Скорость 5 кбит/с - это мало` → `Скорость 5⍽кбит/с⍽— это мало`, as `5 бит/с` gives
+  `5⍽бит/с⍽— это мало`; `г-жа - г-н` → `г-жа⍽— г-н`, as `кто-то - что-то` gives `кто-то⍽— что-то`;
+  `- г-н Иванов` → `—⍽г-н⍽Иванов` (Prose); and `км/ч - м/с` is refused as two technical fragments
+  are (section 8.4). A `Dictionary` core with a full stop inside that is not a compact abbreviation
+  (`e.g.`, `a.m.`) is not an operand, as the `Abbreviation` core it would be is not one:
+  `See - e.g. this` stays, as `See - U.S. policy` does.
 - No rule changes letters or digits inside `Word` and `Number` tokens. The letter-like replacements
   are `(c)`, `(r)`, `(tm)` in either case and the Cyrillic `(с)`, `(С)` (kind `LegalMark`) and `x`,
   `X`, `х`, `Х` between numbers (kind `Times`).
@@ -189,11 +192,12 @@ right → em dash. It does not fire, and reports `AmbiguousHyphen`, when:
   (`cat - file`, `cat - /etc/hosts` and `tls-server - agent-ca` in Russian text,
   `host:8080 - 10.0.0.1`, `км/ч - м/с`): most often a command line. A technical fragment, and a
   dictionary sign read as one (section 8.2), counts as a foreign word here, in every language; a
-  technical fragment on one side and a word of the language on the other
-  (`Сервис слушает host:8080 - проверьте`) gets the dash. A compound word counts by the script of
-  its letters, as any word (section 8.2): in Russian text `кто-то - что-то` gets the dash, while
-  `tls-server - agent-ca` (Latin compound words) does not, as `cat - file` does not; a compound word
-  without letters (`123-45-67`) counts as a foreign word in every language.
+  dictionary sign read as a compound word (`г-жа`) counts as a compound word; a technical fragment
+  on one side and a word of the language on the other (`Сервис слушает host:8080 - проверьте`) gets
+  the dash. A compound word counts by the script of its letters, as any word (section 8.2): in
+  Russian text `кто-то - что-то` gets the dash, while `tls-server - agent-ca` (Latin compound words)
+  does not, as `cat - file` does not; a compound word without letters (`123-45-67`) counts as a
+  foreign word in every language.
 
 Spacing by `DashStyle`: `SpacedGlued` (ru) and `Spaced` keep the author's spaces (`nbsp.dash` glues
 the one before the dash under `SpacedGlued`). `Closed` (en) removes both spaces (`word—word`) only
@@ -242,10 +246,11 @@ optional indentation: `-` or `--`, one space, then a word or an opening quote �
 after it is glued. A typed `—` or `–` there counts as a `-` (section 4.3, I4): the dash stays and
 only a single U+0020 after it is glued (`— Привет` → `—⍽Привет`), the normalization of a space that
 `nbsp.dash` also makes (section 4.5). A `Word` or `Other` slot counts as the word (section 8.10) and
-so does a protected span (section 2.6); a `Number` or `Date` slot does not. Before an `Other` slot
-the dash is set and the space stays, since no glue sticks to an `Other` slot (section 8.2):
-`- {o} пришёл` → `— {o} пришёл`, `- {w} пришёл` → `—⍽{w} пришёл`. Not in Interface: a line starting
-with `- ` in UI text is a list item. Settled in section 15.5, item 12.
+so does a protected span (section 2.6), and a dictionary sign read as a word or a compound word
+(`- г-н Иванов` → `—⍽г-н⍽Иванов`, `- м2 это` → `—⍽м2 это`; section 8.2); a `Number` or `Date` slot
+does not. Before an `Other` slot the dash is set and the space stays, since no glue sticks to an
+`Other` slot (section 8.2): `- {o} пришёл` → `— {o} пришёл`, `- {w} пришёл` → `—⍽{w} пришёл`. Not in
+Interface: a line starting with `- ` in UI text is a list item. Settled in section 15.5, item 12.
 
 Outputs show the rules named in the last column (with `quotes.pairs` where quotes appear); in the
 full sets other no-break rules add glue too (`Moscow—the⍽capital`, `“a⍽cat”`). The glue after `the`

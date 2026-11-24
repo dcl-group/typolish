@@ -162,11 +162,18 @@ for U+00A0).
   ru `Скорость 5 кбит/с - это мало`: `Скорость 5 кбит/с⍽— это мало` → `Скорость 5⍽кбит/с⍽— это мало`
   (the dash is kept, by the change below). `at 5:30 p.m. today` and `5 P.M.` are not changed by
   this.
-- A `Dictionary` core that is not a word and has no full stop inside (`км/ч`, `кВт⋅ч`, `°C`, `₽`) is
-  an operand of the dash rules and `nbsp.dash`, read as the word or technical fragment it would be
-  without the list (design section 8.2), so a unit of the list changes no dash. In both sets: ru
-  `Скорость 60 км/ч - это много`: `Скорость 60⍽км/ч - это много` → `Скорость 60⍽км/ч⍽— это много`;
-  ru `Было 5 °C - это мало`: `Было 5⍽°C - это мало` → `Было 5⍽°C⍽— это мало`; en
-  `Speed 60 km/h - fast`: `Speed 60⍽km/h - fast` → `Speed 60⍽km/h — fast`. `км/ч - м/с` is not
-  changed and now reports `AmbiguousHyphen`, as two technical fragments do; `See - e.g. this` is not
-  changed.
+- A `Dictionary` core that is not a word and has no full stop inside (`км/ч`, `кВт⋅ч`, `°C`, `₽`,
+  `г-жа`) is an operand of the dash rules and `nbsp.dash`, read as the word, compound word or
+  technical fragment it would be without the list (design section 8.2), so an entry of the units or
+  the abbreviations changes no dash. In both sets: ru `Скорость 60 км/ч - это много`:
+  `Скорость 60⍽км/ч - это много` → `Скорость 60⍽км/ч⍽— это много`; ru `Было 5 °C - это мало`:
+  `Было 5⍽°C - это мало` → `Было 5⍽°C⍽— это мало`; en `Speed 60 km/h - fast`: `Speed 60⍽km/h - fast`
+  → `Speed 60⍽km/h — fast`. `км/ч - м/с` is not changed and now reports `AmbiguousHyphen`, as two
+  technical fragments do; `See - e.g. this` is not changed. An entry of letters or digits joined by
+  single hyphens reads as a compound word, by the script of its letters, in both sets: ru
+  `г-жа - г-н`: unchanged → `г-жа⍽— г-н`, as `кто-то - что-то` gives `кто-то⍽— что-то`; ru
+  `Пришла г-жа - и ушла`: `Пришла г-жа - и⍽ушла` → `Пришла г-жа⍽— и⍽ушла`; ru `г-н — это`: unchanged
+  → `г-н⍽— это`; ru `Это - г-н Иванов`: `Это - г-н⍽Иванов` → `Это⍽— г-н⍽Иванов`; ru `г-н - cat`:
+  unchanged → `г-н⍽— cat`. `dash.dialogue` reads such an entry, and one of letters and digits, as a
+  word, in Prose: ru `- г-н Иванов`: `- г-н⍽Иванов` → `—⍽г-н⍽Иванов`; ru `- м2 это`: unchanged →
+  `—⍽м2 это`.

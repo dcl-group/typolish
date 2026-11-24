@@ -10,7 +10,7 @@ use super::{
     Frag, FragKind, Triggers, foreign, is_number, is_operand, is_range, is_technical,
     percent_owner, plain_side,
 };
-use super::{is_word, single_letter, technical_sign};
+use super::{dictionary_word, is_word, single_letter, technical_sign};
 use crate::DashStyle;
 use crate::SlotKind;
 use crate::engine::lex::{Glue, Kind, NO_FRAG, Repl};
@@ -67,16 +67,17 @@ pub(crate) fn dialogue(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
     let r = cx.next(s)?;
     // `Word` and `Other` slots count as words (design section 8.10), a protected span acts as one
-    // word (design section 2.6).
+    // word (design section 2.6), and so does a dictionary sign that reads as a word or a compound
+    // word (`м2`, `г-жа`), as without the list (design section 8.2).
     let opaque = cx.kind(r)?;
     let word = match opaque {
         Kind::Slot(kind) => matches!(kind, SlotKind::Word | SlotKind::Other),
         Kind::Protected => true,
         _ => {
             cx.in_core(r)
-                && cx
-                    .frag_of(r)
-                    .is_some_and(|f| is_word(cx, f) && cx.core(f).next() == Some(r))
+                && cx.frag_of(r).is_some_and(|f| {
+                    (is_word(cx, f) || dictionary_word(cx, f)) && cx.core(f).next() == Some(r)
+                })
         }
     };
     if !word && local_role(cx, r) != Some(Role::Open) {

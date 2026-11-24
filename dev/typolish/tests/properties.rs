@@ -229,6 +229,13 @@ const SEEDS: &[&str] = &[
     "5 p.m. and 5 a.m.",
     "9-11 a.m. - 5:30 p.m., 5 P.M.",
     "5 kPa - 5 GW, 5 mW... 5 kJ",
+    // An entry of words joined by hyphens reads as a compound word, one of letters and digits as a
+    // word (design section 8.2).
+    "г-жа - г-н",
+    "Пришла г-жа - и ушла",
+    "г-н — это",
+    "г-н - cat - 5 км/ч - г-жа",
+    "- г-н Иванов\n-- м2 это",
 ];
 
 #[test]

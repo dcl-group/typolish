@@ -280,11 +280,11 @@ pub(crate) fn is_operand(cx: &Cx<'_>, f: &Frag) -> bool {
 }
 
 /// A dictionary sign (design section 8.2): a `Dictionary` core that is no word and has no `Dots`
-/// token, such as `км/ч`, `кВт⋅ч`, `°C`, `₽` or `м2`. Without the list the same text is a word
-/// (`м2`, letters and digits only) or a technical fragment (`бит/с` is a `Path` core), and the dash
-/// rules read it as that, so an entry of the language data or of `add_units` changes no dash. A
-/// core with a full stop inside (`e.g.`, `a.m.`) is not one: it reads as the `Abbreviation` core
-/// it would be, which is no operand.
+/// token, such as `км/ч`, `кВт⋅ч`, `°C`, `₽`, `м2` or `г-жа`. Without the list the same text is a
+/// word (`м2`, letters and digits only), a compound word (`г-жа`, `dictionary_compound`) or a
+/// technical fragment (`бит/с` is a `Path` core), and the dash rules read it as that, so an entry
+/// of the language data or of `add_units` changes no dash. A core with a full stop inside (`e.g.`,
+/// `a.m.`) is not one: it reads as the `Abbreviation` core it would be, which is no operand.
 pub(crate) fn dictionary_sign(cx: &Cx<'_>, f: &Frag) -> bool {
     f.kind == FragKind::Dictionary
         && !is_word(cx, f)
@@ -292,12 +292,41 @@ pub(crate) fn dictionary_sign(cx: &Cx<'_>, f: &Frag) -> bool {
 }
 
 /// A dictionary sign that reads as a technical fragment: one with a token that is neither letters
-/// nor digits (`км/ч`, `°C`, `₽`; not `м2`).
+/// nor digits and that is no compound word (`км/ч`, `°C`, `₽`; not `м2`, not `г-жа`).
 pub(crate) fn technical_sign(cx: &Cx<'_>, f: &Frag) -> bool {
     dictionary_sign(cx, f)
+        && !dictionary_compound(cx, f)
         && cx
             .core(f)
             .any(|j| !matches!(cx.kind(j), Some(Kind::Word(_) | Kind::Number)))
+}
+
+/// A dictionary sign that reads as a word or a compound word, not as a technical fragment (`м2`,
+/// `г-жа`): `dash.dialogue` reads it as the word it would be without the list.
+pub(crate) fn dictionary_word(cx: &Cx<'_>, f: &Frag) -> bool {
+    dictionary_sign(cx, f) && !technical_sign(cx, f)
+}
+
+/// A dictionary sign that reads as a compound word (design section 8.2): two or more parts of
+/// letters or digits joined by single hyphens (`г-жа`, `г-н`, a unit `kW-h` of `add_units`), the
+/// shape of the `Compound` core (check 21 of design section 3.6) that the same text is without the
+/// list. Like a compound word it counts by the script of its letters (`foreign`).
+pub(crate) fn dictionary_compound(cx: &Cx<'_>, f: &Frag) -> bool {
+    if !dictionary_sign(cx, f) {
+        return false;
+    }
+    let (mut parts, mut in_part) = (0, false);
+    for j in cx.core(f) {
+        match cx.kind(j) {
+            Some(Kind::Word(_) | Kind::Number) => {
+                parts += usize::from(!in_part);
+                in_part = true;
+            }
+            Some(Kind::Dash) if in_part && cx.is(j, "-") => in_part = false,
+            _ => return false,
+        }
+    }
+    in_part && parts >= 2
 }
 
 /// A word of one letter (`a`, `x`); a slot or a compound word is not one. A compact abbreviation
@@ -452,14 +481,15 @@ fn language_script(data: &Table<'_>) -> Option<u8> {
 
 /// A word outside the language's script (design section 8.2): none of its letters is of the
 /// script; a compound word without letters counts as one in every language. A word of two
-/// scripts is a word of each.
+/// scripts is a word of each. A dictionary sign that reads as a compound word counts as one.
 pub(crate) fn foreign(cx: &Cx<'_>, f: &Frag) -> bool {
-    if !is_word(cx, f) {
+    let compound = dictionary_compound(cx, f);
+    if !is_word(cx, f) && !compound {
         return false;
     }
     let mask = scripts(cx, f);
     if mask == 0 {
-        return f.kind == FragKind::Compound
+        return (f.kind == FragKind::Compound || compound)
             && !cx
                 .core(f)
                 .any(|i| matches!(cx.kind(i), Some(Kind::Word(_))));

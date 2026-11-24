@@ -28,7 +28,8 @@ use common::{
 };
 use probe::{diag_ranges, diagnostics_of};
 use typolish::{
-    DashStyle, DiagnosticKind, Language, Output, Piece, Rule, RuleSet, Slot, Typographer,
+    Bind, DashStyle, DiagnosticKind, Language, LanguageBuilder, Output, Piece, Rule, RuleSet, Slot,
+    Typographer,
 };
 
 const SPACED: Rule = Rule::DashSpacedHyphen;
@@ -556,6 +557,120 @@ fn a_unit_without_a_full_stop_is_an_operand() {
         t.typeset("Скорость 5 бит/с - это мало", Output::Unicode),
         vis("Скорость 5⍽бит/с⍽— это мало")
     );
+}
+
+// An entry of words joined by single hyphens (`г-жа`, `г-н`, a unit `kW-h` of `add_units`) reads
+// as the compound word it is without the list, by the script of its letters (design section 8.2).
+const RU_COMPOUND_ENTRIES: &[(&str, &str)] = &[
+    ("г-жа - г-н", "г-жа — г-н"),
+    ("Пришла г-жа - и ушла", "Пришла г-жа — и ушла"),
+    ("г-н — это", "г-н — это"),
+    ("Это - г-н Иванов", "Это — г-н Иванов"),
+    ("г-н - кто-то", "г-н — кто-то"),
+    ("г-н - cat", "г-н — cat"),
+    ("5 км/ч - г-н", "5 км/ч — г-н"),
+];
+
+// `dash.dialogue` reads such an entry, and one of letters and digits (`м2`), as the word it is
+// without the list; a unit read as a technical fragment stays, as `- бит/с` does.
+const RU_DIALOGUE_ENTRIES: &[(&str, &str)] = &[
+    ("- г-н Иванов", "—⍽г-н Иванов"),
+    ("-- г-жа Петрова", "—⍽г-жа Петрова"),
+    ("- м2 это", "—⍽м2 это"),
+    ("- км/ч это", "- км/ч это"),
+    ("- бит/с это", "- бит/с это"),
+];
+
+#[test]
+fn an_entry_of_hyphenated_words_is_a_compound_word() {
+    check_rows(&configs(&Language::RU_RU, SPACED)[..1], RU_COMPOUND_ENTRIES);
+    check_rows(
+        &configs(&Language::RU_RU, DIALOGUE)[..1],
+        RU_DIALOGUE_ENTRIES,
+    );
+    // With the built-in abbreviations replaced, `г-жа` and `г-н` are `Compound` cores: the same
+    // dash, and the same glue of `nbsp.dash`.
+    let replaced = LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")
+        .abbreviations([(&["т.", "е."][..], Bind::Inner)])
+        .build()
+        .unwrap();
+    for set in [RuleSet::PROSE, RuleSet::INTERFACE] {
+        let listed = Typographer::new(Language::RU_RU, set);
+        let plain = Typographer::new(replaced.clone(), set);
+        for (text, expected) in [
+            ("г-жа - г-н", "г-жа⍽— г-н"),
+            ("Пришла г-жа - и ушла", "Пришла г-жа⍽— и⍽ушла"),
+            ("г-н — это", "г-н⍽— это"),
+            ("г-н - cat", "г-н⍽— cat"),
+        ] {
+            assert_eq!(
+                listed.typeset(text, Output::Unicode),
+                vis(expected),
+                "{text}"
+            );
+            assert_eq!(
+                plain.typeset(text, Output::Unicode),
+                vis(expected),
+                "{text}"
+            );
+            assert!(
+                diagnostics_of(&listed, text).is_empty(),
+                "{text}: {:?}",
+                diagnostics_of(&listed, text)
+            );
+        }
+    }
+    // A unit with a hyphen that a caller adds changes no dash; a Latin one is a foreign compound
+    // word in Russian text, as `tls-server` is.
+    let rows: &[(&Language, &str, &str, &str)] = &[
+        (
+            &Language::EN_US,
+            "kW-h",
+            "Was 5 kW-h - kW-h",
+            "Was 5⍽kW-h — kW-h",
+        ),
+        (
+            &Language::RU_RU,
+            "кВт-ч",
+            "Было 5 кВт-ч - г-н",
+            "Было 5⍽кВт-ч⍽— г-н",
+        ),
+        (
+            &Language::RU_RU,
+            "kW-h",
+            "Было kW-h - kW-h",
+            "Было kW-h - kW-h",
+        ),
+        (
+            &Language::RU_RU,
+            "kW-h",
+            "Было kW-h - это",
+            "Было kW-h⍽— это",
+        ),
+    ];
+    for &(language, unit, text, expected) in rows {
+        for set in [RuleSet::PROSE, RuleSet::INTERFACE] {
+            let listed = Typographer::builder(language.clone(), set)
+                .add_units([unit])
+                .build()
+                .unwrap();
+            let plain = Typographer::new(language.clone(), set);
+            let out = listed.typeset(text, Output::Unicode);
+            assert_eq!(out, vis(expected), "{language} {text}");
+            // Without the unit only the glue after a number differs.
+            let unglued = plain.typeset(text, Output::Unicode);
+            assert_eq!(
+                out.replace('\u{a0}', " "),
+                unglued.replace('\u{a0}', " "),
+                "{language} {text}"
+            );
+            assert_eq!(
+                diagnostics_of(&listed, text).len(),
+                diagnostics_of(&plain, text).len(),
+                "{language} {text}"
+            );
+        }
+    }
 }
 
 #[test]
