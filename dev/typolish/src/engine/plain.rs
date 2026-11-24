@@ -1224,7 +1224,7 @@ fn candidates(
             let right = text.class_after(reading, end);
             let closing = !matches!(left, Class::Space | Class::OpenP | Class::DashC)
                 && matches!(right, Class::Space | Class::CloseP | Class::DashC);
-            let after_s = matches!(text.before(at, |_| false), Near::Char('s'));
+            let after_s = matches!(text.before(at, |_| false), Near::Char('s' | 'S'));
             let sign_only = c == APOSTROPHE
                 && matches!(right, Class::Space | Class::CloseP | Class::DashC)
                 && sign_only_close(reading, text, at, end);

@@ -123,3 +123,6 @@ for U+00A0).
   section 6.2), as `'n'` does, in both sets: `Choose the 'round' button`:
   `Choose the ’round' button` → `Choose the⍽'round' button`; `"Say 'twas' or 'tis'"`:
   `“Say ’twas’ or ’tis’”` → `“Say ‘twas’ or⍽‘tis’”`; `'tis'`: `’tis’` → `'tis'`.
+- The English trailing possessive goes after a capital `S` too (design section 6.6), in both sets:
+  `DOGS' and JONES' BOOK`: `DOGS' and⍽JONES' BOOK` → `DOGS’ and⍽JONES’ BOOK`; `to_plain` reads it
+  back.

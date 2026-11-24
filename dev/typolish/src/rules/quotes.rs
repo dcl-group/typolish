@@ -764,7 +764,7 @@ pub(crate) fn analyze<R: Recorder>(
         let next = cx.next(i);
         let possessive = data.trailing_possessive
             && prev.is_some_and(|p| {
-                matches!(cx.kind(p), Some(Kind::Word(_))) && cx.src(p).ends_with('s')
+                matches!(cx.kind(p), Some(Kind::Word(_))) && cx.src(p).ends_with(['s', 'S'])
             })
             && !next.is_some_and(|n| matches!(cx.kind(n), Some(Kind::Word(_))))
             && (neutral_apostrophe_opener == NONE || neutral_apostrophe_opener > q.tok);

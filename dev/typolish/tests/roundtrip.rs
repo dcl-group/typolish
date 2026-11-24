@@ -191,13 +191,12 @@ fn quotes_pairs_and_apostrophe_together() {
             // Every candidate follows `s`: the first one closes (`NestedPossessive`).
             ("“a ‘the dogs’ bowls’ b”", "\"a \"the dogs\" bowls' b\""),
             ("the dogs’ bowl and James’s", "the dogs' bowl and James's"),
-            // The forward rule puts a trailing possessive only after a lowercase `s` (design
-            // section 6.5).
+            // The forward rule puts a trailing possessive after `s` or `S` (design section 6.6).
             (
                 "“He said ‘THE DOGS’ bowl is empty’”",
-                "\"He said \"THE DOGS\" bowl is empty'\"",
+                "\"He said \"THE DOGS' bowl is empty\"\"",
             ),
-            ("“‘DOGS’ bowl’”", "\"\"DOGS\" bowl'\""),
+            ("“‘DOGS’ bowl’”", "\"\"DOGS' bowl\"\""),
         ],
     );
     // Embeddings and overrides are format characters too (design section 5.4).

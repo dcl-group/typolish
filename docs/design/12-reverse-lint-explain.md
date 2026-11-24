@@ -91,7 +91,7 @@ has R of class `Space`, `CloseP` or `DashC`, closes it: the mirror of the sign-o
 6.3, by which plain `""`, `"-"` or `"?"` inside a pair is typeset as `‘’`, `‘-’`, `‘?’` whatever the
 roles of its series (`“a ‘’ b”` → `"a "" b"`); two adjacent quotes in a series of three or more do
 not count. Any other `’` with a closing role closes the innermost open `‘` of its depth, mirroring
-the forward algorithm, with one exception: a `’` after `s` and before a non-letter, where the
+the forward algorithm, with one exception: a `’` after `s` or `S` and before a non-letter, where the
 forward algorithm puts a trailing possessive, leaves the `‘` open if a later `’` of the same depth,
 before the next `‘` of that depth and before the closer of the enclosing pair, has a closing role
 and does not follow `s`; that later `’` closes it. The pairs opened after the first `’` are followed

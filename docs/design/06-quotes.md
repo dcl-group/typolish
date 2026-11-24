@@ -182,12 +182,12 @@ Then, when the window converges:
 - every pair of straight quotes gets the glyphs of its level (section 6.7);
 - weak quotes resolved as primes get `″` or `′` (if `quotes.primes` is enabled);
 - a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
-  section 6.8, are in a pair and stay straight) directly after the letter `s` and before a
+  section 6.8, are in a pair and stay straight) directly after the letter `s` or `S` and before a
   non-letter or the end of the window becomes `’` if the language has the trailing-possessive flag
-  (`trailing_possessive`, section 7.1; `dogs'`, `the Joneses'`), unless a typed opener whose closer
-  is `’` (English `‘`) that stayed neutral (left on the stack at the end of the window, section 6.4)
-  stands before it anywhere in the window; then it stays straight (a second pass would let that `’`
-  close the opener);
+  (`trailing_possessive`, section 7.1; `dogs'`, `the Joneses'`, `THE JONESES'`), unless a typed
+  opener whose closer is `’` (English `‘`) that stayed neutral (left on the stack at the end of the
+  window, section 6.4) stands before it anywhere in the window; then it stays straight (a second
+  pass would let that `’` close the opener);
 - a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
   section 6.8, are in a pair and stay straight) at a word start before exactly two digits and then a
   character that is neither a letter nor a digit, or the end of the window, becomes `’` if the

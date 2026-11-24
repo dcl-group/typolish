@@ -288,6 +288,36 @@ fn an_elision_closed_by_a_straight_quote_waits_for_pairing() {
     }
 }
 
+#[test]
+fn a_trailing_possessive_after_a_capital_s() {
+    // Design section 6.6: the trailing possessive goes after the letter `s` or `S`. Rows: input,
+    // the quote rules alone, Prose and Interface.
+    let rows: &[(&str, &str, &str)] = &[
+        ("JONES' BOOK", "JONES’ BOOK", "JONES’ BOOK"),
+        (
+            "DOGS' and JONES' BOOK",
+            "DOGS’ and JONES’ BOOK",
+            "DOGS’ and⍽JONES’ BOOK",
+        ),
+        (
+            "DOG'S and DOGS' and JONES' BOOK",
+            "DOG’S and DOGS’ and JONES’ BOOK",
+            "DOG’S and⍽DOGS’ and⍽JONES’ BOOK",
+        ),
+        // A pair is not a possessive.
+        ("'JONES'", "'JONES'", "'JONES'"),
+        ("\"'JONES'\"", "“‘JONES’”", "“‘JONES’”"),
+    ];
+    let alone = quotes(Language::EN_US);
+    let sets = [prose(Language::EN_US), interface(Language::EN_US)];
+    for &(input, quoted, full) in rows {
+        check_exact("en quotes alone", &alone, (input, quoted));
+        for t in &sets {
+            check_exact(&format!("en {}", t.rules()), t, (input, full));
+        }
+    }
+}
+
 // The rows of design section 6.12 that need `quotes.primes`: Prose (design section 6.5), and what
 // Interface does.
 #[test]
