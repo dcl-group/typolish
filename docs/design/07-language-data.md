@@ -146,17 +146,19 @@ century; `MB` is not `mb`).
 starts with a lowercase letter also matches the same text with that letter in uppercase (`см.`
 matches `См.`, `ноября` matches `Ноября`). The relaxation does not apply to an entry that is a
 single letter with a full stop (`д.`, `п.`, `ч.`, `г.`, en `p.`): it matches only as written, so
-`д.` does not match `Д.`. A capital letter with a full stop is read as an initial or a one-letter
-label, which `nbsp.initials` glues (section 8.7): `вариант Д. После` gets its glue from
-`nbsp.initials` and stays unchanged with `nbsp.abbreviations` alone. After a number, `nbsp.dates`
-reads `Г.` as a year word instead, because `year_words` is a word list (`2026⍽Г.`). The cost: a
-one-letter abbreviation capitalized at a sentence start (`П. 5 устава`) gets no forward glue from
-`nbsp.abbreviations`. An entry that starts with an uppercase letter matches only as written: `No.`
-does not match `no.`, `May` does not match `may`. The lookup tries the text as written and then, if
-it starts with an uppercase letter and is not a single letter with a full stop, once more with that
-letter lowercased. A part of `abbreviations` is found by scanning the list, which is short. The
-typographer builder keeps caller additions and removals in small sorted vectors next to the
-language's lists.
+`д.` does not match `Д.`; the first part of an entry of several parts (`т.` of `т. е.`) is relaxed:
+`Т. е.` matches, so `Т. е.` after an initial `Т.` is read as the abbreviation (`Т. е. так` →
+`Т.⍽е. так`), while a later part matches only as written (`т. Е.` does not match). A capital letter
+with a full stop is read as an initial or a one-letter label, which `nbsp.initials` glues (section
+8.7): `вариант Д. После` gets its glue from `nbsp.initials` and stays unchanged with
+`nbsp.abbreviations` alone. After a number, `nbsp.dates` reads `Г.` as a year word instead, because
+`year_words` is a word list (`2026⍽Г.`). The cost: a one-letter abbreviation capitalized at a
+sentence start (`П. 5 устава`) gets no forward glue from `nbsp.abbreviations`. An entry that starts
+with an uppercase letter matches only as written: `No.` does not match `no.`, `May` does not match
+`may`. The lookup tries the text as written and then, if it starts with an uppercase letter and is
+not a single letter with a full stop, once more with that letter lowercased. A part of
+`abbreviations` is found by scanning the list, which is short. The typographer builder keeps caller
+additions and removals in small sorted vectors next to the language's lists.
 
 ### 7.2 ru-RU
 

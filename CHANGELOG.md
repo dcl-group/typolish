@@ -115,3 +115,7 @@ for U+00A0).
 - U+061C, U+180E, U+206A to U+206F and U+FFF9 to U+FFFB are format characters of the lexer (design
   section 5.4), as U+200E is, instead of freezing their word as `Technical(Unclassified)`: ru Prose
   `в\u{61c} лесу`: unchanged → `в\u{61c}⍽лесу`.
+- The first part of a Russian abbreviation of several parts is relaxed even when it is one letter
+  with a full stop (design section 7.1), so a capitalized `Т. е.` at a sentence start is the
+  abbreviation: `Т. е. так`: unchanged → `Т.⍽е. так`; `Т.е. так`: unchanged → `Т.⍽е. так`;
+  `Т. д. так`: `Т. д.⍽так` → `Т.⍽д. так`; `Буква Т. е. не`: `Буква⍽Т. е. не` → `Буква⍽Т.⍽е. не`.

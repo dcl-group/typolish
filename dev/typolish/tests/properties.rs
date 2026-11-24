@@ -138,6 +138,11 @@ const SEEDS: &[&str] = &[
     "США Т. США - к",
     "ООО А. Пушкин - км (не",
     "See §V. St. Paul",
+    // A capitalized first part of an abbreviation next to initials (design section 7.1).
+    "Т. е. так",
+    "Т. д. так",
+    "Буква Т. е. не",
+    "Т. Е. Иванов",
     "5'10\"",
     "90's",
     "'90s",

@@ -375,10 +375,11 @@ fn year_like(cx: &Cx<'_>, f: &Frag) -> bool {
 /// Matches one part of an abbreviation from token `j`: the visible text of consecutive tokens of
 /// one fragment equals the part, compared with case and the relaxation of design section 7.1. The
 /// full stop that ends the last part may be the first full stop of a `Dots` token in any form
-/// (`и т.д…`). Returns the last token of the part.
-fn match_part(cx: &Cx<'_>, start: usize, part: &str, last: bool) -> Option<usize> {
+/// (`и т.д…`). Returns the last token of the part. The first part of an entry of several parts
+/// (`lead`) is relaxed even when it is a single letter with a full stop (`Т. е.`).
+fn match_part(cx: &Cx<'_>, start: usize, part: &str, last: bool, lead: bool) -> Option<usize> {
     let mut chars = part.chars();
-    let single = chars.next().is_some_and(is_alphabetic) && chars.as_str() == ".";
+    let single = chars.next().is_some_and(is_alphabetic) && chars.as_str() == "." && !lead;
     let frag = cx.tok(start)?.frag;
     let mut rest = part;
     let mut first = true;
@@ -438,7 +439,7 @@ fn entry_at(cx: &Cx<'_>, i: usize, parts: List<'_>, bind: Bind) -> Option<Match>
     for k in 0..n {
         let part = parts.get(k)?;
         let last = k + 1 == n;
-        end = match_part(cx, start, part, last)?;
+        end = match_part(cx, start, part, last, k == 0 && n > 1)?;
         g.reach(end);
         if last {
             break;

@@ -261,6 +261,39 @@ fn abbreviations_in_russian() {
     }
 }
 
+#[test]
+fn a_capitalized_first_part_of_an_entry_is_relaxed() {
+    // The first part of an entry of several parts is relaxed even when it is a single letter with
+    // a full stop (design section 7.1): `Т. е.` at a sentence start matches `т. е.`; a one-letter
+    // entry and a later part still match only as written.
+    alone_rows(
+        ru(),
+        ABBR,
+        &[
+            ("Т. е. так", "Т.⍽е. так"),
+            ("Т.е. так", "Т.⍽е. так"),
+            ("Т. д. так", "Т.⍽д. так"),
+            ("Т. Е. Иванов", "Т. Е. Иванов"),
+            ("т. Е. так", "т. Е. так"),
+            ("Т. Иванов", "Т. Иванов"),
+            ("вариант Д. После", "вариант Д. После"),
+            ("Буква Т. е. не", "Буква Т.⍽е. не"),
+        ],
+    );
+    let prose = set(ru(), RuleSet::PROSE);
+    for row in [
+        ("Т. е. так", "Т.⍽е. так"),
+        ("Т.е. так", "Т.⍽е. так"),
+        ("Т. д. так", "Т.⍽д. так"),
+        ("Т. Е. Иванов", "Т.⍽Е.⍽Иванов"),
+        ("Т. Иванов", "Т.⍽Иванов"),
+        ("вариант Д. После", "вариант Д.⍽После"),
+        ("Буква Т. е. не", "Буква⍽Т.⍽е. не"),
+    ] {
+        check_in("ru Prose", &prose, row);
+    }
+}
+
 const EN_ABBR: &[(&str, &str)] = &[
     ("Mr. Smith", "Mr.⍽Smith"),
     ("Mrs. Smith", "Mrs.⍽Smith"),
