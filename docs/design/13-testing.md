@@ -564,11 +564,13 @@ U+00A0 and must not be normalized.
   string, zero for `format_number` written with `write!` into a `String` with room (the `Display`
   path of section 2.12) and for `typeset_into` into a buffer with room, zero in `Typographer::new`;
   ru `Сохранить` in Interface → `Cow::Borrowed`, no lexing; an iterator of template pieces that
-  calls `typeset` adds no allocations beyond the table of section 2.12; after an input larger than
-  64 KiB the first short call allocates and the second does not. The file exists from stage 2 with
-  the rows that hold before the rules: `Typographer::new`, an unchanged string after warm-up,
-  templates of 1 to 100 slots (three vectors, no reallocation), a text merged from several pieces
-  (one string) and the iterator that calls `typeset`; the other rows join in stage 3 (section 15.4).
+  calls `typeset` adds no allocations beyond the table of section 2.12; a paragraph of 16 KiB
+  unchanged and of 48 KiB changed costs zero and one allocation after warm-up, and none with
+  `typeset_into`; after an input that grew the scratch past 4 MiB the first short call allocates and
+  the second does not. The file exists from stage 2 with the rows that hold before the rules:
+  `Typographer::new`, an unchanged string after warm-up, templates of 1 to 100 slots (three vectors,
+  no reallocation), a text merged from several pieces (one string) and the iterator that calls
+  `typeset`; the other rows join in stage 3 (section 15.4).
 
 Rejected: `criterion` (a heavy tree: `clap`, `serde`, `regex`, `rayon`) and `divan` (last release in
 2025-04); linear behavior needs no statistics package.

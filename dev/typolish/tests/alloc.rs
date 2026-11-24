@@ -5,7 +5,8 @@
 //! Stage 3 (design section 15.4) adds the rows of the encoders and of `format_number`: zero
 //! allocations for numbers written into a buffer with room, for an unchanged string in every output
 //! kind after warm-up, for `typeset_into` in every kind; one for a changed string and one more per
-//! changed text of a template; and the first short call after an input larger than 64 KiB.
+//! changed text of a template; and the first short call after an input that grew the scratch past
+//! 4 MiB.
 
 // The counting allocator needs `unsafe impl GlobalAlloc`; this is the only `unsafe` code of the
 // package (design section 14.5).
@@ -177,10 +178,10 @@ fn a_changed_string_is_one_allocation_however_much_it_grows() {
     // grow to twice its length or more (`"a"` → `“a”`, three bytes to seven) is still one
     // allocation.
     let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
-    // Short enough that the scratch stays under the 64 KiB it keeps between calls.
+    // Short enough that the scratch stays under the 4 MiB it keeps between calls.
     let long = "\"a\" ".repeat(100);
     // 240 edits in one window: more than a stable sort sorts without a heap buffer, so the edits
-    // are sorted in place (design section 15.3, C39); still under 64 KiB of scratch.
+    // are sorted in place (design section 15.3, C39); still under 4 MiB of scratch.
     let many = "\"a\" ".repeat(120);
     for text in ["\"a\"", long.as_str(), many.as_str()] {
         let first = t.typeset(text, Output::Unicode);
@@ -193,6 +194,35 @@ fn a_changed_string_is_one_allocation_however_much_it_grows() {
         let _ = t.typeset_with(&mut scratch, text, Output::Unicode);
         let (allocs, reallocs, _) = count(|| t.typeset_with(&mut scratch, text, Output::Unicode));
         assert_eq!((allocs, reallocs), (1, 0), "with {text:?}");
+    }
+}
+
+#[test]
+fn a_paragraph_of_tens_of_kib_does_not_allocate_after_warm_up() {
+    // Design section 2.12: the thread-local scratch is kept up to 4 MiB, so an input up to about
+    // 50 KiB, one paragraph without line breaks, costs no allocation when unchanged and one when
+    // changed; `typeset_into` a buffer with room costs none.
+    let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    let unchanged = "word ".repeat(3300);
+    let changed =
+        "She said: \"It's 5 kg, not 10 - and that's all\", and left in 2024. ".repeat(750);
+    assert!(unchanged.len() > 16 * 1024 && changed.len() > 48 * 1024);
+    for text in [unchanged.as_str(), changed.as_str()] {
+        let _ = t.typeset(text, Output::Unicode);
+        let (allocs, reallocs, out) = count(|| t.typeset(text, Output::Unicode));
+        let owned = matches!(out, Cow::Owned(_));
+        assert_eq!(owned, text == changed, "{}", text.len());
+        assert_eq!(
+            (allocs, reallocs),
+            (usize::from(owned), 0),
+            "{}",
+            text.len()
+        );
+        let mut buf = String::with_capacity(2 * text.len());
+        t.typeset_into(text, Output::Unicode, &mut buf);
+        buf.clear();
+        let (allocs, reallocs, ()) = count(|| t.typeset_into(text, Output::Unicode, &mut buf));
+        assert_eq!((allocs, reallocs), (0, 0), "into {}", text.len());
     }
 }
 
@@ -541,13 +571,14 @@ fn a_template_text_that_needs_encoding_is_one_allocation_however_much_it_grows()
 }
 
 #[test]
-fn after_an_input_larger_than_64_kib_the_first_short_call_allocates_and_the_second_does_not() {
-    // Design section 2.12: when the capacity of the thread-local scratch grew past 64 KiB, it is
+fn after_the_scratch_grew_past_4_mib_the_first_short_call_allocates_and_the_second_does_not() {
+    // Design section 2.12: when the capacity of the thread-local scratch grew past 4 MiB, it is
     // replaced by `Scratch::new()` after the call, so the next call allocates as a first call does;
     // a caller's `Scratch` is never shrunk.
     const SHORT: &str = "Адрес host:8080, версия v1.2.3, id 0x1F";
-    let big = "слово - слово... \"да\" 5 МБ. ".repeat(4000);
-    assert!(big.len() > 64 * 1024);
+    // About 1.8 MB in one paragraph: tens of bytes of scratch per byte, far past 4 MiB.
+    let big = "слово - слово... \"да\" 5 МБ. ".repeat(40_000);
+    assert!(big.len() > 1024 * 1024);
     let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
 
     let _ = t.typeset(SHORT, Output::Unicode);

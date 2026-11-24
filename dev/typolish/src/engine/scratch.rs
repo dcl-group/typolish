@@ -11,8 +11,9 @@ use super::render::REdit;
 use crate::rules::quotes::{Mark, Work};
 
 /// When the buffers of the thread-local scratch have grown past this many bytes, it is replaced
-/// by a new one after the call.
-const THREAD_LOCAL_LIMIT: usize = 64 * 1024;
+/// by a new one after the call. 4 MiB keeps the buffers of a paragraph up to about 50 KiB (design
+/// section 2.12) at the cost of that much memory kept per thread.
+const THREAD_LOCAL_LIMIT: usize = 4 * 1024 * 1024;
 
 /// Reusable working memory for callers that manage it themselves.
 ///
@@ -115,7 +116,7 @@ thread_local! {
 
 /// Runs `f` with the thread-local scratch. If it is borrowed already (an iterator of pieces that
 /// calls the typographer) or the thread is being torn down, `f` gets a local scratch instead,
-/// without panicking. A scratch that grew past 64 KiB is replaced after the call.
+/// without panicking. A scratch that grew past 4 MiB is replaced after the call.
 pub(crate) fn with_thread_scratch<R>(mut f: impl FnMut(&mut Scratch) -> R) -> R {
     let mut result = None;
     // An error means the thread-local is gone; the fallback below handles it.

@@ -1023,7 +1023,7 @@ Choices:
 
 | Call                            | Allocations                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `typeset`, output equals input  | 0 after a previous call on the thread that did not grow the scratch past 64 KiB (`Cow::Borrowed`; with `Html`/`Escaped` only if nothing needs encoding)                                                                                                                                                                                                                                                                                                              |
+| `typeset`, output equals input  | 0 after a previous call on the thread that did not grow the scratch past 4 MiB, that is for an input up to about 50 KiB (`Cow::Borrowed`; with `Html`/`Escaped` only if nothing needs encoding)                                                                                                                                                                                                                                                                      |
 | `typeset`, output differs       | 1: the output string, sized exactly: its length is counted first (in `Html` and `Escaped` by a counting pass of the encoder)                                                                                                                                                                                                                                                                                                                                         |
 | `typeset_with`                  | as `typeset`, with the caller's buffer instead of the thread-local one                                                                                                                                                                                                                                                                                                                                                                                               |
 | `typeset_into`                  | 0 when `buf` has room                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -1045,20 +1045,23 @@ id (sections 3.4, 3.5). So `Scratch` holds only `'static` data, is `Send + Sync`
 inputs of any lifetime without `unsafe` (the crate forbids it). `Scratch::new()` is a `const fn`,
 and `Scratch` implements `Default`. `typeset` uses one held in a `thread_local!` (`RefCell<Scratch>`
 with `const` initialization) and reused, so after the first call on a thread the hot path does not
-allocate. If the capacity of its buffers grew past 64 KiB in total on a large input, the
-thread-local scratch is replaced by `Scratch::new()` after the call, so the next call on the thread
-allocates again as a first call does. A caller-held `Scratch` of `typeset_with` is never shrunk. The
-pieces of a template are the only caller code that runs during a call: the iterator is consumed into
-the call-local vector of piece texts before the thread-local `Scratch` is borrowed, so an iterator
-that calls the typographer meets a free scratch. Should `try_borrow_mut` fail anyway, the call works
-with a local buffer, without panicking. `typeset_with` takes a caller-held `Scratch` (one per
-worker), for callers that do not want thread-local state, for example executors that move tasks
-between threads or a future `no_std` build. The texts of template pieces are the only per-call data
-with a lifetime; they go into a call-local vector, the third allocation of `typeset_template`. In
-`typeset*` a prefilter returns `Cow::Borrowed` without touching the buffers when the input contains
-no byte that any active rule reacts to and no byte that the output kind encodes (section 3.2);
-`report*` and `lint*` always run the pipeline. A test with a counting global allocator checks this
-table (section 13.8).
+allocate. If the capacity of its buffers grew past 4 MiB in total on a large input, the thread-local
+scratch is replaced by `Scratch::new()` after the call, so the next call on the thread allocates
+again as a first call does. The buffers take tens of bytes per byte of a paragraph (section 3.12),
+so 4 MiB covers an input up to about 50 KiB: 48 KiB of English prose with quotes, dashes and numbers
+stays under it, 64 KiB does not; text of plain words goes about twice as far. The cost is up to 4
+MiB of memory kept per thread that has typeset. A caller-held `Scratch` of `typeset_with` is never
+shrunk. The pieces of a template are the only caller code that runs during a call: the iterator is
+consumed into the call-local vector of piece texts before the thread-local `Scratch` is borrowed, so
+an iterator that calls the typographer meets a free scratch. Should `try_borrow_mut` fail anyway,
+the call works with a local buffer, without panicking. `typeset_with` takes a caller-held `Scratch`
+(one per worker), for callers that do not want thread-local state, for example executors that move
+tasks between threads or a future `no_std` build. The texts of template pieces are the only per-call
+data with a lifetime; they go into a call-local vector, the third allocation of `typeset_template`.
+In `typeset*` a prefilter returns `Cow::Borrowed` without touching the buffers when the input
+contains no byte that any active rule reacts to and no byte that the output kind encodes (section
+3.2); `report*` and `lint*` always run the pipeline. A test with a counting global allocator checks
+this table (section 13.8).
 
 Rejected: a new token vector on every call (one to three allocations per string, unchanged ones
 included); streaming without a buffer (quote pairing defers decisions to the end of a paragraph).

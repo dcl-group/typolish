@@ -647,8 +647,11 @@ equal diagnostics (section 12.3).
   linear.
 - Memory: the token buffers of the longest window (about 40 bytes per token), the output string, and
   the journal only when recording. For text with paragraphs, memory does not grow with the input. A
-  10 MB paragraph without line breaks is the pathological case: memory is linear in its length. Cost
-  is per token, not per byte: a paragraph of 10^5 emoji clusters holds about 4 MB of tokens, in one
+  10 MB paragraph without line breaks is the pathological case: memory is linear in its length. The
+  heap peak of `typeset` is about 30 to 110 bytes per byte of such a paragraph (measured in a
+  release build on paragraphs of 1 and 4 MB: 32 for Russian words, 39 for English words, 61 and 110
+  for Russian and English prose with quotes, dashes and numbers), output string included. Cost is
+  per token, not per byte: a paragraph of 10^5 emoji clusters holds about 4 MB of tokens, in one
   buffer only, since no phase edits it and a phase without edits copies nothing (section 3.8), and
   the engine as a whole takes about 7 MB for it (measured, section 13.8: about 70 bytes per cluster
   for the tokens, the clusters and the rest of the scratch together; the result is borrowed, so no

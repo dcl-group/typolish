@@ -13,8 +13,8 @@ numbers. The built-in languages are `ru-RU` and `en-US`; other languages are add
 - Protection of commands, paths and code: backticks, delimiters of your own, protected pieces, and
   technical fragments the crate recognizes by itself.
 - Deterministic, and idempotent except for the cases of straight quotes listed under Known limits;
-  an unchanged string is returned borrowed and, after the first call on a thread, without
-  allocation.
+  an unchanged string is returned borrowed and, after the first call on a thread, without allocation
+  for an input up to about 50 KiB.
 - Explanation of every edit, a check of plain sources, and the reverse transformation.
 - No `unsafe`, no regular expressions, no panics, and nothing read from the environment.
 

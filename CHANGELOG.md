@@ -18,9 +18,9 @@ supported Rust version: 1.100.
 - `Typographer`, built once with a `Language` and a `RuleSet` (`Typographer::new`, a `const fn`
   usable in a `static`, or `Typographer::builder` with settings) and then only applied. It is
   immutable and `Send + Sync`; applying it never fails and never panics, and an unchanged string is
-  returned borrowed, without allocation after the first call on a thread. `Scratch` is reusable
-  working memory for callers that manage it themselves (`typeset_with`, `typeset_template_with`);
-  `typeset_into` writes into a buffer.
+  returned borrowed, without allocation after the first call on a thread for an input up to about 50
+  KiB. `Scratch` is reusable working memory for callers that manage it themselves (`typeset_with`,
+  `typeset_template_with`); `typeset_into` writes into a buffer.
 - Three inputs: a whole string (`typeset`), a message template of `Piece`s (`Text`, `Slot` with a
   `SlotKind` of number, word, date or other, `Protected`, `Markup`) whose slots keep their place in
   the resulting `Template` (`typeset_template`), and a `Number` (`format_number`, `format_range`).

@@ -707,7 +707,10 @@ impl Typographer {
     /// Typesets plain text. Returns the input borrowed when the output equals it byte for byte.
     ///
     /// Uses a thread-local working buffer; after the first call on a thread an unchanged string
-    /// costs no allocation (design section 2.12).
+    /// costs no allocation while the buffer stays under 4 MiB, that is for an input up to about 50
+    /// KiB (design section 2.12). Memory is linear in the input, up to about 110 bytes per byte of
+    /// a paragraph (design section 3.12); for longer inputs use [`Typographer::typeset_with`] with
+    /// a [`Scratch`] of your own, which is never shrunk.
     ///
     /// ```
     /// use std::borrow::Cow;
@@ -723,6 +726,8 @@ impl Typographer {
     }
 
     /// The same as [`Typographer::typeset`] with working memory supplied by the caller.
+    ///
+    /// Memory: as [`Typographer::typeset`]; the buffers stay in `scratch` after the call.
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Scratch, Typographer};
@@ -742,6 +747,8 @@ impl Typographer {
     }
 
     /// Appends the typeset text to `buf`; no allocation when `buf` has room.
+    ///
+    /// Memory: as [`Typographer::typeset`].
     ///
     /// The text already in `buf` is not checked. In the JavaScript styles of `Output::Escaped` the
     /// appended text never ends in a raw `$` but may start with `{`, so `buf` must not end in a raw
