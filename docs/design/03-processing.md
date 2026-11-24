@@ -668,7 +668,9 @@ equal diagnostics (section 12.3).
   million at 16 MiB); a long run of `Format` tokens (U+200B, U+2060 U+200C) before many dashes, each
   a fragment of its own (a rule reads the nearest non-transparent neighbors of a token, never the
   whole run again); many straight quotes in the wrapper of one technical fragment (what the quote
-  phase reads of a fragment is computed once per fragment).
+  phase reads of a fragment is computed once per fragment); a long run of `‘’` (a typed `’` that may
+  close the `‘` before it as a sign-only pair, section 6.3, reads the left neighbor of its own
+  series as the caller has it and counts at most three quotes of it).
 
 ### 3.13 Rejected engine designs
 

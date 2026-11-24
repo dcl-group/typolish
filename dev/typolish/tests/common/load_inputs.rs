@@ -47,6 +47,8 @@ pub const PATHOLOGICAL: &[Pathological] = &[
     ("quotes inside a URL wrapper", |n| {
         format!("(http://a.b/c{})", "\"".repeat(n))
     }),
+    // A typed `’` after a `‘` may close it as a sign-only pair (design section 6.3).
+    ("run of ‘’", |n| repeat_to("‘’", n)),
 ];
 
 /// `unit` repeated until the string is at least `size` bytes long.

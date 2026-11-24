@@ -214,8 +214,9 @@ pub(crate) fn local_role(cx: &Cx<'_>, i: usize) -> Option<Role> {
                 // `’` is also the apostrophe: it closes only where the closing test of design
                 // section 6.3 holds, or as the second quote of a sign-only pair.
                 let (l, r) = neighbors(cx, i);
-                (class(cx, r).ends() && (!class(cx, l).opens() || typed_sign_only(cx, i)))
-                    .then_some(Role::Close)
+                (class(cx, r).ends()
+                    && (!class(cx, l).opens() || typed_sign_only(cx, i, class(cx, l))))
+                .then_some(Role::Close)
             } else if c == pairs.primary.1 || c == pairs.nested.1 {
                 Some(Role::Close)
             } else {
@@ -268,11 +269,6 @@ pub(crate) struct Q {
     step1: Mark,
     /// The pair is cancelled by `SingleQuotes::NestedOnly`.
     cancelled: bool,
-    /// The number of straight `'` openers before this quote that take part and stayed unpaired
-    /// (design section 6.6).
-    open_s_before: u32,
-    /// The number of quotes before this one that belong to a pair that is not cancelled.
-    paired_before: u32,
 }
 
 /// One entry of the matching stack.
@@ -291,6 +287,10 @@ pub(crate) struct Entry {
 pub(crate) struct Work {
     qs: Vec<Q>,
     stack: Vec<Entry>,
+    /// Per quote, for the trailing possessive (design section 6.6): the number of straight `'`
+    /// openers before it that take part and stayed unpaired, and the number of quotes before it
+    /// that belong to a pair that is not cancelled.
+    before: Vec<[u32; 2]>,
 }
 
 impl Work {
@@ -298,11 +298,14 @@ impl Work {
         Work {
             qs: Vec::new(),
             stack: Vec::new(),
+            before: Vec::new(),
         }
     }
 
     pub(crate) fn heap_bytes(&self) -> usize {
-        self.qs.capacity() * size_of::<Q>() + self.stack.capacity() * size_of::<Entry>()
+        self.qs.capacity() * size_of::<Q>()
+            + self.stack.capacity() * size_of::<Entry>()
+            + self.before.capacity() * size_of::<[u32; 2]>()
     }
 }
 
@@ -407,7 +410,7 @@ pub(crate) fn analyze<R: Recorder>(
 ) {
     marks.clear();
     marks.resize(cx.toks.len(), Mark::None);
-    let Work { qs, stack } = work;
+    let Work { qs, stack, before } = work;
     qs.clear();
     for (i, t) in cx.toks.iter().enumerate() {
         if t.kind == Kind::Quote
@@ -426,8 +429,6 @@ pub(crate) fn analyze<R: Recorder>(
                 prime: false,
                 step1: Mark::None,
                 cancelled: false,
-                open_s_before: 0,
-                paired_before: 0,
             });
         }
     }
@@ -478,7 +479,7 @@ pub(crate) fn analyze<R: Recorder>(
                     // U+2019 can close only where the neighbors allow a closing role, or as the
                     // second quote of a sign-only pair with the typed opener before it.
                     if !(!lc.opens() && rc.ends())
-                        && !(rc.ends() && typed_sign_only(cx, q.tok as usize))
+                        && !(rc.ends() && typed_sign_only(cx, q.tok as usize, lc))
                     {
                         q.cat = Cat::Skip;
                     }
@@ -758,12 +759,14 @@ pub(crate) fn analyze<R: Recorder>(
     }
 
     // What lies between a trailing possessive and the closer of the pair around it (design section
-    // 6.6): straight `'` openers that stayed unpaired, and quotes of pairs.
+    // 6.6): straight `'` openers that stayed unpaired, and quotes of pairs. Only a language with
+    // the trailing possessive needs it.
+    let possessives = cx.data.trailing_possessive;
     let mut open_s = 0u32;
     let mut paired = 0u32;
-    for q in qs.iter_mut() {
-        q.open_s_before = open_s;
-        q.paired_before = paired;
+    before.clear();
+    for q in qs.iter().filter(|_| possessives) {
+        before.push([open_s, paired]);
         if in_pair(q) {
             paired = paired.saturating_add(1);
         } else if q.cat == Cat::Straight
@@ -784,6 +787,9 @@ pub(crate) fn analyze<R: Recorder>(
     for (idx, q) in qs.iter().enumerate() {
         let i = q.tok as usize;
         if in_pair(q) {
+            if !possessives {
+                continue;
+            }
             if (q.partner as usize) > idx {
                 if let Ok(index) = u32::try_from(idx) {
                     stack.push(Entry {
@@ -819,7 +825,7 @@ pub(crate) fn analyze<R: Recorder>(
             })
             && !next.is_some_and(|n| matches!(cx.kind(n), Some(Kind::Word(_))))
             && (neutral_apostrophe_opener == NONE || neutral_apostrophe_opener > q.tok)
-            && !possessive_closes(cx, qs, marks, q, stack.last().map(|e| e.q));
+            && !possessive_closes(cx, qs, before, marks, idx, stack.last().map(|e| e.q));
         // A number run split by `Format` or `Markup` tokens is one number (design section 3.6).
         let decade = data.decade_apostrophe
             && word_start(cx, i)
@@ -844,8 +850,9 @@ fn in_pair(q: &Q) -> bool {
     q.partner != NONE && !q.cancelled && matches!(q.cat, Cat::Straight | Cat::Typed | Cat::Cond)
 }
 
-/// Whether a trailing possessive at `q` would be read as the closer of the pair around it, whose
-/// opener is `qs[around]`, and so change what lies between them (design section 6.6).
+/// Whether a trailing possessive at `qs[idx]` would be read as the closer of the pair around it,
+/// whose opener is `qs[around]`, and so change what lies between them (design section 6.6).
+/// `before` holds the counts of `Work::before`.
 ///
 /// The pair is closed by `’` and the neighbors of `q` allow a closing role (design section 6.3):
 /// on a second pass the possessive `’` would close the pair at once, and `to_plain` reads it as
@@ -854,10 +861,22 @@ fn in_pair(q: &Q) -> bool {
 /// opener that stayed unpaired lies between, which the closer of the pair popped and which could
 /// pair once the pair has closed early; or, for `to_plain`, when the closer follows `s` or `S`
 /// and a quote of a pair lies between, whose level would drop by one.
-fn possessive_closes(cx: &Cx<'_>, qs: &[Q], marks: &[Mark], q: &Q, around: Option<u32>) -> bool {
-    let Some(close) = around
+fn possessive_closes(
+    cx: &Cx<'_>,
+    qs: &[Q],
+    before: &[[u32; 2]],
+    marks: &[Mark],
+    idx: usize,
+    around: Option<u32>,
+) -> bool {
+    let Some(c) = around
         .and_then(|o| qs.get(o as usize))
-        .and_then(|o| qs.get(o.partner as usize))
+        .map(|o| o.partner as usize)
+    else {
+        return false;
+    };
+    let (Some(q), Some(close), Some(&[open_q, paired_q]), Some(&[open_c, paired_c])) =
+        (qs.get(idx), qs.get(c), before.get(idx), before.get(c))
     else {
         return false;
     };
@@ -872,13 +891,13 @@ fn possessive_closes(cx: &Cx<'_>, qs: &[Q], marks: &[Mark], q: &Q, around: Optio
     if class(cx, l).opens() || !class(cx, r).ends() {
         return false;
     }
-    if close.open_s_before > q.open_s_before {
+    if open_c > open_q {
         return true;
     }
     let after_s = cx.prev(close.tok as usize).is_some_and(|p| {
         matches!(cx.kind(p), Some(Kind::Word(_))) && cx.src(p).ends_with(['s', 'S'])
     });
-    after_s && close.paired_before > q.paired_before
+    after_s && paired_c > paired_q
 }
 
 /// The series of quotes that starts at `qs[start]`: the index after its last quote, and its L and
@@ -1281,8 +1300,9 @@ fn sign_only_opener(cx: &Cx<'_>, i: usize) -> Option<usize> {
 /// sign, in the same fragment, is that opener, whose series has L of class `Space`, `OpenP` or
 /// `DashC`, and two adjacent quotes are no pair in a series of three or more. It is the typed form
 /// of the sign-only pair of straight quotes, which a first pass sets as such a pair (`""` → `‘’`),
-/// so a second pass reads it as the first did. R of the `’` is the caller's to check.
-fn typed_sign_only(cx: &Cx<'_>, i: usize) -> bool {
+/// so a second pass reads it as the first did. R of the `’` is the caller's to check, and `left`
+/// is the class of L of its series.
+fn typed_sign_only(cx: &Cx<'_>, i: usize, left: Class) -> bool {
     let Some(pairs) = cx.pairs else {
         return false;
     };
@@ -1314,8 +1334,34 @@ fn typed_sign_only(cx: &Cx<'_>, i: usize) -> bool {
     if !is_quote(cx, a) || cx.chr(a) != Some(open) || cx.tok(a).is_none_or(Tok::is_frozen) {
         return false;
     }
+    if j == adjacent {
+        // The opener is in the series of the `’`, whose L the caller has.
+        return left.opens() && !at_least_three(cx, a);
+    }
     let (l, _) = neighbors(cx, a);
-    class(cx, l).opens() && !(j == adjacent && series_count(cx, a) >= 3)
+    class(cx, l).opens()
+}
+
+/// Whether the series that holds the quote at `i` has three or more quotes, of any form. It looks
+/// at no more than two quotes on each side, so a call costs the same however long the series is
+/// (design section 3.12).
+fn at_least_three(cx: &Cx<'_>, i: usize) -> bool {
+    let mut count = 1;
+    let mut l = cx.prev(i);
+    while count < 3
+        && let Some(j) = l.filter(|&j| is_quote(cx, j))
+    {
+        count += 1;
+        l = cx.prev(j);
+    }
+    let mut r = cx.next(i);
+    while count < 3
+        && let Some(j) = r.filter(|&j| is_quote(cx, j))
+    {
+        count += 1;
+        r = cx.next(j);
+    }
+    count >= 3
 }
 
 /// The number of quotes, of any form, in the series that holds the quote at `i`.
