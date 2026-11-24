@@ -60,6 +60,10 @@ fn copy_types() {
     copy::<EscapeStyle>();
     copy::<Piece<'static, u8>>();
     copy::<TemplatePart<'static, u8>>();
+    // A part borrows its payload, so it is `Copy` whatever the payload (design section 2.13).
+    struct NotClone;
+    copy::<TemplatePart<'static, String>>();
+    copy::<TemplatePart<'static, NotClone>>();
     // The value types of design section 2.1.
     copy::<QuotePairs>();
     copy::<SingleQuotes>();

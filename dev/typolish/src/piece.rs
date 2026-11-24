@@ -282,6 +282,9 @@ pub struct Template<'t, S> {
 
 /// One part of a typeset template, in order.
 ///
+/// A part borrows the payload of its slot, so it is `Copy` whatever the payload type (design
+/// section 2.13).
+///
 /// ```
 /// use typolish::{Language, Output, Piece, RuleSet, Slot, TemplatePart, Typographer};
 ///
@@ -300,7 +303,7 @@ pub struct Template<'t, S> {
 ///     ]
 /// );
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TemplatePart<'a, S> {
     /// A typeset text.
@@ -331,6 +334,15 @@ pub enum TemplatePart<'a, S> {
     /// ```
     Slot(&'a S, Slot),
 }
+
+// By hand: a derive would require `S: Copy`, which a borrowed payload does not need.
+impl<S> Clone for TemplatePart<'_, S> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<S> Copy for TemplatePart<'_, S> {}
 
 impl<'t, S> Template<'t, S> {
     /// A template from its parts; `texts.len() == slots.len() + 1`.

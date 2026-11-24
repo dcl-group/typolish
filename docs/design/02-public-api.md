@@ -484,9 +484,12 @@ pub enum SlotKind {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Template<'t, S> { /* texts: Vec<Cow<'t, str>>, slots: Vec<(S, Slot)>, changed: bool */ }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TemplatePart<'a, S> { Text(&'a str), Slot(&'a S, Slot) }
+// `Clone` and `Copy` by hand, for every `S`: a part only borrows the payload.
+impl<S> Clone for TemplatePart<'_, S> { /* *self */ }
+impl<S> Copy for TemplatePart<'_, S> {}
 
 impl<'t, S> Template<'t, S> {
     pub fn texts(&self) -> &[Cow<'t, str>];
@@ -1061,13 +1064,13 @@ included); streaming without a buffer (quote pairing defers decisions to the end
   equal to `NumberData::new()` (Clippy's `new_without_default` asks for it); `Output`, `RuleSet`,
   `Rule`, `Slot`, `HtmlStyle`, `EscapeStyle` are `Copy`; `Severity` is `Copy` and ordered,
   `Info < Warning`, and a level added later takes its place in that order; `Piece<'t, S>` is `Copy`
-  when `S` is; `Language` and `LanguageData` are not `Copy` (deliberately); `LanguageData` setters
-  are `const fn`; `Language`, `LanguageData` and the value types of section 2.1 (the rows from
-  `QuotePairs` to `NumberData`) implement `Debug`, `PartialEq`, `Eq` and `Hash`, and the value types
-  also `Copy`, so a field added to them later must have these traits too (language data holds
-  strings, characters, numbers and flags, which do); rule ids are permanent. `Number` holds floats
-  and is `PartialEq` only; integers compare by value whatever their type, while `1`, `1.0` and
-  `Number::decimal("1")` are three different numbers.
+  when `S` is, and `TemplatePart<'a, S>` is `Copy` for every `S`; `Language` and `LanguageData` are
+  not `Copy` (deliberately); `LanguageData` setters are `const fn`; `Language`, `LanguageData` and
+  the value types of section 2.1 (the rows from `QuotePairs` to `NumberData`) implement `Debug`,
+  `PartialEq`, `Eq` and `Hash`, and the value types also `Copy`, so a field added to them later must
+  have these traits too (language data holds strings, characters, numbers and flags, which do); rule
+  ids are permanent. `Number` holds floats and is `PartialEq` only; integers compare by value
+  whatever their type, while `1`, `1.0` and `Number::decimal("1")` are three different numbers.
 - Not part of the contract: the order of `Rule::ALL` (it is the execution order, and a new rule may
   go into the middle); the representation of `RuleSet`; the contents of language lists; the text of
   `summary()` and of the `Display` of `Error`, `Diagnostic` and `Report`. The `Display` of `Rule`,
