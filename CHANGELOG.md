@@ -82,3 +82,25 @@ supported Rust version: 1.100.
 - Examples: `numbers` (number formatting), `per_request` (typesetting at run time) and
   `fluent_generator` (a build-time generator over Fluent messages with `report_template` and
   `Output::Escaped(EscapeStyle::RUST)`).
+
+### Changed before the first publication
+
+The output of the built-in sets changed after the text above was prepared and before the first
+publication; each change below gives an input, the output before and the output after (`⍽` stands
+for U+00A0).
+
+- A rule that reads a fragment next to it reads a `Joined` core of the closed style as the word at
+  its end and a label (`№5`) as its numeral or its sign (design section 4.3, I4), so the first pass
+  is a fixed point and `to_plain` gives the input back:
+  - en `Moscow - a, - b`: `Moscow—a, - b`, then `Moscow—a, — b` on a second pass → `Moscow—a, - b`;
+    en `A - (b - cc)`: `A - (b—cc)`, then `A — (b—cc)` → `A - (b—cc)`;
+  - en `5 in - yes`: `5 in—yes`, then `5⍽in—yes` → `5 in—yes`; typed `5 in—yes`: `5⍽in—yes` →
+    `5 in—yes`; ru `12 с—у`: `12⍽с—у` → `12 с—у`;
+  - en `Hello—a, - b`: `Hello—a, — b` → `Hello—a, - b`;
+  - ru `№5 ли ты`: `№⍽5⍽ли ты` (Prose; `№⍽5⍽ли⍽ты` on a second pass) → `№⍽5 ли⍽ты`, Interface
+    `№⍽5⍽ли ты` → `№⍽5 ли ты`; ru `§5 же ты`: `§⍽5⍽же ты` → `§⍽5 же⍽ты`;
+  - ru `№5 - x`: `№⍽5⍽— x` → `№⍽5 - x`; ru `X - №V`: `X - №⍽V` → `X⍽— №⍽V`;
+  - ru `т. н.э.`: `т. н.⍽э.` (`т.⍽н.⍽э.` on a second pass) → `т.⍽н.э.`;
+  - ru `а—г. Пушкин`: `а—г. Пушкин` → `а—г.⍽Пушкин`; ru `дом—и т. д. и`: `дом—и т.⍽д. и` →
+    `дом—и⍽т.⍽д. и`; en `x—St. "a"`: `x—St. “a”` → `x—St.⍽“a”` (an abbreviation may start at a part
+    of a `Joined` core).

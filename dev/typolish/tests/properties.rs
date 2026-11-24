@@ -25,9 +25,9 @@ use common::show;
 use common::strategies::{GenPiece, any_text, borrow, pieces, risky_text, rule_set};
 use proptest::prelude::*;
 use typolish::{
-    Change, Diagnostic, DiagnosticKind, EscapeStyle, HtmlStyle, Language, LanguageBuilder, Output,
-    PercentSpacing, Piece, ProtectedKind, QuotePairs, Report, Rule, RuleSet, Scratch, Severity,
-    SingleQuotes, Template, Typographer, TypographerBuilder,
+    Change, DashStyle, Diagnostic, DiagnosticKind, EscapeStyle, HtmlStyle, Language,
+    LanguageBuilder, Output, PercentSpacing, Piece, ProtectedKind, QuotePairs, Report, Rule,
+    RuleSet, Scratch, Severity, SingleQuotes, Template, Typographer, TypographerBuilder,
 };
 
 const LANGUAGES: [Language; 3] = [Language::RU_RU, Language::EN_US, Language::COMMON];
@@ -109,6 +109,35 @@ const SEEDS: &[&str] = &[
     // A dash next to a fragment that the closed style merged (design section 4.3, I4).
     "details - a - т.е.sk",
     "5 - x - Moscow",
+    // A rule that reads a merged or a split neighbor reads it in its plain form (design section
+    // 4.3, I4); the rows of `merged_and_split_fragments_read_as_their_plain_form`.
+    "Moscow - a, - b",
+    "Plan - A, - B",
+    "Moscow - a) - b",
+    "A - (b - cc)",
+    "a - 'b - c's",
+    "it's - B... - c",
+    "Hello—world, - he said",
+    "Москва - а, - б",
+    "Москва - cat, - file",
+    "5 in - yes",
+    "Up to 5 in - no more",
+    "5 kg - yes",
+    "5 с - стр.",
+    "№5 ли ты",
+    "§5 же ты",
+    "№V ли ты",
+    "ли - ведь же (к)",
+    "№5 - x",
+    "X - №V",
+    "x - '§X",
+    "т. н.э.",
+    "т. н.э. О",
+    "он - т.е.а. в",
+    "ООО - т. д. Я",
+    "США Т. США - к",
+    "ООО А. Пушкин - км (не",
+    "See §V. St. Paul",
     "5'10\"",
     "90's",
     "'90s",
@@ -238,6 +267,87 @@ fn idempotence_of_the_seed_with_a_built_language() {
         t.typeset("\"Er sagte \"Wort\"\"", Output::Unicode),
         "„Er sagte ‚Wort‘“"
     );
+}
+
+#[test]
+fn merged_and_split_fragments_read_as_their_plain_form() {
+    // I4 of design section 4.3: a fragment that the closed dash merged (`Moscow—a`) or that
+    // `nbsp.signs` and `nbsp.abbreviations` split (`№⍽5`, `н.⍽э.`) reads as the parts it stands
+    // for, so the first pass gives a fixed point and `to_plain` of it comes back.
+    let ru_closed = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+        .dash_style(DashStyle::Closed)
+        .build()
+        .unwrap();
+    let en_p = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    let en_i = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    let ru_p = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    let ru_i = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    let rows: &[(&Typographer, &str, &str)] = &[
+        // A dash across a wrapper reads the word next to it (design section 8.4).
+        (&en_p, "Moscow - a, - b", "Moscow—a, - b"),
+        (&en_i, "Plan - A, - B", "Plan—A, - B"),
+        (&en_p, "Moscow - a) - b", "Moscow—a) - b"),
+        (&en_p, "A - (b - cc)", "A - (b—cc)"),
+        (&en_p, "a - 'b - c's", "a - 'b—c’s"),
+        (&en_p, "it's - B... - c", "it’s—B… - c"),
+        (&en_p, "Hello—world, - he said", "Hello—world, — he said"),
+        (&ru_closed, "Москва - а, - б", "Москва—а, - б"),
+        (&ru_closed, "Москва - cat, - file", "Москва—cat, - file"),
+        // An ambiguous unit before the dash of a merge (design section 8.7).
+        (&en_p, "5 in - yes", "5 in—yes"),
+        (&en_i, "5 in - yes", "5 in—yes"),
+        (
+            &en_p,
+            "Up to 5 in - no more",
+            "Up\u{a0}to\u{a0}5 in—no more",
+        ),
+        (&en_p, "5 kg - yes", "5\u{a0}kg—yes"),
+        (&ru_closed, "5 с - стр.", "5 с—стр."),
+        // A particle after a label or after a merge (design section 8.7).
+        (&ru_p, "№5 ли ты", "№\u{a0}5 ли\u{a0}ты"),
+        (&ru_i, "№5 ли ты", "№\u{a0}5 ли ты"),
+        (&ru_p, "§5 же ты", "§\u{a0}5 же\u{a0}ты"),
+        (&ru_p, "№V ли ты", "№\u{a0}V\u{a0}ли ты"),
+        (&ru_closed, "ли - ведь же (к)", "ли—ведь\u{a0}же (к)"),
+        // A dash next to a label reads its numeral or its sign (design section 8.4).
+        (&ru_p, "№5 - x", "№\u{a0}5 - x"),
+        (&ru_p, "X - №V", "X\u{a0}— №\u{a0}V"),
+        (&ru_i, "x - '§X", "x\u{a0}— '§\u{a0}X"),
+        // An abbreviation whose last part starts a compact one, or a part of a merge (design
+        // section 8.7).
+        (&ru_p, "т. н.э.", "т.\u{a0}н.э."),
+        (&ru_i, "т. н.э. О", "т.\u{a0}н.э. О"),
+        (&ru_p, "он - т.е.а. в", "он - т.е.а. в"),
+        (&ru_closed, "ООО - т. д. Я", "ООО—т.\u{a0}д. Я"),
+        // Initials next to a merge or a label (design section 8.7).
+        (&ru_closed, "США Т. США - к", "США Т.\u{a0}США—к"),
+        (
+            &ru_closed,
+            "ООО А. Пушкин - км (не",
+            "ООО А.\u{a0}Пушкин—км\u{a0}(не",
+        ),
+        (&en_p, "See §V. St. Paul", "See §\u{a0}V. St.\u{a0}Paul"),
+    ];
+    for &(t, text, expected) in rows {
+        let once = t.typeset(text, Output::Unicode).into_owned();
+        assert_eq!(once, expected, "{text:?}: {}", show(&once));
+        let twice = t.typeset(&once, Output::Unicode).into_owned();
+        assert_eq!(
+            twice,
+            once,
+            "{text:?}: {} then {}",
+            show(&once),
+            show(&twice)
+        );
+        let plain = t.to_plain(&once);
+        let back = t.typeset(&plain, Output::Unicode).into_owned();
+        assert_eq!(
+            back,
+            once,
+            "{text:?}: to_plain {plain:?} gives {}",
+            show(&back)
+        );
+    }
 }
 
 proptest! {

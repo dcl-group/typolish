@@ -142,7 +142,10 @@ agree and that every rule appears once.
   recur either: a `Joined` core is not an operand (section 8.4), so a dash whose operand the merge
   took into the `Joined` fragment is matched by no dash rule on f(x). Its edit stays by I3, and a
   refused `-` stays as it was (`details - a - т.е.sk` → `details—a — т.е.sk`, `5 - x - Moscow` →
-  `5 - x—Moscow`); where an inserted space split a fragment, the rules that read the parts match
+  `5 - x—Moscow`); a rule that reads a neighboring fragment reads a `Joined` core whose part on that
+  side is a word of letters as that word, and a label as its numeral on the left and its sign on the
+  right (the parts that `nbsp.signs` makes), so a merge or a split changes nothing for the neighbors
+  (section 15.3, C42); where an inserted space split a fragment, the rules that read the parts match
   them with empty edits. A dash that `dash.double-hyphen` wrote is matched on f(x) by
   `dash.spaced-hyphen` (section 8.4), and by no rule when that rule is off; no edit is lost either
   way. So on f(x) no rule matches with a non-empty edit.

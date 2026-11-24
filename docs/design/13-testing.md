@@ -377,7 +377,10 @@ the no-panic test.
    `‘Note: 'beta' builds of the developers' tools`, `‚Wort‘` with a `LanguageBuilder` language whose
    pairs are `„“` and `‚‘`; the sign-only pair next to a dash, `Слово - "" да`, `"" - 5`, `- "" да`;
    the rule of three, `"--"""` and `''''- a' b'`; and a neutral typed closer inside a new pair of
-   its family, `x '"»b 5' c"`, `'"»90'"`, en `’'"”»90'„"`).
+   its family, `x '"»b 5' c"`, `'"»90'"`, en `’'"”»90'„"`; and neighbors of a merged or a split
+   fragment read in their plain form, section 4.3, I4: `Moscow - a, - b`, `№5 ли ты`, `т. н.э.`,
+   which the table test `merged_and_split_fragments_read_as_their_plain_form` also runs with
+   `DashStyle::Closed` and checks for P2).
 2. **Fixed-point oracle**: `f` repeated until nothing changes (at most three times) equals `f`; a
    difference prints the reports of both passes.
 3. **Invariants**, one property each: I1 (edits never change a token kind; insertions and removals

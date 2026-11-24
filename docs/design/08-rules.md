@@ -209,7 +209,10 @@ such a core, with no wrapper between them, is matched by no dash rule and gets n
 `nbsp.dash`, and no diagnostic is raised (`Moscow—the - capital`, `5 - x—Moscow` and ru
 `1920x1080 — монитор` stay). Were a `Joined` core an operand, a `-` refused next to a single letter
 would fire on the next pass once a merge had made that letter part of a `Joined` core
-(`5 - x - Moscow` → `5 - x—Moscow` → `5 — x—Moscow`), against invariant I2.
+(`5 - x - Moscow` → `5 - x—Moscow` → `5 — x—Moscow`), against invariant I2. Across a wrapper the
+refusals read the part of the core next to the dash, and a label reads as its numeral on the left
+and its sign on the right (section 4.3, I4): `Moscow - a, - b` → `Moscow—a, - b` on every pass, the
+hyphen of `№5 - x` stays as that of `№ 5 - x` does, ru Prose `X - №V` → `X⍽— №⍽V`.
 
 **`dash.double-hyphen`** (Prose). The same for a lone `--` or `---`, with the same refusals:
 `npm test -- --watch` stays. A typed `—` or `–` is matched by `dash.spaced-hyphen` (with an empty
@@ -333,7 +336,9 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   percentage do not count here (section 8.2). A label number is not a number here:
   `Школа №5 г. Москвы` → `Школа №⍽5 г.⍽Москвы`, `§5 ч. 2` → `§⍽5 ч.⍽2`. With `narrow_glue` for
   abbreviations, `Narrow` goes only to the spaces between the parts of an entry (`т.⎵д.`); the space
-  after a leading word (`и⍽т.`) and the forward glue of `Next` entries are always `NoBreak`.
+  after a leading word (`и⍽т.`) and the forward glue of `Next` entries are always `NoBreak`. The
+  last part of an entry may start a compact abbreviation (`т. н.э.` → `т.⍽н.э.`), and an entry may
+  start at a part of a `Joined` core (`а—г. Пушкин` → `а—г.⍽Пушкин`; section 4.3, I4).
 - **`nbsp.initials`.** `И. О. Фамилия`, `И. Фамилия`, `Фамилия И. О.`, `Фамилия И.`: an initial is
   one capital letter of the language's script with a full stop (up to three); a run of four or more
   initials is not a match anywhere in the run, and the rule glues none of its spaces (no partial
@@ -346,7 +351,9 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   en `I`) before a capitalized word gets the same glue (`вариант А.⍽После`): the rule does not look
   for sentence ends (section 15.2, item 11), and the glue only forbids a line break there (section
   10.8). Where initials stand between two capitalized words, the forward form takes them and the
-  word before stays apart (`Иван А.⍽Петров`, `Пушкин А.⍽С.⍽Иванов`; section 15.2, item 22).
+  word before stays apart (`Иван А.⍽Петров`, `Пушкин А.⍽С.⍽Иванов`; section 15.2, item 22). A label
+  numeral is not an initial (`§V.`); a surname at the end of a `Joined` core is read as the word it
+  was (section 4.3, I4).
 - **`nbsp.dates`.** By `month_position`: `AfterDay` (ru) glues a day number 1 to 31 (or a `Number`
   slot) before a month form (`21⍽ноября`); `BeforeDay` glues a month form before a day number;
   `Both` (en) glues both orders (`November⍽21`, `21⍽November`). With year and century words (only in
@@ -359,16 +366,17 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   then a unit of the list (longest match, case-sensitive, followed by a non-letter and non-digit) →
   glue: `5⍽МБ`, `30⍽с.`, `12⍽дн.`, `5–10⍽кг`, `{n}⍽дн.`, `5⍽ГБ/с`, `60⍽км/ч`. An ambiguous unit
   (`с`, `in`) is glued only before punctuation, a line break or the end: `Ждать 30⍽с.`, but
-  `30 с друзьями` stays. Only existing spaces: `5MB` is an identifier and stays. `%` and `‰` follow
-  `PercentSpacing`: `AsWritten` (default) glues an existing space and leaves an attached sign;
-  `Language` applies the CLDR pattern (`NumberData::percent_spaced`; ru `100%` → `100⍽%`, en `100 %`
-  → `100%` (only a single U+0020 is removed)); `Attached` removes a single U+0020 between the number
-  and the sign; a U+00A0 or U+202F typed by the author, a tab or a run of spaces stays (section
-  5.3); `Spaced` glues or inserts. A range takes the setting as a number does (`5–10%` → `5–10⍽%`
-  with ru `Language` or `Spaced`, `5–10 %` → `5–10%` with `Attached`). So does a label number
-  (section 8.2): `№ 5 %` → `№⍽5⍽%` by default, `№⍽5%` with `Attached`. A sign with an attached
-  number and percent sign (`№5%`, `§5%`) is not a word by check 23 and is frozen by check 24 of
-  section 3.6. Settled in section 15.5, item 11.
+  `30 с друзьями` stays. An ambiguous unit right before the `—` or `–` of a `Joined` core is not
+  last (`5 in - yes` → `5 in—yes`; section 4.3, I4). Only existing spaces: `5MB` is an identifier
+  and stays. `%` and `‰` follow `PercentSpacing`: `AsWritten` (default) glues an existing space and
+  leaves an attached sign; `Language` applies the CLDR pattern (`NumberData::percent_spaced`; ru
+  `100%` → `100⍽%`, en `100 %` → `100%` (only a single U+0020 is removed)); `Attached` removes a
+  single U+0020 between the number and the sign; a U+00A0 or U+202F typed by the author, a tab or a
+  run of spaces stays (section 5.3); `Spaced` glues or inserts. A range takes the setting as a
+  number does (`5–10%` → `5–10⍽%` with ru `Language` or `Spaced`, `5–10 %` → `5–10%` with
+  `Attached`). So does a label number (section 8.2): `№ 5 %` → `№⍽5⍽%` by default, `№⍽5%` with
+  `Attached`. A sign with an attached number and percent sign (`№5%`, `§5%`) is not a word by check
+  23 and is frozen by check 24 of section 3.6. Settled in section 15.5, item 11.
 - **`nbsp.signs`.** `№`, `§`, `¶` before a number (its label number, section 8.2), a Roman numeral
   or a slot (not `Other`): a space is glued, a missing space is inserted (`№5` → `№⍽5`, `¶IV` →
   `¶⍽IV`; the attached forms are words by check 23 of section 3.6, and the sign alone is a `Sign`
@@ -400,19 +408,20 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   `«Знаешь⍽ли» ты`, `Что⍽ж` at the end of a window (section 15.2, item 19). A capital letter with a
   full stop is an initial of `nbsp.initials`, not a particle, even when its letter is on the list:
   `Иван Б.⍽Петров`, `роман Б.⍽Акунина`, as `Иван А.⍽Петров`; a lowercase letter stays a particle:
-  `Ну что⍽ж. Ладно`. A particle in this place is **bound** to the word before it and glues nothing
-  after itself: `nbsp.short-words` and `nbsp.short-length` do not take it as a trigger word, so
-  there is no chain: `Знаешь ли ты` → `Знаешь⍽ли ты`, also with `ли` added to the short words
-  (section 15.2, item 18), and so for every particle of the list (section 15.2, item 23). Each
-  particle of a run is bound to the word before it, the run to the first word: `что⍽же⍽бы ты`
-  (section 15.2, item 24: `бы` is glued to the word before it, `же`, by the first half of item 18).
-  A dash after a bound particle is glued to it by `nbsp.dash` as to any operand: `Что⍽ж⍽— ладно`. A
-  particle with no word or slot one pattern space before it (at a line start, after punctuation, a
-  tab or an `Other` slot) is not bound and is an ordinary word: Prose `Ли ты знал` → `Ли⍽ты⍽знал`. A
-  particle is bound by the list of particles whichever rules are enabled (section 15.2, item 25):
-  with `nbsp.short-length` alone `Знаешь ли ты` stays unchanged, and after
-  `remove_particles(["ли"])` Prose gives `Знаешь ли⍽ты`. A no-break space the author typed after a
-  particle stays (section 4.3, I3): `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`.
+  `Ну что⍽ж. Ладно`. A label is read as its numeral (`№5 ли ты` → `№⍽5 ли⍽ты`, as `№ 5 ли ты`), and
+  the last word of a `Joined` core as a word (section 4.3, I4). A particle in this place is
+  **bound** to the word before it and glues nothing after itself: `nbsp.short-words` and
+  `nbsp.short-length` do not take it as a trigger word, so there is no chain: `Знаешь ли ты` →
+  `Знаешь⍽ли ты`, also with `ли` added to the short words (section 15.2, item 18), and so for every
+  particle of the list (section 15.2, item 23). Each particle of a run is bound to the word before
+  it, the run to the first word: `что⍽же⍽бы ты` (section 15.2, item 24: `бы` is glued to the word
+  before it, `же`, by the first half of item 18). A dash after a bound particle is glued to it by
+  `nbsp.dash` as to any operand: `Что⍽ж⍽— ладно`. A particle with no word or slot one pattern space
+  before it (at a line start, after punctuation, a tab or an `Other` slot) is not bound and is an
+  ordinary word: Prose `Ли ты знал` → `Ли⍽ты⍽знал`. A particle is bound by the list of particles
+  whichever rules are enabled (section 15.2, item 25): with `nbsp.short-length` alone `Знаешь ли ты`
+  stays unchanged, and after `remove_particles(["ли"])` Prose gives `Знаешь ли⍽ты`. A no-break space
+  the author typed after a particle stays (section 4.3, I3): `Знаешь ли⍽ты` → `Знаешь⍽ли⍽ты`.
 - **`nbsp.dash`.** The space before a dash fragment that stands for a spaced dash (a produced or
   typed `—`, or a typed `–`, section 8.4) in the context of `dash.spaced-hyphen` (an operand or
   closing punctuation on the left, an operand, an opening quote or an opening bracket on the right,

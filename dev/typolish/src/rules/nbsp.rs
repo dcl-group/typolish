@@ -13,7 +13,8 @@ use super::dash::{closing_punct, lone_dash};
 use super::quotes::{Role, local_role};
 use super::range::roman_value;
 use super::{
-    Frag, FragKind, Triggers, folded_in, is_operand, is_word, percent_owner, percent_range,
+    Frag, FragKind, Triggers, compact_abbreviation, folded_in, is_operand, is_word, part_start,
+    percent_owner, percent_range, plain_side,
 };
 use crate::engine::lex::{Glue, Kind, NO_FRAG, is_alphabetic, script_bit};
 use crate::engine::phase::{Cx, Edit, Edits, Match};
@@ -468,6 +469,13 @@ fn entry_at(cx: &Cx<'_>, i: usize, parts: List<'_>, bind: Bind) -> Option<Match>
             cx.kind(after),
             Some(Kind::Word(_) | Kind::Number | Kind::Slot(_) | Kind::Protected)
         )
+        // The last part starts a compact abbreviation (`н.` of `н.э.` in `т. н.э.`), which this
+        // rule splits into its parts (`н.⍽э.`): the entry is read as the second pass reads it,
+        // across that split (design section 4.3, I4).
+        && !(head(cx, start).is_some()
+            && cx
+                .frag_of(end)
+                .is_some_and(|f| compact_abbreviation(cx, f)))
     {
         return None;
     }
@@ -505,7 +513,11 @@ pub(crate) fn abbreviations(cx: &Cx<'_>, i: usize) -> Option<Match> {
     if !matches!(cx.kind(i), Some(Kind::Word(_))) {
         return None;
     }
-    head(cx, i)?;
+    // `т.` in `ООО—т.` starts the core it was before the closed dash merged it (design section
+    // 4.3, I4).
+    if head(cx, i).is_none() && !part_start(cx, i) {
+        return None;
+    }
     let list = cx.data.abbreviations;
     // The first part of an entry takes the whole text of the token, so only an entry whose first
     // part starts with that text, or with that text with its first letter folded (the relaxation
@@ -549,8 +561,13 @@ pub(crate) fn abbreviations(cx: &Cx<'_>, i: usize) -> Option<Match> {
 
 /// The number of initials in a fragment, when it holds only initials: one capital letter of the
 /// language's script with a full stop (`А.`), or a compact run of them (`А.С.`). A start wrapper
-/// is allowed with `lead`, more closing punctuation after the last full stop with `trail`.
+/// is allowed with `lead`, more closing punctuation after the last full stop with `trail`. A
+/// label numeral is not an initial, attached to its sign or not (`§V.`, `§⍽V.`, design section
+/// 4.3, I2).
 fn initials(cx: &Cx<'_>, f: &Frag, lead: bool, trail: bool) -> Option<usize> {
+    if f.label {
+        return None;
+    }
     let bit = language_bit(cx);
     let initial = |j: usize| {
         matches!(cx.kind(j), Some(Kind::Word(_))) && {
@@ -627,9 +644,11 @@ fn initial_before(cx: &Cx<'_>, f: &Frag) -> bool {
     if !cx.pattern_space(p) {
         return false;
     }
+    // `R.` at the end of `lbs—R.` is the initial it was before the closed dash merged it (design
+    // section 4.3, I4).
     cx.prev(p)
         .and_then(|q| cx.frag_of(q))
-        .is_some_and(|q| initials(cx, q, true, false).is_some())
+        .is_some_and(|q| initials(cx, &plain_side(cx, q, true), true, false).is_some())
 }
 
 /// `nbsp.initials`: `И. О. Фамилия`, `И. Фамилия`, `Фамилия И. О.`, `Фамилия И.` (at most three
@@ -658,7 +677,7 @@ pub(crate) fn initials_rule(cx: &Cx<'_>, s: usize) -> Option<Match> {
                 (space, right) = space_after(cx, fr)?;
                 continue;
             }
-            if !surname(cx, fr) {
+            if !surname(cx, &plain_side(cx, fr, false)) {
                 return None;
             }
             return g.done();
@@ -668,7 +687,7 @@ pub(crate) fn initials_rule(cx: &Cx<'_>, s: usize) -> Option<Match> {
     // which costs more; both are pure.
     let fl = tail(cx, l)?;
     head(cx, r).and_then(|fr| initials(cx, fr, false, true))?;
-    if !surname(cx, fl) {
+    if !surname(cx, &plain_side(cx, fl, true)) {
         return None;
     }
     let mut count = 0;
@@ -692,8 +711,9 @@ pub(crate) fn initials_rule(cx: &Cx<'_>, s: usize) -> Option<Match> {
             Some(f) if initials(cx, f, false, true).is_some() => {
                 (space, right) = (next_space, next);
             }
-            // Initials before a surname are the forward form, which the next space takes.
-            Some(f) if surname(cx, f) => return None,
+            // Initials before a surname are the forward form, which the next space takes; the
+            // surname is read in its plain form (`США` of `США—к`, design section 4.3, I4).
+            Some(f) if surname(cx, &plain_side(cx, f, false)) => return None,
             _ => break,
         }
     }
@@ -866,10 +886,13 @@ fn units_at_space(cx: &Cx<'_>, s: usize) -> Option<Match> {
     if !quantity(cx, fl) {
         return None;
     }
-    let (ends, ambiguous) = unit_at(cx, r, fr)?;
+    // The unit is read in the first word of a `Joined` core: the `—` of `in—yes` is the spaced
+    // dash it stands for, so the word goes on (design section 4.3, I4).
+    let fr = plain_side(cx, fr, false);
+    let (ends, ambiguous) = unit_at(cx, r, &fr)?;
     if ambiguous && ends {
         // An ambiguous unit is glued only before punctuation, a line break or the end.
-        let after = cx.next(last_visible(cx, fr)?);
+        let after = cx.next(last_visible(cx, &fr)?);
         if !after.is_none_or(|j| cx.kind(j) == Some(Kind::Newline)) {
             return None;
         }
@@ -1119,8 +1142,11 @@ pub(crate) fn particles(cx: &Cx<'_>, s: usize) -> Option<Match> {
 /// design section 15.2, item 19), but a capital letter with a full stop is an initial of
 /// `nbsp.initials`, not a particle (`Иван Б.⍽Петров`).
 fn particle_after(cx: &Cx<'_>, l: usize, r: usize) -> bool {
-    let left =
-        tail(cx, l).is_some_and(|fl| is_word(cx, fl) || matches!(cx.kind(l), Some(Kind::Slot(_))));
+    // The word before the particle is read in its plain form (design section 4.3, I4): the last
+    // word of `ли—ведь`, the numeral of `№5`.
+    let left = tail(cx, l).is_some_and(|fl| {
+        is_word(cx, &plain_side(cx, fl, true)) || matches!(cx.kind(l), Some(Kind::Slot(_)))
+    });
     left && head(cx, r).is_some_and(|fr| {
         cx.t.has_particle(cx.core_chars(fr)) && initials(cx, fr, false, true).is_none()
     })

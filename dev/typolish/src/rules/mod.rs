@@ -302,6 +302,113 @@ pub(crate) fn single_letter(cx: &Cx<'_>, f: &Frag, left: bool) -> bool {
     }
 }
 
+/// The fragment `f` as a rule reads it on one side, in the plain form it stands for (design
+/// section 4.3, I4); `left` when `f` stands on the left of the place the rule reads.
+///
+/// - A `Joined` core whose part on that side is a word of letters next to a `—` or `–` reads as
+///   that word: `Moscow—a` is the form the closed style gives `Moscow - a` (design section
+///   8.4), and `a` was a fragment of its own before the merge.
+/// - A label (`№5`, `§V`) reads as its numeral on the left and as its sign on the right: the
+///   parts that `nbsp.signs` splits it into (`№⍽5`).
+///
+/// Any other fragment reads as itself. So the merge or the split of the first pass changes
+/// nothing for a rule that reads the part next to it (invariant I2).
+pub(crate) fn plain_side(cx: &Cx<'_>, f: &Frag, left: bool) -> Frag {
+    let part = match f.kind {
+        FragKind::Joined => joined_side(cx, f, left),
+        FragKind::Word if f.label => label_side(cx, f, left),
+        _ => None,
+    };
+    part.unwrap_or(*f)
+}
+
+/// Whether token `i` starts a part of a `Joined` core: a `—` or `–` of the core stands right
+/// before it. Such a part was a fragment of its own before the closed style merged it (design
+/// sections 4.3, I4, and 8.4), so a rule that anchors at the start of a core anchors there too.
+pub(crate) fn part_start(cx: &Cx<'_>, i: usize) -> bool {
+    cx.in_core(i)
+        && cx.frag_of(i).is_some_and(|f| f.kind == FragKind::Joined)
+        && cx.prev(i).is_some_and(|d| {
+            cx.in_core(d)
+                && cx.tok(d).map(|t| t.frag) == cx.tok(i).map(|t| t.frag)
+                && cx.kind(d) == Some(Kind::Dash)
+                && (cx.is(d, "\u{2014}") || cx.is(d, "\u{2013}"))
+        })
+}
+
+/// The word of letters at one end of a `Joined` core, after its last joint (`left`) or before its
+/// first one; `None` when that part is anything else.
+fn joined_side(cx: &Cx<'_>, f: &Frag, left: bool) -> Option<Frag> {
+    let joint = |j: &usize| {
+        cx.kind(*j) == Some(Kind::Dash) && (cx.is(*j, "\u{2014}") || cx.is(*j, "\u{2013}"))
+    };
+    let at = if left {
+        cx.core(f).filter(joint).last()
+    } else {
+        cx.core(f).find(joint)
+    }?;
+    let at32 = u32::try_from(at).ok()?;
+    let (start, end) = if left {
+        (at32.checked_add(1)?, f.core_end)
+    } else {
+        (f.core_start, at32)
+    };
+    let part = Frag {
+        start: if left { start } else { f.start },
+        end: if left { f.end } else { end },
+        core_start: start,
+        core_end: end,
+        kind: FragKind::Word,
+        stop: left && f.stop,
+        label: false,
+        other_slot: false,
+    };
+    // Letters with their inner apostrophes only, as the closed style merges (design section 8.4).
+    let word = |k: Option<usize>| k.is_some_and(|k| matches!(cx.kind(k), Some(Kind::Word(_))));
+    let mut words = 0;
+    for j in cx.core(&part) {
+        match cx.kind(j) {
+            Some(Kind::Word(_)) => words += 1,
+            Some(Kind::Quote)
+                if matches!(cx.chr(j), Some('\'' | '\u{2019}'))
+                    && word(cx.prev(j))
+                    && word(cx.next(j)) => {}
+            _ => return None,
+        }
+    }
+    (words > 0).then_some(part)
+}
+
+/// The numeral of a label (`left`) or its sign; `None` when the label has no such part.
+fn label_side(cx: &Cx<'_>, f: &Frag, left: bool) -> Option<Frag> {
+    let sign = |j: usize| matches!(cx.kind(j), Some(Kind::Punct(c)) if cx.data.signs.contains(&c));
+    let first = cx.core(f).find(|&j| !sign(j))?;
+    let kind = match cx.kind(first)? {
+        Kind::Number | Kind::Slot(crate::SlotKind::Number) => FragKind::Number,
+        Kind::Word(_) => FragKind::Word,
+        _ => return None,
+    };
+    let at = u32::try_from(first).ok()?;
+    Some(if left {
+        Frag {
+            start: at,
+            core_start: at,
+            kind,
+            ..*f
+        }
+    } else {
+        Frag {
+            end: at,
+            core_end: at,
+            kind: FragKind::Sign,
+            stop: false,
+            label: false,
+            other_slot: false,
+            ..*f
+        }
+    })
+}
+
 /// The scripts of the letters of a core, as bits of `script_bit`.
 fn scripts(cx: &Cx<'_>, f: &Frag) -> u8 {
     cx.core(f)

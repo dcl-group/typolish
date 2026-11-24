@@ -7,7 +7,8 @@
 use super::nbsp::holds_other;
 use super::quotes::{Role, local_role};
 use super::{
-    Frag, FragKind, Triggers, foreign, is_number, is_operand, is_range, is_technical, percent_owner,
+    Frag, FragKind, Triggers, foreign, is_number, is_operand, is_range, is_technical,
+    percent_owner, plain_side,
 };
 use super::{is_word, single_letter};
 use crate::DashStyle;
@@ -212,11 +213,15 @@ fn between(cx: &Cx<'_>, i: usize, double: bool) -> Option<Match> {
     if typed {
         return Some(Match::done(os2));
     }
+    // The refusals read the part of each side next to the dash, as it stood before a merge or a
+    // split of the first pass: across a wrapper, `Moscow—a,` reads as `a,` (design sections 4.3,
+    // I4, and 8.4).
+    let (pl, pr) = (plain_side(cx, fl, true), plain_side(cx, fr, false));
     let foreign_or_technical = |f: &Frag| foreign(cx, f) || is_technical(f);
-    let refused = (small(cx, fl, true) && small(cx, fr, false))
-        || flag_like(cx, fl)
-        || flag_like(cx, fr)
-        || (foreign_or_technical(fl) && foreign_or_technical(fr));
+    let refused = (small(cx, &pl, true) && small(cx, &pr, false))
+        || flag_like(cx, &pl)
+        || flag_like(cx, &pr)
+        || (foreign_or_technical(&pl) && foreign_or_technical(&pr));
     if refused {
         return Some(Match::refused(od, od));
     }
