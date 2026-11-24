@@ -1405,9 +1405,62 @@ fn ellipsis_forms_consist_of_question_exclamation_and_dots_only() {
         EllipsisForms::new("", "!…", "?!…"),
         EllipsisForms::new("?…", "", "?!…"),
         EllipsisForms::new("?…", "!…", ""),
+        // The rule writes a form without its leading signs in place of the dots: a sign after the
+        // dots would read as a new ellipsis on a second pass, and a leading sign of another slot
+        // would be lost (design section 7.6).
+        EllipsisForms::new("...!", "!...", "?!..."),
+        EllipsisForms::new("!..", "!..", "?!.."),
+        EllipsisForms::new("?..", "?..", "?!.."),
+        EllipsisForms::new("?..", "!..", "?!?.."),
+        EllipsisForms::new("?..", "!..", "?"),
+        EllipsisForms::new("?.?.", "!..", "?!.."),
+        // Three full stops after `…` read as an ellipsis of their own on a second pass.
+        EllipsisForms::new("?…...", "!..", "?!.."),
+        EllipsisForms::new("?..", "!.…...", "?!.."),
     ] {
         rejected(base().with_ellipsis(forms), "ellipsis");
     }
+    accepted(base().with_ellipsis(EllipsisForms::new("…", "…", "…")));
+    accepted(base().with_ellipsis(EllipsisForms::new("..", "!.…", "!?..")));
+    accepted(base().with_ellipsis(EllipsisForms::new("?…....", "!...…", "?!...")));
+}
+
+/// Every set of forms that validation accepts gives a fixed point (design sections 4.4 and 7.6):
+/// each slot in turn takes every form of up to four characters of `?`, `!`, `.` and `…`.
+#[test]
+fn accepted_ellipsis_forms_are_idempotent() {
+    let alphabet = ['?', '!', '.', '…'];
+    let mut forms = vec![String::new()];
+    for _ in 0..4 {
+        let longer: Vec<String> = forms
+            .iter()
+            .flat_map(|form| alphabet.iter().map(move |c| format!("{form}{c}")))
+            .collect();
+        forms.extend(longer);
+    }
+    forms.sort();
+    forms.dedup();
+    let input = "Stop?... Stop!... Stop?!... Stop!?... Stop...";
+    let mut accepted_count = 0;
+    for slot in 0..3 {
+        for form in &forms {
+            let form: &'static str = Box::leak(form.clone().into_boxed_str());
+            let mut slots = ["?…", "!…", "?!…"];
+            slots[slot] = form;
+            let data = LanguageData::EN_US
+                .with_tag("en-GB")
+                .with_ellipsis(EllipsisForms::new(slots[0], slots[1], slots[2]));
+            let Ok(language) = Language::from_data(leak(data)) else {
+                continue;
+            };
+            accepted_count += 1;
+            let t = Typographer::new(language, RuleSet::ALL);
+            let once = t.typeset(input, Output::Unicode);
+            let twice = t.typeset(&once, Output::Unicode);
+            assert_eq!(twice, once, "forms {slots:?}");
+        }
+    }
+    assert!(accepted_count > 30, "{accepted_count}");
 }
 
 #[test]

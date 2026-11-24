@@ -325,6 +325,12 @@ pub struct EllipsisForms {
 impl EllipsisForms {
     /// Ellipsis forms after `?`, `!` and `?!`.
     ///
+    /// The rule keeps the signs the author typed and writes the rest of the form in place of the
+    /// dots. Validation (design section 7.6) requires each form to be its own signs (none, `?`, `!`,
+    /// `?!` or `!?`) followed by a non-empty run of `.` and `…` that does not end in `…` and
+    /// exactly three full stops: a sign in the run, or three full stops of their own, would read as
+    /// a new ellipsis on a second pass.
+    ///
     /// ```
     /// use typolish::{EllipsisForms, Language, LanguageData, Output, Rule, RuleSet, Typographer};
     ///
@@ -1867,6 +1873,27 @@ impl Table<'_> {
             form.is_empty() || !form.chars().all(|c| matches!(c, '?' | '!' | '.' | '…'))
         }) {
             return Err("ellipsis: forms must be non-empty and consist of ?, !, . and … only");
+        }
+        // The rule keeps the leading signs in their own tokens and writes the rest in place of the
+        // dots, so the rest must be dots only (a sign there would read as a new ellipsis on a
+        // second pass) and must not end in exactly three full stops after `…` (they would read as
+        // an ellipsis of their own), and the leading signs must be the form's own.
+        let fits = |form: &str, lead: &[&str]| {
+            let tail = form.trim_start_matches(['?', '!']);
+            !tail.is_empty()
+                && tail.chars().all(|c| matches!(c, '.' | '…'))
+                && !tail.ends_with("…...")
+                && form
+                    .strip_suffix(tail)
+                    .is_some_and(|head| lead.contains(&head))
+        };
+        if !fits(e.question, &["", "?"])
+            || !fits(e.exclamation, &["", "!"])
+            || !fits(e.both, &["", "?!", "!?"])
+        {
+            return Err(
+                "ellipsis: a form is its own signs (none, `?`, `!`, `?!` or `!?`), then only `.` and `…`, not ending in `…` and three full stops",
+            );
         }
         Ok(())
     }

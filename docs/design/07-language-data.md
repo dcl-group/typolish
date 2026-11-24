@@ -359,7 +359,10 @@ cannot reach a user.
   that check 15 of section 3.6 reads as the sign of a number; `range_dash` is `–` U+2013 or `—`
   U+2014, the dashes that a second pass and `to_plain` read back (sections 3.6 and 12.1); signs are
   characters of the lexer's `Punct` class (section 3.5), so no letter, digit or whitespace; each
-  ellipsis form is non-empty and consists of `?`, `!`, `.` and `…` only.
+  ellipsis form is its own sign or signs (none, `?`, `!`, `?!` or `!?`) followed by a non-empty run
+  of `.` and `…` that does not end in `…` and exactly three full stops; the run is what the rule
+  writes in place of the dots, so a sign in it, or three full stops of their own after `…`, would
+  read as a new ellipsis on a second pass (section 4.4), and a sign of another form would be lost.
 
 ### 7.7 Adding a language
 
