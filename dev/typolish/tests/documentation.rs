@@ -344,6 +344,32 @@ fn every_example_runs_as_a_doctest() {
 }
 
 #[test]
+fn the_lazy_displays_and_the_reports_are_must_use() {
+    // Design sections 2.7 and 2.9: discarding a lazy display or a report is a warning. The
+    // attribute stands among the attributes right above the item; an example marked
+    // `compile_fail` would not run (see above), so the source is read.
+    for (file, item) in [
+        ("number.rs", "pub struct NumberDisplay<"),
+        ("number.rs", "pub struct RangeDisplay<"),
+        ("typographer.rs", "pub fn report<"),
+        ("typographer.rs", "pub fn report_template<"),
+    ] {
+        let source = read(&crate_dir().join("src").join(file));
+        let lines: Vec<&str> = source.lines().map(str::trim).collect();
+        let at = lines
+            .iter()
+            .position(|l| l.starts_with(item))
+            .unwrap_or_else(|| panic!("{file}: no `{item}`"));
+        let marked = lines[..at]
+            .iter()
+            .rev()
+            .take_while(|l| l.starts_with("#["))
+            .any(|l| l.starts_with("#[must_use"));
+        assert!(marked, "{file}: `{item}` is not `#[must_use]`");
+    }
+}
+
+#[test]
 fn the_crate_has_its_own_example_and_the_readme_is_run() {
     let lib = read(&crate_dir().join("src/lib.rs"));
     assert!(

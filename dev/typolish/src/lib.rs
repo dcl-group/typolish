@@ -58,49 +58,6 @@ extern crate self as typolish;
 #[doc = include_str!("../README.md")]
 struct ReadmeDoctests;
 
-/// Discarding a lazy display or a report is a warning (design sections 2.7 and 2.10). Each example
-/// below denies the warning and must not compile; the last one, with `let _ =`, must.
-///
-/// ```compile_fail
-/// #![deny(unused_must_use)]
-/// use typolish::{Language, Output, RuleSet, Typographer};
-/// static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::PROSE);
-/// EN.format_number(5, Output::Unicode);
-/// ```
-///
-/// ```compile_fail
-/// #![deny(unused_must_use)]
-/// use typolish::{Language, Output, RuleSet, Typographer};
-/// static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::PROSE);
-/// EN.format_range(1, 5, Output::Unicode);
-/// ```
-///
-/// ```compile_fail
-/// #![deny(unused_must_use)]
-/// use typolish::{Language, Output, RuleSet, Typographer};
-/// static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::PROSE);
-/// EN.report("a - b", Output::Unicode);
-/// ```
-///
-/// ```compile_fail
-/// #![deny(unused_must_use)]
-/// use typolish::{Language, Output, Piece, RuleSet, Typographer};
-/// static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::PROSE);
-/// EN.report_template([Piece::<u8>::Text("a - b")], Output::Unicode);
-/// ```
-///
-/// ```
-/// #![deny(unused_must_use)]
-/// use typolish::{Language, Output, Piece, RuleSet, Typographer};
-/// static EN: Typographer = Typographer::new(Language::EN_US, RuleSet::PROSE);
-/// let _ = EN.format_number(5, Output::Unicode);
-/// let _ = EN.format_range(1, 5, Output::Unicode);
-/// let _ = EN.report("a - b", Output::Unicode);
-/// let _ = EN.report_template([Piece::<u8>::Text("a - b")], Output::Unicode);
-/// ```
-#[cfg(doctest)]
-struct MustUseDoctests;
-
 pub use engine::scratch::Scratch;
 pub use error::Error;
 pub use lang::data::{
