@@ -59,8 +59,10 @@ pub enum Piece<'t, S> {
     /// assert_eq!(t.texts(), ["Запустите --no-cache -x\u{a0}— и\u{a0}ждите"]);
     /// ```
     Protected(&'t str),
-    /// Invisible markup (for example a tag supplied by an HTML splitter). Transparent for rules;
-    /// written as is in Unicode and HTML output, escaped in escaped output.
+    /// Invisible inline markup (for example `<b>` or `</em>` supplied by an HTML splitter).
+    /// Transparent for rules, so it ends no paragraph: a block boundary such as `</p><p>` is a
+    /// separate call or a `\n\n` at the end of the `Text` piece before it (design section 10.8).
+    /// Written as is in Unicode and HTML output, escaped in escaped output.
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};

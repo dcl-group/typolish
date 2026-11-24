@@ -8,8 +8,9 @@ pub(crate) mod ru_ru;
 
 use data::LanguageData;
 
-/// The built-in languages in tag order, `COMMON` excluded; a bare language subtag resolves to
-/// the entry whose tag starts with it (design section 2.2).
+/// The built-in languages in tag order, `COMMON` excluded. A tag resolves here only by exact
+/// match; a bare language subtag resolves through `DEFAULT_REGIONS` of `language.rs` (design
+/// section 2.2).
 pub(crate) const BUILTIN: [&LanguageData; 2] = [&en_us::EN_US, &ru_ru::RU_RU];
 
 #[cfg(test)]

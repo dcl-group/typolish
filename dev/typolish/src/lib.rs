@@ -4,7 +4,9 @@
 //! spaces) into typeset text: quotes by nesting level, apostrophes, dashes, ellipses, no-break
 //! spaces, and rules for words, signs and numbers. A [`Typographer`] is built once with a
 //! [`Language`] and a [`RuleSet`] and then only applied; the [`Output`] kind is given with every
-//! call. Its design is in `docs/design/` of the repository.
+//! call. Its design is in
+//! [`docs/design/`](https://github.com/dcl-group/typolish/tree/main/docs/design) of the
+//! repository; "design section N.M" in this documentation refers to it.
 //!
 //! The three inputs are a whole string ([`Typographer::typeset`]), a message template of
 //! [`Piece`]s whose slots keep their place ([`Typographer::typeset_template`]), and a number

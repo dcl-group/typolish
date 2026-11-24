@@ -198,6 +198,10 @@ const INNER_ROWS: &[(&str, &str)] = &[
     ("a..b", "a..b"),
     ("да…нет", "да…нет"),
     ("…и тогда", "…и тогда"),
+    // A word start only after a space or a line start (design section 8.1).
+    ("(...b)", "(...b)"),
+    ("a,...b", "a,...b"),
+    ("«...b»", "«...b»"),
 ];
 
 #[test]

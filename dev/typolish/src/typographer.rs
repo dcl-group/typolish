@@ -56,7 +56,9 @@ pub enum SingleQuotes {
     /// # Ok::<(), typolish::Error>(())
     /// ```
     Everywhere,
-    /// Never; straight single quotes stay.
+    /// Never; a straight `'` never forms a pair. Apostrophes, primes, the trailing possessive and
+    /// the decade apostrophe still apply (design section 6.8): in Prose `Press '42' to confirm`
+    /// becomes `Press ’42′ to confirm`.
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, SingleQuotes, Typographer};
@@ -66,6 +68,10 @@ pub enum SingleQuotes {
     ///     .build()?;
     /// let out = t.typeset("He said \"a 'b' c\".", Output::Unicode);
     /// assert_eq!(out, "He said “a\u{a0}'b' c”.");
+    /// assert_eq!(
+    ///     t.typeset("Press '42' to confirm", Output::Unicode),
+    ///     "Press ’42′ to\u{a0}confirm"
+    /// );
     /// # Ok::<(), typolish::Error>(())
     /// ```
     Never,
@@ -357,8 +363,10 @@ impl Settings {
 /// An immutable typographer: language, rules and settings fixed at construction.
 ///
 /// A typographer with default settings is built by the `const fn` [`Typographer::new`] and fits
-/// a `static`; custom settings go through [`Typographer::builder`]. The output kind is given with
-/// every call. `Typographer` is `Send + Sync`: the working memory lives outside it.
+/// a `static` (not a `const`, which loses the compiled cache on every use); custom settings go
+/// through [`Typographer::builder`]. A call whose text is longer than `u32::MAX` bytes, or that
+/// has more than `u32::MAX` pieces, is returned unchanged (design section 3.4). The output kind
+/// is given with every call. `Typographer` is `Send + Sync`: the working memory lives outside it.
 ///
 /// ```
 /// use std::borrow::Cow;
@@ -414,7 +422,8 @@ pub(crate) struct Compiled {
 
 impl Typographer {
     /// A typographer with the language's defaults and backtick protection on. Usable in a
-    /// `static`.
+    /// `static`. Not meant for a `const`: every use of a `const` is a fresh copy with an empty
+    /// compiled cache, so each call compiles the rules again.
     ///
     /// ```
     /// use typolish::{Language, RuleSet, Typographer};

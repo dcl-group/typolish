@@ -53,7 +53,8 @@ pub enum Rule {
     /// assert_eq!(t.typeset("Wait...", Output::Unicode), "Wait…");
     /// ```
     EllipsisDots,
-    /// `ellipsis.inner`: `...` at a word start or between words.
+    /// `ellipsis.inner`: `...` at a word start after a space or a line start, or between two words
+    /// without spaces.
     ///
     /// ```
     /// # use typolish::{Language, Output, Rule, RuleSet, Typographer};
@@ -400,7 +401,9 @@ impl Rule {
             Rule::EllipsisDots => {
                 "... attached to what precedes it or alone to an ellipsis; ?... and !... by the language"
             }
-            Rule::EllipsisInner => "... at a word start or between words to an ellipsis",
+            Rule::EllipsisInner => {
+                "... at a word start after a space or a line start, or between two words without spaces, to an ellipsis"
+            }
             Rule::DashDialogue => {
                 "a hyphen at a line start before a word to a dash with glue after it"
             }

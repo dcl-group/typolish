@@ -1856,7 +1856,10 @@ impl Table<'_> {
             .iter()
             .any(|c| !crate::engine::lex::is_punct_char(*c))
         {
-            return Err("signs: a sign must be a punctuation character of design section 3.5");
+            // Keep in step with `is_punct_char`, without the characters rejected below.
+            return Err(
+                "signs: a sign must be one of , ; : ! ? № § ¶ ° / \\ @ # & * + = < > | ~ ^ $ _ `",
+            );
         }
         // A sign that is also a percent sign or a unit is read by two rules of design section 8.7:
         // with a percent sign they disagree on a second pass, and a unit is glued to the numbers on

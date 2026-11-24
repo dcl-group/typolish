@@ -124,10 +124,9 @@ impl<'a, T> Report<'a, T> {
     /// use typolish::{Language, Output, RuleSet, Typographer};
     ///
     /// let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
-    /// let r = t.report("plain", Output::Unicode);
-    /// for change in r.changes() {
-    ///     let _replaced: &str = r.original(change);
-    /// }
+    /// let r = t.report("She said \"hi\" - and left", Output::Unicode);
+    /// assert_eq!(r.original(&r.changes()[0]), "\"");
+    /// assert_eq!(r.original(&r.changes()[2]), "-");
     /// ```
     #[must_use]
     pub fn original(&self, change: &Change) -> &'a str {
@@ -284,11 +283,12 @@ pub(crate) struct Records {
 /// ```
 /// use typolish::{Language, Output, RuleSet, Typographer};
 ///
-/// let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
-/// let r = t.report("Москва", Output::Unicode);
-/// for change in r.changes() {
-///     println!("{} {}:{:?} {:?}", change.rule(), change.piece(), change.range(), change.replacement());
-/// }
+/// let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+/// let r = t.report("She said \"hi\" - and left", Output::Unicode);
+/// let dash = &r.changes()[2];
+/// assert_eq!(dash.rule().id(), "dash.spaced-hyphen");
+/// assert_eq!((dash.piece(), dash.range()), (0, 14..15));
+/// assert_eq!(dash.replacement(), "—");
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Change {
@@ -328,10 +328,9 @@ impl Change {
     ///
     /// ```
     /// # use typolish::{Language, Output, RuleSet, Typographer};
-    /// # let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
-    /// for change in t.report("Москва", Output::Unicode).changes() {
-    ///     let _ = change.rule().id();
-    /// }
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    /// let r = t.report("She said \"hi\" - and left", Output::Unicode);
+    /// assert_eq!(r.changes()[0].rule().id(), "quotes.pairs");
     /// ```
     #[must_use]
     pub fn rule(&self) -> Rule {
@@ -342,10 +341,9 @@ impl Change {
     ///
     /// ```
     /// # use typolish::{Language, Output, RuleSet, Typographer};
-    /// # let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
-    /// for change in t.report("Москва", Output::Unicode).changes() {
-    ///     assert_eq!(change.piece(), 0);
-    /// }
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    /// let r = t.report("She said \"hi\" - and left", Output::Unicode);
+    /// assert_eq!(r.changes()[0].piece(), 0);
     /// ```
     #[must_use]
     pub fn piece(&self) -> usize {
@@ -356,10 +354,9 @@ impl Change {
     ///
     /// ```
     /// # use typolish::{Language, Output, RuleSet, Typographer};
-    /// # let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
-    /// for change in t.report("Москва", Output::Unicode).changes() {
-    ///     assert!(change.range().start <= change.range().end);
-    /// }
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    /// let r = t.report("She said \"hi\" - and left", Output::Unicode);
+    /// assert_eq!(r.changes()[0].range(), 9..10);
     /// ```
     #[must_use]
     pub fn range(&self) -> Range<usize> {
@@ -370,10 +367,9 @@ impl Change {
     ///
     /// ```
     /// # use typolish::{Language, Output, RuleSet, Typographer};
-    /// # let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
-    /// for change in t.report("Москва", Output::Unicode).changes() {
-    ///     let _ = change.replacement();
-    /// }
+    /// # let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    /// let r = t.report("She said \"hi\" - and left", Output::Unicode);
+    /// assert_eq!(r.changes()[0].replacement(), "“");
     /// ```
     #[must_use]
     pub fn replacement(&self) -> &str {
