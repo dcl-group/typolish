@@ -138,7 +138,7 @@ for U+00A0).
   `Say “it's:fine” now`; ru `Файл "it's:fine" тут`: unchanged → `Файл «it's:fine» тут`.
 - `to_plain` reads the primary quote pair as `'` where double quotes would not pair again (design
   section 12.1), so typesetting its result gives the text back: ru `«„«6»“»`: `"""6"""` → `""'6'""`;
-  ru `«a „«9» е“»`: `"a ""9" е""` → `"a "'9' е""`; with `SingleQuotes::Everywhere` in Interface, en
+  ru `«a „«9» е“»`: `"a ""9" е""` → `"a "'9' е""`; with `SingleQuotes::Everywhere`, in both sets, en
   `“3" 0”`: `"3" 0"` → `'3" 0'`, ru `«5" 5»`: `"5" 5"` → `'5" 5'`.
 - `to_plain` keeps a `’` read as an apostrophe where its `'` would pair as a quote (design section
   12.1), so typesetting its result gives the text back, in both sets: en `“a⍽‘dogs’ bowl ’twas’ b”`:

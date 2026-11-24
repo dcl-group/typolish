@@ -60,32 +60,32 @@ any level (or `’`). In a window where one does not come back, the glyphs of th
 `"x "".`, do not pair again (the closer of the nested pair and the last quote form the sign-only
 pair `"."`, section 6.3), while `"x ''."` gives `«x „“.»`. In a window that this does not bring
 back, the glyphs of the nested pair and, with `SingleQuotes::Everywhere`, those of the primary pair
-read as `'` (`“3" 0”` as `'3" 0'` in Interface, since `"3" 0"` gives `“3” 0"`); in a window that
-neither brings back, the glyphs of the primary pair inside a nested pair (the third level of ru)
-read as `'` alone (`«„«6»“»` as `""'6'""`, since `"""6"""` is a series that does not pair). Each try
-is kept only where it brings every quote of the window back. Otherwise the double quotes stay. Every
-other character is undone only where an enabled rule produces it, and the rules decide that
-themselves: the engine runs forward on the text with the readings in place, and a reading is dropped
-(the character stays) when it does not come back as its character, or when it makes a rule edit the
-text next to it that the text as it was does not get, so that the round trip would break there. Glue
-of either width counts as glue, and the spaces that the dash style sets around a dash do not count;
-the restored spaces of a closed dash are exempt from the second test, because the closed form joins
-two words into one fragment, which by design changes the rules around it (section 8.4). A reading
-that failed only because a neighboring reading was wrong is tried again alone in its neighborhood:
-readings farther apart than any rule looks (256 bytes; the longest pattern, `nbsp.phone`, spans at
-most 24 tokens) are tried in one forward run, and a problem of the run is laid at the nearest of
-them, so the number of runs does not grow with the length of the text, and the bookkeeping of the
-candidates is linear (a reading is compared with its neighbors only). The whole pass repeats on its
-own output until nothing changes, so `to_plain` is stable by construction. There is no second copy
-of the rule patterns to drift from them. The price is up to about (readings within 256 bytes) ×
-(readings of a character) forward runs per pass, each over the whole text: on dense typographic text
-that is hundreds of runs. On ordinary text the time is linear in its length and about 100 to 200
-times that of `typeset`, which the tooling path allows (section 2.12) and the maintainer accepted
-(section 15.2, item 28); a pass may settle only a few readings of a long run of ambiguous characters
-(`’`, nested quotes) in one paragraph, so the number of passes can grow with that paragraph and the
-worst case is quadratic in the length of the longest paragraph (96 KB of `’` in one paragraph: about
-4 s; split into paragraphs: 15 ms). Callers that check untrusted text split it into paragraphs or
-limit its length.
+read as `'` (`“3" 0”` as `'3" 0'`, since `"3" 0"` gives `“3” 0"` in Interface and `“3” 0″` in
+Prose); in a window that neither brings back, the glyphs of the primary pair inside a nested pair
+(the third level of ru) read as `'` alone (`«„«6»“»` as `""'6'""`, since `"""6"""` is a series that
+does not pair). Each try is kept only where it brings every quote of the window back. Otherwise the
+double quotes stay. Every other character is undone only where an enabled rule produces it, and the
+rules decide that themselves: the engine runs forward on the text with the readings in place, and a
+reading is dropped (the character stays) when it does not come back as its character, or when it
+makes a rule edit the text next to it that the text as it was does not get, so that the round trip
+would break there. Glue of either width counts as glue, and the spaces that the dash style sets
+around a dash do not count; the restored spaces of a closed dash are exempt from the second test,
+because the closed form joins two words into one fragment, which by design changes the rules around
+it (section 8.4). A reading that failed only because a neighboring reading was wrong is tried again
+alone in its neighborhood: readings farther apart than any rule looks (256 bytes; the longest
+pattern, `nbsp.phone`, spans at most 24 tokens) are tried in one forward run, and a problem of the
+run is laid at the nearest of them, so the number of runs does not grow with the length of the text,
+and the bookkeeping of the candidates is linear (a reading is compared with its neighbors only). The
+whole pass repeats on its own output until nothing changes, so `to_plain` is stable by construction.
+There is no second copy of the rule patterns to drift from them. The price is up to about (readings
+within 256 bytes) × (readings of a character) forward runs per pass, each over the whole text: on
+dense typographic text that is hundreds of runs. On ordinary text the time is linear in its length
+and about 100 to 200 times that of `typeset`, which the tooling path allows (section 2.12) and the
+maintainer accepted (section 15.2, item 28); a pass may settle only a few readings of a long run of
+ambiguous characters (`’`, nested quotes) in one paragraph, so the number of passes can grow with
+that paragraph and the worst case is quadratic in the length of the longest paragraph (96 KB of `’`
+in one paragraph: about 4 s; split into paragraphs: 15 ms). Callers that check untrusted text split
+it into paragraphs or limit its length.
 
 **Which `’` is an apostrophe** (English, where `’` is both the apostrophe and the nested closing
 quote). A `’` in a fixed apostrophe context of section 6.2 (between letters, after a digit before a
