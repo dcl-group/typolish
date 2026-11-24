@@ -14,6 +14,20 @@
 /// `(language tag, set, input, expectation without `nbsp.*` glue, expectation of the full set)`.
 pub const TABLE: &[(&str, &str, &str, &str, &str)] = &[
     (
+        "ru-RU",
+        "prose",
+        "слово - −abc",
+        "слово — −abc",
+        "слово⍽— −abc",
+    ),
+    (
+        "ru-RU",
+        "interface",
+        "слово - −abc",
+        "слово — −abc",
+        "слово⍽— −abc",
+    ),
+    (
         "en-US",
         "interface",
         "\"a \"b \"c\" d\" e\"",

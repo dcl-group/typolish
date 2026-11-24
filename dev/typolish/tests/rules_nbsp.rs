@@ -1955,6 +1955,7 @@ fn particles_bind_to_the_word_before() {
             ("что же бы ты", "что⍽же⍽бы ты", "что⍽же⍽бы ты"),
             // No word before the particle: it is an ordinary short word.
             ("Ли ты знал", "Ли⍽ты⍽знал", "Ли ты знал"),
+            ("5 же в доме", "5 же⍽в⍽доме", "5 же в⍽доме"),
             // Glue typed by the author stays where it is.
             ("Знаешь⍽ли ты", "Знаешь⍽ли ты", "Знаешь⍽ли ты"),
             ("Знаешь ли⍽ты", "Знаешь⍽ли⍽ты", "Знаешь⍽ли⍽ты"),

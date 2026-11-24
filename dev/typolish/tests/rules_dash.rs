@@ -71,7 +71,10 @@ const RU_SPACED: &[(&str, &str)] = &[
     ("Глава 5 - введение", "Глава 5 — введение"),
     ("123-45-67 - звоните", "123-45-67 — звоните"),
     ("1990–2000 - годы", "1990–2000 — годы"),
+    // U+2212 makes a flag-like operand only of a number (design section 8.4).
+    ("слово - −abc", "слово — −abc"),
     // Refusals: the hyphen stays (and `AmbiguousHyphen`, tested below).
+    ("слово - −5", "слово - −5"),
     ("10 - 20 штук", "10 - 20 штук"),
     ("5 - 3 = 2", "5 - 3 = 2"),
     ("5 - x", "5 - x"),
