@@ -10,6 +10,15 @@ These entries are for version 0.1.2; the heading takes the version when the rele
 `Cargo.toml`. Each change of the output gives an input, the output of 0.1.1 and the output now (`⍽`
 stands for U+00A0).
 
+### Changed
+
+- The `Display` of errors, of a `Language` and of the report table escapes every code point with the
+  Unicode property `Default_Ignorable_Code_Point` of Unicode 15.1, not only those of general
+  category `Cf` and the reserved ones (design sections 2.11 and 12.5): U+034F, the Hangul fillers,
+  the Khmer inherent vowels and the variation selectors no longer stay raw.
+  `LanguageBuilder::new("a\u{3164}b").build()` reports ``invalid language data for `a\u{3164}b` ``
+  where it printed the filler itself. The typeset output does not change.
+
 ### Fixed
 
 - A trailing possessive inside a pair that `’` closes stays straight where a second pass or

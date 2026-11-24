@@ -1028,9 +1028,11 @@ Choices:
   accepted.
 - The `Display` of an error, and the `Display` of a `Language` (a tag given to `from_static` is not
   validated), write the caller's string with invisible characters (controls, line separators, every
-  character of general category `Cf` and the reserved default-ignorable code points of section 7.6)
-  as `\u{…}` (`Raw` in the sketch, the escaping of the report table, section 12.5), so a message
-  stays on one line; the fields hold the string as given.
+  character of general category `Cf` and every code point with the Unicode property
+  `Default_Ignorable_Code_Point` of Unicode 15.1, assigned or reserved: U+034F, the Hangul fillers
+  U+115F, U+1160, U+3164 and U+FFA0, the Khmer inherent vowels, the variation selectors and the
+  reserved code points of section 7.6) as `\u{…}` (`Raw` in the sketch, the escaping of the report
+  table, section 12.5), so a message stays on one line; the fields hold the string as given.
 
 ### 2.12 Allocation, Cow and scratch memory
 

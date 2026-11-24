@@ -2285,7 +2285,7 @@ fn stands_alone(symbol: &str) -> bool {
 /// Whether `c` is an assigned default-ignorable code point of Unicode 15.1
 /// (`DerivedCoreProperties.txt`) outside general category `Cf`: U+034F COMBINING GRAPHEME JOINER,
 /// the Hangul fillers, the Khmer inherent vowels and the variation selectors. They show nothing.
-const fn is_assigned_default_ignorable(c: char) -> bool {
+pub(crate) const fn is_assigned_default_ignorable(c: char) -> bool {
     matches!(
         c,
         '\u{34f}'
@@ -2312,6 +2312,30 @@ pub(crate) const fn is_reserved_default_ignorable(c: char) -> bool {
             | '\u{e0080}'..='\u{e00ff}'
             | '\u{e01f0}'..='\u{e0fff}'
     )
+}
+
+/// Whether `c` has the Unicode property `Default_Ignorable_Code_Point` of Unicode 15.1
+/// (`DerivedCoreProperties.txt`): the format characters of the property, the assigned ones outside
+/// general category `Cf` (`is_assigned_default_ignorable`) and the reserved ones
+/// (`is_reserved_default_ignorable`). The ranges are written out, so the set does not depend on
+/// the Rust version (design sections 2.11 and 12.5).
+pub(crate) const fn is_default_ignorable(c: char) -> bool {
+    matches!(
+        c,
+        '\u{ad}'
+            | '\u{61c}'
+            | '\u{180e}'
+            | '\u{200b}'..='\u{200f}'
+            | '\u{202a}'..='\u{202e}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{2066}'..='\u{206f}'
+            | '\u{feff}'
+            | '\u{1bca0}'..='\u{1bca3}'
+            | '\u{1d173}'..='\u{1d17a}'
+            | '\u{e0001}'
+            | '\u{e0020}'..='\u{e007f}'
+    ) || is_assigned_default_ignorable(c)
+        || is_reserved_default_ignorable(c)
 }
 
 /// Whether `c` has the Unicode `Dash` property (`PropList.txt` of Unicode 15.1, and U+10D6E of

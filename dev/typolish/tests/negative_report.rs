@@ -457,3 +457,30 @@ fn the_row_texts_are_found_in_every_position_of_a_sentence() {
         }
     }
 }
+
+#[test]
+fn the_display_escapes_every_default_ignorable_code_point() {
+    // Design sections 2.11 and 12.5, choice C41: the `Display` of errors and of the report table
+    // escapes every code point with the Unicode property `Default_Ignorable_Code_Point`, also
+    // those outside general category `Cf`, such as U+3164 HANGUL FILLER, the variation selector
+    // U+FE0F and U+034F COMBINING GRAPHEME JOINER.
+    let error = typolish::LanguageBuilder::new("a\u{3164}b")
+        .build()
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("`a\\u{3164}b`"), "{error:?}");
+    assert!(!error.contains('\u{3164}'), "{error:?}");
+
+    let t = prose(Language::RU_RU);
+    let printed = t
+        .report("см. http://a.b/\u{fe0f}\u{34f}c - да", Output::Unicode)
+        .to_string();
+    let line = printed
+        .lines()
+        .find(|line| line.starts_with("protected  Technical(Url)"))
+        .unwrap();
+    assert!(line.ends_with("http://a.b/\\u{fe0f}\\u{34f}c"), "{line:?}");
+    for c in ['\u{fe0f}', '\u{34f}'] {
+        assert!(!printed.contains(c), "{printed:?}");
+    }
+}
