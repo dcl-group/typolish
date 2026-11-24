@@ -202,8 +202,8 @@ fn passes(
             })
             .collect();
         // Every round that changes something turns at least one non-ASCII character into ASCII
-        // text, so the loop ends; the number of rounds is bounded by the number of non-ASCII
-        // characters, so the worst case is quadratic (design section 12.1).
+        // text, so the loop ends. On the inputs measured, ordinary prose and long runs of quotes
+        // in one paragraph alike, it ends after one or two rounds (design section 12.1).
         let Some((changed, undone)) = round(typographer, scratch, &current) else {
             break;
         };
@@ -1102,20 +1102,22 @@ impl Flat<'_> {
     }
 
     /// The class of the left neighbor of the series of quotes that ends at `at` (design section
-    /// 6.3). A character inside a protected span is of class `Word`, as a neighbor inside a
-    /// frozen core or a protected span is in the forward algorithm (design sections 6.3 and 6.9).
-    fn class_before(&self, reading: &Reading, at: usize) -> Class {
+    /// 6.3), and where the walk to it stopped. A character inside a protected span is of class
+    /// `Word`, as a neighbor inside a frozen core or a protected span is in the forward algorithm
+    /// (design sections 6.3 and 6.9).
+    fn class_before_at(&self, reading: &Reading, at: usize) -> (Class, usize) {
         match self.before_at(at, |q| is_quote(reading, q)) {
-            (Near::Char(_), pos) if self.is_frozen(pos) => Class::Word,
-            (near, _) => class(near),
+            (Near::Char(_), pos) if self.is_frozen(pos) => (Class::Word, pos),
+            (near, pos) => (class(near), pos),
         }
     }
 
-    /// The class of the right neighbor of the series of quotes that starts at `at`.
-    fn class_after(&self, reading: &Reading, at: usize) -> Class {
+    /// The class of the right neighbor of the series of quotes that starts at `at`, and where the
+    /// walk to it stopped.
+    fn class_after_at(&self, reading: &Reading, at: usize) -> (Class, usize) {
         match self.after_at(at, |q| is_quote(reading, q)) {
-            (Near::Char(_), pos) if self.is_frozen(pos) => Class::Word,
-            (near, _) => class(near),
+            (Near::Char(_), pos) if self.is_frozen(pos) => (Class::Word, pos),
+            (near, pos) => (class(near), pos),
         }
     }
 }
@@ -1193,7 +1195,12 @@ fn is_sign(c: char) -> bool {
 /// `Space`, `OpenP` or `DashC`, and two adjacent quotes are not part of a series of three or more.
 /// R of the `’` is the caller's to check. Plain `""`, `"-"` or `"?"` inside a pair is typeset as
 /// such a nested pair, whatever the roles of its series.
-fn sign_only_close(reading: &Reading, text: &Flat<'_>, at: usize, end: usize) -> bool {
+fn sign_only_close(
+    reading: &Reading,
+    text: &Flat<'_>,
+    at: usize,
+    series: &mut Option<Series>,
+) -> bool {
     let Some([open1, close1, open2, _]) = reading.pairs else {
         return false;
     };
@@ -1225,38 +1232,68 @@ fn sign_only_close(reading: &Reading, text: &Flat<'_>, at: usize, end: usize) ->
         }
         break;
     }
-    if !matches!(
-        text.class_before(reading, p),
-        Class::Space | Class::OpenP | Class::DashC
-    ) {
-        return false;
-    }
-    !adjacent || series_len(reading, text, p, end) < 3
+    // Two adjacent quotes are in the series of the `’`, whose neighbors and count are found once
+    // for the series; an opener before signs is in a series of its own.
+    let left = match series.as_mut() {
+        Some(s) if adjacent => {
+            if s.count(reading, text) >= 3 {
+                return false;
+            }
+            s.left
+        }
+        _ => text.class_before_at(reading, p).0,
+    };
+    matches!(left, Class::Space | Class::OpenP | Class::DashC)
 }
 
-/// The number of quotes in the series around the quotes at `start..end`, format characters
-/// skipped.
-fn series_len(reading: &Reading, text: &Flat<'_>, start: usize, end: usize) -> usize {
-    let quotes = |s: &str| s.chars().filter(|&q| is_quote(reading, q)).count();
-    let inner = text.text.get(start..end).map_or(0, quotes);
-    let mut count = inner;
-    let mut p = start;
-    while text.walls.binary_search(&p).is_err()
-        && let Some(c) = text.text.get(..p).and_then(|s| s.chars().next_back())
-        && (is_format(c) || is_quote(reading, c))
-    {
-        count = count.saturating_add(usize::from(is_quote(reading, c)));
-        p = p.saturating_sub(c.len_utf8());
+/// A series of quotes (design section 6.3): the classes of its neighbors and where they stand,
+/// and the number of its quotes once it is asked for.
+#[derive(Clone, Copy, Debug)]
+struct Series {
+    /// Where the walk to the left neighbor stopped: the start of that character, or a wall or the
+    /// edge of the text.
+    left_at: usize,
+    /// Where the walk to the right neighbor stopped.
+    right_at: usize,
+    left: Class,
+    right: Class,
+    /// The number of quotes in the series, format characters skipped.
+    count: Option<usize>,
+}
+
+impl Series {
+    /// The series of the quote at `at..end`.
+    fn of(reading: &Reading, text: &Flat<'_>, at: usize, end: usize) -> Series {
+        let (left, left_at) = text.class_before_at(reading, at);
+        let (right, right_at) = text.class_after_at(reading, end);
+        Series {
+            left_at,
+            right_at,
+            left,
+            right,
+            count: None,
+        }
     }
-    let mut p = end;
-    while text.walls.binary_search(&p).is_err()
-        && let Some(c) = text.text.get(p..).and_then(|s| s.chars().next())
-        && (is_format(c) || is_quote(reading, c))
-    {
-        count = count.saturating_add(usize::from(is_quote(reading, c)));
-        p = p.saturating_add(c.len_utf8());
+
+    /// Whether the quote that starts at `at` belongs to this series: every position between the
+    /// two neighbors holds a quote or a format character and no wall, so a walk from such a quote
+    /// stops where the walks of the series stopped.
+    fn holds(&self, at: usize) -> bool {
+        self.left_at < at && at < self.right_at
     }
-    count
+
+    /// The number of quotes in the series.
+    fn count(&mut self, reading: &Reading, text: &Flat<'_>) -> usize {
+        if let Some(n) = self.count {
+            return n;
+        }
+        let n = text
+            .text
+            .get(self.left_at..self.right_at)
+            .map_or(0, |s| s.chars().filter(|&q| is_quote(reading, q)).count());
+        self.count = Some(n);
+        n
+    }
 }
 
 /// The candidates of the text in order of position, outside the protected spans.
@@ -1269,6 +1306,10 @@ fn candidates(
     let mut out = Vec::new();
     let mut quotes: Vec<QuoteAt> = Vec::new();
     let mut span = 0usize;
+    // The series of the last quote met: every quote of a series has its neighbors, so they are
+    // found once per series and not once per quote, which would be quadratic in a long series
+    // (design section 12.1).
+    let mut series: Option<Series> = None;
     for (at, c) in text.text.char_indices() {
         while protected.get(span).is_some_and(|&(_, end)| end <= at) {
             span = span.saturating_add(1);
@@ -1281,14 +1322,18 @@ fn candidates(
         }
         let end = at.saturating_add(c.len_utf8());
         let alts: &'static [&'static str] = if c == APOSTROPHE || reading.is_glyph(c) {
-            let left = text.class_before(reading, at);
-            let right = text.class_after(reading, end);
+            let s = match series {
+                Some(s) if s.holds(at) => s,
+                _ => Series::of(reading, text, at, end),
+            };
+            series = Some(s);
+            let (left, right) = (s.left, s.right);
             let closing = !matches!(left, Class::Space | Class::OpenP | Class::DashC)
                 && matches!(right, Class::Space | Class::CloseP | Class::DashC);
             let after_s = matches!(text.before(at, |_| false), Near::Char('s' | 'S'));
             let sign_only = c == APOSTROPHE
                 && matches!(right, Class::Space | Class::CloseP | Class::DashC)
-                && sign_only_close(reading, text, at, end);
+                && sign_only_close(reading, text, at, &mut series);
             quotes.push(QuoteAt {
                 c,
                 window: boundaries.partition_point(|&b| b <= at),
@@ -1366,6 +1411,67 @@ fn candidates(
     out
 }
 
+/// The open pairs of `quote_readings`, as their kinds (`false` for the primary pair, `true` for
+/// the nested one), with the places of the entries of each kind: the innermost pair of a kind and
+/// whether a nested pair is open below a place are found in constant time, so the readings stay
+/// linear however deep the pairs are (design section 12.1).
+#[derive(Debug, Default)]
+struct Opened {
+    kinds: Vec<bool>,
+    /// The places in `kinds` of the entries of the primary pair and of the nested pair.
+    of: [Vec<usize>; 2],
+}
+
+impl Opened {
+    fn len(&self) -> usize {
+        self.kinds.len()
+    }
+
+    fn last(&self) -> Option<bool> {
+        self.kinds.last().copied()
+    }
+
+    fn push(&mut self, nested: bool) {
+        if let Some(places) = self.of.get_mut(usize::from(nested)) {
+            places.push(self.kinds.len());
+        }
+        self.kinds.push(nested);
+    }
+
+    /// Removes the entries from `level` on.
+    fn truncate(&mut self, level: usize) {
+        self.kinds.truncate(level);
+        for places in &mut self.of {
+            while places.last().is_some_and(|&p| p >= level) {
+                places.pop();
+            }
+        }
+    }
+
+    fn pop(&mut self) {
+        self.truncate(self.len().saturating_sub(1));
+    }
+
+    /// The place of the innermost entry of a kind.
+    fn innermost(&self, nested: bool) -> Option<usize> {
+        self.of
+            .get(usize::from(nested))
+            .and_then(|places| places.last().copied())
+    }
+
+    /// Whether a nested pair is open below `level`.
+    fn nested_below(&self, level: usize) -> bool {
+        self.of
+            .get(1)
+            .and_then(|places| places.first())
+            .is_some_and(|&p| p < level)
+    }
+
+    fn clear(&mut self) {
+        self.truncate(0);
+    }
+}
+
 /// The readings of the quote glyphs and apostrophes, in order: a glyph is `"`; a `’` closes the
 /// innermost open pair whose closer it is, or is an apostrophe (design section 12.1). A glyph of
 /// the nested pair has the second reading `'`, which `settle_quotes` takes where `"` does not come
@@ -1393,9 +1499,11 @@ fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<(&'static [&'sta
         }
     };
     let glyphs = [open1, close1, open2, close2];
+    // `’` is the closer of the nested pair in the built-in languages, of the primary one in a
+    // language whose primary pair is `‘’` (en-GB).
+    let later = later_closers(quotes, glyphs, APOSTROPHE == close2);
     let mut out = Vec::with_capacity(quotes.len());
-    // The open pairs: `false` for the primary pair, `true` for the nested one.
-    let mut stack: Vec<bool> = Vec::new();
+    let mut stack = Opened::default();
     let mut window = 0usize;
     for (k, q) in quotes.iter().enumerate() {
         if q.window != window {
@@ -1405,15 +1513,14 @@ fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<(&'static [&'sta
         let c = q.c;
         if c == APOSTROPHE && (c == close1 || c == close2) {
             let nested = c == close2;
-            let below = stack.len().saturating_sub(1);
-            let deep = stack.get(..below).is_some_and(|s| s.contains(&true));
+            let deep = stack.nested_below(stack.len().saturating_sub(1));
             let closer = glyph(nested, deep);
-            if q.sign_only && stack.last() == Some(&nested) {
+            if q.sign_only && stack.last() == Some(nested) {
                 // The mirror of a sign-only pair (design section 6.3): `‘’`, `‘-’`.
                 stack.pop();
                 out.push(closer);
-            } else if q.closing && stack.last() == Some(&nested) {
-                if q.after_s && later_closer(quotes, k, glyphs, nested) {
+            } else if q.closing && stack.last() == Some(nested) {
+                if q.after_s && later.get(k).copied().unwrap_or(false) {
                     out.push((apostrophe, 0));
                 } else {
                     stack.pop();
@@ -1430,14 +1537,14 @@ fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<(&'static [&'sta
         }
         let (nested, deep) = if c == open1 || c == open2 {
             let nested = c == open2 && c != open1;
-            let deep = stack.contains(&true);
+            let deep = stack.nested_below(stack.len());
             stack.push(nested);
             (nested, deep)
         } else if c == close1 || c == close2 {
             let nested = c == close2 && c != close1;
-            let mut deep = stack.contains(&true);
-            if let Some(level) = stack.iter().rposition(|&n| n == nested) {
-                deep = stack.get(..level).is_some_and(|s| s.contains(&true));
+            let mut deep = stack.nested_below(stack.len());
+            if let Some(level) = stack.innermost(nested) {
+                deep = stack.nested_below(level);
                 stack.truncate(level);
             }
             (nested, deep)
@@ -1449,59 +1556,130 @@ fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<(&'static [&'sta
     out
 }
 
-/// Whether a later `’` of the same depth, before the next opener of that depth and before the
-/// closer of the enclosing pair, has a closing role and does not follow `s` or `S` (design section
-/// 12.1). The pairs opened after the `’` are followed by their kind, as in `quote_readings`: a `’`
-/// inside a deeper primary pair closes nothing there and leaves the scan where it is.
-fn later_closer(quotes: &[QuoteAt], k: usize, glyphs: [char; 4], nested: bool) -> bool {
+/// For every `’` after `s` or `S` with a closing role: whether a later `’` of the same depth,
+/// before the next opener of that depth and before the closer of the enclosing pair, has a closing
+/// role and does not follow `s` or `S` (design section 12.1). The pairs opened after the `’` are
+/// followed by their kind, as in `quote_readings`: a `’` inside a deeper primary pair closes
+/// nothing there and leaves the scan where it is.
+///
+/// One pass answers every such `’` at once: a pending `’` waits in a group with the others whose
+/// own pairs start at the same depth of one stack of the pairs opened since, and the groups behave
+/// alike from there on, so the time is linear in the number of quotes.
+fn later_closers(quotes: &[QuoteAt], glyphs: [char; 4], nested: bool) -> Vec<bool> {
     let [open1, close1, open2, close2] = glyphs;
     let (own_open, own_close) = if nested {
         (open2, close2)
     } else {
         (open1, close1)
     };
-    let Some(this) = quotes.get(k) else {
-        return false;
+    let mut answers = vec![false; quotes.len()];
+    // The pending `’`, as linked lists: `next[k]` is the next member of the group of `k`.
+    let mut next: Vec<usize> = vec![usize::MAX; quotes.len()];
+    // The groups, innermost last: the depth of `stack` at which their pairs start, and the first
+    // and last member.
+    let mut groups: Vec<(usize, usize, usize)> = Vec::new();
+    let mut stack = Opened::default();
+    let mut window = usize::MAX;
+    let settle = |answers: &mut Vec<bool>, next: &[usize], first: usize, answer: bool| {
+        let mut k = first;
+        while let Some(a) = answers.get_mut(k) {
+            *a = answer;
+            k = next.get(k).copied().unwrap_or(usize::MAX);
+        }
     };
-    // The pairs opened after the `’` and still open: `false` for the primary pair, `true` for the
-    // nested one.
-    let mut stack: Vec<bool> = Vec::new();
-    for q in quotes.iter().skip(k.saturating_add(1)) {
-        if q.window != this.window {
-            return false;
+    for (k, q) in quotes.iter().enumerate() {
+        if q.window != window {
+            // A pending `’` finds nothing in its own window.
+            groups.clear();
+            stack.clear();
+            window = q.window;
         }
         let c = q.c;
         let opens = c == open1 || c == open2;
         let closes = (c == close1 || c == close2) && (c != APOSTROPHE || q.closing);
-        if stack.is_empty() {
-            if c == own_close && c == APOSTROPHE {
-                if q.closing && !q.after_s {
-                    return true;
-                }
-                continue;
+        // The group whose own stack is empty.
+        if let Some(&(base, first, _)) = groups.last()
+            && base == stack.len()
+        {
+            let answer = if c == own_close && c == APOSTROPHE {
+                (q.closing && !q.after_s).then_some(true)
+            } else if c == own_open || closes {
+                Some(false)
+            } else {
+                None
+            };
+            if let Some(answer) = answer {
+                settle(&mut answers, &next, first, answer);
+                groups.pop();
             }
-            if c == own_open || closes {
-                return false;
-            }
-            if opens {
-                stack.push(c == open2 && c != open1);
-            }
-        } else if opens {
+        }
+        if opens {
             stack.push(c == open2 && c != open1);
         } else if closes {
             let kind = c == close2 && c != close1;
             if c == APOSTROPHE {
-                // `’` closes only a `‘` on top; otherwise it is an apostrophe.
-                if stack.last() == Some(&kind) {
+                // `’` closes only a pair of its kind on top; otherwise it is an apostrophe.
+                if stack.last() == Some(kind)
+                    && groups.last().is_none_or(|&(base, _, _)| base < stack.len())
+                {
                     stack.pop();
+                    // The group whose own stack held only that pair now has an empty one, as
+                    // the group that was waiting at the empty depth, if any, still has: they
+                    // behave alike from here on.
+                    merge_top(&mut groups, &mut next, stack.len());
+                } else if stack.last() == Some(kind) {
+                    // A group waits at the empty depth: the groups below it pop the pair.
+                    let waiting = groups.pop();
+                    stack.pop();
+                    if let Some((_, first, last)) = waiting {
+                        groups.push((stack.len(), first, last));
+                    }
+                    merge_top(&mut groups, &mut next, stack.len());
                 }
-            } else if let Some(level) = stack.iter().rposition(|&n| n == kind) {
-                stack.truncate(level);
             } else {
-                // It closes a pair opened before the `’`: the enclosing one.
-                return false;
+                // A closer that finds no pair of its kind in the own stack of a group closes a
+                // pair opened before: for that group the answer is no.
+                let level = stack.innermost(kind);
+                while let Some(&(base, first, _)) = groups.last()
+                    && level.is_none_or(|l| base > l)
+                {
+                    settle(&mut answers, &next, first, false);
+                    groups.pop();
+                }
+                if let Some(level) = level {
+                    stack.truncate(level);
+                }
+            }
+        }
+        if c == APOSTROPHE && (c == close1 || c == close2) && q.after_s && q.closing {
+            match groups.last_mut() {
+                Some((base, _, last)) if *base == stack.len() => {
+                    if let Some(n) = next.get_mut(*last) {
+                        *n = k;
+                    }
+                    *last = k;
+                }
+                _ => groups.push((stack.len(), k, k)),
             }
         }
     }
-    false
+    answers
+}
+
+/// Merges the two innermost groups when both start at `depth`.
+fn merge_top(groups: &mut Vec<(usize, usize, usize)>, next: &mut [usize], depth: usize) {
+    let n = groups.len();
+    if n < 2 {
+        return;
+    }
+    let (Some(&(b1, f1, l1)), Some(&(b2, f2, l2))) = (groups.get(n - 2), groups.get(n - 1)) else {
+        return;
+    };
+    if b1 == depth && b2 == depth {
+        if let Some(x) = next.get_mut(l1) {
+            *x = f2;
+        }
+        groups.truncate(n - 2);
+        groups.push((depth, f1, l2));
+    }
 }

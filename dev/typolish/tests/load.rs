@@ -2,8 +2,9 @@
 //! `#[ignore]`, because it needs a release build and time:
 //! `cargo test --release -p typolish --test load -- --ignored` from `dev/`.
 //! `to_plain_is_linear_on_prose` (also `#[ignore]`) does the same for `to_plain` on ordinary prose,
-//! and `to_plain_is_linear_on_many_paragraphs_with_broken_quotes` on many short paragraphs whose
-//! quotes do not come back as double quotes (design section 12.1). `generators_keep_their_size`
+//! `to_plain_is_linear_on_many_paragraphs_with_broken_quotes` on many short paragraphs whose
+//! quotes do not come back as double quotes, and `to_plain_is_linear_on_one_long_paragraph_of_quotes`
+//! on long runs of quote characters in one paragraph (design section 12.1). `generators_keep_their_size`
 //! checks the sizes of the generated inputs in every run.
 //!
 //! The time per byte for 16 MiB is at most twice that for 64 KiB, separately for each input. There
@@ -168,6 +169,45 @@ fn to_plain_is_linear_on_many_paragraphs_with_broken_quotes() {
         );
         if ratio > 2.0 {
             failures.push(format!("{paragraph:?}: ratio {ratio:.2} > 2"));
+        }
+    }
+    assert!(failures.is_empty(), "nonlinear inputs: {failures:#?}");
+}
+
+/// `to_plain` on one long paragraph of quote characters is linear: the neighbors of a series of
+/// quotes are found once for the series, the open pairs are kept with the places of each kind, and
+/// the later closers of design section 12.1 are found in one pass. `’` repeated and `«„` repeated,
+/// then `x`, then `“»` repeated, in Russian Prose (the measurement of design section 12.1); `«`
+/// repeated around `x`, deep in one kind of pair; and in English nested pairs whose `’` after `s`
+/// wait for a later closer. The time per byte for 512 KiB is at most twice that for 64 KiB.
+#[test]
+#[ignore = "needs a release build and time; run with cargo test --release --test load -- --ignored"]
+fn to_plain_is_linear_on_one_long_paragraph_of_quotes() {
+    let ru = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    let en = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    // A text of about `size` bytes: `open` repeated, then `middle`, then `close` repeated.
+    let make = |open: &str, middle: &str, close: &str, size: usize| {
+        let n = size / (open.len() + close.len()) + 1;
+        format!("{}{middle}{}", open.repeat(n), close.repeat(n))
+    };
+    let inputs: [(&str, &Typographer, &str, &str, &str); 4] = [
+        ("ru `’`", &ru, "’", "", ""),
+        ("ru `«„` x `“»`", &ru, "«„", "x", "“»"),
+        ("ru `«` x `»`", &ru, "«", "x", "»"),
+        ("en `“‘a dogs’ ` b `’”`", &en, "“‘a dogs’ ", "b", "’”"),
+    ];
+    let mut failures = Vec::new();
+    for (name, t, open, middle, close) in inputs {
+        let small = plain_per_byte(t, &make(open, middle, close, SMALL), 3);
+        let large = plain_per_byte(t, &make(open, middle, close, 8 * SMALL), 1);
+        let ratio = large / small;
+        println!(
+            "{name}: 64 KiB {:.1} ns/B, 512 KiB {:.1} ns/B, ratio {ratio:.2}",
+            small * 1e9,
+            large * 1e9
+        );
+        if ratio > 2.0 {
+            failures.push(format!("{name}: ratio {ratio:.2} > 2"));
         }
     }
     assert!(failures.is_empty(), "nonlinear inputs: {failures:#?}");

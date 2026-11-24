@@ -555,8 +555,11 @@ U+00A0 and must not be normalized.
   smaller than it was.
 - `#[ignore]` test `to_plain_is_linear_on_prose`: time per byte of `to_plain` for 512 KiB of
   ordinary en-US prose with spaced dashes, one line and in paragraphs, is at most twice that for 64
-  KiB (section 12.1; `lint` runs the same check). A long run of `’` in one paragraph is not covered:
-  it stays quadratic (section 12.1).
+  KiB (section 12.1; `lint` runs the same check).
+  `to_plain_is_linear_on_one_long_paragraph_of_quotes` does the same for long runs of quote
+  characters in one paragraph: `’` repeated, `«„` repeated around `x` with `“»` repeated, `«`
+  repeated around `x` with `»` repeated (Russian Prose), and nested English pairs whose `’` after
+  `s` wait for a later closer.
 - `tests/alloc.rs`: a separate test binary with a counting `#[global_allocator]` (the only file with
   `#![allow(unsafe_code)]`, section 14.5; the allocator counts and delegates to
   `std::alloc::System`) checks the table of section 2.12: zero allocations for an unchanged string

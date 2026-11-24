@@ -33,6 +33,12 @@ stands for U+00A0).
   English, both sets: `"a ‘’ b"`: `"a⍽‘’ b"` → `“a⍽‘’ b”`; `"a ‘-’ b"`: `"a⍽‘-’ b"` → `“a⍽‘-’ b”`;
   `"a ‘’, b"`: `"a⍽‘’, b"` → `“a⍽‘’, b”`. Such a pair is no longer reported: `x ‘’ y` gave
   `UnmatchedQuote` (info), `"a ‘’ b"` `CrossingQuotes` (warning).
+- `to_plain`, `to_plain_template`, `lint` and `lint_template` are linear in the length of the text
+  on long runs of quote characters in one paragraph as well (design section 12.1): the neighbors of
+  a series of quotes, the open pairs and the later closer of a `’` after `s` were searched again for
+  every quote. Measured in a release build, one paragraph of 96 KB: `’` repeated (Russian Prose) 5.7
+  s → 17 ms; `«„` repeated, `x`, `“»` repeated (Russian Prose) 4.4 s → 43 ms; `“‘a dogs’ ` repeated,
+  `b`, `’”` repeated (English Prose) 0.6 s → 31 ms. The results are the same.
 
 ## 0.1.1 - unreleased
 

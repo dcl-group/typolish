@@ -933,9 +933,9 @@ impl Typographer {
     ///
     /// So `lint(text)` has a `TypographicChar` exactly when `to_plain(text) != text`, and
     /// `to_plain` is the matching fix. Like `to_plain`, it uses the thread-local working memory and
-    /// makes no allocation promise. It is the tooling path: the time is linear on ordinary text,
-    /// but a long run of ambiguous characters in one paragraph can make it quadratic in that
-    /// paragraph (design section 12.1); split untrusted text into paragraphs or limit its length.
+    /// makes no allocation promise. It is the tooling path: the time is linear in the length of the
+    /// text, long runs of quote characters in one paragraph included, and on ordinary text about
+    /// 100 to 200 times that of `typeset` (design section 12.1).
     ///
     /// ```
     /// use typolish::{DiagnosticKind, Language, RuleSet, Typographer};
@@ -962,9 +962,8 @@ impl Typographer {
     /// `TypographicChar` for every character of a `Text` piece that
     /// [`Typographer::to_plain_template`] would change. A diagnostic over several pieces is
     /// reported at its first piece (design section 3.11). It is the tooling path: the time is
-    /// linear on ordinary text, but a long run of ambiguous characters in one paragraph can make it
-    /// quadratic in that paragraph (design section 12.1); split untrusted text into paragraphs or
-    /// limit its length.
+    /// linear in the length of the text, long runs of quote characters in one paragraph included,
+    /// and on ordinary text about 100 to 200 times that of `typeset` (design section 12.1).
     ///
     /// ```
     /// use typolish::{DiagnosticKind, Language, Piece, RuleSet, Severity, Slot, Typographer};
@@ -993,9 +992,9 @@ impl Typographer {
     /// `symbols.copyright` is off, glue stays where no enabled rule sets it. Plain forms are not
     /// normalized, the result holds no character that `to_plain` would change, and text without
     /// such characters comes back borrowed. It uses the thread-local working memory and makes no
-    /// allocation promise. It is the tooling path: the time is linear on ordinary text, but a long
-    /// run of ambiguous characters in one paragraph can make it quadratic in that paragraph (design
-    /// section 12.1); split untrusted text into paragraphs or limit its length.
+    /// allocation promise. It is the tooling path: the time is linear in the length of the text,
+    /// long runs of quote characters in one paragraph included, and on ordinary text about 100 to
+    /// 200 times that of `typeset` (design section 12.1).
     ///
     /// ```
     /// use typolish::{Language, RuleSet, Typographer};
@@ -1015,9 +1014,8 @@ impl Typographer {
     /// [`Typographer::to_plain`] for the pieces of a message template: the slots come back in input
     /// order with their payloads, `Protected` and `Markup` pieces are left alone, and the texts are
     /// in the n + 1 form of [`Template`] (design section 2.10). It is the tooling path: the time is
-    /// linear on ordinary text, but a long run of ambiguous characters in one paragraph can make it
-    /// quadratic in that paragraph (design section 12.1); split untrusted text into paragraphs or
-    /// limit its length.
+    /// linear in the length of the text, long runs of quote characters in one paragraph included,
+    /// and on ordinary text about 100 to 200 times that of `typeset` (design section 12.1).
     ///
     /// ```
     /// use typolish::{Language, Piece, RuleSet, Slot, Typographer};

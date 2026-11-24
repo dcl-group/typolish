@@ -81,11 +81,17 @@ There is no second copy of the rule patterns to drift from them. The price is up
 within 256 bytes) × (readings of a character) forward runs per pass, each over the whole text: on
 dense typographic text that is hundreds of runs. On ordinary text the time is linear in its length
 and about 100 to 200 times that of `typeset`, which the tooling path allows (section 2.12) and the
-maintainer accepted (section 15.2, item 28); a pass may settle only a few readings of a long run of
-ambiguous characters (`’`, nested quotes) in one paragraph, so the number of passes can grow with
-that paragraph and the worst case is quadratic in the length of the longest paragraph (96 KB of `’`
-in one paragraph: about 4 s; split into paragraphs: 15 ms). Callers that check untrusted text split
-it into paragraphs or limit its length.
+maintainer accepted (section 15.2, item 28). A long run of quote characters in one paragraph is
+linear too. The readings of the quotes are found in one pass over them: the neighbors of a series of
+quotes (section 6.3) are found once for the series, not once for each of its quotes; the open pairs
+are kept with the places of the entries of each kind, so the innermost pair of a kind and whether a
+nested pair is open below it are found in constant time; and the later `’` that the rule for `’`
+below looks for is found for every `’` after `s` or `S` in one pass, the `’` that wait at the same
+depth grouped together. Before version 0.1.2 each of these was searched again for every quote, and
+96 KB of `’` in one paragraph took about 5 s; it now takes about 20 ms, and `«„` repeated, `x`, `“»`
+repeated (96 KB, Russian Prose) about 45 ms instead of 4.4 s. Every pass that changes something
+turns at least one non-ASCII character into ASCII text, so the passes end; on the inputs measured,
+ordinary prose and long runs of quotes in one paragraph alike, there are one or two.
 
 **Which `’` is an apostrophe** (English, where `’` is both the apostrophe and the nested closing
 quote). A `’` in a fixed apostrophe context of section 6.2 (between letters, after a digit before a
