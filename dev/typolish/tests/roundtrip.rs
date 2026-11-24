@@ -320,6 +320,60 @@ fn an_apostrophe_whose_plain_reading_would_pair_keeps_its_character() {
 }
 
 #[test]
+fn a_trailing_possessive_that_would_close_its_pair_round_trips() {
+    // Design sections 6.6 and 12.2: a trailing possessive that `to_plain` would read as the closer
+    // of the pair around it, with a quote between them, stays straight, so P2 holds; and so does
+    // one before an unpaired straight `'` opener, which a second pass would pair.
+    let gb = LanguageBuilder::from_language(&en(), "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    let en_inputs = [
+        "\"a \"dogs' 's\" b\"",
+        "\"a \"DOGS' 'S\" b\"",
+        "\"a \"dogs' 'x' bowls\" b\"",
+        "\"\"s' 'x.\"'\"",
+        "“\"s' '.\"'”",
+    ];
+    let gb_inputs = [
+        "\"S' 's\"",
+        "it) - 'cause' - 'cause -- \"'cause) DOGS' - 'house' - it, - oz.) '90s\" a",
+        "\"the dogs' 'x' bowls\"",
+        "\"S'. a(\n'3,\".'",
+    ];
+    let mut failures = Vec::new();
+    for (language, inputs) in [(en(), &en_inputs[..]), (gb, &gb_inputs[..])] {
+        for set in [RuleSet::PROSE, RuleSet::INTERFACE, RuleSet::ALL] {
+            for mode in [
+                SingleQuotes::NestedOnly,
+                SingleQuotes::Everywhere,
+                SingleQuotes::Never,
+            ] {
+                let t = Typographer::builder(language.clone(), set)
+                    .single_quotes(mode)
+                    .build()
+                    .unwrap();
+                for x in inputs {
+                    if let Err(e) = p2(&t, x) {
+                        failures.push(format!("{language} {set} {mode:?}: {e}"));
+                    }
+                    let once = t.typeset(x, Output::Unicode);
+                    let twice = t.typeset(&once, Output::Unicode);
+                    if once != twice {
+                        failures.push(format!(
+                            "{language} {set} {mode:?}: {} then {}",
+                            show(&once),
+                            show(&twice)
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[test]
 fn primary_glyphs_read_as_single_quotes_where_double_quotes_do_not_pair_again() {
     // Design section 12.1: in a window where neither reading of the nested glyphs brings the
     // quotes back, the primary pair inside a nested pair reads as `'` alone (the third level of

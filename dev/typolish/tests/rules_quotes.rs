@@ -341,6 +341,47 @@ fn a_trailing_possessive_after_a_capital_s() {
     }
 }
 
+#[test]
+fn a_trailing_possessive_that_would_close_its_pair_stays_straight() {
+    // Design section 6.6: inside a pair closed by `’`, a trailing possessive stays straight where a
+    // second pass or `to_plain` would read it as the closer of the pair and change what lies
+    // between them: a straight `'` opener that stayed unpaired, or, when the closer follows `s` or
+    // `S` too, a quote of a pair.
+    let en = quotes(Language::EN_US);
+    for row in [
+        ("\"\"s' 'x.\"'\"", "“‘s' 'x.’'”"),
+        ("“\"s' '.\"'”", "“‘s' '.’'”"),
+        ("\"a \"dogs' 's\" b\"", "“a ‘dogs' 's’ b”"),
+        ("\"a \"DOGS' 'S\" b\"", "“a ‘DOGS' 'S’ b”"),
+        ("\"a \"dogs' 'x' bowls\" b\"", "“a ‘dogs' “x” bowls’ b”"),
+        // Only text between them, or a closer that does not follow `s`: the possessive stays.
+        (
+            "\"He said \"the dogs' bowls\"\"",
+            "“He said ‘the dogs’ bowls’”",
+        ),
+        ("\"a \"dogs' 'x' bowl\" b\"", "“a ‘dogs’ “x” bowl’ b”"),
+    ] {
+        check_exact("en quotes alone", &en, row);
+    }
+    // A language whose primary pair is `‘’` (en-GB).
+    let gb = typolish::LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    let gb = quotes(gb);
+    for row in [
+        ("\"S' 's\"", "‘S' 's’"),
+        ("\"the dogs' 'x' bowls\"", "‘the dogs' “x” bowls’"),
+        ("\"the dogs' bowl\"", "‘the dogs’ bowl’"),
+        (
+            "it) - \"'cause) DOGS' - 'house' - oz.) '90s\" a",
+            "it) - ‘’cause) DOGS' - “house” - oz.) ’90s’ a",
+        ),
+    ] {
+        check_exact("en-GB quotes alone", &gb, row);
+    }
+}
+
 // The rows of design section 6.12 that need `quotes.primes`: Prose (design section 6.5), and what
 // Interface does.
 #[test]

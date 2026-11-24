@@ -288,11 +288,6 @@ The rules read the shape of the text, not its meaning. These cases are known and
   fragment and stays straight; with the space (`сказал: "привет"`) the quotes are placed. An empty
   value glued the same way (`key:""`) leaves the paragraph's quotes straight with an
   `UnmatchedQuote` warning; `key=""` stays as written.
-- Straight quotes nested out of order around a trailing possessive are not idempotent in English:
-  `""s' 'x."'"` gives `“‘s’ 'x.’'”`, and a second pass pairs the remaining `'` (`“‘s’ ‘x.’’”`). For
-  the same reason `to_plain` does not give back what typesets to the same text when an unpaired `'s`
-  follows a nested trailing possessive: `"a "dogs' 's" b"` gives `“a⍽‘dogs’ 's’ b”`, and its plain
-  form `"a "dogs" 's' b"` gives `“a⍽‘dogs’ ‘s’ b”`. This is a defect, not a choice.
 - In a declared language whose primary pair is `‘’` (en-GB), `PROSE` is not idempotent on a
   sign-only pair inside straight single quotes before a number: `'a ""-3'` gives `'a⍽‘’-3'`, and a
   second pass gives `'a⍽‘’-3′`. This is a defect, not a choice.

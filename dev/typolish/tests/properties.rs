@@ -215,6 +215,12 @@ const SEEDS: &[&str] = &[
     // The trailing possessive after `s` and `S` (design section 6.6).
     "DOGS' and JONES' BOOK",
     "the dogs' bowl and the Joneses' car",
+    // A trailing possessive that a second pass or `to_plain` would read as the closer of the pair
+    // around it stays straight (design section 6.6).
+    "\"\"s' 'x.\"'\"",
+    "“\"s' '.\"'”",
+    "\"a \"dogs' 's\" b\"",
+    "\"a \"DOGS' 'S\" b\"",
     // A sign or a unit next to a number with and without a space (design section 8.7): two rules
     // must not read one character.
     "5 %1 and 5% and 5 %",
@@ -296,6 +302,38 @@ fn idempotence_of_the_seed_with_a_built_language() {
                 let once = t.typeset(seed, Output::Unicode).into_owned();
                 let twice = t.typeset(&once, Output::Unicode);
                 assert_eq!(once, twice, "{set} {mode:?} {seed:?}");
+            }
+        }
+    }
+    // A language whose primary pair is `‘’` (en-GB): a trailing possessive inside a pair that `’`
+    // closes (design section 6.6).
+    let gb = LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    for seed in [
+        "\"S' 's\"",
+        "it) - 'cause' - 'cause -- \"'cause) DOGS' - 'house' - it, - oz.) '90s\" a",
+        "\"S'. a(\n'3,\".'",
+    ] {
+        for set in [
+            RuleSet::EMPTY,
+            RuleSet::ALL,
+            RuleSet::PROSE,
+            RuleSet::INTERFACE,
+        ] {
+            for mode in [
+                SingleQuotes::NestedOnly,
+                SingleQuotes::Everywhere,
+                SingleQuotes::Never,
+            ] {
+                let t = Typographer::builder(gb.clone(), set)
+                    .single_quotes(mode)
+                    .build()
+                    .unwrap();
+                let once = t.typeset(seed, Output::Unicode).into_owned();
+                let twice = t.typeset(&once, Output::Unicode);
+                assert_eq!(once, twice, "en-GB {set} {mode:?} {seed:?}");
             }
         }
     }

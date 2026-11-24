@@ -251,12 +251,6 @@ expectation):
   `key: ""` gives `key: «»`. A frozen core that does not end in `=` keeps its wrapper quotes as
   candidates, so `Путь /etc/"" и "да".` fails the paragraph the same way, with `UnmatchedQuote`
   (warning, section 6.1), while `key=""` stays as written.
-- Straight quotes nested out of order around a trailing possessive are not idempotent in English:
-  `""s' 'x."'"` gives `“‘s’ 'x.’'”`, and a second pass pairs the remaining `'` (`“‘s’ ‘x.’’”`). The
-  same class breaks P2 (section 12.2) in the built-in English sets when an unpaired `'s` or `'S`
-  follows a nested trailing possessive: `"a "dogs' 's" b"` gives `“a⍽‘dogs’ 's’ b”`, whose
-  `to_plain` `"a "dogs" 's' b"` is typeset as `“a⍽‘dogs’ ‘s’ b”` (likewise `"a "DOGS' 'S" b"`). This
-  is a defect of the quote phase (section 6.11), not a choice.
 - In a declared language whose primary pair is `‘’` (en-GB), Prose, a sign-only pair inside a
   top-level straight single pair before a number is not idempotent: `'a ""-3'` gives `'a⍽‘’-3'`, and
   a second pass reads the last `'` as a prime (`'a⍽‘’-3′`). This is a defect of the quote phase

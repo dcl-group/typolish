@@ -193,7 +193,17 @@ Then, when the window converges:
   (`trailing_possessive`, section 7.1; `dogs'`, `the Joneses'`, `THE JONESES'`), unless a typed
   opener whose closer is `’` (English `‘`) that stayed neutral (left on the stack at the end of the
   window, section 6.4) stands before it anywhere in the window; then it stays straight (a second
-  pass would let that `’` close the opener);
+  pass would let that `’` close the opener). It also stays straight inside a pair that `’` closes (a
+  new pair whose closer is `’` at its level, or a typed pair `‘…’` of English), when the neighbors
+  of its series allow a closing role (section 6.3) and either a straight `'` opener that stayed
+  unpaired stands between it and the closer of the pair, or the closer follows `s` or `S` and a
+  quote of a pair stands between them. A second pass would let the possessive `’` close the pair at
+  once, and the unpaired opener, which the closer had popped, could then pair: `""s' 'x."'"` gives
+  `“‘s' 'x.’'”`, where `“‘s’ 'x.’'”` would become `“‘s’ ‘x.’’”`. And `to_plain` reads the first `’`
+  after `s` or `S` as the closer when the closer follows `s` or `S` too (section 12.1), which would
+  take the quotes between them out of the pair: `"a "dogs' 's" b"` gives `“a ‘dogs' 's’ b”`. With
+  only text between them the possessive is placed (`“He said ‘the dogs’ bowls’”`): there the early
+  close changes no glyph;
 - a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
   section 6.8, are in a pair and stay straight) at a word start before exactly two digits and then a
   character that is neither a letter nor a digit, or the end of the window, becomes `’` if the
@@ -283,8 +293,16 @@ and such a re-pairing cannot enclose a straight `'` pair that was cancelled: tha
 every pair of straight `"` and every typed pair of the first pass, and a re-pairing with a glyph
 inside a first-pass pair would have been a crossing, which contradicts convergence. A
 trailing-possessive `’` could close a neutral `‘` on the second pass; section 6.6 therefore does not
-produce it after a neutral `‘`. So cancelled `'` pairs stay cancelled and count for no level,
-unpaired `'` stay unpaired, primes are not candidates, and nothing changes.
+produce it after a neutral `‘`. It can also close the pair around it, a new pair or a typed one that
+`’` closes, earlier than the first pass did. The pairs between the possessive and the old closer are
+typed by then and keep their glyphs, and the old closer becomes an apostrophe. The only straight
+quotes whose pairing the early close could change are straight `'` openers between them that the old
+closer popped unpaired: at the possessive the stack holds no straight `'` entry (a closing straight
+`'` that met one would have paired with it, or crossed the typed or `"` entry above it), so a
+straight `'` pushed before the possessive was popped before it in both passes. Section 6.6 does not
+produce the possessive where such an opener stands between them. So cancelled `'` pairs stay
+cancelled and count for no level, unpaired `'` stay unpaired, primes are not candidates, and nothing
+changes.
 
 (b) **Not converged.** No straight quote changed. The quotes with roles and their families are the
 same on the second pass, so the window again does not converge, and nothing changes.
@@ -357,6 +375,9 @@ enabled; "(`Never`)" marks `SingleQuotes::Never`. A row without a mark holds in 
 | en         | `"She said "no.""`                              | `“She said ‘no.’”`                   | two closers after `.`                                         |
 | ru         | `Токен "SGVsbG8gd29ybGQ=" и "имя".`             | `Токен «SGVsbG8gd29ybGQ=» и «имя».`  | a quoted frozen core ending in `=`                            |
 | en         | `‘Note: 'beta' builds of the developers' tools` | unchanged, `UnmatchedQuote` (info)   | no possessive after a neutral `‘`                             |
+| en         | `""s' 'x."'"`                                   | `“‘s' 'x.’'”`                        | no possessive before an unpaired opener in its pair           |
+| en         | `"a "dogs' 's" b"`                              | `“a ‘dogs' 's’ b”`                   | the same                                                      |
+| en         | `"a "dogs' 'x' bowls" b"`                       | `“a ‘dogs' “x” bowls’ b”`            | no possessive before a pair when the closer follows `s`       |
 | ru         | `a""b`                                          | unchanged, no diagnostic             | frozen core (section 3.6)                                     |
 
 ### 6.13 Rejected

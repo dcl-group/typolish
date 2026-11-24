@@ -267,6 +267,11 @@ pub(crate) struct Q {
     step1: Mark,
     /// The pair is cancelled by `SingleQuotes::NestedOnly`.
     cancelled: bool,
+    /// The number of straight `'` openers before this quote that take part and stayed unpaired
+    /// (design section 6.6).
+    open_s_before: u32,
+    /// The number of quotes before this one that belong to a pair that is not cancelled.
+    paired_before: u32,
 }
 
 /// One entry of the matching stack.
@@ -420,6 +425,8 @@ pub(crate) fn analyze<R: Recorder>(
                 prime: false,
                 step1: Mark::None,
                 cancelled: false,
+                open_s_before: 0,
+                paired_before: 0,
             });
         }
     }
@@ -746,11 +753,51 @@ pub(crate) fn analyze<R: Recorder>(
         return;
     }
 
+    // What lies between a trailing possessive and the closer of the pair around it (design section
+    // 6.6): straight `'` openers that stayed unpaired, and quotes of pairs.
+    let mut open_s = 0u32;
+    let mut paired = 0u32;
+    for q in qs.iter_mut() {
+        q.open_s_before = open_s;
+        q.paired_before = paired;
+        if in_pair(q) {
+            paired = paired.saturating_add(1);
+        } else if q.cat == Cat::Straight
+            && q.fam == S
+            && q.role == Some(Role::Open)
+            && !never
+            && !q.prime
+        {
+            open_s = open_s.saturating_add(1);
+        }
+    }
+
     // Primes, the trailing possessive, the decade apostrophe and an elision that waited for
-    // pairing (design sections 6.2, 6.5 and 6.6).
+    // pairing (design sections 6.2, 6.5 and 6.6). `stack` holds the openers of the pairs around
+    // the current quote.
     let data = cx.data;
-    for q in qs.iter() {
+    stack.clear();
+    for (idx, q) in qs.iter().enumerate() {
         let i = q.tok as usize;
+        if in_pair(q) {
+            if (q.partner as usize) > idx {
+                if let Ok(index) = u32::try_from(idx) {
+                    stack.push(Entry {
+                        q: index,
+                        fam: q.fam,
+                        below: NONE,
+                        non_s: NONE,
+                    });
+                }
+            } else {
+                while let Some(e) = stack.pop() {
+                    if e.q == q.partner {
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
         if q.prime {
             if let Some(m) = marks.get_mut(i) {
                 *m = Mark::Prime(if q.glyph == '"' { '″' } else { '′' });
@@ -767,7 +814,8 @@ pub(crate) fn analyze<R: Recorder>(
                 matches!(cx.kind(p), Some(Kind::Word(_))) && cx.src(p).ends_with(['s', 'S'])
             })
             && !next.is_some_and(|n| matches!(cx.kind(n), Some(Kind::Word(_))))
-            && (neutral_apostrophe_opener == NONE || neutral_apostrophe_opener > q.tok);
+            && (neutral_apostrophe_opener == NONE || neutral_apostrophe_opener > q.tok)
+            && !possessive_closes(cx, qs, marks, q, stack.last().map(|e| e.q));
         // A number run split by `Format` or `Markup` tokens is one number (design section 3.6).
         let decade = data.decade_apostrophe
             && word_start(cx, i)
@@ -785,6 +833,48 @@ pub(crate) fn analyze<R: Recorder>(
             *m = Mark::Apostrophe;
         }
     }
+}
+
+/// Whether the quote belongs to a pair that is not cancelled (design sections 6.4 to 6.8).
+fn in_pair(q: &Q) -> bool {
+    q.partner != NONE && !q.cancelled && matches!(q.cat, Cat::Straight | Cat::Typed | Cat::Cond)
+}
+
+/// Whether a trailing possessive at `q` would be read as the closer of the pair around it, whose
+/// opener is `qs[around]`, and so change what lies between them (design section 6.6).
+///
+/// The pair is closed by `’` and the neighbors of `q` allow a closing role (design section 6.3):
+/// on a second pass the possessive `’` would close the pair at once, and `to_plain` reads it as
+/// the closer when the true closer follows `s` or `S` as well (design section 12.1). That
+/// changes nothing when only text lies between them. It changes the result when a straight `'`
+/// opener that stayed unpaired lies between, which the closer of the pair popped and which could
+/// pair once the pair has closed early; or, for `to_plain`, when the closer follows `s` or `S`
+/// and a quote of a pair lies between, whose level would drop by one.
+fn possessive_closes(cx: &Cx<'_>, qs: &[Q], marks: &[Mark], q: &Q, around: Option<u32>) -> bool {
+    let Some(close) = around
+        .and_then(|o| qs.get(o as usize))
+        .and_then(|o| qs.get(o.partner as usize))
+    else {
+        return false;
+    };
+    let glyph = match marks.get(close.tok as usize) {
+        Some(Mark::Glyph(g)) => *g,
+        _ => close.glyph,
+    };
+    if glyph != APOSTROPHE_CHAR {
+        return false;
+    }
+    let (l, r) = neighbors(cx, q.tok as usize);
+    if class(cx, l).opens() || !class(cx, r).ends() {
+        return false;
+    }
+    if close.open_s_before > q.open_s_before {
+        return true;
+    }
+    let after_s = cx.prev(close.tok as usize).is_some_and(|p| {
+        matches!(cx.kind(p), Some(Kind::Word(_))) && cx.src(p).ends_with(['s', 'S'])
+    });
+    after_s && close.paired_before > q.paired_before
 }
 
 /// The series of quotes that starts at `qs[start]`: the index after its last quote, and its L and

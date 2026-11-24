@@ -6,7 +6,24 @@ All notable changes to this crate are recorded in this file. The format follows
 
 ## Unreleased
 
-Nothing yet.
+These entries are for version 0.1.2; the heading takes the version when the release sets it in
+`Cargo.toml`. Each change of the output gives an input, the output of 0.1.1 and the output now (`⍽`
+stands for U+00A0).
+
+### Fixed
+
+- A trailing possessive inside a pair that `’` closes stays straight where a second pass or
+  `to_plain` would read it as the closer of the pair and change what stands between them (design
+  section 6.6), so the first pass is a fixed point and P2 holds. English, both sets: `""s' 'x."'"`:
+  `“‘s’ 'x.’'”` (then `“‘s’ ‘x.’’”` on a second pass) → `“‘s' 'x.’'”`; `“"s' '."'”`: `“‘s’ '.’'”` →
+  `“‘s' '.’'”`; `"a "dogs' 's" b"`: `“a⍽‘dogs’ 's’ b”` → `“a⍽‘dogs' 's’ b”`; `"a "DOGS' 'S" b"`:
+  `“a⍽‘DOGS’ 'S’ b”` → `“a⍽‘DOGS' 'S’ b”`; `"a "dogs' 'x' bowls" b"`: `“a⍽‘dogs’ “x” bowls’ b”` →
+  `“a⍽‘dogs' “x” bowls’ b”`. A declared language whose primary pair is `‘’` (en-GB), both sets:
+  `"S' 's"`: `‘S’ 's’` → `‘S' 's’`; `"the dogs' 'x' bowls"`: `‘the⍽dogs’ “x” bowls’` →
+  `‘the⍽dogs' “x” bowls’`; `it) - 'cause' - 'cause -- "'cause) DOGS' - 'house' - it, - oz.) '90s" a`
+  (Prose): `… ‘’cause) DOGS’ — “house” — …` → `… ‘’cause) DOGS' — “house” — …`; with
+  `SingleQuotes::Everywhere`, `"S'. a(\n'3,".'`: `‘S’. a(\n'3,’.'` → `‘S'. a(\n'3,’.'`. With only
+  text between the possessive and the closer nothing changes (`“He said ‘the⍽dogs’ bowls’”`).
 
 ## 0.1.1 - unreleased
 
