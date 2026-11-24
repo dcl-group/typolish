@@ -257,6 +257,11 @@ expectation):
   chain, pairs the first two quotes (`«x „“-„“ y»`). The same class breaks P2 (section 12.2) in
   English: `"x ''-'' y"` gives `“x ''-‘’ y”`, whose `to_plain` `"x ''-"" y"` is typeset as
   `“x ‘’-‘’ y”`. This is a defect of the quote phase (sections 6.3 and 6.11), not a choice.
+- In a declared language whose primary pair is `‘’` (en-GB), a typed `‘` that stays neutral before a
+  straight pair around a typed `’` and a trailing possessive is not idempotent: `‘ "dogs'’" x` gives
+  `‘ ‘dogs'’’ x`, where the neutral `‘` keeps the possessive straight (section 6.6), and a second
+  pass pairs that `‘` with the new `’` and places the possessive (`‘ ‘dogs’’’ x`). This is a defect
+  of the quote phase (sections 6.6 and 6.11), not a choice.
 - A quoted value with a space glued to `=` is cut by the space: `title="My` is frozen (`Operator`),
   the quote after `App` closes nothing, and `Set title="My App" for the "main" window.` keeps every
   quote of the paragraph straight with `UnmatchedQuote` (warning, sections 6.1 and 6.6). Protect
