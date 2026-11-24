@@ -212,6 +212,15 @@ const SEEDS: &[&str] = &[
     "’'\"”»90'„\"",
     "\"a » b\"",
     "''''- a' b'",
+    // The trailing possessive after `s` and `S` (design section 6.6).
+    "DOGS' and JONES' BOOK",
+    "the dogs' bowl and the Joneses' car",
+    // A sign or a unit next to a number with and without a space (design section 8.7): two rules
+    // must not read one character.
+    "5 %1 and 5% and 5 %",
+    "5 $1 and 5$ and 5 $",
+    "5 §1 и 5 §",
+    "5 °1 и 5° и 5 °",
 ];
 
 #[test]
