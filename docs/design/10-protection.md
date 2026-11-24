@@ -285,3 +285,6 @@ expectation):
   unit out of the list (`remove_units(["Дж"])` gives `В⍽2001 Дж. Буш`).
 - A percentage range with a hyphen and the sign attached (`10-20%`) is a frozen fragment and keeps
   its hyphen; with a space (`10-20 %`) it gets the en dash in `PROSE` (`10–20⍽%`).
+- A range of two quantities with units and no spaces around the dash (`5 kg–10 kg`, `9 a.m.–5 p.m.`)
+  is one fragment from the first unit to the second number, so only the first unit is glued:
+  `5⍽kg–10 kg`, `9⍽a.m.–5 p.m.`. With spaces around the dash both are glued (`9⍽a.m. – 5⍽p.m.`).

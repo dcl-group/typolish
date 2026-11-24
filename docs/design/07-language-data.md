@@ -214,9 +214,13 @@ and in the order section 7.6 requires; `tests/data.rs` (section 13.9) checks the
 `°C` has a Latin `C`. Both are glued. The project units `м2`, `м3`, `км2`, `см2`, `см3`, `мм2` are
 the forms typed without a superscript; they are glued like `м²` and their digit is never changed
 (section 8.12, `NoDigitChange`). Each of them has its superscript form in the list (`м3` and `м³`),
-and the project row "completing the families" adds the members that the CLDR 49 row leaves out
-(`мВт` and `ГВт` next to `Вт`, `кВт`, `МВт`), so `5 м³` and `5 ГВт` are glued as `5 м²` and `5 МВт`
-are; `tests/data.rs` checks the superscript forms.
+which `tests/data.rs` checks. The project row "completing the families" fills in the family of the
+watt (`мВт` and `ГВт` next to `Вт`, `кВт`, `МВт`) and of the bit (`кбит`, `Тбит`, `кбит/с`) and adds
+the superscript forms, so `5 м³` and `5 ГВт` are glued as `5 м²` and `5 МВт` are. Of the joule and
+the ohm it adds the base unit and the kilo multiple (`Дж`, `кДж`, `Ом`, `кОм`), of the calorie
+`ккал`, and of the pascal the base unit `Па` next to `гПа`. Other members are not in the list and
+are not glued: `кПа`, `МПа`, `МОм`, `МДж`, `кал`, `мм³`, `км³`, `дм³` (`5 кПа` stays, while English
+`5⍽kPa` is glued, section 7.3). A caller adds them with `add_units`.
 
 `г.` and `в.` are duration units in CLDR; here they are year and century words, so `nbsp.dates`
 handles them (section 8.7) and they are not in `units`.
@@ -258,7 +262,16 @@ change this for `%` and `‰` only (section 8.7); `°C` is never affected.
 `a.m.` and `p.m.` are units as well as atom exceptions (both are dictionary entries, section 3.6),
 so `nbsp.units` glues them to the number before them: `5 p.m. and 5 a.m.` → `5⍽p.m. and⍽5⍽a.m.`. A
 time such as `5:30` is not a number for `nbsp.units` (`at⍽5:30 p.m. today`), and units are compared
-with case, so `5 P.M.` is not glued.
+with case, so `5 P.M.` is not glued. `5 A.M.` is glued (`5⍽A.M.`), but by the ampere `A`, which
+matches the start of the core because the `.` after it is no letter or digit; `p.m.` has no such
+unit. A range of times written without spaces around the dash (`9 a.m.–5 p.m.`) is one `Joined` core
+from `a.m.` to `5`, so that `5` is no number for `nbsp.units` and only the first time is glued
+(`9⍽a.m.–5 p.m.`), as with any unit (`5⍽kg–10 kg`, section 10.8); with spaces around the dash both
+are glued (`9⍽a.m. – 5⍽p.m.`).
+
+The project units `mW`, `GW`, `kJ` and `kPa` fill in the family of the watt and add the kilo
+multiple of the joule and the pascal; `J`, `MJ`, `Pa` and `MPa` are not in the list and are not
+glued (`5 J`, `5 MPa` stay). A caller adds them with `add_units`.
 
 ### 7.4 COMMON
 

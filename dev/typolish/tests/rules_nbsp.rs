@@ -934,6 +934,12 @@ const RU_UNITS: &[(&str, &str)] = &[
     ("Скидка 100 %.", "Скидка 100⍽%."),
     ("100 %", "100⍽%"),
     ("100%", "100%"),
+    // Members of the families that the lists leave out (design section 7.2).
+    ("5 кПа", "5 кПа"),
+    ("5 МОм", "5 МОм"),
+    ("5 МДж", "5 МДж"),
+    ("5 кал", "5 кал"),
+    ("5 мм³", "5 мм³"),
 ];
 
 #[test]
@@ -967,6 +973,8 @@ const EN_UNITS: &[(&str, &str)] = &[
     ("9 a.m., then", "9⍽a.m., then"),
     ("5:30 p.m.", "5:30 p.m."),
     ("5 P.M.", "5 P.M."),
+    // The ampere `A` matches the start of `A.M.` (design section 7.3).
+    ("5 A.M.", "5⍽A.M."),
     ("5 pm", "5 pm"),
     ("5–10 kg", "5–10⍽kg"),
     ("5 mb", "5 mb"),
@@ -976,6 +984,9 @@ const EN_UNITS: &[(&str, &str)] = &[
     ("100%", "100%"),
     ("5 МБ", "5 МБ"),
     ("№ 5 MB", "№ 5 MB"),
+    // Members of the families that the list leaves out (design section 7.3).
+    ("5 J", "5 J"),
+    ("5 MPa", "5 MPa"),
 ];
 
 #[test]

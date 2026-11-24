@@ -958,6 +958,20 @@ fn limits() -> Vec<Limit> {
         ),
         // A percentage range with the sign attached keeps its hyphen.
         limit(RU, ProseOnly, "10-20% и 10-20 %", "10-20% и⍽10–20⍽%"),
+        // A range of quantities without spaces around the dash glues the first unit only.
+        limit(EN, Both, "Lift 5 kg–10 kg daily.", "Lift 5⍽kg–10 kg daily."),
+        limit(
+            EN,
+            Both,
+            "Open 9 a.m.–5 p.m. daily.",
+            "Open 9⍽a.m.–5 p.m. daily.",
+        ),
+        limit(
+            EN,
+            Both,
+            "Open 9 a.m. – 5 p.m. daily.",
+            "Open 9⍽a.m. – 5⍽p.m. daily.",
+        ),
     ]
 }
 
