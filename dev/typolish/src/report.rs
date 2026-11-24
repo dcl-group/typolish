@@ -142,10 +142,11 @@ impl<T> fmt::Display for Report<'_, T> {
     /// `changes()` (rule, `piece:range`, the input text, `->`, the replacement), then one line per
     /// record of `protected()` (`protected`, the kind, `piece:range`, the protected text). Each
     /// column is as wide as its longest entry plus two spaces, separately for the two parts. A
-    /// text that is a single invisible character (a space other than U+0020, a control or a
-    /// format character) is written as `U+XXXX`, any other text in quotes, with `"`, `\` and
-    /// invisible characters escaped. The text is not part of the API contract (design section
-    /// 2.13).
+    /// text that is a single invisible character (a space other than U+0020, a control, a format
+    /// character or any code point with the Unicode property `Default_Ignorable_Code_Point`, such
+    /// as U+3164 HANGUL FILLER or U+FE0F) is written as `U+XXXX`, any other text in quotes, with
+    /// `"`, `\` and invisible characters escaped. The text is not part of the API contract (design
+    /// section 2.13).
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};

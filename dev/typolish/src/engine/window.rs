@@ -2,8 +2,9 @@
 //! with only horizontal whitespace between them, U+2029 PARAGRAPH SEPARATOR, or a
 //! `Piece::BlockMarkup`, which ingest has already made an empty `Boundary` atom. Atoms other than
 //! text (fenced blocks, slots, protected pieces, markup) are content, so a boundary of characters
-//! lies inside one `Text` atom. The characters of a boundary belong to no window; horizontal whitespace before
-//! the first or after the last line break of a boundary belongs to the window on that side.
+//! lies inside one `Text` atom. The characters of a boundary belong to no window; horizontal
+//! whitespace before the first or after the last line break of a boundary belongs to the window on
+//! that side.
 
 use super::ingest::Atom;
 
