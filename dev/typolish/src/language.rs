@@ -36,8 +36,9 @@ pub struct Language {
     repr: Repr,
 }
 
-/// Where the data of a language lives. Equality compares the tag and the data table, the hash
-/// uses the tag only; this is consistent, because equal languages have equal tags.
+/// Where the data of a language lives. Equality compares the tag and the data table, after a
+/// check of the addresses that settles a clone at once; the hash uses the tag only; this is
+/// consistent, because equal languages have equal tags.
 #[derive(Clone, Debug)]
 enum Repr {
     Static(&'static LanguageData),
@@ -54,7 +55,7 @@ struct Owned {
 
 impl PartialEq for Repr {
     fn eq(&self, other: &Repr) -> bool {
-        self.tag() == other.tag() && self.data() == other.data()
+        self.same_table(other) || (self.tag() == other.tag() && self.data() == other.data())
     }
 }
 
@@ -67,6 +68,18 @@ impl Hash for Repr {
 }
 
 impl Repr {
+    /// Whether both handles point at one table, so that they are equal without reading it: a
+    /// clone shares the `Arc` of a language built at run time, or the reference of a built-in
+    /// one. Different addresses say nothing (two promoted copies of one `const` table may differ),
+    /// so `eq` compares the tag and the table after a `false`.
+    fn same_table(&self, other: &Repr) -> bool {
+        match (self, other) {
+            (Repr::Static(a), Repr::Static(b)) => core::ptr::eq(*a, *b),
+            (Repr::Owned(a), Repr::Owned(b)) => Arc::ptr_eq(a, b),
+            _ => false,
+        }
+    }
+
     #[inline]
     fn data(&self) -> Table<'_> {
         match self {
@@ -924,5 +937,24 @@ mod tests {
         assert_eq!(kz.tag(), "ru-KZ");
         assert_ne!(kz, Language::RU_RU);
         assert_eq!(LanguageBuilder::new("UND").build().unwrap().tag(), "und");
+    }
+
+    #[test]
+    fn a_clone_is_equal_by_address() {
+        // `==` of two handles of one table returns before reading the table; handles of
+        // different tables, or of the two representations, compare the tag and the table.
+        let built = LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")
+            .build()
+            .unwrap();
+        assert!(built.repr.same_table(&built.clone().repr));
+        let ru = Language::from_static(&ru_ru::RU_RU);
+        assert!(ru.repr.same_table(&ru.clone().repr));
+        let rebuilt = LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")
+            .build()
+            .unwrap();
+        assert!(!built.repr.same_table(&rebuilt.repr));
+        assert!(!built.repr.same_table(&ru.repr));
+        assert_eq!(built, rebuilt);
+        assert_eq!(built, ru);
     }
 }

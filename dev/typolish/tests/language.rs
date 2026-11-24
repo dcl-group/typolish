@@ -130,6 +130,30 @@ fn equality_and_hash() {
 }
 
 #[test]
+fn a_clone_equals_its_original() {
+    // `==` returns at once for two handles of one table (a clone); the result is that of the
+    // full comparison.
+    assert_eq!(Language::RU_RU, Language::RU_RU.clone());
+    assert_eq!(Language::COMMON, Language::COMMON.clone());
+    let built = typolish::LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    assert_eq!(built, built.clone());
+    let again = typolish::LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    assert_eq!(built, again);
+    assert_ne!(built, Language::EN_US);
+    let copy = typolish::LanguageBuilder::from_language(&Language::RU_RU, "ru-RU")
+        .build()
+        .unwrap();
+    assert_eq!(copy.clone(), Language::RU_RU);
+    assert_eq!(Language::RU_RU, copy);
+}
+
+#[test]
 fn constants_are_const() {
     const RU: Language = Language::RU_RU;
     static EN: Language = Language::EN_US;

@@ -145,7 +145,12 @@ Choices:
   1.100 (checked, section 14.8), and its error owns the tag. A validated caller language in a
   `static` therefore needs `LazyLock`, or `from_static` plus a test that calls `from_data`. Equality
   compares the whole data table, so two languages with the same tag and different data are not
-  equal; the hash uses the tag only, which is consistent with that equality.
+  equal; the hash uses the tag only, which is consistent with that equality. Two handles of one
+  table (a clone: the same `Arc`, or the same `&'static LanguageData`) are equal at once, without
+  reading the table (`core::ptr::eq`, `Arc::ptr_eq`); different addresses decide nothing, since two
+  promoted copies of one `const` table may lie at different addresses, so the full comparison
+  follows. The result of `==` is the same either way (in a release build a clone compares in a few
+  nanoseconds instead of about 1.7 µs).
 - `LanguageData` has private fields and `const fn` setters (section 7.1); it is `Clone`, not `Copy`,
   so that its representation stays free. New fields can be added without a breaking release: a
   setter is added and existing tables keep the value of the table they started from. Language data
