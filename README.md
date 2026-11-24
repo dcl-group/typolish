@@ -311,8 +311,12 @@ The rules read the shape of the text, not its meaning. These cases are known and
   hyphen stays and `AmbiguousHyphen` is reported. `10:00-12:00` gets the en dash in `PROSE`.
 - A chain of short words is glued whole, with no limit on its length (`Он⍽и⍽я⍽и⍽ты⍽и⍽мы`, Russian
   `PROSE`): a text made of words of one or two letters has no place to break a line.
-- After a number a capital `В` or `А` is read as a unit (volt, ampere) and glued, and the word after
-  it in turn: `Часть 3⍽В⍽лесу`. The glue changes no visible character.
+- After a number a unit symbol that is also a word, a name or an initial is read as a unit and
+  glued: a capital `В` or `А` (volt, ampere), and the word after it in turn (`Часть 3⍽В⍽лесу`); `Дж`
+  (joule) before the full stop of an initial (`В⍽2001⍽Дж. Буш`); `Ом` and `Па` (ohm, pascal) as a
+  name or a word (`В⍽1827⍽Ом⍽открыл` in `PROSE`, `Глава 5⍽Па-де-де`); English `GW` (gigawatt) as
+  initials (`In⍽2001⍽GW Bush`). The glue changes no visible character, and `remove_units` takes a
+  unit out of the list (`remove_units(["Дж"])` gives `В⍽2001 Дж. Буш`).
 - A percentage range with a hyphen and the sign attached (`10-20%`) is a frozen fragment and keeps
   its hyphen; with a space (`10-20 %`) it gets the en dash in `PROSE` (`10–20⍽%`).
 

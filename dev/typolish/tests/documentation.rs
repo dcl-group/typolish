@@ -935,8 +935,27 @@ fn limits() -> Vec<Limit> {
         limit(RU, ProseOnly, "Приём 10:00-12:00", "Приём 10:00–12:00"),
         // A chain of short words is glued whole.
         limit(RU, ProseOnly, "Он и я и ты и мы", "Он⍽и⍽я⍽и⍽ты⍽и⍽мы"),
-        // A capital `В` or `А` after a number is read as a unit.
+        // A unit symbol that is also a word, a name or an initial is read as a unit after a number.
         limit(RU, Both, "Часть 3 В лесу", "Часть 3⍽В⍽лесу"),
+        limit(
+            RU,
+            Both,
+            "В 2001 Дж. Буш стал президентом.",
+            "В⍽2001⍽Дж. Буш стал президентом.",
+        ),
+        limit(
+            RU,
+            ProseOnly,
+            "В 1827 Ом открыл свой закон.",
+            "В⍽1827⍽Ом⍽открыл свой закон.",
+        ),
+        limit(RU, Both, "Глава 5 Па-де-де", "Глава 5⍽Па-де-де"),
+        limit(
+            EN,
+            Both,
+            "In 2001 GW Bush took office.",
+            "In⍽2001⍽GW Bush took office.",
+        ),
         // A percentage range with the sign attached keeps its hyphen.
         limit(RU, ProseOnly, "10-20% и 10-20 %", "10-20% и⍽10–20⍽%"),
     ]
@@ -974,6 +993,20 @@ fn known_limits_hold() {
             );
         }
     }
+}
+
+#[test]
+fn a_unit_read_from_a_name_can_be_removed() {
+    // Design section 10.8: `remove_units` takes a unit that the text uses as a name out of the
+    // list.
+    let t = Typographer::builder(RU.clone(), RuleSet::PROSE)
+        .remove_units(["Дж"])
+        .build()
+        .unwrap();
+    assert_eq!(
+        t.typeset("В 2001 Дж. Буш стал президентом.", Output::Unicode),
+        vis("В⍽2001 Дж. Буш стал президентом.")
+    );
 }
 
 #[test]
