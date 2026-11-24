@@ -22,6 +22,13 @@ stands for U+00A0).
   of one built with `LanguageBuilder` (design section 2.2); other pairs compare the tag and the
   table as before, and the result does not change. Measured in a release build: `a == a.clone()` 1.7
   µs → 4 ns.
+- The output stability policy names an exception (design sections 5.6 and 15.1): a later 1.x of
+  `unicode-segmentation` with newer Unicode tables can change cluster boundaries of characters
+  assigned long before, and with them the output of the built-in sets. Measured between 1.12.0 and
+  1.13.3, the version this release requires: U+11A3A ZANABAZAR SQUARE CLUSTER-INITIAL LETTER RA no
+  longer joins the character after it, so `"𑨺"` gives `«𑨺»` (Russian, both sets) where 1.12.0 left
+  it as written; `𑨺...` gives `𑨺…`. Callers who need byte-stable output keep the version of the
+  dependency in their lock file. Nothing changes for 0.1.1, which already requires 1.13.3.
 
 ### Fixed
 

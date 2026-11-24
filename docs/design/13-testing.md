@@ -463,7 +463,11 @@ the no-panic test.
   excluded from the published package (`exclude` in `Cargo.toml`); the test is skipped when the file
   is absent. A conformance test pins `unicode_segmentation::UNICODE_VERSION` to the version of the
   fixture, so a dependency update forces a fixture update. The file is fetched from unicode.org in
-  stage 2.
+  stage 2. Two tables of the same file pin what differs between versions of the dependency (section
+  5.6): the clusters of sequences of old characters whose boundaries changed between 1.10.1, 1.12.0
+  and 1.13.3 (GB9c, `Extended_Pictographic`, U+11A3A), with the measured clusters of the older
+  versions, and the typeset output of the inputs where the change reaches the output, with the
+  output measured under 1.12.0.
 - Tables for spaces with combining marks (section 5.3), NFD words (section 5.5), mixed scripts
   (section 5.7, with the units `μs` and `µs` raising no `MixedScript`) and format characters
   (section 5.4, with U+00AD inside words: `21 ноя\u{AD}бря` gets its glue, `в Мо\u{AD}скве` is a

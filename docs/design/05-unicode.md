@@ -122,9 +122,30 @@ typesetting.
 Grapheme boundaries come from `unicode-segmentation` 1.13.3 (Unicode 17.0.0); `is_alphabetic` and
 `is_whitespace` come from std, which is Unicode 18.0.0 in Rust 1.100 (both checked, section 14.8);
 scripts come from the crate's own ranges. The result is identical on all platforms for the same
-versions. A newer dependency or compiler can change the classification of characters assigned after
-these versions only. A conformance test pins the Unicode version of the dependency, so that an
-update also updates the `GraphemeBreakTest.txt` fixture.
+versions. A conformance test pins the Unicode version of the dependency, so that an update also
+updates the `GraphemeBreakTest.txt` fixture.
+
+The manifest asks for `unicode-segmentation = "1.13.3"`, so Cargo may pick any later 1.x for a
+caller. A newer version of the dependency can change cluster boundaries of characters assigned long
+before, not only of new ones: the rules and the properties of UAX #29 change for old characters too.
+Measured with three versions of the dependency on every code point next to one character of each
+break class (the probe lives outside the repository; its findings are the tables of
+`tests/graphemes.rs`):
+
+| Change                                                                 | 1.10.1 (15.0) | 1.12.0 (16.0) | 1.13.3 (17.0)   | Output of the built-in sets |
+| ---------------------------------------------------------------------- | ------------- | ------------- | --------------- | --------------------------- |
+| rule GB9c: Indic conjuncts (`क्ष`, `ক্ষ`, `ക്ഷ`) are one cluster          | `क्\|ष`        | `क्ष`          | `क्ष`            | unchanged (letters only)    |
+| GB9c extended to Myanmar and Khmer (`က္က`, `ក្ក`)                        | `က္\|က`        | `က္\|က`        | `က္က`            | unchanged (letters only)    |
+| `Extended_Pictographic` dropped for 660 old symbols (`★`, Unicode 1.1) | `😀\u{200D}★` | `😀\u{200D}★` | `😀\u{200D}\|★` | unchanged (symbols only)    |
+| U+11A3A ZANABAZAR SQUARE CLUSTER-INITIAL LETTER RA no longer `Prepend` | `𑨺"`          | `𑨺"`          | `𑨺\|"`          | changed                     |
+
+Under the older versions U+11A3A (Unicode 10.0) joins the character after it, a quote, a space or a
+full stop included, into one cluster, which the rules leave alone; with 1.13.3 they are typeset:
+`"𑨺"` stays as written with 1.12.0 and gives `«𑨺»` with 1.13.3 (Russian, both sets), `𑨺...` gives
+`𑨺…`, `𑨺 - да` gives `𑨺⍽— да`. The other changes move boundaries only inside a run of letters or of
+symbols, which forms the same tokens either way. So a newer dependency can change the output for old
+characters as well; section 15.1 says how the output stability policy treats such an update (choice
+C56).
 
 ### 5.7 Mixed languages
 

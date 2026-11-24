@@ -252,3 +252,110 @@ fn clusters_led_by_a_non_letter_come_out_unchanged() {
         }
     }
 }
+
+/// Sequences of characters assigned long before Unicode 17.0.0 whose cluster boundaries differ
+/// between versions of `unicode-segmentation` (design sections 5.6 and 15.1): the clusters with
+/// 1.13.3 (Unicode 17.0.0), the version of the manifest, and as measured with 1.12.0 (Unicode
+/// 16.0.0) and 1.10.1 (Unicode 15.0.0). Clusters are separated by `|`.
+const CHANGED_BOUNDARIES: &[(&str, &str, &str, &str)] = &[
+    // Rule GB9c (Unicode 15.1): an Indic conjunct is one cluster.
+    ("\u{915}\u{94d}\u{937}", "क्ष", "क्ष", "क्|ष"),
+    (
+        "\u{915}\u{94d}\u{200d}\u{937}",
+        "क्\u{200d}ष",
+        "क्\u{200d}ष",
+        "क्\u{200d}|ष",
+    ),
+    ("\u{995}\u{9cd}\u{9b7}", "ক্ষ", "ক্ষ", "ক্|ষ"),
+    ("\u{d15}\u{d4d}\u{d37}", "ക്ഷ", "ക്ഷ", "ക്|ഷ"),
+    // GB9c extended to Myanmar and Khmer (Unicode 17.0.0).
+    ("\u{1000}\u{1039}\u{1000}", "က္က", "က္|က", "က္|က"),
+    ("\u{1780}\u{17d2}\u{1780}", "ក្ក", "ក្|ក", "ក្|ក"),
+    // `Extended_Pictographic` no longer holds for U+2605 BLACK STAR and many other symbols of
+    // Unicode 1.1, so rule GB11 no longer joins them after an emoji and a ZWJ.
+    (
+        "\u{1f600}\u{200d}\u{2605}",
+        "😀\u{200d}|★",
+        "😀\u{200d}★",
+        "😀\u{200d}★",
+    ),
+    (
+        "\u{1f600}\u{200d}\u{2764}",
+        "😀\u{200d}❤",
+        "😀\u{200d}❤",
+        "😀\u{200d}❤",
+    ),
+    // U+11A3A ZANABAZAR SQUARE CLUSTER-INITIAL LETTER RA (Unicode 10.0) is no longer `Prepend`, so
+    // rule GB9b no longer joins it with the character after it, a quote or a space included.
+    ("\u{11a3a}\"", "𑨺|\"", "𑨺\"", "𑨺\""),
+    ("\u{11a3a} ", "𑨺| ", "𑨺 ", "𑨺 "),
+    ("\u{11a3a}a", "𑨺|a", "𑨺a", "𑨺a"),
+    // Unchanged: U+0600 ARABIC NUMBER SIGN stays `Prepend`.
+    ("\u{600}\"", "\u{600}\"", "\u{600}\"", "\u{600}\""),
+];
+
+#[test]
+fn boundaries_that_changed_between_versions_of_the_dependency() {
+    // Design section 5.6: a newer `unicode-segmentation` changes cluster boundaries of characters
+    // assigned long before, not only of new ones. The table pins the boundaries of the manifest's
+    // version; the other two columns record the measured clusters of older versions.
+    assert_eq!(unicode_segmentation::UNICODE_VERSION, (17, 0, 0));
+    for &(text, now, v1_12, v1_10) in CHANGED_BOUNDARIES {
+        let got: Vec<&str> = text.graphemes(true).collect();
+        assert_eq!(got.join("|"), now, "{}", text.escape_unicode());
+        for old in [v1_12, v1_10] {
+            assert_eq!(old.replace('|', ""), text, "{}", text.escape_unicode());
+        }
+    }
+}
+
+#[test]
+fn output_that_changed_between_versions_of_the_dependency() {
+    // Design sections 5.6 and 15.1: with `unicode-segmentation` 1.12.0 U+11A3A joined the quote,
+    // dash or full stop after it into one cluster, which the rules leave alone; with 1.13.3 the
+    // quote, the dash and the ellipsis after it are typeset. The third column is the output
+    // measured with 1.12.0 (the same with 1.10.1).
+    let ru = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    let en = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    let rows: &[(&Typographer, &str, &str, &str)] = &[
+        (&ru, "\"\u{11a3a}\"", "«\u{11a3a}»", "\"\u{11a3a}\""),
+        (
+            &ru,
+            "\u{11a3a} - да",
+            "\u{11a3a}\u{a0}— да",
+            "\u{11a3a} - да",
+        ),
+        (
+            &ru,
+            "\"да\" \u{11a3a}\"",
+            "\"да\" \u{11a3a}\"",
+            "«да» \u{11a3a}\"",
+        ),
+        (&en, "\u{11a3a}...", "\u{11a3a}…", "\u{11a3a}..."),
+        (&en, "\u{11a3a}'s", "\u{11a3a}’s", "\u{11a3a}'s"),
+        (
+            &en,
+            "x (\u{11a3a}) - y",
+            "x (\u{11a3a}) - y",
+            "x (\u{11a3a})—y",
+        ),
+        // GB9c and the emoji change move boundaries inside a run of letters or symbols only, so
+        // the output stays the same.
+        (&ru, "\"क्ष\" - да", "«क्ष»\u{a0}— да", "«क्ष»\u{a0}— да"),
+        (&en, "\"😀\u{200d}★\"", "“😀\u{200d}★”", "“😀\u{200d}★”"),
+    ];
+    for &(t, input, now, v1_12) in rows {
+        assert_eq!(
+            t.typeset(input, Output::Unicode),
+            now,
+            "{}",
+            input.escape_unicode()
+        );
+        assert_eq!(
+            now != v1_12,
+            input.contains('\u{11a3a}'),
+            "{}",
+            input.escape_unicode()
+        );
+    }
+}
