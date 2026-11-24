@@ -341,13 +341,16 @@ pub(crate) const fn script_bit(c: char) -> u8 {
     }
 }
 
-/// The script of a word from the scripts of its letters.
+/// The script of a word from the scripts of its letters: a word is `Mixed` only when its letters
+/// come from two of Cyrillic, Latin and Greek; letters of other scripts never make it `Mixed`
+/// (design section 5.2).
 const fn script_of(mask: u8) -> WordScript {
     match mask {
         1 => WordScript::Cyrillic,
         2 => WordScript::Latin,
         4 => WordScript::Greek,
         8 | 0 => WordScript::Other,
+        m if (m & 7).is_power_of_two() => script_of(m & 7),
         _ => WordScript::Mixed,
     }
 }

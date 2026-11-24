@@ -441,9 +441,13 @@ fn build_units(text: &str, core: &[Tok], offset: u32, out: &mut Vec<Unit>) {
                 .is_some_and(|between| between.iter().all(|t| t.kind.is_transparent()))
         {
             let joined = match (last.u, u) {
-                (U::Word(a), U::Word(b)) => {
-                    Some(U::Word(if a == b { a } else { WordScript::Mixed }))
-                }
+                // `Other` letters never make a word `Mixed` (design section 5.2).
+                (U::Word(a), U::Word(b)) => Some(U::Word(match (a, b) {
+                    (x, y) if x == y => x,
+                    (WordScript::Other, y) => y,
+                    (x, WordScript::Other) => x,
+                    _ => WordScript::Mixed,
+                })),
                 (U::Num, U::Num) => Some(U::Num),
                 (U::Hy(a), U::Hy(b)) => Some(U::Hy(a.saturating_add(b))),
                 (U::Dots(a), U::Dots(b)) => Some(U::Dots(a.saturating_add(b))),

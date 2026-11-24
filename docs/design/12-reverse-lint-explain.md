@@ -191,7 +191,7 @@ never decides for the caller.
 | `AmbiguousQuote`    | info     | `quotes.pairs`                             | a straight quote with spaces or letters on both sides, or one of three or more quotes in a series: no role    |
 | `UnclosedDelimiter` | warning  | protection (no rule)                       | an opening delimiter without its closing one; it was treated as text                                          |
 | `AmbiguousHyphen`   | info     | `dash.spaced-hyphen`, `dash.double-hyphen` | `-` that section 8.4 refuses (numbers, ranges, single letters, foreign words, a flag)                         |
-| `MixedScript`       | warning  | classifier (no rule)                       | a word with letters of two scripts (`Мoсква`), unless a dictionary entry (`μs`)                               |
+| `MixedScript`       | warning  | classifier (no rule)                       | a word with letters of two of Cyrillic, Latin and Greek (`Мoсква`), unless a dictionary entry (`μs`)          |
 | `SlotGlue`          | warning  | classifier (no rule)                       | a `Number` slot glued to letters (`{n}МБ`)                                                                    |
 | `SlotGlue`          | info     | classifier (no rule)                       | two slots glued together (`{a}{b}`)                                                                           |
 | `NowrapFallback`    | info     | renderer (no rule)                         | a nowrap group split at a `Markup` piece (reported at that piece); the glue at the split written as an entity |

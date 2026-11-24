@@ -42,12 +42,13 @@ a foreign crate enabling it would silently change everybody's output).
   script.
 - **Script** of a letter comes from fixed ranges in code: Cyrillic U+0400–U+052F, U+1C80–U+1C8F,
   U+2DE0–U+2DFF, U+A640–U+A69F; Latin ASCII letters, U+00C0–U+024F, U+1E00–U+1EFF, U+2C60–U+2C7F,
-  U+A720–U+A7FF; Greek U+0370–U+03FF, U+1F00–U+1FFF; everything else `Other`. A word whose letters
-  come from more than one script is `Mixed` (`Мoсква` with a Latin `o`). The ranges are a constant
-  table, so the script of a letter does not depend on the Rust version. The `MixedScript` diagnostic
-  is not raised for a core that matched a dictionary entry (check 0 of section 3.6), so the
-  language's own units pass silently: `μs` (Greek U+03BC, Latin `s`) and `µs` (U+00B5, which falls
-  outside the Latin ranges).
+  U+A720–U+A7FF; Greek U+0370–U+03FF, U+1F00–U+1FFF; everything else `Other`. A word is `Mixed` only
+  if its letters come from two of Cyrillic, Latin and Greek (`Мoсква` with a Latin `o`); `Other`
+  never makes a word `Mixed` (`Azərbaycan`, `ﬁnd`, `Nº`, `日本語abc` are not, section 15.3, C43).
+  The ranges are a constant table, so the script of a letter does not depend on the Rust version.
+  The `MixedScript` diagnostic is not raised for a core that matched a dictionary entry (check 0 of
+  section 3.6), so the language's own units pass silently: `μs` (Greek U+03BC, Latin `s`) and `µs`
+  (U+00B5, which falls outside the Latin ranges).
 - **Digits** for number rules are ASCII `0` to `9` only. Digits of other systems are word
   characters: a cluster led by a non-ASCII character with `char::is_numeric` (Arabic-Indic and
   fullwidth digits, and also superscript digits, fractions and circled numbers) is a letter cluster

@@ -971,6 +971,19 @@ const MIXED: &[(&str, &[&str])] = &[
     ("сло\u{200d}во", &[]),
     ("Мо\u{ad}скве", &[]),
     ("Привет, world", &[]),
+    // Letters of other scripts never make a word mixed (design section 5.2): a Latin word with a
+    // schwa, a ligature or `º`, and Latin with CJK or with an Arabic-Indic digit after a soft
+    // hyphen.
+    ("Azərbaycan", &[]),
+    ("\u{fb01}nd", &[]),
+    ("N\u{ba} 5", &[]),
+    ("日本語abc", &[]),
+    ("abc\u{ad}\u{663}", &[]),
+    // Two of Cyrillic, Latin and Greek, also across a soft hyphen.
+    ("\u{41c}o\u{ad}c", &["\u{41c}o\u{ad}c"]),
+    ("a\u{ad}\u{41c}b", &["a\u{ad}\u{41c}b"]),
+    ("\u{3a9}mega", &["\u{3a9}mega"]),
+    ("abc\u{41c}", &["abc\u{41c}"]),
 ];
 
 #[test]
