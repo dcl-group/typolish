@@ -1197,6 +1197,15 @@ impl TypographerBuilder {
     ///
     /// Affects the rules `range.context` and `nbsp.units`.
     ///
+    /// # Errors
+    ///
+    /// [`build`](TypographerBuilder::build) returns [`Error::InvalidSetting`] for `units` when an
+    /// added unit is empty, contains whitespace, starts with an ASCII digit or is also removed; is
+    /// equal to a short word or a particle (with case) and not an ambiguous unit of the language,
+    /// which the builder cannot declare (`в` in Russian; `с` and `В` are accepted); or is one
+    /// character equal to a sign of the language (`§`). Such a unit would be read by two rules,
+    /// and a second pass would differ (design sections 2.11 and 7.6).
+    ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
     ///
@@ -1493,9 +1502,10 @@ impl TypographerBuilder {
     /// Validates every setting (design section 2.11) and builds the typographer.
     ///
     /// The checks run in a fixed order and the first failing one is reported: rule conflicts,
-    /// protection delimiters, quote pairs, the lists (units, short words, particles), then the
-    /// group separator, the minus sign and the minimum grouping digits. Within a check, the
-    /// offending value that is smallest in code point order is reported.
+    /// protection delimiters, quote pairs, the lists (units, short words, particles, then the
+    /// added units against the short words, the particles and the signs), then the group
+    /// separator, the minus sign and the minimum grouping digits. Within a check, the offending
+    /// value that is smallest in code point order is reported.
     ///
     /// ```
     /// use typolish::{Error, Language, RuleSet, Typographer};
@@ -1524,6 +1534,7 @@ impl TypographerBuilder {
         normalize_list(&mut settings.units, "units", false)?;
         normalize_list(&mut settings.short_words, "short_words", true)?;
         normalize_list(&mut settings.particles, "particles", true)?;
+        check_units(&language, &settings)?;
         if let Some(c) = settings.group_separator.filter(|c| !is_valid_group(*c)) {
             return Err(invalid(
                 "group_separator",
@@ -1686,6 +1697,40 @@ fn normalize_list(edit: &mut ListEdit, setting: &'static str, fold: bool) -> Res
     edit.added = sorted(added);
     edit.removed = sorted(removed);
     Ok(())
+}
+
+/// Checks the added units against the other lists (design sections 2.11 and 7.6): a unit equal to
+/// a short word or a particle (compared with case) must be an ambiguous unit of the language, which
+/// a builder cannot list, and a unit of one character must not be a sign of the language. Both
+/// rules would read such a unit, and a second pass would differ.
+fn check_units(language: &Language, settings: &Settings) -> Result<(), Error> {
+    let data = language.data();
+    let offending = settings
+        .units
+        .added
+        .iter()
+        .map(String::as_str)
+        .filter_map(|unit| {
+            let reason = if unit.chars().all(|c| fold_char(c) == c)
+                && !data.ambiguous_units.contains(unit)
+                && (settings.short_words.holds(data.short_words, unit.chars())
+                    || settings.particles.holds(data.particles, unit.chars()))
+            {
+                "is also a short word or a particle and is not an ambiguous unit of the language"
+            } else if data.signs.iter().any(|c| unit.chars().eq([*c])) {
+                "is also a sign of the language"
+            } else {
+                return None;
+            };
+            Some((
+                unit.to_owned(),
+                format!("`{}` {reason}", crate::report::Raw(unit)),
+            ))
+        });
+    match smallest(offending) {
+        Some((_, reason)) => Err(invalid("units", reason)),
+        None => Ok(()),
+    }
 }
 
 fn sorted(mut list: Vec<String>) -> Vec<String> {

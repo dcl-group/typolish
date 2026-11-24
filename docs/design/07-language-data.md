@@ -133,7 +133,11 @@ impl LanguageBuilder {
 Inside the engine both kinds of language are read through one private view, so rules do not know
 where the data came from. A list method replaces the whole list of the language it started from, and
 `build()` validates the result rather than repairing it: a builder that replaces `units` of en-US
-must also replace `ambiguous_units`, whose `in` would otherwise not be a unit (section 7.6).
+must also replace `ambiguous_units`, whose `in` would otherwise not be a unit (section 7.6). The
+typographer's builder (section 2.4) edits the lists of a language but cannot declare a unit
+ambiguous, so it rejects an added unit equal to a short word or a particle that is not an ambiguous
+unit of the language, and an added unit of one character equal to a sign of the language (section
+2.11).
 
 Lookups: lists are sorted (by the author for `const` tables, validated; by `LanguageBuilder` for
 run-time languages) and searched by binary search without allocation. Word lists (section 7.6) are

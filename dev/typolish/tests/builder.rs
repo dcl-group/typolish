@@ -12,7 +12,7 @@
 )]
 
 use typolish::{
-    DashStyle, Error, Language, NarrowGlue, PercentSpacing, QuotePairs, Rule, RuleSet,
+    DashStyle, Error, Language, NarrowGlue, Output, PercentSpacing, QuotePairs, Rule, RuleSet,
     SingleQuotes, Typographer, TypographerBuilder,
 };
 
@@ -403,6 +403,38 @@ fn units_may_not_start_with_a_digit_but_may_contain_one() {
             .build()
             .is_ok()
     );
+}
+
+/// An added unit equal to a short word or a particle (compared with case) that is not an ambiguous
+/// unit of the language, or of one character equal to a sign of the language, is read by two rules
+/// and breaks idempotence (design sections 2.11 and 7.6).
+#[test]
+fn an_added_unit_must_not_be_a_short_word_a_particle_or_a_sign() {
+    let (setting, reason) = setting_error(base().add_units(["в"]));
+    assert_eq!(setting, "units");
+    assert!(reason.contains("`в`"), "{reason}");
+    assert_eq!(setting_of(base().add_units(["ли"])), "units");
+    assert_eq!(setting_of(base().add_units(["м", "же"])), "units");
+    let all = Typographer::builder(Language::RU_RU, RuleSet::ALL);
+    let (setting, reason) = setting_error(all.clone().add_units(["§"]));
+    assert_eq!(setting, "units");
+    assert!(reason.contains("`§`"), "{reason}");
+    assert_eq!(
+        setting_of(Typographer::builder(Language::EN_US, RuleSet::PROSE).add_units(["№"])),
+        "units"
+    );
+    // Removed from the short words, listed as ambiguous by the language, or differing in case.
+    let t = base()
+        .add_units(["в"])
+        .remove_short_words(["в"])
+        .build()
+        .unwrap();
+    let once = t.typeset("Нас было 5 в лесу", Output::Unicode);
+    assert_eq!(once, "Нас было 5\u{a0}в\u{a0}лесу");
+    assert_eq!(t.typeset(&once, Output::Unicode), once);
+    assert!(base().add_units(["с"]).build().is_ok());
+    assert!(base().add_units(["В"]).build().is_ok());
+    assert!(all.add_units(["§§", "%", "‰"]).build().is_ok());
 }
 
 #[test]
