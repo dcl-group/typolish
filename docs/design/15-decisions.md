@@ -140,6 +140,14 @@ Decided by the maintainer on 2026-11-23; not reopened here:
     repository is pushed (items 1 and 15). The tag `v0.1.1` is set and pushed only on that command
     too (section 14.7).
 
+Decided by the maintainer on 2026-11-24; not reopened here:
+
+35. The unit lists of sections 7.2 and 7.3 are extended before the first publication: ru-RU gains
+    `ГВт`, `Дж`, `Ом`, `Па`, `Тбит`, `кДж`, `кОм`, `кбит`, `кбит/с`, `ккал`, `км²`, `м³`, `мВт`,
+    `мм²`, `см²`, `см³`, and en-US gains `GW`, `kJ`, `kPa`, `mW`, `a.m.`, `p.m.`, so `5⍽ГВт`, `5⍽м³`
+    and `5⍽p.m.` are glued (section 15.5, item 16). The limit "the unit lists are a selection" is
+    withdrawn from section 10.8.
+
 The task itself fixes further points used throughout: the minus sign U+2212 for numbers, the
 mandatory negative cases, HTML outside the core, `thiserror` for errors, `cargo deny check` clean,
 clippy without warnings, rustdoc with an example on every public item, README and CHANGELOG in

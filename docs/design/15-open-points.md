@@ -26,7 +26,7 @@ their number and record the date of the decision.
 | 13   | Output stability policy                     | Settled 2026-11-22 | output of the sets changes only in breaking releases; `ALL` outside |
 | 14   | Public language data in version 1           | Settled 2026-11-22 | public `LanguageData` and `LanguageBuilder`                         |
 | 15   | `nbsp.phone` in Interface                   | Settled 2026-11-22 | Prose only                                                          |
-| 16   | Word lists and norms from secondary sources | Settled 2026-11-22 | lists as in section 7                                               |
+| 16   | Word lists and norms from secondary sources | Settled 2026-11-22 | lists as in section 7; unit lists extended 2026-11-24               |
 | 17   | Digit grouping in text                      | Settled 2026-11-22 | no text rule; `format_number` groups values                         |
 
 #### Settled on 2026-11-22
@@ -132,8 +132,11 @@ short words of section 7.3; (a) for Russian, the lists of section 7.2. Rejected:
 release. The Russian lists and the norms "glue before a dash", "glue after a dialogue dash" and
 `?..` rest on Wikipedia articles (Mil'chin's handbook and GOST were not read); the English lists,
 elisions, abbreviations and the closed dash rest on project choices and secondary sources (the
-Chicago Manual of Style was not read). After 0.1.1 list changes follow the output stability policy
-(section 15.1).
+Chicago Manual of Style was not read). On 2026-11-24, before the first publication, the maintainer
+extended the unit lists of sections 7.2 and 7.3 (section 15.2, item 35): the Russian project row
+"completing the families" and the English project units `mW`, `GW`, `kJ`, `kPa`, `a.m.`, `p.m.` are
+part of the lists settled here. After 0.1.1 list changes follow the output stability policy (section
+15.1).
 
 **17.** **Digit grouping in text** (`1000000 рублей` → `1⍽000⍽000 рублей`). Settled 2026-11-22: (a)
 no grouping rule in version 1; values are grouped by `format_number` (sections 2.7, 8.8). A run of
