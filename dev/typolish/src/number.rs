@@ -216,6 +216,20 @@ impl From<f64> for Number<'static> {
 /// assert_eq!(buf, "12,345 items");
 /// # Ok::<(), core::fmt::Error>(())
 /// ```
+///
+/// The formatter's width, fill, alignment and precision are ignored; format into a `String` and pad
+/// that if needed.
+///
+/// ```
+/// use typolish::{Language, Output, RuleSet, Typographer};
+///
+/// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+///
+/// let n = RU.format_number(12345, Output::Unicode);
+/// assert_eq!(format!("[{n:>12}]"), "[12\u{a0}345]");
+/// assert_eq!(format!("[{n:.1}]"), "[12\u{a0}345]");
+/// assert_eq!(format!("[{:>12}]", n.to_string()), "[      12\u{a0}345]");
+/// ```
 #[must_use = "formats only when displayed"]
 #[derive(Clone, Copy, Debug)]
 pub struct NumberDisplay<'t, 'n> {
@@ -225,7 +239,7 @@ pub struct NumberDisplay<'t, 'n> {
 }
 
 /// Two numbers with the range pattern of the language: [`Typographer::format_range`]. Lazy, like
-/// [`NumberDisplay`].
+/// [`NumberDisplay`], and like it, it ignores the formatter's width, fill, alignment and precision.
 ///
 /// ```
 /// use typolish::{Language, Output, RuleSet, Typographer};
@@ -233,6 +247,7 @@ pub struct NumberDisplay<'t, 'n> {
 /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
 ///
 /// assert_eq!(RU.format_range(-5, -1, Output::Unicode).to_string(), "\u{2212}5–\u{2212}1");
+/// assert_eq!(format!("[{:>9}]", RU.format_range(1, 2, Output::Unicode)), "[1–2]");
 /// ```
 #[must_use = "formats only when displayed"]
 #[derive(Clone, Copy, Debug)]

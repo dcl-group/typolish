@@ -710,6 +710,9 @@ Formatting rules:
   right. The longest `f64` in `{}` is 327 bytes with its sign (`-5e-324` written out), so a stack
   buffer would fit too; the counting pass avoids a fixed bound that would have to be re-checked if
   the representation of core changed.
+- `NumberDisplay` and `RangeDisplay` ignore the formatter's width, fill, alignment and precision
+  (`format!("[{:>12}]", …)` gives `[12⍽345]`): padding would need the length first, and a caller
+  formats into a `String` and pads that.
 
 A template and its value stay consistent because one `Typographer` (one `LanguageData`, one set of
 number settings) typesets the template at build time and formats the numbers at run time; the range
