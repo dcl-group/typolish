@@ -85,24 +85,24 @@ limit its length.
 **Which `’` is an apostrophe** (English, where `’` is both the apostrophe and the nested closing
 quote). A `’` in a fixed apostrophe context of section 6.2 (between letters, after a digit before a
 letter, an elision, at a word start before digits) is an apostrophe. A `’` that has nothing but
-signs (or nothing) between it and the `‘` on top of the open pairs, where that `‘` has L of class
-`Space`, `OpenP` or `DashC` and the `’` has R of class `Space`, `CloseP` or `DashC`, closes it: the
-mirror of the sign-only pair of section 6.3, by which plain `""`, `"-"` or `"?"` inside a pair is
-typeset as `‘’`, `‘-’`, `‘?’` whatever the roles of its series (`“a ‘’ b”` → `"a "" b"`); two
-adjacent quotes in a series of three or more do not count. Any other `’` with a closing role closes
-the innermost open `‘` of its depth, mirroring the forward algorithm, with one exception: a `’`
-after `s` and before a non-letter, where the forward algorithm puts a trailing possessive, leaves
-the `‘` open if a later `’` of the same depth, before the next `‘` of that depth and before the
-closer of the enclosing pair, has a closing role and does not follow `s`; that later `’` closes it.
-The pairs opened after the first `’` are followed by their kind: a `’` inside a deeper `“…”` closes
-nothing there (it is an apostrophe), so it neither ends that pair nor the search
-(`“‘a dogs’ b “c dogs’ d” e’ f”` → `""a dogs' b "c dogs' d" e" f"`). A `’` that closes nothing is an
-apostrophe. So `“He said ‘the dogs’ bowl is empty’”` → `"He said "the dogs' bowl is empty""`, and
-`“‘Hi,’ said the dogs’ owner”` → `""Hi," said the dogs' owner"`. When every candidate follows `s`
-(`‘the dogs’ bowls’`), the first one closes, and the round trip lists the case as a known loss
-(`NestedPossessive`, section 12.2). The classes of the neighbors are those of section 6.3: a
-character inside a protected span (a frozen core, a delimited span) is of class `Word`, so the `’`
-of `“x ‘y 2026{’”` closes.
+signs (or nothing) between it and the `‘` on top of the open pairs, the `‘` of the pair whose closer
+is `’` (primary or nested), where that `‘` has L of class `Space`, `OpenP` or `DashC` and the `’`
+has R of class `Space`, `CloseP` or `DashC`, closes it: the mirror of the sign-only pair of section
+6.3, by which plain `""`, `"-"` or `"?"` inside a pair is typeset as `‘’`, `‘-’`, `‘?’` whatever the
+roles of its series (`“a ‘’ b”` → `"a "" b"`); two adjacent quotes in a series of three or more do
+not count. Any other `’` with a closing role closes the innermost open `‘` of its depth, mirroring
+the forward algorithm, with one exception: a `’` after `s` and before a non-letter, where the
+forward algorithm puts a trailing possessive, leaves the `‘` open if a later `’` of the same depth,
+before the next `‘` of that depth and before the closer of the enclosing pair, has a closing role
+and does not follow `s`; that later `’` closes it. The pairs opened after the first `’` are followed
+by their kind: a `’` inside a deeper `“…”` closes nothing there (it is an apostrophe), so it neither
+ends that pair nor the search (`“‘a dogs’ b “c dogs’ d” e’ f”` → `""a dogs' b "c dogs' d" e" f"`). A
+`’` that closes nothing is an apostrophe. So `“He said ‘the dogs’ bowl is empty’”` →
+`"He said "the dogs' bowl is empty""`, and `“‘Hi,’ said the dogs’ owner”` →
+`""Hi," said the dogs' owner"`. When every candidate follows `s` (`‘the dogs’ bowls’`), the first
+one closes, and the round trip lists the case as a known loss (`NestedPossessive`, section 12.2).
+The classes of the neighbors are those of section 6.3: a character inside a protected span (a frozen
+core, a delimited span) is of class `Word`, so the `’` of `“x ‘y 2026{’”` closes.
 
 The canonical plain form, for the enabled rules, is the Plain column of the table above, with these
 choices: no typographic character that the rules produce; a dash between words written `-` (not

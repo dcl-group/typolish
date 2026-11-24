@@ -817,6 +817,34 @@ fn plain_forms_are_not_normalized() {
 }
 
 #[test]
+fn a_sign_only_pair_comes_back_when_the_primary_pair_closes_with_an_apostrophe() {
+    // A language whose primary pair is `‘’` (en-GB): plain `""` is typeset as `‘’`, and `’` closes
+    // the primary pair, so `to_plain` reads the pair back as `""` (design section 12.1, the mirror
+    // of the sign-only pair of section 6.3), and P2 holds.
+    let gb = LanguageBuilder::from_language(&en(), "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    for set in [RuleSet::PROSE, RuleSet::INTERFACE] {
+        let t = Typographer::new(gb.clone(), set);
+        for (plain, typeset) in [
+            ("\"\"", "‘’"),
+            ("\"-\"", "‘-’"),
+            ("say \"\" now", "say ‘’ now"),
+            ("\"x '' y\"", "‘x “” y’"),
+            ("\"x '-' y\"", "‘x “-” y’"),
+        ] {
+            let y = t.typeset(plain, Output::Unicode);
+            assert_eq!(y, typeset, "{set} {plain:?}");
+            let back = t.to_plain(&y);
+            let expected = plain.replace('\'', "\"");
+            assert_eq!(back, expected, "{set} {}", show(&y));
+            assert_eq!(t.typeset(&back, Output::Unicode), y, "{set} {plain:?}: P2");
+        }
+    }
+}
+
+#[test]
 fn the_settings_of_the_builder_reach_to_plain() {
     // Own quote pairs (the language data with the builder's overrides, design section 12.1).
     let own = Typographer::builder(en(), RuleSet::PROSE)

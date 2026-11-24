@@ -1129,16 +1129,19 @@ fn is_sign(c: char) -> bool {
 
 /// Whether the `’` at `at..end` is the mirror of the second quote of a sign-only pair (design
 /// section 6.3): the nearest character before it that is not a sign or a format character is the
-/// nested opener, whose series has L of class `Space`, `OpenP` or `DashC`, and two adjacent quotes
+/// opener of the pair whose closer is `’` (nested or primary), whose series has L of class `Space`, `OpenP` or `DashC`, and two adjacent quotes
 /// are not part of a series of three or more. R of the `’` is the caller's to check. Plain `""`,
 /// `"-"` or `"?"` inside a pair is typeset as such a nested pair, whatever the roles of its series.
 fn sign_only_close(reading: &Reading, text: &Flat<'_>, at: usize, end: usize) -> bool {
-    let Some([open1, _, open2, _]) = reading.pairs else {
+    let Some([open1, close1, open2, _]) = reading.pairs else {
         return false;
     };
     if open2 == open1 {
         return false;
     }
+    // The opener of the pair whose closer is `’`: the nested one in the built-in languages, the
+    // primary one in a language whose primary pair is `‘’` (en-GB).
+    let open = if close1 == APOSTROPHE { open1 } else { open2 };
     let mut p = at;
     let mut adjacent = true;
     loop {
@@ -1156,7 +1159,7 @@ fn sign_only_close(reading: &Reading, text: &Flat<'_>, at: usize, end: usize) ->
             adjacent = false;
             continue;
         }
-        if c != open2 {
+        if c != open {
             return false;
         }
         break;
@@ -1326,7 +1329,7 @@ fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<&'static [&'stat
         if c == APOSTROPHE && (c == close1 || c == close2) {
             let nested = c == close2;
             let closer = if nested { NESTED } else { QUOTE };
-            if q.sign_only && stack.last() == Some(&true) && nested {
+            if q.sign_only && stack.last() == Some(&nested) {
                 // The mirror of a sign-only pair (design section 6.3): `‘’`, `‘-’`.
                 stack.pop();
                 out.push(closer);
