@@ -19,12 +19,13 @@ pairs do not contain `’`, U+2019 is always an apostrophe: it never changes, ne
 diagnostic.
 
 A straight quote in the wrapper of a frozen fragment is a candidate only if the core of that
-fragment contains no straight quote. So `"host:8080"` → `«host:8080»` (the address stays intact),
-while in `key="value"` both quotes belong to the technical notation and are left alone. When a
-frozen core ends in `=` and the start wrapper of its fragment holds no straight quote, the end
-wrapper holds no candidate either: `key=""` stays as written, like `key="value"`. This holds only
-for a frozen core that ends in `=`. After a core that is not frozen, a wrapper such as `:""`, `,""`
-or `.""` is sentence punctuation followed by two closing quotes, as at the end of
+fragment contains no straight quote; an apostrophe between two letters is not one (`"it's:fine"` →
+`“it's:fine”`, the apostrophe staying as frozen text). So `"host:8080"` → `«host:8080»` (the address
+stays intact), while in `key="value"` both quotes belong to the technical notation and are left
+alone. When a frozen core ends in `=` and the start wrapper of its fragment holds no straight quote,
+the end wrapper holds no candidate either: `key=""` stays as written, like `key="value"`. This holds
+only for a frozen core that ends in `=`. After a core that is not frozen, a wrapper such as `:""`,
+`,""` or `.""` is sentence punctuation followed by two closing quotes, as at the end of
 `"Он сказал "привет.""`; with no opener, `Значение:"" и "да"` does not converge (`UnmatchedQuote`,
 section 6.6). The same happens after a frozen core that does not end in `=` and holds no straight
 quote: both quotes of `/etc/""` are candidates by the rule above and both close (L is of class

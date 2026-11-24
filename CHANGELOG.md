@@ -126,3 +126,6 @@ for U+00A0).
 - The English trailing possessive goes after a capital `S` too (design section 6.6), in both sets:
   `DOGS' and JONES' BOOK`: `DOGS' and⍽JONES' BOOK` → `DOGS’ and⍽JONES’ BOOK`; `to_plain` reads it
   back.
+- An apostrophe between two letters inside a frozen core no longer keeps the quotes around the
+  fragment straight (design section 6.1), in both sets: en `Say "it's:fine" now`: unchanged →
+  `Say “it's:fine” now`; ru `Файл "it's:fine" тут`: unchanged → `Файл «it's:fine» тут`.

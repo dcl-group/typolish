@@ -289,6 +289,29 @@ fn an_elision_closed_by_a_straight_quote_waits_for_pairing() {
 }
 
 #[test]
+fn an_apostrophe_inside_a_frozen_core_is_not_its_quote() {
+    // Design section 6.1: a straight quote in the wrapper of a frozen fragment is a candidate only
+    // if the core holds no straight quote, and an apostrophe between two letters is not one.
+    for (what, t) in all_three(&Language::EN_US) {
+        for row in [
+            ("Say \"it's:fine\" now", "Say “it's:fine” now"),
+            ("Say \"don't:stop\".", "Say “don't:stop”."),
+            ("Say \"host:8080\" now", "Say “host:8080” now"),
+            ("key=\"it's\"", "key=\"it's\""),
+        ] {
+            check_exact(&what, &t, row);
+        }
+    }
+    for (what, t) in all_three(&Language::RU_RU) {
+        check_exact(
+            &what,
+            &t,
+            ("Файл \"it's:fine\" тут", "Файл «it's:fine» тут"),
+        );
+    }
+}
+
+#[test]
 fn a_trailing_possessive_after_a_capital_s() {
     // Design section 6.6: the trailing possessive goes after the letter `s` or `S`. Rows: input,
     // the quote rules alone, Prose and Interface.

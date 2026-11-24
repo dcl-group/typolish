@@ -959,7 +959,18 @@ fn wrapper_candidate(cx: &Cx<'_>, i: usize, facts: &mut Option<WrapperFacts>) ->
             let straight = |j: usize| is_quote(cx, j) && matches!(cx.chr(j), Some('"' | '\''));
             let f = WrapperFacts {
                 frag: index,
-                core_has: (frag.core_start as usize..frag.core_end as usize).any(straight),
+                // An apostrophe between two letters is not a quote of the core (design section
+                // 6.1): `"it's:fine"` keeps its wrapper quotes as candidates.
+                core_has: (frag.core_start as usize..frag.core_end as usize).any(|j| {
+                    straight(j)
+                        && !(cx.chr(j) == Some('\'')
+                            && cx
+                                .prev(j)
+                                .is_some_and(|p| matches!(cx.kind(p), Some(Kind::Word(_))))
+                            && cx
+                                .next(j)
+                                .is_some_and(|n| matches!(cx.kind(n), Some(Kind::Word(_)))))
+                }),
                 start_has: (frag.start as usize..frag.core_start as usize).any(straight),
                 ends_in_eq: frag.core_end > frag.core_start
                     && cx.src(frag.core_end as usize - 1).ends_with('='),
