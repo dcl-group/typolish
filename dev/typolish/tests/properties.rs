@@ -281,6 +281,64 @@ fn idempotence_of_the_seeds() {
     }
 }
 
+/// Seeds of message templates with `BlockMarkup` pieces (design section 2.6): `¦` stands for the
+/// piece `</p><p>` between `Text` pieces.
+const BLOCK_SEEDS: &[&str] = &[
+    "Он сказал \"да¦Нет\" - ответила она.",
+    "Текст.¦- Да, - сказал он.",
+    "\"a¦b\" c",
+    "в¦доме и т.д...¦- Нет",
+    "5¦- 7 км¦10-20",
+    "'a¦'s' x",
+    "```¦code¦```",
+    "¦¦- x - y¦",
+];
+
+/// The pieces of a seed of `BLOCK_SEEDS`.
+fn block_pieces(texts: &[String]) -> Vec<Piece<'_, ()>> {
+    let mut pieces = Vec::new();
+    for (i, text) in texts.iter().enumerate() {
+        if i > 0 {
+            pieces.push(Piece::BlockMarkup("</p><p>"));
+        }
+        pieces.push(Piece::Text(text));
+    }
+    pieces
+}
+
+#[test]
+fn idempotence_of_the_template_seeds_with_a_block_boundary() {
+    // Design section 13.5, property 1, for templates: the texts between the `BlockMarkup` pieces
+    // of the output, typeset again in the same pieces, stay as they are.
+    for seed in BLOCK_SEEDS {
+        let texts: Vec<String> = seed.split('¦').map(str::to_owned).collect();
+        for lang in 0..3 {
+            for set in [RuleSet::ALL, RuleSet::PROSE, RuleSet::INTERFACE] {
+                for quotes in 0..3 {
+                    let t = typographer(lang, set, quotes, 0);
+                    let once = t
+                        .typeset_template(block_pieces(&texts), Output::Unicode)
+                        .texts()
+                        .concat();
+                    let parts: Vec<String> = once.split("</p><p>").map(str::to_owned).collect();
+                    assert_eq!(parts.len(), texts.len(), "{seed:?}: {once:?}");
+                    let twice = t
+                        .typeset_template(block_pieces(&parts), Output::Unicode)
+                        .texts()
+                        .concat();
+                    assert_eq!(
+                        once,
+                        twice,
+                        "{set} {seed:?}: {} then {}",
+                        show(&once),
+                        show(&twice)
+                    );
+                }
+            }
+        }
+    }
+}
+
 #[test]
 fn idempotence_of_the_seed_with_a_built_language() {
     // The seed `‚Wort‘` of design section 13.5, with a `LanguageBuilder` language whose pairs are
@@ -533,7 +591,9 @@ proptest! {
         for p in &parts {
             let needle = match p {
                 GenPiece::Slot(id, _) => format!("\u{e000}{id}\u{e001}"),
-                GenPiece::Protected(text) | GenPiece::Markup(text) => text.clone(),
+                GenPiece::Protected(text) | GenPiece::Markup(text) | GenPiece::Block(text) => {
+                    text.clone()
+                }
                 GenPiece::Text(_) => continue,
             };
             match joined[at..].find(&needle) {
@@ -975,7 +1035,9 @@ proptest! {
     ) {
         let t = typographer(lang, set, 0, 0);
         let input = borrow(&parts);
-        let has_markup = parts.iter().any(|p| matches!(p, GenPiece::Markup(_)));
+        let has_markup = parts
+            .iter()
+            .any(|p| matches!(p, GenPiece::Markup(_) | GenPiece::Block(_)));
         let fill = |template: &typolish::Template<'_, u32>| {
             template.fill(|id| Cow::Owned(format!("S{id}E")))
         };
@@ -998,6 +1060,26 @@ proptest! {
         }
     }
 
+    /// A `BlockMarkup` piece ends the paragraph (design sections 2.6 and 3.3): `Text` pieces
+    /// between such pieces typeset as separate calls, and `to_plain_template` reads them as
+    /// separate calls too. A fenced block may run across the piece (design section 10.1), so
+    /// texts with a run of three backticks are left out.
+    #[test]
+    fn block_markup_splits_the_text_into_separate_calls(
+        texts in prop::collection::vec(risky_text(), 1..4), lang in 0usize..3, set in rule_set(),
+        quotes in 0u8..3,
+    ) {
+        prop_assume!(texts.iter().all(|text| !text.contains("```")));
+        let t = typographer(lang, set, quotes, 0);
+        let got = t.typeset_template(block_pieces(&texts), Output::Unicode).texts().concat();
+        let want: Vec<String> =
+            texts.iter().map(|text| t.typeset(text, Output::Unicode).into_owned()).collect();
+        prop_assert_eq!(got, want.join("</p><p>"), "{:?}", texts);
+        let got = t.to_plain_template(block_pieces(&texts)).texts().concat();
+        let want: Vec<String> = texts.iter().map(|text| t.to_plain(text).into_owned()).collect();
+        prop_assert_eq!(got, want.join("</p><p>"), "{:?}", texts);
+    }
+
     /// 8. Cow for templates (design section 2.6, output contract items 1 and 2): the text of a gap
     /// between slots with at most one non-empty piece is borrowed exactly when it equals that
     /// piece; a merged text is never borrowed; `changed()` says whether any text differs from the
@@ -1013,7 +1095,10 @@ proptest! {
         for piece in &input {
             match *piece {
                 typolish::Piece::Slot(..) => gaps.push(Vec::new()),
-                typolish::Piece::Text(s) | typolish::Piece::Protected(s) | typolish::Piece::Markup(s) => {
+                typolish::Piece::Text(s)
+                | typolish::Piece::Protected(s)
+                | typolish::Piece::Markup(s)
+                | typolish::Piece::BlockMarkup(s) => {
                     gaps.last_mut().unwrap().push(s);
                 }
                 _ => {}
@@ -1655,7 +1740,7 @@ fn assert_changes_apply_piece_by_piece(
                     last.push_str(&applied);
                 }
             }
-            GenPiece::Protected(text) | GenPiece::Markup(text) => {
+            GenPiece::Protected(text) | GenPiece::Markup(text) | GenPiece::Block(text) => {
                 prop_assert!(
                     edits.is_empty(),
                     "an edit of piece {} that no rule may touch",
@@ -1682,7 +1767,10 @@ fn merged_texts(parts: &[GenPiece]) -> Vec<String> {
     let mut texts = vec![String::new()];
     for part in parts {
         match part {
-            GenPiece::Text(t) | GenPiece::Protected(t) | GenPiece::Markup(t) => {
+            GenPiece::Text(t)
+            | GenPiece::Protected(t)
+            | GenPiece::Markup(t)
+            | GenPiece::Block(t) => {
                 if let Some(last) = texts.last_mut() {
                     last.push_str(t);
                 }
@@ -1861,7 +1949,12 @@ fn assert_lint_template_is_well_formed(
         prop_assert!(d.piece() < parts.len().max(1), "{:?}", d);
         let range = d.range();
         match parts.get(d.piece()) {
-            Some(GenPiece::Text(text) | GenPiece::Protected(text) | GenPiece::Markup(text)) => {
+            Some(
+                GenPiece::Text(text)
+                | GenPiece::Protected(text)
+                | GenPiece::Markup(text)
+                | GenPiece::Block(text),
+            ) => {
                 prop_assert!(text.get(range).is_some(), "{:?}", d);
             }
             Some(GenPiece::Slot(..)) => prop_assert_eq!(range, 0..0),

@@ -1131,7 +1131,8 @@ fn an_empty_value_glued_to_a_word_leaves_the_quotes_with_a_warning() {
 #[test]
 fn a_block_tag_passed_as_markup_ends_no_paragraph() {
     // Design section 10.8: `Markup` is inline and transparent, so quotes pair across a block tag
-    // and a dialogue dash right after it is not placed; `\n\n` before the tag restores both.
+    // and a dialogue dash right after it is not placed; `\n\n` before the tag restores both, and
+    // so does the tag passed as `BlockMarkup` (design section 2.6).
     let t = prose(RU.clone());
     let html = Output::Html(HtmlStyle::NAMED);
     let run = |pieces: [Piece<'static, ()>; 3]| t.typeset_template(pieces, html).texts().concat();
@@ -1167,6 +1168,29 @@ fn a_block_tag_passed_as_markup_ends_no_paragraph() {
                 Piece::Text("- Да, - сказал он."),
             ],
             "Текст.\n\n</p><p>&mdash;&nbsp;Да,&nbsp;&mdash; сказал он.",
+        ),
+    ];
+    for (pieces, expected) in cases {
+        assert_eq!(run(pieces), expected);
+    }
+    // The same tag passed as `BlockMarkup` ends the paragraph without the line breaks: the
+    // results of the cases with `\n\n`.
+    let cases = [
+        (
+            [
+                Piece::Text("Он сказал \"да"),
+                Piece::BlockMarkup("</p><p>"),
+                Piece::Text("Нет\" - ответила она."),
+            ],
+            "Он&nbsp;сказал &quot;да</p><p>Нет&quot;&nbsp;&mdash; ответила она.",
+        ),
+        (
+            [
+                Piece::Text("Текст."),
+                Piece::BlockMarkup("</p><p>"),
+                Piece::Text("- Да, - сказал он."),
+            ],
+            "Текст.</p><p>&mdash;&nbsp;Да,&nbsp;&mdash; сказал он.",
         ),
     ];
     for (pieces, expected) in cases {

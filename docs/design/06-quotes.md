@@ -285,7 +285,7 @@ go into the neighboring texts. A `Number` slot before a closing straight quote m
 The scope of pairing is the window, a paragraph (section 3.3). For pieces it is the same over the
 text of the pieces (an atom between line breaks is content, section 3.3), so a message without blank
 lines is one scope, and a quote opened in one text closes in another. A block tag passed as `Markup`
-does not split the scope (section 10.8).
+does not split the scope (section 10.8); a `BlockMarkup` piece does (section 3.3).
 
 Quotes spanning paragraphs (the book convention of an opening quote at the start of every paragraph
 of a long quotation) do not converge in each paragraph and stay straight, with `UnmatchedQuote`.

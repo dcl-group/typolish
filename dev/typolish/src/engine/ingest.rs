@@ -34,7 +34,8 @@ pub(crate) enum Atom {
     Protected { piece: u32, at: u32 },
     /// A `Piece::Markup`.
     Markup { piece: u32, at: u32 },
-    /// The characters of a window boundary (design section 3.3).
+    /// The characters of a window boundary (design section 3.3); empty for a
+    /// `Piece::BlockMarkup`.
     Boundary { start: u32, end: u32 },
 }
 
@@ -106,6 +107,12 @@ pub(crate) fn layout<'x>(
             // (design sections 2.6, 3.3); only empty `Text` pieces are skipped.
             Input::Protected(_) => atoms.push(Atom::Protected { piece, at: pos }),
             Input::Markup(_) => atoms.push(Atom::Markup { piece, at: pos }),
+            // A block boundary is a window boundary without characters (design section 3.3):
+            // nothing of it is lexed, and the renderer writes the piece from the input.
+            Input::Block(_) => atoms.push(Atom::Boundary {
+                start: pos,
+                end: pos,
+            }),
         }
     }
     if copied {
@@ -204,7 +211,8 @@ pub(crate) fn cut_fences(text: &str, atoms: &[Atom], out: &mut Vec<Atom>, d: &mu
     let mut line_start = true;
     for atom in atoms {
         let Atom::Text { start, end } = *atom else {
-            line_start = false;
+            // A block boundary starts a line; other atoms are content.
+            line_start = matches!(atom, Atom::Boundary { .. });
             continue;
         };
         let (start, end) = (start as usize, end as usize);

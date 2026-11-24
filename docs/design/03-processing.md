@@ -13,7 +13,8 @@ here are planned under `dev/typolish/src/` (section 14.6).
 input (&str | pieces)
   │  0. prefilter (typeset* only): no byte that an active rule or the
   │     output kind reacts to → Cow::Borrowed                              (3.2)
-  │  1. ingest: pieces → stream of atoms (Text, Slot, Protected, Markup);
+  │  1. ingest: pieces → stream of atoms (Text, Slot, Protected, Markup,
+  │     and an empty Boundary for each BlockMarkup piece);
   │     fenced backtick blocks cut out as Delimited atoms                  (3.4)
   │  2. windows: split by paragraph; a fenced block is never split         (3.3)  ┐
   │  3. delimiters: other protection delimiters cut Delimited atoms out    (3.4)  │
@@ -69,9 +70,9 @@ For `typeset_template` the trigger set of the rules is matched against the bytes
 pieces together; a slot contributes no byte, so every rule that can edit next to a slot needs its
 trigger byte in the text beside the slot (`{n}%` is caught by `%`, `№{n}` by `№`, `{n} МБ` by the
 space). The set of bytes that the output kind encodes is matched against the `Text` and `Protected`
-pieces and, for `Output::Escaped` only, the `Markup` pieces too, because those are the pieces the
-encoder writes (section 11). If no byte matches either set, the call returns every text borrowed
-without lexing.
+pieces and, for `Output::Escaped` only, the `Markup` and `BlockMarkup` pieces too, because those are
+the pieces the encoder writes (section 11). If no byte matches either set, the call returns every
+text borrowed without lexing.
 
 The prefilter belongs to `typeset`, `typeset_with`, `typeset_into`, `typeset_template` and
 `typeset_template_with` only. `report`, `report_template`, `lint` and `lint_template` always run the
@@ -85,13 +86,17 @@ and `report_template` still equals that of `typeset` and `typeset_template`, and
 ### 3.3 Windows
 
 A window is a paragraph: its boundary is two or more line breaks with only horizontal whitespace
-(section 3.5) between them, or U+2029 PARAGRAPH SEPARATOR. No rule looks across a window boundary,
-and the scope of quote pairing is the window (section 6.10). For pieces, boundaries are found the
-same way in the text of the pieces; a slot is never a boundary: for the condition "only horizontal
-whitespace between them", every atom other than `Text` (a slot, a protected span or piece, a markup
-piece) is content, so `Text("a\n")`, `Slot`, `Text("\nb")` is one window, and a message without
-blank lines is one window. A fenced backtick block (section 10.1), which ingest cuts out before
-windows are found, lies inside one window even when it contains blank lines.
+(section 3.5) between them, U+2029 PARAGRAPH SEPARATOR, or a `Piece::BlockMarkup` (section 2.6), a
+boundary without characters at its position in the call's text. No rule looks across a window
+boundary, and the scope of quote pairing is the window (section 6.10). For pieces, boundaries are
+found the same way in the text of the pieces; a slot is never a boundary: for the condition "only
+horizontal whitespace between them", every atom other than `Text` (a slot, a protected span or
+piece, a markup piece) is content, so `Text("a\n")`, `Slot`, `Text("\nb")` is one window, and a
+message without blank lines is one window. A fenced backtick block (section 10.1), which ingest cuts
+out before windows are found, lies inside one window even when it contains blank lines; one that
+runs across a `BlockMarkup` piece is cut there into two protected spans, one at the end of the
+window before the piece and one at the start of the window after it. The first token after a
+`BlockMarkup` piece starts a line, as the first token after a blank line does.
 
 The characters of a boundary (the line breaks, a U+2029 and the horizontal whitespace between them)
 belong to no window: they are not tokenized, no rule reads or changes them, and the renderer writes
@@ -118,15 +123,18 @@ enum Atom {
     Slot { piece: u32, at: u32, kind: SlotKind },  // at: its position in the call's text
     Protected { piece: u32, at: u32 },             // a Piece::Protected
     Markup { piece: u32, at: u32 },
-    Boundary { start: u32, end: u32 },             // the characters of a window boundary (3.3)
+    Boundary { start: u32, end: u32 },             // the characters of a window boundary (3.3);
+                                                   // start == end for a Piece::BlockMarkup
 }
 ```
 
 An atom that is not text has no extent in the call's text: it stands at a position between two of
 its bytes and keeps its piece. An empty `Protected` or `Markup` piece is an atom like a non-empty
-one (it ends a token and is content for windows); only an empty `Text` piece adds nothing. A table
-of the `Text` pieces with their ranges in the call's text resolves a position to a piece when a
-record is made (section 3.11) and when output is written. Atoms, like tokens, hold positions and no
+one (it ends a token and is content for windows); only an empty `Text` piece adds nothing. A
+`BlockMarkup` piece, empty or not, becomes a `Boundary` atom without characters at its position: no
+token stands for it, and the renderer writes it from the input piece, like `Markup`. A table of the
+`Text` pieces with their ranges in the call's text resolves a position to a piece when a record is
+made (section 3.11) and when output is written. Atoms, like tokens, hold positions and no
 references, so the buffers that keep them can be reused across calls (section 2.12). Positions are
 `u32`: an input with more than `u32::MAX` pieces or a call's text longer than `u32::MAX` bytes is
 returned unchanged, the safe outcome of section 2.11 for input the engine cannot represent. For

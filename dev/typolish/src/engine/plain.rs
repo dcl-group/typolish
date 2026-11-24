@@ -146,7 +146,9 @@ pub(crate) fn to_plain_template<'t>(
         for (k, item) in group.iter().enumerate() {
             match (*item, own(k)) {
                 (Input::Text(_), Some(text)) => out.push_str(text),
-                (Input::Text(s) | Input::Protected(s) | Input::Markup(s), _) => out.push_str(s),
+                (Input::Text(s) | Input::Protected(s) | Input::Markup(s) | Input::Block(s), _) => {
+                    out.push_str(s)
+                }
                 (Input::Slot(_), _) => {}
             }
         }
@@ -378,15 +380,24 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
     base.sort_unstable_by_key(|e| (e.start, e.end));
     let mut walls: Vec<usize> = Vec::new();
     let mut boundaries: Vec<usize> = Vec::new();
+    let mut cuts: Vec<usize> = Vec::new();
     for atom in &scratch.atoms {
         match *atom {
             Atom::Slot { at, .. } | Atom::Protected { at, .. } => walls.push(at as usize),
-            Atom::Boundary { start, .. } => boundaries.push(start as usize),
+            Atom::Boundary { start, end } => {
+                boundaries.push(start as usize);
+                // A `BlockMarkup` piece: a boundary without characters, which no neighbor is
+                // read across.
+                if start == end {
+                    cuts.push(start as usize);
+                }
+            }
             _ => {}
         }
     }
     walls.sort_unstable();
     boundaries.sort_unstable();
+    cuts.sort_unstable();
     let mut protected: Vec<(usize, usize)> = spans
         .spans
         .iter()
@@ -410,6 +421,7 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
     let text = Flat {
         text: &flat,
         walls: &walls,
+        cuts: &cuts,
         frozen: &protected,
     };
     let mut cands = candidates(&settings, &text, &protected, &boundaries);
@@ -1034,6 +1046,9 @@ fn fixed(c: char) -> Option<&'static [&'static str]> {
 struct Flat<'s> {
     text: &'s str,
     walls: &'s [usize],
+    /// The positions of `BlockMarkup` pieces: a paragraph ends there, so a neighbor read across
+    /// one is the edge of the text, as for the forward rules (design section 3.3).
+    cuts: &'s [usize],
     frozen: &'s [(usize, usize)],
 }
 
@@ -1062,6 +1077,9 @@ impl Flat<'_> {
     /// `before`, with the start of the character found.
     fn before_at(&self, mut at: usize, skip: impl Fn(char) -> bool) -> (Near, usize) {
         loop {
+            if self.cuts.binary_search(&at).is_ok() {
+                return (Near::Edge, at);
+            }
             if self.walls.binary_search(&at).is_ok() {
                 return (Near::Wall, at);
             }
@@ -1079,6 +1097,9 @@ impl Flat<'_> {
     /// `after`, with the start of the character found.
     fn after_at(&self, mut at: usize, skip: impl Fn(char) -> bool) -> (Near, usize) {
         loop {
+            if self.cuts.binary_search(&at).is_ok() {
+                return (Near::Edge, at);
+            }
             if self.walls.binary_search(&at).is_ok() {
                 return (Near::Wall, at);
             }
@@ -1213,7 +1234,7 @@ fn sign_only_close(
     let mut p = at;
     let mut adjacent = true;
     loop {
-        if text.walls.binary_search(&p).is_ok() {
+        if text.walls.binary_search(&p).is_ok() || text.cuts.binary_search(&p).is_ok() {
             return false;
         }
         let Some(c) = text.text.get(..p).and_then(|s| s.chars().next_back()) else {

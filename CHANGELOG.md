@@ -10,6 +10,17 @@ These entries are for version 0.1.2; the heading takes the version when the rele
 `Cargo.toml`. Each change of the output gives an input, the output of 0.1.1 and the output now (`⍽`
 stands for U+00A0).
 
+### Added
+
+- `Piece::BlockMarkup`, markup at a block boundary such as `</p><p>` (design sections 2.6 and 3.3):
+  written like `Piece::Markup`, as it is in Unicode and HTML output and escaped in escaped output,
+  and it also ends the paragraph, so no rule reads across it and the text after it starts a line. A
+  splitter no longer needs one call per block or a `\n\n` before the tag. Russian, Prose, HTML:
+  `Текст.`, `BlockMarkup("</p><p>")`, `- Да, - сказал он.` gives
+  `Текст.</p><p>&mdash;&nbsp;Да,&nbsp;&mdash; сказал он.`, and `Он сказал "да`,
+  `BlockMarkup("</p><p>")`, `Нет" - ответила она.` keeps both quotes straight, as two paragraphs do.
+  The output for the existing pieces does not change.
+
 ### Changed
 
 - The `Display` of errors, of a `Language` and of the report table escapes every code point with the

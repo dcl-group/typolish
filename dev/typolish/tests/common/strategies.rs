@@ -240,6 +240,8 @@ pub enum GenPiece {
     Protected(String),
     /// Markup.
     Markup(String),
+    /// Markup at a block boundary.
+    Block(String),
 }
 
 /// A list of generated pieces; slot payloads are their indices.
@@ -257,6 +259,7 @@ pub fn pieces_of<S: Strategy<Value = String> + 'static>(
             2 => slot_kind().prop_map(|k| GenPiece::Slot(0, k)),
             1 => text().prop_map(GenPiece::Protected),
             1 => prop::sample::select(vec!["<b>", "</b>", "<br>", "&amp;", ""]).prop_map(|m| GenPiece::Markup(m.to_owned())),
+            1 => prop::sample::select(vec!["</p><p>", "<br><br>", "</li>\n<li>", ""]).prop_map(|m| GenPiece::Block(m.to_owned())),
         ],
         0..8,
     )
@@ -281,6 +284,7 @@ pub fn borrow(pieces: &[GenPiece]) -> Vec<typolish::Piece<'_, u32>> {
             GenPiece::Slot(id, kind) => typolish::Piece::Slot(*id, Slot::new(*kind)),
             GenPiece::Protected(t) => typolish::Piece::Protected(t),
             GenPiece::Markup(t) => typolish::Piece::Markup(t),
+            GenPiece::Block(t) => typolish::Piece::BlockMarkup(t),
         })
         .collect()
 }

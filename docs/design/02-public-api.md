@@ -469,9 +469,13 @@ pub enum Piece<'t, S> {
     Protected(&'t str),
     /// Invisible inline markup (for example `<b>` or `</em>` supplied by an HTML splitter).
     /// Transparent for rules, so it ends no paragraph: a block boundary such as `</p><p>` is a
-    /// separate call or a `\n\n` at the end of the `Text` piece before it (section 10.8). Written
-    /// as is in Unicode and HTML output, escaped in escaped output.
+    /// `BlockMarkup` piece (section 10.8). Written as is in Unicode and HTML output, escaped in
+    /// escaped output.
     Markup(&'t str),
+    /// Invisible markup at a block boundary (`</p><p>`, `</li><li>`). Written like `Markup`, and
+    /// a window boundary (section 3.3): the paragraph ends there, and the text after it starts a
+    /// line. Added in 0.1.2 (section 2.13; choice C9a).
+    BlockMarkup(&'t str),
 }
 
 /// A placeholder. The field is private so that hints can be added later.
@@ -566,13 +570,18 @@ Output contract:
 1. Slots come out in input order, each exactly once, with the caller's payload;
    `texts().len() == slots().len() + 1` always (an empty input gives one empty, borrowed text and no
    slots).
-2. Adjacent `Text`, `Protected` and `Markup` pieces merge into one output text. A text that maps to
-   exactly one unchanged input piece is `Cow::Borrowed` with the input lifetime `'t`.
+2. Adjacent `Text`, `Protected`, `Markup` and `BlockMarkup` pieces merge into one output text. A
+   text that maps to exactly one unchanged input piece is `Cow::Borrowed` with the input lifetime
+   `'t`.
 3. Rules see the whole message as one stream: a slot does not break context (`{n} дн.` is glued
    although the number and the unit are in different pieces), and a quote opened in one text closes
    in another (`"{name}"`). Edits land in the texts next to slots; a slot is never part of an edit.
 4. Tokens may span adjacent `Text` pieces, so a template of `Text` pieces gives the same as their
-   concatenation; a slot, a `Protected` or a `Markup` piece ends a token (section 3.4).
+   concatenation; a slot, a `Protected`, a `Markup` or a `BlockMarkup` piece ends a token (section
+   3.4), and a `BlockMarkup` piece ends the window as well (section 3.3), so no rule reads across
+   it: `Text("Он сказал \"да")`, `BlockMarkup("</p><p>")`, `Text("Нет\" - ответила она.")` keeps
+   both quotes straight, and `Text("Текст.")`, `BlockMarkup("</p><p>")`,
+   `Text("- Да, - сказал он.")` gives `Текст.</p><p>—⍽Да,⍽— сказал он.`.
 5. The n + 1 form always has room for markup around a slot: a nowrap group that starts with slot i
    opens at the end of `texts()[i]`, one that ends with slot j closes at the start of
    `texts()[j + 1]` (section 11.5).
@@ -596,6 +605,15 @@ for its neighbors it behaves as its kind says:
 | glue after it (`{x} же`)                                                              | yes                                                             | yes      | yes                 | no       |
 | operand of `dash.spaced-hyphen` (`{x} - слово`)                                       | yes; next to a number, a range or a single-letter word: no dash | yes      | yes                 | yes      |
 | `SlotGlue` diagnostic                                                                 | `{n}МБ`, `{a}{b}`                                               | `{a}{b}` | `{a}{b}`            | `{a}{b}` |
+| any rule across a `BlockMarkup` piece (`{x}</p><p> МБ`, `{a}</p><p>{b}`)              | no                                                              | no       | no                  | no       |
+
+The other pieces take part as follows. A `Protected` piece is one frozen word for its neighbors; a
+`Markup` piece is transparent: the rules read across it as if it were not there (a run of spaces cut
+by it is still a run, section 8.2). A `BlockMarkup` piece is a window boundary without characters:
+in every row of the table above, a slot or a word on one side of it is no neighbor of anything on
+the other side (no quote pair, apostrophe, prime, range, glue or dash operand across it, and no
+`SlotGlue` for `{a}`, `BlockMarkup`, `{b}`), and the first token after it starts a line, as after a
+blank line (`dash.dialogue`, the fenced blocks of section 10.1).
 
 No glue sticks to an `Other` slot: its value may be long, and a nowrap group around a long path
 breaks the layout. That holds for the whole fragment that holds the slot, since a group takes whole
@@ -620,7 +638,9 @@ Choices:
 - **`Protected` and `Markup` exist from the start**, although HTML is not in version 1. The HTML
   module of stage 6 becomes a splitter: tags become `Markup`, the content of `code`, `pre` and `kbd`
   becomes `Protected`, text stays `Text`. The core does not change for inline tags. A block boundary
-  is not expressible by `Markup` (section 10.8): the splitter makes one call per block.
+  is a `BlockMarkup` piece, added in 0.1.2 (choice C9a): before it, a splitter made one call per
+  block or ended the `Text` piece before a block tag with `\n\n`, which put two line breaks into the
+  output (section 10.8).
 
 ### 2.7 Input 3: numbers
 

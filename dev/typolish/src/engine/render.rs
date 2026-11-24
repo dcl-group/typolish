@@ -243,7 +243,9 @@ pub(crate) fn render_template<'t>(
                     });
                     len.saturating_add(s.len()).saturating_add(grown)
                 }
-                Input::Protected(s) | Input::Markup(s) => len.saturating_add(s.len()),
+                Input::Protected(s) | Input::Markup(s) | Input::Block(s) => {
+                    len.saturating_add(s.len())
+                }
                 Input::Slot(_) => len,
             });
         let mut out = String::with_capacity(len);
@@ -253,7 +255,7 @@ pub(crate) fn render_template<'t>(
                     Some(p) => write_piece(&mut out, s, p, edits, data),
                     None => out.push_str(s),
                 },
-                Input::Protected(s) | Input::Markup(s) => out.push_str(s),
+                Input::Protected(s) | Input::Markup(s) | Input::Block(s) => out.push_str(s),
                 Input::Slot(_) => {}
             }
         }
@@ -267,10 +269,16 @@ pub(crate) fn render_template<'t>(
 /// contract item 2).
 pub(crate) fn merge<'t>(group: &[Input<'t>]) -> Cow<'t, str> {
     let mut parts = group.iter().filter_map(|item| match *item {
-        Input::Text(text) | Input::Protected(text) | Input::Markup(text) if !text.is_empty() => {
+        Input::Text(text) | Input::Protected(text) | Input::Markup(text) | Input::Block(text)
+            if !text.is_empty() =>
+        {
             Some(text)
         }
-        Input::Text(_) | Input::Protected(_) | Input::Markup(_) | Input::Slot(_) => None,
+        Input::Text(_)
+        | Input::Protected(_)
+        | Input::Markup(_)
+        | Input::Block(_)
+        | Input::Slot(_) => None,
     });
     let Some(first) = parts.next() else {
         return Cow::Borrowed("");
@@ -307,6 +315,8 @@ enum Seg<'a> {
     Protected(&'a str),
     /// A `Markup` piece and its index.
     Markup(&'a str, usize),
+    /// A `BlockMarkup` piece: written like markup, and the end of every run of group material.
+    Block(&'a str),
     /// The one character an edit wrote.
     Char(char),
     /// A slot: the end of a text of the n + 1 form.
@@ -403,6 +413,10 @@ impl<'v, 't> Segs<'v, 't> {
                         return Some(Seg::Markup(s, self.k - 1));
                     }
                 }
+                Input::Block(s) => {
+                    self.k += 1;
+                    return Some(Seg::Block(s));
+                }
                 Input::Text(s) => {
                     if !self.walking {
                         let found = self
@@ -476,6 +490,9 @@ enum Item<'a> {
     Char(char, bool),
     /// A `Markup` piece and its index.
     Markup(&'a str, usize),
+    /// A `BlockMarkup` piece: a paragraph ends there, so no group runs across it, even when
+    /// markup is looked through.
+    Block(&'a str),
     Slot,
 }
 
@@ -486,7 +503,7 @@ impl Item<'_> {
         match self {
             Item::Char(c, protected) => !protected && !c.is_whitespace(),
             Item::Slot => true,
-            Item::Markup(..) => false,
+            Item::Markup(..) | Item::Block(_) => false,
         }
     }
 
@@ -530,6 +547,7 @@ impl<'v, 't> Items<'v, 't> {
                 Seg::Protected(s) => (self.rest, self.protected) = (s, true),
                 Seg::Char(c) => self.one = Some(c),
                 Seg::Markup(s, k) => return Some(Item::Markup(s, k)),
+                Seg::Block(s) => return Some(Item::Block(s)),
                 Seg::Slot => return Some(Item::Slot),
             }
         }
@@ -669,7 +687,7 @@ impl Writer {
                 Item::Char(c, protected) => {
                     self.encoder.char(o, c, self.group && !protected)?;
                 }
-                Item::Markup(s, _) => self.encoder.markup(o, s)?,
+                Item::Markup(s, _) | Item::Block(s) => self.encoder.markup(o, s)?,
                 Item::Slot => {
                     self.encoder.flush(o)?;
                     self.after_slot = true;
@@ -734,7 +752,9 @@ pub(crate) fn render_template_encoded<'t, R: Recorder>(
     for group in v.input.split(|item| matches!(item, Input::Slot(_))) {
         let parts = || {
             group.iter().filter_map(|item| match *item {
-                Input::Text(s) | Input::Protected(s) | Input::Markup(s) => Some(s),
+                Input::Text(s) | Input::Protected(s) | Input::Markup(s) | Input::Block(s) => {
+                    Some(s)
+                }
                 Input::Slot(_) => None,
             })
         };

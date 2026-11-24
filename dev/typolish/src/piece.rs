@@ -61,8 +61,8 @@ pub enum Piece<'t, S> {
     Protected(&'t str),
     /// Invisible inline markup (for example `<b>` or `</em>` supplied by an HTML splitter).
     /// Transparent for rules, so it ends no paragraph: a block boundary such as `</p><p>` is a
-    /// separate call or a `\n\n` at the end of the `Text` piece before it (design section 10.8).
-    /// Written as is in Unicode and HTML output, escaped in escaped output.
+    /// [`Piece::BlockMarkup`]. Written as is in Unicode and HTML output, escaped in escaped
+    /// output.
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
@@ -81,6 +81,31 @@ pub enum Piece<'t, S> {
     /// assert_eq!(t.texts(), ["Файл <b>не\u{a0}найден</b>"]);
     /// ```
     Markup(&'t str),
+    /// Invisible markup at a block boundary (for example `</p><p>` or `</li><li>` supplied by an
+    /// HTML splitter). Written like [`Piece::Markup`], as is in Unicode and HTML output and
+    /// escaped in escaped output, but it also ends the paragraph, as a blank line does (design
+    /// section 3.3): no quote pair, glue or dash operand reaches across it, and the text after it
+    /// starts a line, so `dash.dialogue` places a dialogue dash there.
+    ///
+    /// ```
+    /// use typolish::{HtmlStyle, Language, Output, Piece, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    ///
+    /// let t = RU.typeset_template(
+    ///     [
+    ///         Piece::<()>::Text("Он сказал: \"Да.\""),
+    ///         Piece::BlockMarkup("</p><p>"),
+    ///         Piece::Text("- Нет, - ответила она."),
+    ///     ],
+    ///     Output::Html(HtmlStyle::NAMED),
+    /// );
+    /// assert_eq!(
+    ///     t.texts(),
+    ///     ["Он&nbsp;сказал: &laquo;Да.&raquo;</p><p>&mdash;&nbsp;Нет,&nbsp;&mdash; ответила она."]
+    /// );
+    /// ```
+    BlockMarkup(&'t str),
 }
 
 /// An opaque placeholder. The field is private so that hints can be added later.

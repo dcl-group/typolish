@@ -12,11 +12,13 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
   three or more backticks at the start of a line, after optional indentation of spaces and tabs,
   opens a **fenced block**, closed by a run of exactly the same length at the start of a later line,
   also after optional indentation (CommonMark also closes with a longer run and limits indentation
-  to three spaces; typolish does neither). The whole text from the opening run to the closing run,
-  the info string (` ```rust `) included, is protected; a fenced block may contain blank lines. A
-  run at a line start with no closing run later in the input opens no fenced block: like any other
-  run it is matched as an inline run within its window (section 3.4), and if that finds no closing
-  run either, it is an unclosed delimiter (below).
+  to three spaces; typolish does neither). In a template a line also starts after a
+  `Piece::BlockMarkup` (section 3.3); a slot, a `Protected` or a `Markup` piece is content, so a
+  line that starts with one does not start with a run. The whole text from the opening run to the
+  closing run, the info string (` ```rust `) included, is protected; a fenced block may contain
+  blank lines. A run at a line start with no closing run later in the input opens no fenced block:
+  like any other run it is matched as an inline run within its window (section 3.4), and if that
+  finds no closing run either, it is an unclosed delimiter (below).
 - **Own pairs**: `protect_between("{{", "}}")`, `protect_between("[[", "]]")`. Opening and closing
   delimiters may be equal.
 - **Scope.** Every span other than a fenced block, own pairs included, opens and closes within one
@@ -278,8 +280,8 @@ expectation):
   such a notation with backticks.
 - `Piece::Markup` is inline markup, transparent for rules (section 3.4): a block tag passed as
   `Markup` ends no paragraph, so `"да`, `</p><p>`, `Нет"` pair across the tag (section 6.10), and a
-  dialogue dash right after it is not placed. A splitter passes each block in a call of its own, or
-  ends the `Text` piece before a block tag with `\n\n` (section 2.6).
+  dialogue dash right after it is not placed. A splitter passes a block tag as `Piece::BlockMarkup`,
+  which ends the paragraph without adding characters (section 2.6).
 - A quote glued to a dash (`он —"Да"`, `"no"—and`) belongs to a frozen `Unclassified` core and stays
   straight, without a diagnostic; with a space (`он — "Да"`) the quotes are placed.
 - A number with a unit attached without a space (`-15°C`) is not a number core: it is frozen whole

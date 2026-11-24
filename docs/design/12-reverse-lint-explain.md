@@ -191,13 +191,13 @@ the exact output, glue included (`roundtrip-known.tsv` holds the same rows with 
 returns the diagnostics that typesetting would produce (quotes, delimiters, hyphens, mixed scripts,
 slots) plus `TypographicChar` for every occurrence of a character that `to_plain` would change
 (section 12.1), outside the spans of `protected()` (section 12.5: delimited spans, protected pieces,
-slots and frozen fragments) and outside `Markup` pieces. `lint` renders nothing, so it never gives
-`NowrapFallback`; its other diagnostics are those of `report(x, Output::Unicode)`. Characters of the
-set that `to_plain` leaves (no enabled rule produces them there: a `©` with `symbols.copyright` off
-or outside its contexts, a typed `–` with spaces) are not reported, because typesetting would not
-bring them back. So `lint(x)` has a `TypographicChar` exactly when `to_plain(x) != x`, and
-`to_plain` is the matching fix: a repository with a "plain sources only" policy runs `lint` in its
-checks and `to_plain` to repair.
+slots and frozen fragments) and outside `Markup` and `BlockMarkup` pieces. `lint` renders nothing,
+so it never gives `NowrapFallback`; its other diagnostics are those of `report(x, Output::Unicode)`.
+Characters of the set that `to_plain` leaves (no enabled rule produces them there: a `©` with
+`symbols.copyright` off or outside its contexts, a typed `–` with spaces) are not reported, because
+typesetting would not bring them back. So `lint(x)` has a `TypographicChar` exactly when
+`to_plain(x) != x`, and `to_plain` is the matching fix: a repository with a "plain sources only"
+policy runs `lint` in its checks and `to_plain` to repair.
 
 A generator calls `report_template` instead, which gives the same diagnostics together with the
 result, and decides by `Severity` whether to warn or to fail the build. The crate reports levels; it

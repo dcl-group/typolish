@@ -1,7 +1,8 @@
 //! Windows (design section 3.3): a window is a paragraph. Its boundary is two or more line breaks
-//! with only horizontal whitespace between them, or U+2029 PARAGRAPH SEPARATOR. Atoms other than
-//! text (fenced blocks, slots, protected pieces, markup) are content, so a boundary lies inside
-//! one `Text` atom. The characters of a boundary belong to no window; horizontal whitespace before
+//! with only horizontal whitespace between them, U+2029 PARAGRAPH SEPARATOR, or a
+//! `Piece::BlockMarkup`, which ingest has already made an empty `Boundary` atom. Atoms other than
+//! text (fenced blocks, slots, protected pieces, markup) are content, so a boundary of characters
+//! lies inside one `Text` atom. The characters of a boundary belong to no window; horizontal whitespace before
 //! the first or after the last line break of a boundary belongs to the window on that side.
 
 use super::ingest::Atom;

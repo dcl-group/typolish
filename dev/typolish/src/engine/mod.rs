@@ -42,6 +42,8 @@ pub(crate) enum Input<'t> {
     Slot(Slot),
     Protected(&'t str),
     Markup(&'t str),
+    /// A `Piece::BlockMarkup`: written as markup, and a window boundary (design section 3.3).
+    Block(&'t str),
 }
 
 /// Runs the pipeline over `input` and reports whether any window changed; the edits of the changed
@@ -90,7 +92,7 @@ fn run_on<R: Recorder>(
     lens.clear();
     if R::ACTIVE {
         lens.extend(input.iter().map(|item| match item {
-            Input::Text(s) | Input::Protected(s) | Input::Markup(s) => {
+            Input::Text(s) | Input::Protected(s) | Input::Markup(s) | Input::Block(s) => {
                 u32::try_from(s.len()).unwrap_or(u32::MAX)
             }
             Input::Slot(_) => 0,
@@ -347,7 +349,7 @@ pub(crate) fn typeset_template<'t>(
     let escaped = matches!(output, Output::Escaped(_));
     let encoded_only = input.iter().filter_map(move |item| match item {
         Input::Protected(text) => Some(*text),
-        Input::Markup(text) if escaped => Some(*text),
+        Input::Markup(text) | Input::Block(text) if escaped => Some(*text),
         _ => None,
     });
     if !wanted(typographer, output, texts, encoded_only) {
@@ -549,6 +551,7 @@ mod tests {
                         Piece::Slot(_, slot) => Input::Slot(slot),
                         Piece::Protected(s) => Input::Protected(s),
                         Piece::Markup(s) => Input::Markup(s),
+                        Piece::BlockMarkup(s) => Input::Block(s),
                     })
                     .collect();
                 let slots = input.iter().filter(|i| matches!(i, Input::Slot(_))).count();

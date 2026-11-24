@@ -422,7 +422,10 @@ the no-panic test.
 10. **Pieces and strings**: a template of `Text` pieces only gives the same as `typeset` of their
     concatenation, protection delimiters included (they are matched across pieces, section 3.4),
     with the text cut at every byte boundary of a character, including inside runs of dots, dashes
-    and spaces; applying `report_template(...).changes()` piece by piece yields the result.
+    and spaces; applying `report_template(...).changes()` piece by piece yields the result. `Text`
+    pieces with `BlockMarkup` pieces between them give the results of separate `typeset` and
+    `to_plain` calls joined by the markup (texts without a run of three backticks, since a fenced
+    block may run across the piece), and seeds of such templates are idempotent.
 11. **Determinism of order**: a set built in different orders of `with`/`without` gives byte-equal
     output.
 12. **Output kinds**: `decode(typeset(x, out)) == typeset(x, Unicode)` and

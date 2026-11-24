@@ -101,6 +101,32 @@ assert_eq!(t.slots(), [("n", Slot::NUMBER), ("dir", Slot::WORD)]);
 How each slot kind takes part in the rules is the slot participation table of
 [design section 2.6](https://github.com/dcl-group/typolish/blob/main/docs/design/02-public-api.md).
 
+Markup from an HTML splitter goes in as pieces of its own: `Piece::Markup` for inline tags, which
+the rules read across, and `Piece::BlockMarkup` for a block boundary, which ends the paragraph as a
+blank line does. Both are written as they are:
+
+```rust
+use typolish::{HtmlStyle, Language, Output, Piece, RuleSet, Typographer};
+
+static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+
+let t = RU.typeset_template(
+    [
+        Piece::<()>::Text("Он сказал: "),
+        Piece::Markup("<b>"),
+        Piece::Text("\"Да.\""),
+        Piece::Markup("</b>"),
+        Piece::BlockMarkup("</p><p>"),
+        Piece::Text("- Нет, - ответила она."),
+    ],
+    Output::Html(HtmlStyle::NAMED),
+);
+assert_eq!(
+    t.texts(),
+    ["Он&nbsp;сказал: <b>&laquo;Да.&raquo;</b></p><p>&mdash;&nbsp;Нет,&nbsp;&mdash; ответила она."]
+);
+```
+
 A build-time generator over messages already mapped from Fluent syntax to pieces (design section
 2.14) is in
 [`examples/fluent_generator.rs`](https://github.com/dcl-group/typolish/blob/main/dev/typolish/examples/fluent_generator.rs).
@@ -305,8 +331,7 @@ The rules read the shape of the text, not its meaning. These cases are known and
   the paragraph straight with an `UnmatchedQuote` warning. Protect such a notation with backticks.
 - `Piece::Markup` is inline markup and transparent for rules: a block tag passed as `Markup` ends no
   paragraph, so `"да`, `</p><p>`, `Нет"` pair across the tag, and a dialogue dash right after it is
-  not placed. Pass each block in a call of its own, or end the `Text` piece before a block tag with
-  `\n\n`.
+  not placed. Pass a block tag as `Piece::BlockMarkup`, which ends the paragraph.
 - A quote glued to a dash (`он —"Да"`, `"no"—and`) belongs to a frozen `Unclassified` core and stays
   straight, without a diagnostic; with a space (`он — "Да"`) the quotes are placed.
 - A number with a unit attached without a space (`-15°C`) is not a number core: it is frozen whole

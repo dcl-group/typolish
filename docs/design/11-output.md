@@ -14,8 +14,8 @@ intermediate Unicode string.
 
 The encoder treats a character the same way whether a rule produced it or it was in the input, so
 the output is uniform. It applies to `Text` and `Protected` alike (protection means "not typeset",
-not "not encoded") and never touches slots. `Markup` pieces are written as is in Unicode and HTML
-output and escaped like text in escaped output, where they are part of the string.
+not "not encoded") and never touches slots. `Markup` and `BlockMarkup` pieces are written as is in
+Unicode and HTML output and escaped like text in escaped output, where they are part of the string.
 
 Slot values are not encoded and not checked: the crate never sees them. The caller encodes a value
 for the string it is inserted into. With `fill` (section 2.6) that string is still encoded output,
@@ -111,7 +111,8 @@ not nest. Output with nowrap elements is element content only; it is not an attr
   inside the element (`в {city}` → texts `["<span class=\"nowrap\">в ", "</span>"]`).
 - Splits: a group that crosses a `Markup` piece is split there, because a span cannot be opened
   across foreign markup; the glue at the split is written as an entity, and `report_template` adds
-  `NowrapFallback` (info) at the `Markup` piece, with its whole range. A group also ends at a
+  `NowrapFallback` (info) at the `Markup` piece, with its whole range. A `BlockMarkup` piece ends
+  every group without a diagnostic: no glue reaches across a window boundary. A group also ends at a
   protected span, without a diagnostic: the span's content may be long and has spaces of its own,
   which an element would make unbreakable and a decoder could not tell from glue (the reason no glue
   sticks to an `Other` slot, section 2.6). The glue between a group and a protected span is written

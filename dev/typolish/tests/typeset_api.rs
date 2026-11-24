@@ -19,8 +19,8 @@ use std::thread;
 
 use common::{check, vis};
 use typolish::{
-    EscapeStyle, HtmlStyle, Language, Output, Piece, RuleSet, Scratch, Slot, SlotKind, Template,
-    Typographer,
+    DiagnosticKind, EscapeStyle, HtmlStyle, Language, Output, Piece, RuleSet, Scratch, Slot,
+    SlotKind, Template, Typographer,
 };
 
 static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
@@ -419,4 +419,183 @@ fn a_rejected_template_after_a_changed_one_reuses_no_state() {
     assert!(!out.changed());
     let fresh = t.typeset_template_with(&mut Scratch::new(), plain(), Output::Unicode);
     assert_eq!(out.texts(), fresh.texts());
+}
+
+// `Piece::BlockMarkup` (design sections 2.6 and 3.3): markup that ends the paragraph.
+
+#[test]
+fn block_markup_is_written_like_markup_in_every_output_kind() {
+    // Written as is in Unicode and HTML output, escaped like text in escaped output; the text after
+    // it is a paragraph of its own, so `в` gets no glue across it.
+    let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    let pieces = [
+        Piece::<()>::Text("в "),
+        Piece::BlockMarkup("</p>\n<p>"),
+        Piece::Text("доме - \"да\""),
+    ];
+    let cases = [
+        (Output::Unicode, "в </p>\n<p>доме\u{a0}— «да»"),
+        (
+            Output::Html(HtmlStyle::NAMED),
+            "в </p>\n<p>доме&nbsp;&mdash; &laquo;да&raquo;",
+        ),
+        (
+            Output::Html(HtmlStyle::NAMED.nowrap_class("nw")),
+            "в </p>\n<p><span class=\"nw\">доме &mdash;</span> &laquo;да&raquo;",
+        ),
+        (
+            Output::Escaped(EscapeStyle::JS),
+            "в \\u003C/p\\u003E\\n\\u003Cp\\u003Eдоме\\u00A0\\u2014 \\u00ABда\\u00BB",
+        ),
+        (
+            Output::Escaped(EscapeStyle::RUST),
+            "в </p>\\n<p>доме\\u{a0}\\u{2014} \\u{ab}да\\u{bb}",
+        ),
+        (
+            Output::Escaped(EscapeStyle::CSS),
+            "в \\3c /p>\\a \\3c p>доме\\a0 \\2014  \\ab да\\bb ",
+        ),
+    ];
+    for (output, expected) in cases {
+        let template = t.typeset_template(pieces, output);
+        assert_eq!(template.texts(), [expected], "{output:?}");
+        assert!(template.changed());
+    }
+}
+
+#[test]
+fn block_markup_ends_quotes_glue_and_nowrap_groups() {
+    let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    let nowrap = Output::Html(HtmlStyle::NAMED.nowrap_class("nw"));
+    // Across `Markup` the short word is glued and the group split at the markup is reported;
+    // across `BlockMarkup` nothing is glued and nothing is reported.
+    let markup = [
+        Piece::<()>::Text("в "),
+        Piece::Markup("<br>"),
+        Piece::Text("доме"),
+    ];
+    let r = t.report_template(markup, nowrap);
+    assert_eq!(r.result().texts(), ["в&nbsp;<br>доме"]);
+    assert_eq!(r.diagnostics().len(), 1);
+    let block = [
+        Piece::<()>::Text("в "),
+        Piece::BlockMarkup("<br>"),
+        Piece::Text("доме"),
+    ];
+    let r = t.report_template(block, nowrap);
+    assert_eq!(r.result().texts(), ["в <br>доме"]);
+    assert!(r.changes().is_empty() && r.diagnostics().is_empty());
+    assert!(t.lint_template(block).is_empty());
+    // A quote on each side stays unpaired, and each is reported in its own piece.
+    let pieces = [
+        Piece::<()>::Text("Он сказал \"да"),
+        Piece::BlockMarkup("</p><p>"),
+        Piece::Text("Нет\" - ответила она."),
+    ];
+    let linted: Vec<(DiagnosticKind, usize, std::ops::Range<usize>)> = t
+        .lint_template(pieces)
+        .iter()
+        .map(|d| (d.kind().clone(), d.piece(), d.range()))
+        .collect();
+    assert_eq!(
+        linted,
+        [
+            (DiagnosticKind::UnmatchedQuote, 0, 18..19),
+            (DiagnosticKind::UnmatchedQuote, 2, 6..7)
+        ]
+    );
+    let r = t.report_template(pieces, Output::Unicode);
+    let changes: Vec<(&str, usize)> = r
+        .changes()
+        .iter()
+        .map(|c| (c.rule().id(), c.piece()))
+        .collect();
+    assert_eq!(
+        changes,
+        [
+            ("nbsp.short-length", 0),
+            ("nbsp.dash", 2),
+            ("dash.spaced-hyphen", 2)
+        ]
+    );
+}
+
+#[test]
+fn block_markup_starts_a_line_and_keeps_the_template_contract() {
+    let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    // An empty piece is a boundary too: the dialogue dash after it is placed.
+    let pieces = [
+        Piece::<()>::Text("Текст."),
+        Piece::BlockMarkup(""),
+        Piece::Text("- Да, - сказал он."),
+    ];
+    assert_eq!(
+        t.typeset_template(pieces, Output::Unicode).texts(),
+        ["Текст.—\u{a0}Да,\u{a0}— сказал он."]
+    );
+    // A slot before it is no neighbor of the text after it: no glue to a unit.
+    let pieces = [
+        Piece::Slot("n", Slot::NUMBER),
+        Piece::BlockMarkup("<br><br>"),
+        Piece::Text("МБ - \"x\""),
+    ];
+    let template = t.typeset_template(pieces, Output::Unicode);
+    assert_eq!(template.texts(), ["", "<br><br>МБ\u{a0}— «x»"]);
+    assert_eq!(slots_of(&template), [("n", SlotKind::Number)]);
+    // Two slots with a block boundary between them are not glued together.
+    let glued = |middle| {
+        t.lint_template([
+            Piece::Slot("a", Slot::WORD),
+            middle,
+            Piece::Slot("b", Slot::WORD),
+        ])
+        .iter()
+        .map(|d| d.kind().clone())
+        .collect::<Vec<_>>()
+    };
+    assert_eq!(glued(Piece::Markup("<br>")), [DiagnosticKind::SlotGlue]);
+    assert!(glued(Piece::BlockMarkup("<br>")).is_empty());
+    // Nothing to change: the merged text is no change.
+    let pieces = [
+        Piece::<()>::Text("Готово"),
+        Piece::BlockMarkup("<br>"),
+        Piece::Text("Да"),
+    ];
+    let template = t.typeset_template(pieces, Output::Unicode);
+    assert_eq!(template.texts(), ["Готово<br>Да"]);
+    assert!(!template.changed());
+    let one = [Piece::<()>::BlockMarkup("<hr>")];
+    let template = t.typeset_template(one, Output::Unicode);
+    assert!(matches!(template.texts()[0], Cow::Borrowed("<hr>")));
+}
+
+#[test]
+fn to_plain_template_reads_no_neighbor_across_block_markup() {
+    // The `’` after the block starts its paragraph: with the `‘` before the block read as its
+    // neighbor it would be taken for the closer of a sign-only pair and kept.
+    for set in [RuleSet::PROSE, RuleSet::INTERFACE, RuleSet::ALL] {
+        let t = Typographer::new(Language::EN_US, set);
+        let template = t.to_plain_template([
+            Piece::<()>::Text("‘’"),
+            Piece::BlockMarkup("|"),
+            Piece::Text("'a.-"),
+        ]);
+        assert_eq!(template.texts(), ["\"\"|'a.-"], "{set}");
+    }
+}
+
+#[test]
+fn a_fenced_block_runs_across_block_markup() {
+    // Design section 10.1: a fenced block may hold paragraph boundaries, a `BlockMarkup` piece
+    // among them; the text after the closing run is typeset.
+    let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    let pieces = [
+        Piece::<()>::Text("```\n\"a\" - b"),
+        Piece::BlockMarkup("</p><p>"),
+        Piece::Text("\"c\" - d\n```\n\"e\""),
+    ];
+    assert_eq!(
+        t.typeset_template(pieces, Output::Unicode).texts(),
+        ["```\n\"a\" - b</p><p>\"c\" - d\n```\n“e”"]
+    );
 }

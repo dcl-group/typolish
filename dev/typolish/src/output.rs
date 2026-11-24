@@ -59,7 +59,8 @@ pub enum Output {
     /// entities or as nowrap elements (design sections 11.4 and 11.5). Safe as element content.
     /// Safe as an attribute value in either kind of quotes only with an entity style (`NAMED`,
     /// `DECIMAL`, `HEX`, `CHARACTERS`) without a nowrap element, since `nowrap_class` and
-    /// `nowrap_style` write `<span>` tags. `Piece::Markup` is written as it is and is the caller's.
+    /// `nowrap_style` write `<span>` tags. `Piece::Markup` and `Piece::BlockMarkup` are written as
+    /// they are and are the caller's.
     /// Controls are written as they are: an HTML parser drops U+0000 in element content and reads
     /// CR and CR LF as LF (design section 11.8).
     ///

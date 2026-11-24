@@ -586,7 +586,7 @@ fn assert_template(t: &Typographer, parts: &[GenPiece]) -> Result<(), TestCaseEr
         let text = match &parts[span.piece()] {
             GenPiece::Text(text) | GenPiece::Protected(text) => Some(text.as_str()),
             GenPiece::Slot(..) => None,
-            GenPiece::Markup(_) => {
+            GenPiece::Markup(_) | GenPiece::Block(_) => {
                 prop_assert!(false, "a record for markup: {:?}", report.protected());
                 None
             }

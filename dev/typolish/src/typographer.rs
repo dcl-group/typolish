@@ -918,7 +918,10 @@ impl Typographer {
         let inputs = input
             .iter()
             .map(|item| match *item {
-                Input::Text(text) | Input::Protected(text) | Input::Markup(text) => text,
+                Input::Text(text)
+                | Input::Protected(text)
+                | Input::Markup(text)
+                | Input::Block(text) => text,
                 Input::Slot(_) => "",
             })
             .collect();
@@ -1012,7 +1015,8 @@ impl Typographer {
     }
 
     /// [`Typographer::to_plain`] for the pieces of a message template: the slots come back in input
-    /// order with their payloads, `Protected` and `Markup` pieces are left alone, and the texts are
+    /// order with their payloads, `Protected`, `Markup` and `BlockMarkup` pieces are left alone (a
+    /// `BlockMarkup` piece ends the paragraph, as in `typeset_template`), and the texts are
     /// in the n + 1 form of [`Template`] (design section 2.10). It is the tooling path: the time is
     /// linear in the length of the text, long runs of quote characters in one paragraph included,
     /// and on ordinary text about 100 to 200 times that of `typeset` (design section 12.1).
@@ -1066,6 +1070,7 @@ fn split_pieces<'t, S>(
             Piece::Text(text) => Input::Text(text),
             Piece::Protected(text) => Input::Protected(text),
             Piece::Markup(text) => Input::Markup(text),
+            Piece::BlockMarkup(text) => Input::Block(text),
             Piece::Slot(payload, slot) => {
                 slots.push((payload, slot));
                 Input::Slot(slot)
