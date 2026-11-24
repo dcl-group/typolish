@@ -48,13 +48,13 @@ Terms: a **word** is a fragment whose core has kind `Word`, whatever its number 
 `it's`, `don't`, `90's`, `5'10`, `Brand(tm)`; check 23 and the special cases of section 3.6), and a
 one-word `Dictionary` core, a compact abbreviation and a compound word count as one (below); a
 **number** is a `Number` fragment or a `Number` slot; an **operand** is a word, a number, a range (a
-`Range` or `YearMonth` core), a slot, a protected span or a technical fragment (section 3.6). A
-**Roman numeral** is defined in section 3.6 (Latin capitals in the standard form, value 1 to 3999).
-A `Punctuation` fragment (wrapper tokens only, such as a lone `...`, section 3.6) is not an operand.
-A **date core** is a `Version` core (check 13 of section 3.6) of three numbers in the shape
-`D.M.YYYY` or `D.M.YY`, with the day 1 to 31 and the month 1 to 12, leading zeros allowed
-(`21.11.2026`, `21.11.26`, `01.02.26`); the shape decides, so `1.2.27` is one and `0.2.27` is not.
-Two kinds of number name or measure something other than a quantity:
+`Range` or `YearMonth` core), a slot, a protected span, a technical fragment (section 3.6) or a
+dictionary sign (below). A **Roman numeral** is defined in section 3.6 (Latin capitals in the
+standard form, value 1 to 3999). A `Punctuation` fragment (wrapper tokens only, such as a lone
+`...`, section 3.6) is not an operand. A **date core** is a `Version` core (check 13 of section 3.6)
+of three numbers in the shape `D.M.YYYY` or `D.M.YY`, with the day 1 to 31 and the month 1 to 12,
+leading zeros allowed (`21.11.2026`, `21.11.26`, `01.02.26`); the shape decides, so `1.2.27` is one
+and `0.2.27` is not. Two kinds of number name or measure something other than a quantity:
 
 - A **label number** follows a sign (`№5`, `№ 5`, `§⍽12`, `№ {n}`, and a Roman numeral such as `¶IV`
   or `¶ IV`; flag `LABEL`, section 3.6).
@@ -107,6 +107,16 @@ Conditions that hold for every rule:
   forms (`Слово - т.е.` → `Слово⍽— т.⍽е.` in one pass, invariant I2 of section 4.3). Where a rule
   asks whether a word has one letter it reads the part next to the other side: the last part on the
   left of a dash, the first part on the right (`5 - т.е.` is refused as `5 - т. е.` is).
+- A **dictionary sign** is a `Dictionary` core that is not a word and has no full stop inside
+  (`км/ч`, `МБ/с`, `кВт⋅ч`, `°C`, `₽`, `м2`). The dash rules and `nbsp.dash` read it as the core
+  that checks 1 to 24 of section 3.6 give the same text without the list: one of letters and digits
+  only (`м2`) as a word, any other as a technical fragment (`бит/с`, which no list holds, is a
+  `Path` core). So an entry of `units`, built in or added with `add_units`, changes no dash:
+  `Скорость 5 кбит/с - это мало` → `Скорость 5⍽кбит/с⍽— это мало`, as `5 бит/с` gives
+  `5⍽бит/с⍽— это мало`, and `км/ч - м/с` is refused as two technical fragments are (section 8.4). A
+  `Dictionary` core with a full stop inside that is not a compact abbreviation (`e.g.`, `a.m.`) is
+  not an operand, as the `Abbreviation` core it would be is not one: `See - e.g. this` stays, as
+  `See - U.S. policy` does.
 - No rule changes letters or digits inside `Word` and `Number` tokens. The letter-like replacements
   are `(c)`, `(r)`, `(tm)` in either case and the Cyrillic `(с)`, `(С)` (kind `LegalMark`) and `x`,
   `X`, `х`, `Х` between numbers (kind `Times`).
@@ -177,8 +187,9 @@ right → em dash. It does not fire, and reports `AmbiguousHyphen`, when:
   for the second (I4 of section 4.3);
 - words outside the language's script or technical fragments stand on both sides, in any mix
   (`cat - file`, `cat - /etc/hosts` and `tls-server - agent-ca` in Russian text,
-  `host:8080 - 10.0.0.1`): most often a command line. A technical fragment counts as a foreign word
-  here, in every language; a technical fragment on one side and a word of the language on the other
+  `host:8080 - 10.0.0.1`, `км/ч - м/с`): most often a command line. A technical fragment, and a
+  dictionary sign read as one (section 8.2), counts as a foreign word here, in every language; a
+  technical fragment on one side and a word of the language on the other
   (`Сервис слушает host:8080 - проверьте`) gets the dash. A compound word counts by the script of
   its letters, as any word (section 8.2): in Russian text `кто-то - что-то` gets the dash, while
   `tls-server - agent-ca` (Latin compound words) does not, as `cat - file` does not; a compound word

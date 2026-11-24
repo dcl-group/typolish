@@ -272,10 +272,32 @@ pub(crate) fn is_technical(f: &Frag) -> bool {
     f.kind.tech().is_some() && f.kind != FragKind::Compound
 }
 
-/// An operand (design section 8.2): a word, a number, a range, a slot, a protected span or a
-/// technical fragment. A slot or a protected span alone is a `Word` or `Number` core.
+/// An operand (design section 8.2): a word, a number, a range, a slot, a protected span, a
+/// technical fragment or a dictionary sign. A slot or a protected span alone is a `Word` or
+/// `Number` core.
 pub(crate) fn is_operand(cx: &Cx<'_>, f: &Frag) -> bool {
-    is_word(cx, f) || is_number(f) || is_range(cx, f) || is_technical(f)
+    is_word(cx, f) || is_number(f) || is_range(cx, f) || is_technical(f) || dictionary_sign(cx, f)
+}
+
+/// A dictionary sign (design section 8.2): a `Dictionary` core that is no word and has no `Dots`
+/// token, such as `км/ч`, `кВт⋅ч`, `°C`, `₽` or `м2`. Without the list the same text is a word
+/// (`м2`, letters and digits only) or a technical fragment (`бит/с` is a `Path` core), and the dash
+/// rules read it as that, so an entry of the language data or of `add_units` changes no dash. A
+/// core with a full stop inside (`e.g.`, `a.m.`) is not one: it reads as the `Abbreviation` core
+/// it would be, which is no operand.
+pub(crate) fn dictionary_sign(cx: &Cx<'_>, f: &Frag) -> bool {
+    f.kind == FragKind::Dictionary
+        && !is_word(cx, f)
+        && !cx.core(f).any(|j| cx.kind(j) == Some(Kind::Dots))
+}
+
+/// A dictionary sign that reads as a technical fragment: one with a token that is neither letters
+/// nor digits (`км/ч`, `°C`, `₽`; not `м2`).
+pub(crate) fn technical_sign(cx: &Cx<'_>, f: &Frag) -> bool {
+    dictionary_sign(cx, f)
+        && cx
+            .core(f)
+            .any(|j| !matches!(cx.kind(j), Some(Kind::Word(_) | Kind::Number)))
 }
 
 /// A word of one letter (`a`, `x`); a slot or a compound word is not one. A compact abbreviation

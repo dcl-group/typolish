@@ -349,6 +349,8 @@ fn ambiguous_hyphens_are_reported_at_the_hyphen() {
             "123-45-67 [-] 123-45-68",
         ),
         (Language::RU_RU, "cat - 123-45-67", "cat [-] 123-45-67"),
+        // Two dictionary signs read as two technical fragments (design section 8.2).
+        (Language::RU_RU, "км/ч - м/с", "км/ч [-] м/с"),
         // A time range with spaces: technical fragments on both sides (design sections 8.4, 10.8).
         (
             Language::RU_RU,
@@ -467,6 +469,93 @@ fn a_slot_is_an_operand_of_the_spaced_hyphen() {
         Output::Unicode,
     );
     assert_eq!(out.texts(), ["", " — ", ""]);
+}
+
+// A `Dictionary` core without a full stop (a unit with `/`, `⋅`, `°` or a digit) is an operand, as
+// the same text is when no list holds it: `бит/с` is a `Path` core, a technical fragment (design
+// section 8.2). One with a full stop inside reads as an `Abbreviation` core, no operand.
+const RU_UNIT_OPERANDS: &[(&str, &str)] = &[
+    (
+        "Скорость 5 кбит/с - это мало",
+        "Скорость 5 кбит/с — это мало",
+    ),
+    (
+        "Скорость в кбит/с - это мало",
+        "Скорость в кбит/с — это мало",
+    ),
+    ("Скорость 5 бит/с - это мало", "Скорость 5 бит/с — это мало"),
+    (
+        "Скорость 60 км/ч - это много",
+        "Скорость 60 км/ч — это много",
+    ),
+    ("Расход 5 кВт⋅ч - это много", "Расход 5 кВт⋅ч — это много"),
+    ("Было 5 °C - это мало", "Было 5 °C — это мало"),
+    ("Площадь 5 м2 - это мало", "Площадь 5 м2 — это мало"),
+    ("это - 5 км/ч", "это — 5 км/ч"),
+    ("5 км/ч - 10 км/ч", "5 км/ч — 10 км/ч"),
+    // The refusal next to a number reads a unit as no number.
+    ("5 - км/ч", "5 — км/ч"),
+    // Two of them are refused, as two technical fragments are.
+    ("км/ч - м/с", "км/ч - м/с"),
+    ("₽ - $", "₽ - $"),
+    // A sign of letters and digits only reads as a word, as without the list.
+    ("м2 - м2", "м2 — м2"),
+];
+
+const EN_UNIT_OPERANDS: &[(&str, &str)] = &[
+    // Not plain words, so the spaces stay in the closed style.
+    ("Speed 60 km/h - fast", "Speed 60 km/h — fast"),
+    ("Rate 5 MB/s - slow", "Rate 5 MB/s — slow"),
+    ("It was 5 °F - cold", "It was 5 °F — cold"),
+    ("°C - °F", "°C - °F"),
+    ("Open at - a.m. hours", "Open at - a.m. hours"),
+    ("See - e.g. this", "See - e.g. this"),
+];
+
+#[test]
+fn a_unit_without_a_full_stop_is_an_operand() {
+    // The rule alone; the sets add the glue of `nbsp.units`, which the rows below show.
+    check_rows(&configs(&Language::RU_RU, SPACED)[..1], RU_UNIT_OPERANDS);
+    check_rows(&configs(&Language::EN_US, SPACED)[..1], EN_UNIT_OPERANDS);
+    // In the full sets `nbsp.units` and `nbsp.dash` glue around it, a typed dash included.
+    for t in [prose(Language::RU_RU), interface(Language::RU_RU)] {
+        for (text, expected) in [
+            (
+                "Скорость 5 кбит/с - это мало",
+                "Скорость 5⍽кбит/с⍽— это мало",
+            ),
+            (
+                "Скорость 5 кбит/с — это мало",
+                "Скорость 5⍽кбит/с⍽— это мало",
+            ),
+            (
+                "Скорость в кбит/с - это мало",
+                "Скорость в⍽кбит/с⍽— это мало",
+            ),
+            (
+                "Скорость 60 км/ч – это много",
+                "Скорость 60⍽км/ч⍽– это много",
+            ),
+        ] {
+            assert_eq!(t.typeset(&vis(text), Output::Unicode), vis(expected));
+        }
+    }
+    for t in [prose(Language::EN_US), interface(Language::EN_US)] {
+        assert_eq!(
+            t.typeset("Speed 60 km/h - fast", Output::Unicode),
+            vis("Speed 60⍽km/h — fast")
+        );
+    }
+    // A unit that a caller adds does not change the dash rules: `бит/с` reads alike as a `Path`
+    // core and as a unit.
+    let t = Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+        .add_units(["бит/с"])
+        .build()
+        .unwrap();
+    assert_eq!(
+        t.typeset("Скорость 5 бит/с - это мало", Output::Unicode),
+        vis("Скорость 5⍽бит/с⍽— это мало")
+    );
 }
 
 #[test]
