@@ -786,6 +786,49 @@ fn common_has_no_pairs() {
 }
 
 #[test]
+fn a_dash_with_a_space_on_its_other_side_is_of_class_dashc() {
+    // Design section 6.3: a dash next to a quote is `DashC`. As R it lets the quote open; as L it
+    // keeps the quote from closing, so the pair stays straight where a word or `%` would pair it.
+    // The roles are the same for a hyphen and a dash (design section 4.2, item 5).
+    use DiagnosticKind::{AmbiguousQuote, UnmatchedQuote};
+    for language in [Language::RU_RU, Language::EN_US] {
+        let (open, close) = if language == Language::RU_RU {
+            ("«", "»")
+        } else {
+            ("“", "”")
+        };
+        for (what, t) in all_three(&language) {
+            for text in [
+                "Type \"— nothing\" here",
+                "Type \"nothing %\" here",
+                "Введите \"— ничего\" здесь",
+            ] {
+                let expected = text.replacen('"', open, 1).replacen('"', close, 1);
+                check_exact(&what, &t, (text, &expected));
+            }
+            for text in [
+                "Type \"nothing —\" here",
+                "Type \"nothing -\" here",
+                "Введите \"ничего —\" здесь",
+            ] {
+                check_unchanged(&what, &t, text);
+                let kinds: Vec<_> = diagnostics_of(&t, text)
+                    .into_iter()
+                    .map(|d| d.0)
+                    .filter(|k| matches!(k, AmbiguousQuote | UnmatchedQuote))
+                    .collect();
+                assert_eq!(
+                    kinds,
+                    [UnmatchedQuote, AmbiguousQuote],
+                    "{what}: {}",
+                    show(text)
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn a_straight_quote_next_to_digits_in_a_frozen_fragment_stays() {
     let t = prose(Language::EN_US);
     for text in ["Run 1'000'000 now", "Run 0b1'0000 now"] {

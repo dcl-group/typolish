@@ -101,12 +101,16 @@ L ∈ {Space, OpenP, DashC} cannot close. Without them, an opening quote before 
 or around a lone sign would get no role, its partner would stay unpaired, and the whole window would
 keep straight quotes.
 
-The class `DashC` stays in the lists, but no input known reaches it: a dash glued to a quote inside
-one fragment (`—"Да"`, `"no"—and`) makes the whole core `Unclassified` (section 3.6, check 24), so
-its quotes stay straight (section 10.8). In a series after a letter and before a space every
-straight quote is closing, and after a space and before a letter every straight quote is opening.
-The quotes of a series are matched left to right like all others: at the end of `"He said 'hi'"` the
-`'` meets the top of the stack and closes first, then the `"`.
+A dash has a class of its own because it can stand next to a quote with a space on its other side:
+in `Type "— nothing" here` the first quote has R = `DashC` and opens, and in `Type "nothing —" here`
+the second quote has L = `DashC` and gets no role, so both quotes stay straight (`UnmatchedQuote`
+and `AmbiguousQuote`), where a word or a `%` in place of the dash would let them pair. A dash glued
+to a quote from outside (`—"Да"`, `"no"—and`) makes the whole core `Unclassified` (section 3.6,
+check 24), so its quotes stay straight (section 10.8); with a space between them (`— "Да"`) the
+neighbor of the quote is `Space`. In a series after a letter and before a space every straight quote
+is closing, and after a space and before a letter every straight quote is opening. The quotes of a
+series are matched left to right like all others: at the end of `"He said 'hi'"` the `'` meets the
+top of the stack and closes first, then the `"`.
 
 A straight quote without a role is not a candidate, never changes, and gives `AmbiguousQuote`
 (info). It does not block the window: it can pair with nothing and creates no ambiguity for the

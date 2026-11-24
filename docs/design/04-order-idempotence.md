@@ -61,8 +61,10 @@ agree and that every rule appears once.
    order fixes which rule a report names.
 4. **Ranges before the minus.** `5-10` (a digit on the left) belongs to range rules, `-5` after a
    space, a line start or `(` to `number.minus`. These sets do not overlap either.
-5. **Quotes after dashes.** Quote roles use dashes as context (`— "Да"`), so the order does not
-   change roles; it only fixes the report.
+5. **Quotes after dashes.** A quote role reads a dash only as the class `DashC` (section 6.3), and a
+   dash rule changes the text of a dash, never its kind (I1), so `Type "nothing -" here` and
+   `Type "nothing —" here` get the same roles. The order does not change roles; it only fixes the
+   report.
 6. **No-break spaces last.** They bind final tokens: dashes, quotes, abbreviations, units.
    `nbsp.dash` depends on the dashes produced in the dash phase, which comes earlier. Within the
    phase, rules that want the same space want the same result (a glue mark); the order only decides
