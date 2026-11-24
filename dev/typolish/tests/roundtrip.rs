@@ -820,7 +820,7 @@ fn plain_forms_are_not_normalized() {
 fn a_sign_only_pair_comes_back_when_the_primary_pair_closes_with_an_apostrophe() {
     // A language whose primary pair is `‘’` (en-GB): plain `""` is typeset as `‘’`, and `’` closes
     // the primary pair, so `to_plain` reads the pair back as `""` (design section 12.1, the mirror
-    // of the sign-only pair of section 6.3), and P2 holds.
+    // of the sign-only pair of design section 6.3), and P2 holds.
     let gb = LanguageBuilder::from_language(&en(), "en-GB")
         .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
         .build()
