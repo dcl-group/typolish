@@ -343,6 +343,11 @@ impl<'a> Cx<'a> {
     ) -> impl Iterator<Item = char> + Clone + 'a {
         let start = self.toks.get(first).map_or(0, |t| t.src.start) as usize;
         let end = self.toks.get(last).map_or(0, |t| t.src.end) as usize;
+        self.visible_bytes(start, end)
+    }
+
+    /// The visible characters of the source bytes `start..end` (none when `end <= start`).
+    fn visible_bytes(&self, start: usize, end: usize) -> impl Iterator<Item = char> + Clone + 'a {
         self.text
             .get(start..end.max(start))
             .unwrap_or("")
@@ -352,10 +357,20 @@ impl<'a> Cx<'a> {
 
     /// The visible characters of a core.
     pub(crate) fn core_chars(&self, frag: &Frag) -> impl Iterator<Item = char> + Clone + 'a {
+        // An empty core has no characters, also in a window of one token, where `visible(1, 0)`
+        // would read the whole of token 0.
         if frag.core_start >= frag.core_end {
-            return self.visible(1, 0);
+            return self.visible_bytes(0, 0);
         }
-        self.visible(frag.core_start as usize, frag.core_end as usize - 1)
+        let start = self
+            .toks
+            .get(frag.core_start as usize)
+            .map_or(0, |t| t.src.start) as usize;
+        let end = self
+            .toks
+            .get(frag.core_end as usize - 1)
+            .map_or(0, |t| t.src.end) as usize;
+        self.visible_bytes(start, end)
     }
 
     /// A pattern space (design section 8.2): a `Space` token of exactly one character, U+0020 or a
@@ -765,6 +780,43 @@ mod tests {
             out[*i].flags = out[*i].flags.with(Flags::FROZEN);
         }
         out
+    }
+
+    #[test]
+    fn an_empty_core_has_no_characters_in_a_window_of_one_token() {
+        let t = Typographer::new(crate::Language::COMMON, crate::RuleSet::EMPTY);
+        let text = "word";
+        let toks = tokens(text, &[]);
+        assert_eq!(toks.len(), 1);
+        let cx = Cx {
+            t: &t,
+            data: t.language().data(),
+            text,
+            toks: &toks,
+            frags: &[],
+            quotes: &[],
+            pairs: None,
+            single_quotes: SingleQuotes::NestedOnly,
+            dash: None,
+            sides: core::cell::Cell::new(None),
+        };
+        let empty = Frag {
+            start: 0,
+            end: 1,
+            core_start: 0,
+            core_end: 0,
+            kind: FragKind::Punctuation,
+            stop: false,
+            label: false,
+            other_slot: false,
+        };
+        assert_eq!(cx.core_chars(&empty).count(), 0);
+        let whole = Frag {
+            core_end: 1,
+            kind: FragKind::Word,
+            ..empty
+        };
+        assert_eq!(cx.core_chars(&whole).collect::<String>(), "word");
     }
 
     fn one(edit: Edit, consume: u8) -> Match {
