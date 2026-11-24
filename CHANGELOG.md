@@ -112,3 +112,6 @@ for U+00A0).
   `number.minus`, `symbols.arrows` and `symbols.math` (design section 8.2), in Prose: the template
   `слово `, `<b>`, ` -15`: `слово <b> −15` → `слово <b> -15`; `a `, `<b>`, ` -> b`: `a <b> → b` →
   `a <b> -> b`; `x `, `<b>`, ` +- y`: `x <b> ± y` → `x <b> +- y`.
+- U+061C, U+180E, U+206A to U+206F and U+FFF9 to U+FFFB are format characters of the lexer (design
+  section 5.4), as U+200E is, instead of freezing their word as `Technical(Unclassified)`: ru Prose
+  `в\u{61c} лесу`: unchanged → `в\u{61c}⍽лесу`.

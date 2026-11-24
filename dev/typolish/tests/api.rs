@@ -702,20 +702,20 @@ protected  Technical(Colon)  0:25..34  host:8080
 fn the_display_escapes_format_characters_beyond_section_5_4() {
     // Design sections 7.6 and 12.5: a protected text escapes every character of general category
     // `Cf` and every reserved default-ignorable code point, also those the lexer does not treat
-    // as format characters (U+206E, the tag characters).
+    // as format characters (U+13430, the tag characters).
     let printed = PROSE
-        .report("см. \u{206e}http://a.b/\u{e0041}c - да", Output::Unicode)
+        .report("см. \u{13430}http://a.b/\u{e0041}c - да", Output::Unicode)
         .to_string();
     let line = printed
         .lines()
         .find(|line| line.starts_with("protected  Technical(Url)"))
         .unwrap();
     assert!(
-        line.ends_with("\\u{206e}http://a.b/\\u{e0041}c"),
+        line.ends_with("\\u{13430}http://a.b/\\u{e0041}c"),
         "{line:?}"
     );
     assert!(
-        !printed.contains('\u{206e}') && !printed.contains('\u{e0041}'),
+        !printed.contains('\u{13430}') && !printed.contains('\u{e0041}'),
         "{printed:?}"
     );
 }

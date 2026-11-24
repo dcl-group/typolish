@@ -159,6 +159,14 @@ fn format_characters_do_not_make_a_word_unclassified() {
         ("a\t\u{200d}b", none.clone()),
         ("a\u{85}\u{200d}b", none.clone()),
         ("a\u{ad}\u{200d}b", none.clone()),
+        // The format characters of design section 5.4 beyond the bidi marks (design section 15.3,
+        // C41).
+        ("в\u{61c} лесу", none.clone()),
+        ("в\u{180e} лесу", none.clone()),
+        ("в\u{206a} лесу", none.clone()),
+        ("сло\u{206f}во", none.clone()),
+        ("в\u{fff9} лесу", none.clone()),
+        ("в\u{fffb} лесу", none.clone()),
     ];
     expect(&rows);
 }

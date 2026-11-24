@@ -75,27 +75,29 @@ a foreign crate enabling it would silently change everybody's output).
 
 Format characters are U+00AD SOFT HYPHEN, U+200B ZERO WIDTH SPACE, U+200C ZWNJ, U+200D ZWJ, U+200E
 LRM, U+200F RLM, U+202A to U+202E (embeddings and overrides), U+2060 to U+2064 (word joiner and
-invisible operators), U+2066 to U+2069 (isolates: LRI, RLI, FSI, PDI) and U+FEFF. UAX #29 treats
-them in two ways. All of them except ZWNJ and ZWJ are `Control` characters and always form a cluster
-of their own; such a cluster is a `Format` token. ZWNJ (`Extend`) and ZWJ attach to the character
-before them (rule GB9): they stay inside its cluster and are part of the text of its token, so
-`сло\u{200D}во` is one `Word` and `می\u{200C}شود` is one `Word`. They form a cluster of their own
-only at the start of a text and after a character of the UAX #29 classes `Control`, `CR` or `LF`
-(rules GB4 and GB5): a line break, a tab or another C0 or C1 control, or a format character of this
-list other than ZWNJ and ZWJ (`a\t\u{200D}b`, `a\u{AD}\u{200D}b`). A ZWNJ or ZWJ right after such a
-lone ZWNJ or ZWJ joins its cluster (`\n\u{200C}\u{200D}` gives one cluster of two characters). A
-cluster of ZWNJ and ZWJ only is a `Format` token. `Format` tokens are transparent for context: rules
-skip them when they look for neighbors, never insert or remove them, and never put them inside an
-edit. Inside a fragment the classifier and the list lookups skip `Format` tokens, and ZWNJ and ZWJ
-inside the text of a token, too (section 3.6), so a word with soft hyphens from a hyphenation
-preprocessor is still a word: `21 ноя\u{AD}бря` gets its glue, and `Мо\u{AD}скве` is a `Word`, not
-`Unclassified`. UAX #29 makes U+00AD a cluster of its own, so the characters stay exactly where they
-were. A ZWNJ or ZWJ inside a cluster moves with its cluster, and a replacement of the cluster
-replaces it too (section 5.1); no edit falls between it and the character before it. Any other
-`Extend` character, such as a combining mark, at the start of a text or after a `Control`, `CR` or
-`LF` character also forms a cluster of its own; that cluster is a `Symbol` (section 3.5), so it is
-frozen with the fragment it belongs to: in `a:b\t\u{301}c:d` the tab separates, and the colon core
-is `\u{301}c:d`; a mark alone between two line breaks is an `Unclassified` fragment.
+invisible operators), U+2066 to U+2069 (isolates: LRI, RLI, FSI, PDI), U+061C ARABIC LETTER MARK,
+U+180E MONGOLIAN VOWEL SEPARATOR, U+206A to U+206F (deprecated format characters), U+FFF9 to U+FFFB
+(interlinear annotation) and U+FEFF. UAX #29 treats them in two ways. All of them except ZWNJ and
+ZWJ are `Control` characters and always form a cluster of their own; such a cluster is a `Format`
+token. ZWNJ (`Extend`) and ZWJ attach to the character before them (rule GB9): they stay inside its
+cluster and are part of the text of its token, so `сло\u{200D}во` is one `Word` and `می\u{200C}شود`
+is one `Word`. They form a cluster of their own only at the start of a text and after a character of
+the UAX #29 classes `Control`, `CR` or `LF` (rules GB4 and GB5): a line break, a tab or another C0
+or C1 control, or a format character of this list other than ZWNJ and ZWJ (`a\t\u{200D}b`,
+`a\u{AD}\u{200D}b`). A ZWNJ or ZWJ right after such a lone ZWNJ or ZWJ joins its cluster
+(`\n\u{200C}\u{200D}` gives one cluster of two characters). A cluster of ZWNJ and ZWJ only is a
+`Format` token. `Format` tokens are transparent for context: rules skip them when they look for
+neighbors, never insert or remove them, and never put them inside an edit. Inside a fragment the
+classifier and the list lookups skip `Format` tokens, and ZWNJ and ZWJ inside the text of a token,
+too (section 3.6), so a word with soft hyphens from a hyphenation preprocessor is still a word:
+`21 ноя\u{AD}бря` gets its glue, and `Мо\u{AD}скве` is a `Word`, not `Unclassified`. UAX #29 makes
+U+00AD a cluster of its own, so the characters stay exactly where they were. A ZWNJ or ZWJ inside a
+cluster moves with its cluster, and a replacement of the cluster replaces it too (section 5.1); no
+edit falls between it and the character before it. Any other `Extend` character, such as a combining
+mark, at the start of a text or after a `Control`, `CR` or `LF` character also forms a cluster of
+its own; that cluster is a `Symbol` (section 3.5), so it is frozen with the fragment it belongs to:
+in `a:b\t\u{301}c:d` the tab separates, and the colon core is `\u{301}c:d`; a mark alone between two
+line breaks is an `Unclassified` fragment.
 
 This matters for strings that `fluent-bundle` formats at run time: by default it wraps every
 placeable in U+2068 FIRST STRONG ISOLATE and U+2069 POP DIRECTIONAL ISOLATE. With transparency,

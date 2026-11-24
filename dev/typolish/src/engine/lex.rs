@@ -255,13 +255,17 @@ pub(crate) const fn is_format_char(c: char) -> bool {
     matches!(
         c,
         '\u{ad}'
+            | '\u{061c}'
+            | '\u{180e}'
             | '\u{200b}'
             | '\u{200e}'
             | '\u{200f}'
             | '\u{202a}'..='\u{202e}'
             | '\u{2060}'..='\u{2064}'
             | '\u{2066}'..='\u{2069}'
+            | '\u{206a}'..='\u{206f}'
             | '\u{feff}'
+            | '\u{fff9}'..='\u{fffb}'
     )
 }
 

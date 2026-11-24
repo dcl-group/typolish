@@ -229,6 +229,26 @@ const RU_ABBR: &[(&str, &str)] = &[
 ];
 
 #[test]
+fn a_format_character_of_section_5_4_is_skipped() {
+    // U+061C, U+180E, U+206A to U+206F and U+FFF9 to U+FFFB are format characters of design
+    // section 5.4, as U+200E is: the word before them stays a word and the space after it is
+    // glued, and nothing is protected.
+    let t = set(ru(), RuleSet::PROSE);
+    for f in [
+        '\u{200e}', '\u{61c}', '\u{180e}', '\u{206a}', '\u{206f}', '\u{fff9}',
+    ] {
+        let input = format!("в{f} лесу");
+        let report = t.report(&input, Output::Unicode);
+        assert_eq!(report.result(), &format!("в{f}\u{a0}лесу"), "{f:?}");
+        assert!(
+            report.protected().is_empty(),
+            "{f:?}: {:?}",
+            report.protected()
+        );
+    }
+}
+
+#[test]
 fn abbreviations_in_russian() {
     alone_rows(ru(), ABBR, RU_ABBR);
     // A `Format` token between the core and its stop is skipped (design section 3.6).
