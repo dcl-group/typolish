@@ -140,6 +140,10 @@ for U+00A0).
   section 12.1), so typesetting its result gives the text back: ru `«„«6»“»`: `"""6"""` → `""'6'""`;
   ru `«a „«9» е“»`: `"a ""9" е""` → `"a "'9' е""`; with `SingleQuotes::Everywhere` in Interface, en
   `“3" 0”`: `"3" 0"` → `'3" 0'`, ru `«5" 5»`: `"5" 5"` → `'5" 5'`.
+- `to_plain` keeps a `’` read as an apostrophe where its `'` would pair as a quote (design section
+  12.1), so typesetting its result gives the text back, in both sets: en `“a⍽‘dogs’ bowl ’twas’ b”`:
+  `"a "dogs" bowl 'twas' b"` → `"a "dogs" bowl ’twas' b"`; en `“a⍽‘s’ ’twas’ b”`: `"a "s" 'twas' b"`
+  → `"a "s" ’twas' b"`. `lint` no longer reports such a `’`.
 - `Output::Escaped` escapes the bidi controls U+061C, U+200E, U+200F, U+202A to U+202E and U+2066 to
   U+2069 in every style (design section 11.6), so a `RUST` body compiles: `a\u{202E}b` in `RUST`:
   the raw control → `a\u{202e}b`; in `JS`: the raw control → `a\u202Eb`.

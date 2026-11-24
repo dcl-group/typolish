@@ -71,8 +71,9 @@ struct Cand {
     window: usize,
     /// Whether it is an em dash, whose spaces the dash style decides.
     dash: bool,
-    /// Whether it is a quote glyph or `’`: it comes back as any glyph of the pairs or `’`, since
-    /// the level decides the glyph and not the reading.
+    /// Whether it is a quote glyph or `’`: read as a quote, it comes back as any glyph of the pairs
+    /// or `’`, since the level decides the glyph and not the reading; read as an apostrophe, it
+    /// comes back as `’` (`Cand::apostrophe`).
     quote: bool,
     /// For a quote glyph with the second reading `'`, when `settle_quotes` tries that reading: 1
     /// for a glyph of the nested pair, 2 for a glyph of the primary pair with
@@ -89,6 +90,12 @@ impl Cand {
     /// Whether it is read as the closed form of a dash, with spaces restored around it.
     fn closed(&self) -> bool {
         self.dash && self.plain().starts_with(' ')
+    }
+
+    /// Whether it is a `’` read as an apostrophe (design section 12.1): unlike a quote glyph, it
+    /// must come back as itself.
+    fn apostrophe(&self) -> bool {
+        self.quote && self.alts.first() == Some(&"'")
     }
 }
 
@@ -422,17 +429,26 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
     // First the candidates that do not come back are put aside, until all that are left come
     // back; one that failed only because of a neighbor's wrong reading is then tried again, one
     // at a time in each window (windows are independent, design section 3.3), in each of its
-    // readings.
+    // readings. A `’` read as an apostrophe that does not come back as `’` keeps its character
+    // for good: its `'` would pair as a quote (`“a ‘dogs’ bowl ’twas’ b”`, whose possessive
+    // closes the nested pair, read as `"a "dogs" bowl 'twas' b"` gives `‘twas’`), and it has no
+    // other reading.
     let mut parked = vec![false; cands.len()];
     let mut verdict = loop {
         let verdict = check.run(scratch, &cands);
         let mut failed = false;
         for (k, cand) in cands.iter_mut().enumerate() {
-            if cand.on && !cand.fixed && verdict.failed.get(k).copied().unwrap_or(true) {
+            if !cand.on || !verdict.failed.get(k).copied().unwrap_or(true) {
+                continue;
+            }
+            if !cand.fixed {
                 cand.on = false;
                 if let Some(p) = parked.get_mut(k) {
                     *p = true;
                 }
+                failed = true;
+            } else if cand.apostrophe() {
+                cand.on = false;
                 failed = true;
             }
         }
@@ -622,7 +638,7 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
         let last = check.run(scratch, &cands);
         again = false;
         for (cand, &f) in cands.iter_mut().zip(&last.failed) {
-            if cand.on && !cand.fixed && f {
+            if cand.on && (!cand.fixed || cand.apostrophe()) && f {
                 cand.on = false;
                 again = true;
             }
@@ -748,7 +764,9 @@ impl Check<'_, '_> {
             let original = self.flat.get(cand.start..cand.end).unwrap_or("");
             if let Some(f) = failed.get_mut(k) {
                 *f = !ok
-                    || if cand.quote {
+                    || if cand.apostrophe() {
+                        segment != original
+                    } else if cand.quote {
                         !self.reading.is_quote_glyph(&segment)
                     } else {
                         !same(cand.dash, &segment, original)

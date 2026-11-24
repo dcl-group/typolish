@@ -286,6 +286,40 @@ fn nested_pairs_of_signs_and_possessives_round_trip() {
 }
 
 #[test]
+fn an_apostrophe_whose_plain_reading_would_pair_keeps_its_character() {
+    // Design section 12.1: a `’` read as an apostrophe must come back as `’`. When a nested
+    // trailing possessive closes the pair, an elision before the last `’` after `s` read as `'`
+    // would be paired with it (an elision closed by a straight quote waits for pairing, design
+    // section 6.2), so the elision keeps its `’` and P2 holds.
+    let inputs = [
+        "\"a \"dogs' bowl 'twas\" b\"",
+        "\"a \"dogs' - 'tis\" b\"",
+        "\"a \"s' 'twas\" b\"",
+        "\"a \"DOGS' bowl 'TWAS\" b\"",
+        // Controls: the last `’` does not follow `s`, so it closes the pair.
+        "\"a \"dogs' bowl 'cause\" b\"",
+        "\"He said \"the dogs' bowl, 'tis true\" ok\"",
+    ];
+    let mut failures = Vec::new();
+    for (what, t) in sets_and_all(&en()) {
+        for x in inputs {
+            if let Err(e) = p2(&t, x) {
+                failures.push(format!("{what}: {e}"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+    run(
+        &sets_of(&en()),
+        &[
+            ("“a⍽‘dogs’ bowl ’twas’ b”", "\"a \"dogs\" bowl ’twas' b\""),
+            ("“a⍽‘s’ ’twas’ b”", "\"a \"s\" ’twas' b\""),
+            ("“a⍽‘dogs’ bowl ’cause’ b”", "\"a \"dogs' bowl 'cause\" b\""),
+        ],
+    );
+}
+
+#[test]
 fn primary_glyphs_read_as_single_quotes_where_double_quotes_do_not_pair_again() {
     // Design section 12.1: in a window where neither reading of the nested glyphs brings the
     // quotes back, the primary pair inside a nested pair reads as `'` alone (the third level of

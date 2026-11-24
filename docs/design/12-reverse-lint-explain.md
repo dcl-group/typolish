@@ -106,9 +106,12 @@ it neither ends that pair nor the search (`“‘a dogs’ b “c dogs’ d” e
 `“He said ‘the dogs’ bowl is empty’”` → `"He said "the dogs' bowl is empty""`, and
 `“‘Hi,’ said the dogs’ owner”` → `""Hi," said the dogs' owner"`. When every candidate follows `s` or
 `S` (`‘the dogs’ bowls’`, `‘THE DOGS’ BOWLS’`), the first one closes, and the round trip lists the
-case as a known loss (`NestedPossessive`, section 12.2). The classes of the neighbors are those of
-section 6.3: a character inside a protected span (a frozen core, a delimited span) is of class
-`Word`, so the `’` of `“x ‘y 2026{’”` closes.
+case as a known loss (`NestedPossessive`, section 12.2). A `’` read as an apostrophe must come back
+as `’`; where its `'` would pair as a quote instead, the `’` stays: in `“a ‘dogs’ bowl ’twas’ b”`
+the possessive closes the nested pair, and `'twas'` would be a pair (section 6.2), so it reads as
+`"a "dogs" bowl ’twas' b"`. The classes of the neighbors are those of section 6.3: a character
+inside a protected span (a frozen core, a delimited span) is of class `Word`, so the `’` of
+`“x ‘y 2026{’”` closes.
 
 The canonical plain form, for the enabled rules, is the Plain column of the table above, with these
 choices: no typographic character that the rules produce; a dash between words written `-` (not
