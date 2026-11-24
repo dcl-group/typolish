@@ -473,7 +473,7 @@ impl fmt::Display for Rule {
 /// assert_eq!(parsed.to_string().parse::<RuleSet>()?, parsed);
 /// # Ok::<(), typolish::Error>(())
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct RuleSet {
     bits: u128,
 }
@@ -773,6 +773,14 @@ impl FromStr for RuleSet {
             return Err(invalid("rule both added and removed"));
         }
         Ok(base.union(added).difference(removed))
+    }
+}
+
+/// The ids as `Display` writes them, as a string literal: `RuleSet("ellipsis.inner")` (design
+/// section 2.3).
+impl fmt::Debug for RuleSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "RuleSet(\"{self}\")")
     }
 }
 

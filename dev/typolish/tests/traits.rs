@@ -264,3 +264,26 @@ fn number_and_its_displays() {
     // `Number::fixed` owns its digits: `Number<'static>`.
     let _: Number<'static> = Number::fixed(1.0, 1);
 }
+
+/// `Debug` of `Language` and `RuleSet` is short (design sections 2.2 and 2.3); its form is not
+/// part of the contract (design section 2.13), these are the forms of this version.
+#[test]
+fn debug_of_a_language_and_a_rule_set_is_short() {
+    assert_eq!(format!("{:?}", Language::RU_RU), "Language(\"ru-RU\")");
+    assert_eq!(format!("{:?}", Language::COMMON), "Language(\"und\")");
+    assert_eq!(format!("{:?}", RuleSet::EMPTY), "RuleSet(\"empty\")");
+    assert_eq!(
+        format!("{:?}", RuleSet::EMPTY.with(Rule::EllipsisInner)),
+        "RuleSet(\"ellipsis.inner\")"
+    );
+    let built = typolish::LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+        .build()
+        .unwrap();
+    assert_eq!(format!("{built:?}"), "Language(\"en-GB\")");
+    let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    let debug = format!("{t:?}");
+    assert!(
+        debug.starts_with("Typographer { language: Language(\"ru-RU\"), rules: RuleSet(\""),
+        "{debug}"
+    );
+}

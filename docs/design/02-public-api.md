@@ -48,6 +48,8 @@ pub struct Language { repr: Repr } // Static(&'static LanguageData) | Shared(Arc
                                    // compares the data table whichever variant holds it, the hash
                                    // uses the tag only (consistent, because the tag is part of
                                    // the data)
+// `Debug` by hand prints the tag only, `Language("ru-RU")`, not the data tables (a few KiB);
+// its form is not part of the contract (section 2.13).
 
 impl Language {
     pub const RU_RU: Language;
@@ -182,6 +184,8 @@ impl core::fmt::Display for Rule { /* the id */ }
 /// A set of rules. Execution order never depends on how the set was built.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub struct RuleSet { bits: u128 } // private; the representation may grow
+// `Debug` by hand prints the ids as `Display` does, `RuleSet("ellipsis.inner")`, not the mask; its
+// form is not part of the contract (section 2.13).
 
 impl RuleSet {
     pub const EMPTY: RuleSet;
@@ -1077,14 +1081,14 @@ included); streaming without a buffer (quote pairing defers decisions to the end
   whatever their type, while `1`, `1.0` and `Number::decimal("1")` are three different numbers.
 - Not part of the contract: the order of `Rule::ALL` (it is the execution order, and a new rule may
   go into the middle); the representation of `RuleSet`; the contents of language lists; the text of
-  `summary()` and of the `Display` of `Error`, `Diagnostic` and `Report`. The `Display` of `Rule`,
-  `RuleSet` and `Language` is part of the contract: it prints the id, the id list and the tag, and
-  `FromStr` reads it back. For `Language` the round trip covers the built-in languages and `COMMON`
-  (section 2.2): the tag of a caller's language (`from_data`, `from_static`, `LanguageBuilder`) is
-  read against the registry too, so `FromStr` answers it with `Error::UnknownLanguage`, or, when
-  `from_tag` resolves the tag (a built-in tag, its bare language subtag such as `ru`, or `und`),
-  with that built-in language or `COMMON`, which is not equal to the caller's language when their
-  data differ.
+  `summary()`, of every `Debug` and of the `Display` of `Error`, `Diagnostic` and `Report`. The
+  `Display` of `Rule`, `RuleSet` and `Language` is part of the contract: it prints the id, the id
+  list and the tag, and `FromStr` reads it back. For `Language` the round trip covers the built-in
+  languages and `COMMON` (section 2.2): the tag of a caller's language (`from_data`, `from_static`,
+  `LanguageBuilder`) is read against the registry too, so `FromStr` answers it with
+  `Error::UnknownLanguage`, or, when `from_tag` resolves the tag (a built-in tag, its bare language
+  subtag such as `ru`, or `und`), with that built-in language or `COMMON`, which is not equal to the
+  caller's language when their data differ.
 - The policy for changes of output, for new built-in languages and for the MSRV is section 15.1.
 - `cargo-semver-checks` is not installed on the development machine. For 0.1.0 there is no previous
   release; the public surface is fixed by the doctests. From the second release on, the preparation

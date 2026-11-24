@@ -31,7 +31,7 @@ use crate::{Error, Rule};
 /// assert!(Language::from_tag("en-GB").is_err());
 /// # Ok::<(), typolish::Error>(())
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Language {
     repr: Repr,
 }
@@ -880,6 +880,14 @@ impl FromStr for Language {
 
     fn from_str(s: &str) -> Result<Language, Error> {
         Language::from_tag(s)
+    }
+}
+
+/// The tag only, as a string literal: `Language("ru-RU")`; the data tables are left out (design
+/// section 2.2).
+impl fmt::Debug for Language {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Language").field(&self.tag()).finish()
     }
 }
 
