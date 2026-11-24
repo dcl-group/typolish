@@ -15,13 +15,13 @@ not find the next one.
 
 A strategy `grammar()` in `tests/common/strategies.rs` that builds sentences of words of the
 language, abbreviations (`т. е.`, `и т. д.`, `St.`, `p.m.`), units after numbers, particles and
-short words, labels (`№5`, `§V`), dashes in every form (`-`, `--`, `-`, `–`, `—`), wrappers (`(`
-`)`), ellipses and sentence ends, and nested quotes of every glyph, up to a depth of four. A
-`Config` strategy that varies the dash style (`Spaced`, `SpacedGlued`, `Closed`), the single quote
-mode and the language: `RU_RU`, `EN_US` and two languages declared with `LanguageBuilder` (primary
-pair `‘’` with nested `“”`; `«»` with nested `‹›` and the closed style). The idempotence property
-and P2 run over both. Design section 12.2 then says "for both languages and the declared languages
-of the test setup".
+short words, labels (`№5`, `§V`), dashes in every form (a spaced `-`, a spaced `--`, an attached
+`-`, a spaced `–`, an attached `—`), wrappers (`(` `)`), ellipses and sentence ends, and nested
+quotes of every glyph, up to a depth of four. A `Config` strategy that varies the dash style
+(`Spaced`, `SpacedGlued`, `Closed`), the single quote mode and the language: `RU_RU`, `EN_US` and
+two languages declared with `LanguageBuilder` (primary pair `‘’` with nested `“”`; `«»` with nested
+`‹›` and the closed style). The idempotence property and P2 run over both. Design section 12.2 then
+says "for both languages and the declared languages of the test setup".
 
 ## Acceptance
 
