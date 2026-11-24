@@ -156,9 +156,10 @@ with a full stop is read as an initial or a one-letter label, which `nbsp.initia
 sentence start (`П. 5 устава`) gets no forward glue from `nbsp.abbreviations`. An entry that starts
 with an uppercase letter matches only as written: `No.` does not match `no.`, `May` does not match
 `may`. The lookup tries the text as written and then, if it starts with an uppercase letter and is
-not a single letter with a full stop, once more with that letter lowercased. A part of
-`abbreviations` is found by scanning the list, which is short. The typographer builder keeps caller
-additions and removals in small sorted vectors next to the language's lists.
+not a single letter with a full stop (or is one but stands as the first part of an entry of several
+parts), once more with that letter lowercased. A part of `abbreviations` is found by scanning the
+list, which is short. The typographer builder keeps caller additions and removals in small sorted
+vectors next to the language's lists.
 
 ### 7.2 ru-RU
 
