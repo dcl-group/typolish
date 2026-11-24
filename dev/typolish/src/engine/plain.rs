@@ -1129,9 +1129,10 @@ fn is_sign(c: char) -> bool {
 
 /// Whether the `’` at `at..end` is the mirror of the second quote of a sign-only pair (design
 /// section 6.3): the nearest character before it that is not a sign or a format character is the
-/// opener of the pair whose closer is `’` (nested or primary), whose series has L of class `Space`, `OpenP` or `DashC`, and two adjacent quotes
-/// are not part of a series of three or more. R of the `’` is the caller's to check. Plain `""`,
-/// `"-"` or `"?"` inside a pair is typeset as such a nested pair, whatever the roles of its series.
+/// opener of the pair whose closer is `’` (nested or primary), whose series has L of class
+/// `Space`, `OpenP` or `DashC`, and two adjacent quotes are not part of a series of three or more.
+/// R of the `’` is the caller's to check. Plain `""`, `"-"` or `"?"` inside a pair is typeset as
+/// such a nested pair, whatever the roles of its series.
 fn sign_only_close(reading: &Reading, text: &Flat<'_>, at: usize, end: usize) -> bool {
     let Some([open1, close1, open2, _]) = reading.pairs else {
         return false;

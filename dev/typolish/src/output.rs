@@ -238,8 +238,8 @@ pub(crate) enum Scope {
 /// The container is always escaped completely: `\`, the quotes of the syntax and control
 /// characters, whatever the scope. The bidi controls (U+061C, U+200E, U+200F, U+202A to U+202E,
 /// U+2066 to U+2069) are escaped in every style, since a Rust literal refuses them raw and in
-/// source they reorder the text around them. With the default scope the typographic set of design section
-/// 11.2 is escaped too; [`EscapeStyle::non_ascii`] escapes every non-ASCII character.
+/// source they reorder the text around them. With the default scope the typographic set of design
+/// section 11.2 is escaped too; [`EscapeStyle::non_ascii`] escapes every non-ASCII character.
 ///
 /// ```
 /// use typolish::{EscapeStyle, Language, Output, RuleSet, Typographer};
