@@ -382,6 +382,29 @@ fn a_trailing_possessive_that_would_close_its_pair_round_trips() {
 }
 
 #[test]
+fn windows_whose_plain_form_does_not_typeset_back_are_listed() {
+    // Design sections 10.8 and 12.2: a known defect of `to_plain`. The typeset text is a fixed
+    // point, but no reading of the quotes brings it back. When this test fails, the defect is gone:
+    // remove it from design sections 10.8 and 12.2, the README and `limits()` of
+    // `tests/documentation.rs`.
+    let mut fixed = Vec::new();
+    for (language, x) in [(ru(), "\"a '(\" x' \"y'\" b\""), (en(), "\"'S '5' 3'\"")] {
+        for (what, t) in sets_of(&language) {
+            let y = t.typeset(x, Output::Unicode).into_owned();
+            assert_eq!(
+                t.typeset(&y, Output::Unicode),
+                y,
+                "{what} {x:?}: idempotence"
+            );
+            if p2(&t, x).is_ok() {
+                fixed.push(format!("{what} {x:?}"));
+            }
+        }
+    }
+    assert!(fixed.is_empty(), "P2 holds now: {}", fixed.join(", "));
+}
+
+#[test]
 fn primary_glyphs_read_as_single_quotes_where_double_quotes_do_not_pair_again() {
     // Design section 12.1: in a window where neither reading of the nested glyphs brings the
     // quotes back, the primary pair inside a nested pair reads as `'` alone (the third level of

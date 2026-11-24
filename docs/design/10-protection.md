@@ -262,6 +262,16 @@ expectation):
   `‘ ‘dogs'’’ x`, where the neutral `‘` keeps the possessive straight (section 6.6), and a second
   pass pairs that `‘` with the new `’` and places the possessive (`‘ ‘dogs’’’ x`). This is a defect
   of the quote phase (sections 6.6 and 6.11), not a choice.
+- `to_plain` reads the glyphs of a pair as `"`, or as `'` where that does not pair again (section
+  12.1); in a window where no reading it tries brings the quotes back, P2 fails (section 12.2),
+  although the typeset text is a fixed point. A straight `"` without a role inside a pair turns into
+  a sign-only pair with the quote of the pair before it: in Russian `"a '(" x' "y'" b"` gives
+  `«a „(" x“ „y'“ b»`, whose `to_plain` `"a "(" x" "y'" b"` pairs `"("` and keeps every quote of the
+  paragraph straight. A weak quote after a digit (section 6.5) that closes a pair reads differently
+  when the pair is read as `"`: in English `"'S '5' 3'"` gives `“‘S “5” 3’”`, whose `to_plain`
+  `""S "5" 3""` keeps its quotes straight. Both are older than 0.1.2, in every `SingleQuotes` mode
+  and more often with `SingleQuotes::Everywhere`. This is a defect of `to_plain` (section 12.1), not
+  a choice.
 - A quoted value with a space glued to `=` is cut by the space: `title="My` is frozen (`Operator`),
   the quote after `App` closes nothing, and `Set title="My App" for the "main" window.` keeps every
   quote of the paragraph straight with `UnmatchedQuote` (warning, sections 6.1 and 6.6). Protect

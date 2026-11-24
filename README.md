@@ -295,6 +295,11 @@ The rules read the shape of the text, not its meaning. These cases are known and
 - In a declared language whose primary pair is `‘’` (en-GB), a typed `‘` left open before a straight
   pair around a typed `’` is not idempotent: `‘ "dogs'’" x` gives `‘ ‘dogs'’’ x`, and a second pass
   gives `‘ ‘dogs’’’ x`. This is a defect, not a choice.
+- `to_plain` does not always give back a text that typesets to the same result when the quotes are
+  tangled: in Russian `"a '(" x' "y'" b"` gives `«a „(" x“ „y'“ b»`, whose plain form
+  `"a "(" x" "y'" b"` keeps every quote straight; in English `"'S '5' 3'"` gives `“‘S “5” 3’”`,
+  whose plain form `""S "5" 3""` keeps its quotes straight. The typeset text itself is stable. This
+  is a defect, not a choice.
 - A quoted value with a space glued to `=` is cut by the space: `title="My` is frozen, the quote
   after `App` closes nothing, and `Set title="My App" for the "main" window.` keeps every quote of
   the paragraph straight with an `UnmatchedQuote` warning. Protect such a notation with backticks.

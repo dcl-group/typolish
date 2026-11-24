@@ -911,6 +911,9 @@ fn limits() -> Vec<Limit> {
         // Sign-only pairs that share a quote: a defect, not idempotent.
         limit(RU, Both, "\"x ''-'' y\"", "«x ''-„“ y»"),
         limit(EN, Both, "\"x ''-'' y\"", "“x ''-‘’ y”"),
+        // Windows whose plain form does not typeset back: a defect of `to_plain`, P2 fails.
+        limit(RU, Both, "\"a '(\" x' \"y'\" b\"", "«a „(\" x“ „y'“ b»"),
+        limit(EN, Both, "\"'S '5' 3'\"", "“‘S “5” 3’”"),
         // A quoted value with a space glued to `=`.
         limit(
             EN,
