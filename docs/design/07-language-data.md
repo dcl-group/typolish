@@ -361,11 +361,13 @@ cannot reach a user.
   `infinity` are non-empty and hold no digit (no character with `char::is_numeric`), no control or
   format character (the set of `decimal`) and no whitespace at either end, since `format_number`
   writes them as they are and each must show and not read as a number; signs are characters of the
-  lexer's `Punct` class (section 3.5), so no letter, digit or whitespace; each ellipsis form is its
-  own sign or signs (none, `?`, `!`, `?!` or `!?`) followed by a non-empty run of `.` and `…` that
-  does not end in `…` and exactly three full stops; the run is what the rule writes in place of the
-  dots, so a sign in it, or three full stops of their own after `…`, would read as a new ellipsis on
-  a second pass (section 4.4), and a sign of another form would be lost.
+  lexer's `Punct` class (section 3.5), so no letter, digit or whitespace, other than `%` and `‰`,
+  and none equals a unit (a sign that is also a percent sign or a unit is read by two rules of
+  section 8.7, which disagree on a second pass); each ellipsis form is its own sign or signs (none,
+  `?`, `!`, `?!` or `!?`) followed by a non-empty run of `.` and `…` that does not end in `…` and
+  exactly three full stops; the run is what the rule writes in place of the dots, so a sign in it,
+  or three full stops of their own after `…`, would read as a new ellipsis on a second pass (section
+  4.4), and a sign of another form would be lost.
 
 ### 7.7 Adding a language
 

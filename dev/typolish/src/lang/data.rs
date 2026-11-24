@@ -1272,7 +1272,9 @@ impl LanguageData {
     }
 
     /// Sets the signs that name a number (`№`, `§`, `¶`): sorted by code point, each a
-    /// punctuation character of the lexer (`#`, `№`, `§`, `¶`, …; design sections 3.5 and 7.6).
+    /// punctuation character of the lexer (`#`, `№`, `§`, `¶`, …; design sections 3.5 and 7.6)
+    /// other than `%` and `‰`, and none equal to a unit: two rules would read such a sign, and a
+    /// second pass would differ.
     ///
     /// ```
     /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
@@ -1852,6 +1854,13 @@ impl Table<'_> {
             .any(|c| !crate::engine::lex::is_punct_char(*c))
         {
             return Err("signs: a sign must be a punctuation character of design section 3.5");
+        }
+        // A sign that is also a percent sign or a unit is read by two rules of design section 8.7
+        // that disagree on a second pass.
+        if self.signs.iter().any(|c| {
+            matches!(c, '%' | '\u{2030}') || self.units.iter().any(|unit| unit.chars().eq([*c]))
+        }) {
+            return Err("signs: a sign must not be `%`, `\u{2030}` or equal to a unit");
         }
         let n = &self.numbers;
         if n.decimal == n.group {

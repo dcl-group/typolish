@@ -315,6 +315,43 @@ fn build_validates_like_from_data() {
     );
 }
 
+/// A sign that is also a percent sign or a unit is read by two rules of design section 8.7, which
+/// disagree on a second pass (design section 7.6).
+#[test]
+fn a_sign_is_not_a_percent_sign_or_a_unit() {
+    let signs = |base: &Language, sign: char| {
+        LanguageBuilder::from_language(base, "xx")
+            .signs([sign])
+            .build()
+    };
+    for (base, sign) in [
+        (&Language::RU_RU, '$'),
+        (&Language::RU_RU, '°'),
+        (&Language::RU_RU, '%'),
+        (&Language::EN_US, '%'),
+        (&Language::EN_US, '‰'),
+        (&Language::EN_US, '°'),
+    ] {
+        match signs(base, sign) {
+            Err(Error::InvalidLanguageData { reason, .. }) => {
+                assert!(reason.contains("signs"), "{sign}: {reason}");
+            }
+            other => {
+                panic!("{base} with the sign {sign}: expected InvalidLanguageData, got {other:?}")
+            }
+        }
+    }
+    invalid(
+        LanguageBuilder::new("xx").units(["#"]).signs(['#']).build(),
+        "sign that is a unit",
+    );
+    assert!(signs(&Language::EN_US, '$').is_ok());
+    let lang = LanguageBuilder::new("xx").signs(['#']).build().unwrap();
+    let t = Typographer::new(lang, RuleSet::ALL);
+    let once = t.typeset("5 #1 and 5# and 5 #", Output::Unicode);
+    assert_eq!(t.typeset(&once, Output::Unicode), once);
+}
+
 #[test]
 fn the_error_names_the_field() {
     for (builder, field) in [
