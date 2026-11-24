@@ -693,7 +693,8 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(1_000_000))]
 
-    /// 14. The long run of design section 13.5 for pieces. Run with `cargo test -- --ignored`.
+    /// 14. The long run of design section 13.5 for pieces. Run with
+    /// `cargo test --test pieces_report -- --ignored`.
     #[test]
     #[ignore = "long run of design section 13.5, property 14"]
     fn no_panic_on_arbitrary_pieces_long(

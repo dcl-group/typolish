@@ -258,7 +258,8 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(1_000_000))]
 
     /// 14. The long run of design section 13.5: 1 000 000 strings through `report`, so the lexer
-    /// and the classifier run whatever the trigger bytes. Run with `cargo test -- --ignored`.
+    /// and the classifier run whatever the trigger bytes. Run with
+    /// `cargo test --test engine_properties -- --ignored`.
     #[test]
     #[ignore = "long run of design section 13.5, property 14"]
     fn no_panic_on_arbitrary_strings_long(

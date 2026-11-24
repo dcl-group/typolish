@@ -60,7 +60,7 @@ fn generators_keep_their_size() {
 }
 
 #[test]
-#[ignore = "needs a release build and time; run with --release -- --ignored"]
+#[ignore = "needs a release build and time; run with cargo test --release --test load -- --ignored"]
 fn load_is_linear() {
     let configs = [
         ("ru-RU prose", Language::RU_RU, RuleSet::PROSE),
@@ -121,7 +121,7 @@ fn plain_per_byte(t: &Typographer, text: &str, runs: usize) -> f64 {
 /// line or many paragraphs (design section 12.1); `lint` runs the same check. The time per byte
 /// for 512 KiB is at most twice that for 64 KiB.
 #[test]
-#[ignore = "needs a release build and time; run with --release -- --ignored"]
+#[ignore = "needs a release build and time; run with cargo test --release --test load -- --ignored"]
 fn to_plain_is_linear_on_prose() {
     let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
     let sentences = [
@@ -152,7 +152,7 @@ fn to_plain_is_linear_on_prose() {
 /// section 12.1). `«x „“»` stays broken in every tier; `«„«6»“»` is settled by the last one. The
 /// time per byte for 512 KiB is at most twice that for 64 KiB.
 #[test]
-#[ignore = "needs a release build and time; run with --release -- --ignored"]
+#[ignore = "needs a release build and time; run with cargo test --release --test load -- --ignored"]
 fn to_plain_is_linear_on_many_paragraphs_with_broken_quotes() {
     let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
     let mut failures = Vec::new();

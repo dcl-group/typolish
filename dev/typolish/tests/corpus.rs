@@ -133,7 +133,8 @@ fn the_snapshot_directory_has_no_stray_files() {
 
 /// Writes every snapshot. Run by hand, never in a normal run, and alone:
 /// `cargo test --test corpus update_snapshots -- --ignored`; never with `--include-ignored`, where
-/// it would write the snapshots while `snapshots_match_byte_for_byte` reads them.
+/// it would write the snapshots while `snapshots_match_byte_for_byte` reads them. A bare
+/// `cargo test -- --ignored` runs it too: always name the test file and the test.
 #[test]
 #[ignore = "rewrites tests/corpus/expected/; run alone by hand after a deliberate change: \
             cargo test --test corpus update_snapshots -- --ignored; never with --include-ignored"]
