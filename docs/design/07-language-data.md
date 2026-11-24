@@ -360,15 +360,18 @@ cannot reach a user.
   that check 15 of section 3.6 reads as the sign of a number; `range_dash` is `–` U+2013 or `—`
   U+2014, the dashes that a second pass and `to_plain` read back (sections 3.6 and 12.1); `nan` and
   `infinity` are non-empty and hold no digit (no character with `char::is_numeric`), no control or
-  format character (the set of `decimal`) and no whitespace at either end, since `format_number`
-  writes them as they are and each must show and not read as a number; signs are characters of the
-  lexer's `Punct` class (section 3.5), so no letter, digit or whitespace, other than `%` and `‰`,
-  and none equals a unit (a sign that is also a percent sign or a unit is read by two rules of
-  section 8.7, which disagree on a second pass); each ellipsis form is its own sign or signs (none,
-  `?`, `!`, `?!` or `!?`) followed by a non-empty run of `.` and `…` that does not end in `…` and
-  exactly three full stops; the run is what the rule writes in place of the dots, so a sign in it,
-  or three full stops of their own after `…`, would read as a new ellipsis on a second pass (section
-  4.4), and a sign of another form would be lost.
+  format character (the set of `decimal`), no other default-ignorable code point of Unicode 15.1
+  (U+034F, the Hangul fillers U+115F, U+1160, U+3164 and U+FFA0, the Khmer inherent vowels U+17B4
+  and U+17B5, the variation selectors), no whitespace at either end, and no mark at either end that
+  joins the text next to them (a lone U+0300 would sit on the character before it), since
+  `format_number` writes them as they are and each must show and not read as a number; signs are
+  characters of the lexer's `Punct` class (section 3.5), so no letter, digit or whitespace, other
+  than `%` and `‰`, and none equals a unit (a sign that is also a percent sign or a unit is read by
+  two rules of section 8.7, which disagree on a second pass); each ellipsis form is its own sign or
+  signs (none, `?`, `!`, `?!` or `!?`) followed by a non-empty run of `.` and `…` that does not end
+  in `…` and exactly three full stops; the run is what the rule writes in place of the dots, so a
+  sign in it, or three full stops of their own after `…`, would read as a new ellipsis on a second
+  pass (section 4.4), and a sign of another form would be lost.
 
 ### 7.7 Adding a language
 

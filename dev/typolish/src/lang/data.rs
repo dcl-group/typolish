@@ -602,8 +602,9 @@ impl NumberData {
     /// Sets the symbol of not-a-number.
     ///
     /// Validation (design section 7.6) requires a non-empty symbol without digits (no character
-    /// with `char::is_numeric`), control or format characters and without whitespace at either
-    /// end: `format_number` writes it as it is.
+    /// with `char::is_numeric`), control, format or other default-ignorable characters, without
+    /// whitespace at either end and without a mark at an end that joins the text next to it:
+    /// `format_number` writes it as it is, and it must show.
     ///
     /// ```
     /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
@@ -627,8 +628,9 @@ impl NumberData {
     /// Sets the symbol of infinity.
     ///
     /// Validation (design section 7.6) requires a non-empty symbol without digits (no character
-    /// with `char::is_numeric`), control or format characters and without whitespace at either
-    /// end: `format_number` writes it as it is.
+    /// with `char::is_numeric`), control, format or other default-ignorable characters, without
+    /// whitespace at either end and without a mark at an end that joins the text next to it:
+    /// `format_number` writes it as it is, and it must show.
     ///
     /// ```
     /// use typolish::{Language, LanguageData, NumberData, Output, RuleSet, Typographer};
@@ -1913,7 +1915,9 @@ impl Table<'_> {
             );
         }
         // `format_number` writes these symbols as they are: each must show, and must not read as a
-        // number.
+        // number. An invisible character (a default-ignorable code point, such as U+3164 HANGUL
+        // FILLER) would print nothing, and a mark at an end (U+0300) would join the text next to
+        // the symbol instead of showing on its own.
         let shows = |symbol: &str| {
             !symbol.is_empty()
                 && symbol.trim() == symbol
@@ -1922,11 +1926,13 @@ impl Table<'_> {
                         || c.is_control()
                         || is_format_category(c)
                         || is_reserved_default_ignorable(c)
+                        || is_assigned_default_ignorable(c)
                 })
+                && stands_alone(symbol)
         };
         if !shows(n.nan) || !shows(n.infinity) {
             return Err(
-                "numbers: nan and infinity must be non-empty, without digits, control or format characters and without whitespace at the ends",
+                "numbers: nan and infinity must be non-empty, without digits, control, format or default-ignorable characters, without whitespace at the ends and without a mark that joins the text next to them",
             );
         }
         Ok(())
@@ -2259,6 +2265,33 @@ pub(crate) const fn is_format_category(c: char) -> bool {
             | '\u{1d173}'..='\u{1d17a}'
             | '\u{e0001}'
             | '\u{e0020}'..='\u{e007f}'
+    )
+}
+
+/// Whether `symbol` keeps its own grapheme clusters between two letters: no mark at its start
+/// joins the character before it, and nothing at its end joins the character after it.
+fn stands_alone(symbol: &str) -> bool {
+    use unicode_segmentation::UnicodeSegmentation;
+    let framed = format!("x{symbol}x");
+    let mut clusters = framed.graphemes(true);
+    clusters.next() == Some("x") && clusters.next_back() == Some("x")
+}
+
+/// Whether `c` is an assigned default-ignorable code point of Unicode 15.1
+/// (`DerivedCoreProperties.txt`) outside general category `Cf`: U+034F COMBINING GRAPHEME JOINER,
+/// the Hangul fillers, the Khmer inherent vowels and the variation selectors. They show nothing.
+const fn is_assigned_default_ignorable(c: char) -> bool {
+    matches!(
+        c,
+        '\u{34f}'
+            | '\u{115f}'..='\u{1160}'
+            | '\u{17b4}'..='\u{17b5}'
+            | '\u{180b}'..='\u{180d}'
+            | '\u{180f}'
+            | '\u{3164}'
+            | '\u{fe00}'..='\u{fe0f}'
+            | '\u{ffa0}'
+            | '\u{e0100}'..='\u{e01ef}'
     )
 }
 

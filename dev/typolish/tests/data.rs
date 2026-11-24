@@ -1374,7 +1374,10 @@ fn number_data_is_checked() {
     }
     // The symbols of not-a-number and infinity are visible text without digits: an empty symbol
     // would print nothing, a digit would read as a number, and an invisible character or
-    // whitespace at an end would hide in the output of `format_number` (design section 7.6).
+    // whitespace at an end would hide in the output of `format_number` (design section 7.6). A
+    // default-ignorable code point outside `Cf` shows nothing either (U+034F, the Hangul fillers,
+    // the variation selectors), and a mark at an end joins the text next to the symbol: a lone
+    // U+0300 or a trailing prepended U+0D4E.
     for bad in [
         "",
         "1",
@@ -1389,11 +1392,31 @@ fn number_data_is_checked() {
         "a\u{7}b",
         "\u{e0041}",
         "\u{2065}",
+        "\u{34f}",
+        "\u{115f}",
+        "\u{1160}",
+        "\u{3164}",
+        "\u{ffa0}",
+        "a\u{3164}b",
+        "a\u{17b4}",
+        "∞\u{fe0f}",
+        "∞\u{e0100}",
+        "\u{300}",
+        "\u{300}a",
+        "a\u{d4e}",
     ] {
         rejected(with(NumberData::new().with_nan(bad)), "numbers");
         rejected(with(NumberData::new().with_infinity(bad)), "numbers");
     }
-    for good in ["не\u{a0}число", "∞", "NaN", "inf", "не число"] {
+    for good in [
+        "не\u{a0}число",
+        "∞",
+        "NaN",
+        "inf",
+        "не число",
+        "e\u{301}",
+        "\u{d4e}a",
+    ] {
         accepted(with(NumberData::new().with_nan(good).with_infinity(good)));
     }
 }
