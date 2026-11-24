@@ -143,6 +143,11 @@ const SEEDS: &[&str] = &[
     "Т. д. так",
     "Буква Т. е. не",
     "Т. Е. Иванов",
+    // A compact abbreviation after a surname, split into a part that reads as an initial (design
+    // sections 4.3, I2, and 8.7).
+    "Москва Т.е.",
+    "Пушкин А. Т.е.",
+    "Ма Т.н.",
     // An elision closed by a straight quote waits for pairing (design section 6.2).
     "Choose the 'round' button",
     "\"Say 'twas' or 'tis'\"",

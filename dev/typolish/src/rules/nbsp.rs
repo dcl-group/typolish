@@ -636,6 +636,30 @@ fn space_after(cx: &Cx<'_>, f: &Frag) -> Option<(usize, usize)> {
     Some((s, r))
 }
 
+/// The fragment `f` as `nbsp.initials` reads it on the right of a surname: a compact
+/// abbreviation (`Т.е.`) reads as its first part with its full stop (`Т.`), the fragment that
+/// `nbsp.abbreviations` splits off (`Т.⍽е.`), so the split changes nothing for this rule (design
+/// section 4.3, I2); any other fragment reads as itself.
+fn initials_side(cx: &Cx<'_>, f: &Frag) -> Frag {
+    if !compact_abbreviation(cx, f) {
+        return *f;
+    }
+    let mut core = cx.core(f);
+    let (Some(first), Some(stop)) = (core.next(), core.next()) else {
+        return *f;
+    };
+    match (u32::try_from(first), u32::try_from(stop)) {
+        (Ok(first), Ok(stop)) => Frag {
+            end: stop.saturating_add(1),
+            core_end: first.saturating_add(1),
+            kind: FragKind::Word,
+            stop: true,
+            ..*f
+        },
+        _ => *f,
+    }
+}
+
 /// Whether a run of initials continues before the fragment: an initial ends one pattern space
 /// before it.
 fn initial_before(cx: &Cx<'_>, f: &Frag) -> bool {
@@ -687,7 +711,7 @@ pub(crate) fn initials_rule(cx: &Cx<'_>, s: usize) -> Option<Match> {
     // `Фамилия И. О.`: the surname ends at `l`. The first initial is read before the surname,
     // which costs more; both are pure.
     let fl = tail(cx, l)?;
-    head(cx, r).and_then(|fr| initials(cx, fr, false, true))?;
+    head(cx, r).and_then(|fr| initials(cx, &initials_side(cx, fr), false, true))?;
     if !surname(cx, &plain_side(cx, fl, true)) {
         return None;
     }
@@ -695,21 +719,21 @@ pub(crate) fn initials_rule(cx: &Cx<'_>, s: usize) -> Option<Match> {
     let mut space = s;
     let mut right = r;
     loop {
-        let fr = head(cx, right)?;
-        let n = initials(cx, fr, false, true)?;
+        let fr = initials_side(cx, head(cx, right)?);
+        let n = initials(cx, &fr, false, true)?;
         count += n;
         if count > 3 {
             return None;
         }
         g.glue(cx, space, glue)?;
-        if initials(cx, fr, false, false).is_none() {
+        if initials(cx, &fr, false, false).is_none() {
             break;
         }
-        let Some((next_space, next)) = space_after(cx, fr) else {
+        let Some((next_space, next)) = space_after(cx, &fr) else {
             break;
         };
         match head(cx, next) {
-            Some(f) if initials(cx, f, false, true).is_some() => {
+            Some(f) if initials(cx, &initials_side(cx, f), false, true).is_some() => {
                 (space, right) = (next_space, next);
             }
             // Initials before a surname are the forward form, which the next space takes; the

@@ -119,6 +119,10 @@ for U+00A0).
   with a full stop (design section 7.1), so a capitalized `Т. е.` at a sentence start is the
   abbreviation: `Т. е. так`: unchanged → `Т.⍽е. так`; `Т.е. так`: unchanged → `Т.⍽е. так`;
   `Т. д. так`: `Т. д.⍽так` → `Т.⍽д. так`; `Буква Т. е. не`: `Буква⍽Т. е. не` → `Буква⍽Т.⍽е. не`.
+  `nbsp.initials` reads a compact abbreviation after a surname as its first part, the fragment
+  `nbsp.abbreviations` splits off (design section 8.7), so the first pass is a fixed point:
+  `Москва Т.е.`: unchanged → `Москва⍽Т.⍽е.` (with `nbsp.initials` alone `Москва⍽Т.е.`);
+  `Пушкин А. Т.е.`: `Пушкин⍽А. Т.е.` → `Пушкин⍽А.⍽Т.⍽е.`.
 - An English elision of the list that a straight `'` closes at once waits for pairing (design
   section 6.2), as `'n'` does, in both sets: `Choose the 'round' button`:
   `Choose the ’round' button` → `Choose the⍽'round' button`; `"Say 'twas' or 'tis'"`:

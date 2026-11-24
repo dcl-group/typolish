@@ -622,6 +622,49 @@ fn initials_inside_both_sets() {
 }
 
 #[test]
+fn initials_read_a_compact_abbreviation_as_its_split_parts() {
+    // `nbsp.initials` reads a compact abbreviation on the right of a surname as its first part, the
+    // fragment that `nbsp.abbreviations` splits off (design sections 4.3, I2, and 8.7): `Москва Т.е.`
+    // gets the glue that `Москва Т. е.` and the split `Москва Т.⍽е.` get, so the first pass is a
+    // fixed point.
+    let rows = [
+        ("Москва Т.е.", "Москва⍽Т.⍽е."),
+        ("Москва Т. е.", "Москва⍽Т.⍽е."),
+        ("Москва Т.⍽е.", "Москва⍽Т.⍽е."),
+        ("Москва Т.д.", "Москва⍽Т.⍽д."),
+        ("Москва Н.э.", "Москва⍽Н.⍽э."),
+        ("Пушкин Т.е. Иванов", "Пушкин⍽Т.⍽е. Иванов"),
+        ("Пушкин А. Т.е.", "Пушкин⍽А.⍽Т.⍽е."),
+        ("Москва Т.е., так", "Москва⍽Т.⍽е., так"),
+        ("Москва т.е.", "Москва т.⍽е."),
+        ("Москва. Т.е. так", "Москва. Т.⍽е. так"),
+    ];
+    for t in [
+        only(ru(), &[ABBR, INITIALS]),
+        set(ru(), RuleSet::PROSE),
+        set(ru(), RuleSet::INTERFACE),
+    ] {
+        for (input, expected) in rows {
+            check_in("ru", &t, (input, expected));
+            check_unchanged("ru second pass", &t, expected);
+            // P2 (design section 12.2): the plain form is typeset back to the same text.
+            let y = vis(expected);
+            let back = t.typeset(&t.to_plain(&y), Output::Unicode).into_owned();
+            assert_eq!(back, y, "ru P2 of {}", show(&y));
+        }
+    }
+    // Alone, `nbsp.initials` reads the compact form the same way and splits nothing.
+    alone_rows(
+        ru(),
+        INITIALS,
+        &[
+            ("Москва Т.е.", "Москва⍽Т.е."),
+            ("Москва Т. е.", "Москва⍽Т. е."),
+        ],
+    );
+}
+
+#[test]
 fn initials_with_abbreviations() {
     // Design section 8.7: `Mr. Smith` by abbreviations, `J. R. R. Tolkien` by initials.
     let t = only(en(), &[ABBR, INITIALS]);

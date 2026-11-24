@@ -357,7 +357,9 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   10.8). Where initials stand between two capitalized words, the forward form takes them and the
   word before stays apart (`Иван А.⍽Петров`, `Пушкин А.⍽С.⍽Иванов`; section 15.2, item 22). A label
   numeral is not an initial (`§V.`); a surname at the end of a `Joined` core is read as the word it
-  was (section 4.3, I4).
+  was (section 4.3, I4). A compact abbreviation after a surname is read as its first part, the
+  fragment that `nbsp.abbreviations` splits off (section 4.3, I2), so `Москва Т.е.` gets the glue of
+  `Москва Т. е.` in one pass: `Москва⍽Т.⍽е.`.
 - **`nbsp.dates`.** By `month_position`: `AfterDay` (ru) glues a day number 1 to 31 (or a `Number`
   slot) before a month form (`21⍽ноября`); `BeforeDay` glues a month form before a day number;
   `Both` (en) glues both orders (`November⍽21`, `21⍽November`). With year and century words (only in
