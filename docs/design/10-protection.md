@@ -246,6 +246,9 @@ expectation):
   `key: ""` gives `key: «»`. A frozen core that does not end in `=` keeps its wrapper quotes as
   candidates, so `Путь /etc/"" и "да".` fails the paragraph the same way, with `UnmatchedQuote`
   (warning, section 6.1), while `key=""` stays as written.
+- The unit lists are a selection (sections 7.2 and 7.3, settled by section 15.5, item 16): `5 ГВт`,
+  `5 м³` and `5 p.m.` are not glued, while `5⍽МВт`, `5⍽м²` and `5⍽kg` are. A caller adds the units
+  it needs with `add_units` (section 2.4).
 - Straight quotes nested out of order around a trailing possessive are not idempotent in English:
   `""s' 'x."'"` gives `“‘s’ 'x.’'”`, and a second pass pairs the remaining `'` (`“‘s’ ‘x.’’”`). The
   same class breaks P2 (section 12.2) in the built-in English sets when an unpaired `'s` or `'S`

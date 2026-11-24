@@ -268,6 +268,8 @@ The rules read the shape of the text, not its meaning. These cases are known and
   fragment and stays straight; with the space (`сказал: "привет"`) the quotes are placed. An empty
   value glued the same way (`key:""`) leaves the paragraph's quotes straight with an
   `UnmatchedQuote` warning; `key=""` stays as written.
+- The unit lists are a selection: `5 ГВт`, `5 м³` and `5 p.m.` are not glued, while `5⍽МВт`, `5⍽м²`
+  and `5⍽kg` are. Add the units you need with `add_units`.
 - Straight quotes nested out of order around a trailing possessive are not idempotent in English:
   `""s' 'x."'"` gives `“‘s’ 'x.’'”`, and a second pass pairs the remaining `'` (`“‘s’ ‘x.’’”`). For
   the same reason `to_plain` does not give back what typesets to the same text when an unpaired `'s`
