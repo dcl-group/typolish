@@ -52,8 +52,9 @@ fn typographer(lang: usize, set: RuleSet) -> Typographer {
     Typographer::new(LANGUAGES[lang % 3].clone(), set)
 }
 
-/// A string over ASCII and the characters that glue to a neighbor (design section 13.6): no
-/// backtick, so that no delimiter can stand inside a cluster.
+/// A string over ASCII, the characters that glue to a neighbor (design section 13.6) and the
+/// format characters that the lexer skips (design section 5.4): no backtick, so that no delimiter
+/// can stand inside a cluster.
 fn cluster_text() -> impl Strategy<Value = String> {
     const PARTS: &[&str] = &[
         "a",
@@ -90,6 +91,9 @@ fn cluster_text() -> impl Strategy<Value = String> {
         "\u{300}",
         "\u{200d}",
         "\u{200c}",
+        "\u{200b}",
+        "\u{2060}",
+        "\u{feff}",
         "\u{903}",
         "\u{fe0f}",
         "\u{20e3}",
