@@ -54,6 +54,11 @@ pub(crate) fn dots(cx: &Cx<'_>, i: usize) -> Option<Match> {
     if !three && !typed {
         return None;
     }
+    // Full stops right after `/` or `\` are the tail of a path or a pattern (`./...`), never a
+    // trailing ellipsis (design sections 8.6 and 9.1).
+    if prev.is_some_and(|p| matches!(cx.kind(p), Some(Kind::Punct('/' | '\\')))) {
+        return None;
+    }
     let attached = !boundary(cx, prev);
     let word_end = attached
         && (boundary(cx, next)

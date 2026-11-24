@@ -104,3 +104,7 @@ for U+00A0).
   - ru `а—г. Пушкин`: `а—г. Пушкин` → `а—г.⍽Пушкин`; ru `дом—и т. д. и`: `дом—и т.⍽д. и` →
     `дом—и⍽т.⍽д. и`; en `x—St. "a"`: `x—St. “a”` → `x—St.⍽“a”` (an abbreviation may start at a part
     of a `Joined` core).
+- `ellipsis.dots` no longer reads three full stops right after `/` or `\` as an ellipsis (design
+  section 8.6), in every language and both sets: `go test ./...`: `go test ./…` → `go test ./...`;
+  `src/...`: `src/…` → `src/...`; `C:\dir\... now`: `C:\dir\… now` → `C:\dir\... now`;
+  `https://a.b/c...` still gives `https://a.b/c…`.

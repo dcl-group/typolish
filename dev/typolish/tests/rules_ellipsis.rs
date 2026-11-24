@@ -150,6 +150,42 @@ fn dots_in_common() {
     }
 }
 
+// Full stops right after `/` or `\` are the tail of a path or a pattern, not an ellipsis (design
+// sections 8.6 and 9.1); dots after any other character of a URL still are.
+const AFTER_SLASH: &[(&str, &str)] = &[
+    ("go test ./...", "go test ./..."),
+    ("./...", "./..."),
+    ("/...", "/..."),
+    ("src/...", "src/..."),
+    ("and/... then", "and/... then"),
+    ("C:\\dir\\... now", "C:\\dir\\... now"),
+    ("src/…", "src/…"),
+    ("https://a.b/c...", "https://a.b/c…"),
+    ("Loading...", "Loading…"),
+    ("a / ...", "a / …"),
+];
+
+#[test]
+fn dots_after_a_slash_or_a_backslash() {
+    for language in [Language::RU_RU, Language::EN_US, Language::COMMON] {
+        check_rows(&configs(&language, DOTS), AFTER_SLASH);
+    }
+    let t = interface(Language::EN_US);
+    assert_eq!(
+        t.typeset("Run go test ./... to check all packages", Output::Unicode),
+        "Run go test ./... to\u{a0}check all packages"
+    );
+    let t = prose(Language::EN_US);
+    assert_eq!(
+        t.typeset("Use src/... or https://a.b/c... now", Output::Unicode),
+        "Use src/... or\u{a0}https://a.b/c… now"
+    );
+    assert_eq!(
+        prose(Language::RU_RU).typeset("Подождите...", Output::Unicode),
+        "Подождите…"
+    );
+}
+
 // ellipsis.inner (Prose): `...` at the start of a word and between two words.
 const INNER_ROWS: &[(&str, &str)] = &[
     ("...и тогда", "…и тогда"),

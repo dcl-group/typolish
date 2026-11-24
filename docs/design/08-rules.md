@@ -308,7 +308,9 @@ The rule for port ranges such as `8000-8100` is section 10.6.
   `?!…`). Two full stops (`А если..`, `../x`, `0..5`) and four or more (`....`, leaders in tables of
   contents) never change. A typed `…` or `?…` never changes. On its products and on typed forms
   (`…`, ru `?..`, `!..`, `?!..`, en `?…`) the rule matches with an empty edit. Digits on both sides
-  (`-5...5`) never change.
+  (`-5...5`) never change. Full stops directly after `/` or `\` never change (`./...`, `src/...`,
+  `C:\dir\...`): they are the tail of a path or a pattern; the rule does not match there, typed `…`
+  included.
 - **`ellipsis.inner`** (Prose): `...` at the start of a word after a space or a line start
   (`...и тогда`) and between two words without spaces (`да...нет`) → `…`. A `Word` or `Other` slot
   counts as a word (section 8.10) and so does a protected span (section 2.6): `{a}...{b}` →
