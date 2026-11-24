@@ -124,17 +124,18 @@ pastes it between quotes with no escaping of its own. The container is always es
 because the crate leaves straight quotes it could not pair, and protected spans may contain
 backslashes; escaping after the crate would ruin its own escapes.
 
-| What                                                    | `JS`                                                    | `JS_HEX`                                                           | `JSON`                       | `RUST`                |
-| ------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------- | --------------------- |
-| `\`                                                     | `\\`                                                    | `\\`                                                               | `\\`                         | `\\`                  |
-| `"`                                                     | `\"`                                                    | `\"`                                                               | `\"`                         | `\"`                  |
-| `'`, backtick                                           | `\u0027`, `\u0060`                                      | `\x27`, `\x60`                                                     | as is                        | as is                 |
-| `<`, `>`, `&`                                           | `\u003C`, `\u003E`, `\u0026`                            | `\x3C`, `\x3E`, `\x26`                                             | `\u003c`, `\u003e`, `\u0026` | as is                 |
-| `$` before `{` or at the end of a text                  | `\u0024`                                                | `\x24`                                                             | as is                        | as is                 |
-| `\n`, `\r`, `\t`                                        | `\n`, `\r`, `\t`                                        | `\n`, `\r`, `\t`                                                   | `\n`, `\r`, `\t`             | `\n`, `\r`, `\t`      |
-| other controls (U+0000 to U+001F, U+007F)               | `\u0000`                                                | `\x00`                                                             | `\u0000`                     | `\0`, `\u{1}`         |
-| U+2028, U+2029                                          | `\u2028`, `\u2029`                                      | `\u2028`, `\u2029`                                                 | `\u2028`, `\u2029`           | as is                 |
-| typographic set (or every non-ASCII with `non_ascii()`) | `\u00A0`; above the BMP a surrogate pair `\uD83D\uDE00` | `\xA0` up to U+00FF, `\u2014` above, surrogate pairs above the BMP | `\u00a0`, surrogate pairs    | `\u{a0}`, `\u{1f600}` |
+| What                                                                     | `JS`                                                    | `JS_HEX`                                                           | `JSON`                       | `RUST`                |
+| ------------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------- | --------------------- |
+| `\`                                                                      | `\\`                                                    | `\\`                                                               | `\\`                         | `\\`                  |
+| `"`                                                                      | `\"`                                                    | `\"`                                                               | `\"`                         | `\"`                  |
+| `'`, backtick                                                            | `\u0027`, `\u0060`                                      | `\x27`, `\x60`                                                     | as is                        | as is                 |
+| `<`, `>`, `&`                                                            | `\u003C`, `\u003E`, `\u0026`                            | `\x3C`, `\x3E`, `\x26`                                             | `\u003c`, `\u003e`, `\u0026` | as is                 |
+| `$` before `{` or at the end of a text                                   | `\u0024`                                                | `\x24`                                                             | as is                        | as is                 |
+| `\n`, `\r`, `\t`                                                         | `\n`, `\r`, `\t`                                        | `\n`, `\r`, `\t`                                                   | `\n`, `\r`, `\t`             | `\n`, `\r`, `\t`      |
+| other controls (U+0000 to U+001F, U+007F)                                | `\u0000`                                                | `\x00`                                                             | `\u0000`                     | `\0`, `\u{1}`         |
+| U+2028, U+2029                                                           | `\u2028`, `\u2029`                                      | `\u2028`, `\u2029`                                                 | `\u2028`, `\u2029`           | as is                 |
+| bidi controls U+061C, U+200E, U+200F, U+202A to U+202E, U+2066 to U+2069 | `\u202E`                                                | `\u202E`                                                           | `\u202e`                     | `\u{202e}`            |
+| typographic set (or every non-ASCII with `non_ascii()`)                  | `\u00A0`; above the BMP a surrogate pair `\uD83D\uDE00` | `\xA0` up to U+00FF, `\u2014` above, surrogate pairs above the BMP | `\u00a0`, surrogate pairs    | `\u{a0}`, `\u{1f600}` |
 
 - `JS` and `JS_HEX` use only escapes valid in every JavaScript string form, so the result is safe in
   single-quoted, double-quoted and template literals and inside an HTML `<script>` element. `JS_HEX`
@@ -145,6 +146,10 @@ backslashes; escaping after the crate would ruin its own escapes.
   the result is safe to embed in a script element too.
 - `RUST` is for code generated at build time (section 2.14): the body of a normal (non-raw) string
   literal.
+- The bidi controls are escaped in every style (`CSS`: `\202e `, `JS_CODE_POINT`: `\u{202E}`): rustc
+  refuses U+202A to U+202E and U+2066 to U+2069 raw in a literal
+  (`text_direction_codepoint_in_literal`), and in any source they reorder the text around the
+  literal when it is read (section 15.3, C44).
 - `JS_CODE_POINT` escapes the same characters as `JS` in the ES2015 form, with uppercase hex digits
   and no leading zeros (`\u{A0}`, `\u{27}` for `'`, `\u{0}` for U+0000, `\u{2028}`, `\u{1F600}`
   above the BMP, no surrogate pairs), for codebases that target modern engines only.

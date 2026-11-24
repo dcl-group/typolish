@@ -400,6 +400,36 @@ fn escaped_bodies_follow_the_table() {
     }
 }
 
+#[test]
+fn bidi_controls_are_escaped_in_every_syntax() {
+    // Design section 11.6: the bidi controls are escaped in every escaped style, so a Rust literal
+    // compiles and no control reorders the code around the literal.
+    let bidi = [
+        '\u{61c}', '\u{200e}', '\u{200f}', '\u{202a}', '\u{202b}', '\u{202c}', '\u{202d}',
+        '\u{202e}', '\u{2066}', '\u{2067}', '\u{2068}', '\u{2069}',
+    ];
+    let t = empty(Language::COMMON);
+    let input = "a\u{202E}b\u{2066}c\u{200F}d\u{61C}e\u{200E}f";
+    let all: String = bidi.iter().collect();
+    for style in syntaxes() {
+        for text in [input, all.as_str()] {
+            let output = Output::Escaped(style);
+            let got = t.typeset(text, output);
+            assert!(matches!(got, Cow::Owned(_)), "{style:?} {text:?}");
+            assert!(!got.contains(bidi), "{style:?}: {got:?}");
+            assert_eq!(decode(output, &got).unwrap(), text, "{style:?}");
+        }
+    }
+    assert_eq!(
+        t.typeset(input, Output::Escaped(EscapeStyle::RUST)),
+        "a\\u{202e}b\\u{2066}c\\u{200f}d\\u{61c}e\\u{200e}f"
+    );
+    assert_eq!(
+        t.typeset(input, Output::Escaped(EscapeStyle::JS)),
+        "a\\u202Eb\\u2066c\\u200Fd\\u061Ce\\u200Ef"
+    );
+}
+
 // The scope `non_ascii()` escapes every non-ASCII character; the container is escaped as before.
 const NON_ASCII: &[(&str, [&str; 6])] = &[
     (

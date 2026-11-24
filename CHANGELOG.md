@@ -68,7 +68,7 @@ supported Rust version: 1.100.
   elements (`nowrap_class`, `nowrap_style`); `Output::Escaped` with the body of a string literal for
   JavaScript (`JS`, `JS_HEX`, `JS_CODE_POINT`), JSON, Rust and CSS (`EscapeStyle`), the typographic
   set or with `non_ascii()` every non-ASCII character escaped; `$` before `{` and at the end of a
-  text is escaped in the JavaScript styles.
+  text is escaped in the JavaScript styles, and the bidi controls in every escaped style.
 - Explanation: `report` and `report_template` return the result with every edit (`Change`), the
   protected spans (`ProtectedSpan`, `ProtectedKind`, `TechKind`) and the diagnostics (`Diagnostic`,
   `DiagnosticKind`, `Severity`); the `Display` of `Report` prints a table of the edits and the
@@ -129,3 +129,6 @@ for U+00A0).
 - An apostrophe between two letters inside a frozen core no longer keeps the quotes around the
   fragment straight (design section 6.1), in both sets: en `Say "it's:fine" now`: unchanged →
   `Say “it's:fine” now`; ru `Файл "it's:fine" тут`: unchanged → `Файл «it's:fine» тут`.
+- `Output::Escaped` escapes the bidi controls U+061C, U+200E, U+200F, U+202A to U+202E and U+2066 to
+  U+2069 in every style (design section 11.6), so a `RUST` body compiles: `a\u{202E}b` in `RUST`:
+  the raw control → `a\u{202e}b`; in `JS`: the raw control → `a\u202Eb`.

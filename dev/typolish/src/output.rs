@@ -236,7 +236,9 @@ pub(crate) enum Scope {
 /// Parameters of [`Output::Escaped`]: the syntax of the string literal and the scope of escaping.
 ///
 /// The container is always escaped completely: `\`, the quotes of the syntax and control
-/// characters, whatever the scope. With the default scope the typographic set of design section
+/// characters, whatever the scope. The bidi controls (U+061C, U+200E, U+200F, U+202A to U+202E,
+/// U+2066 to U+2069) are escaped in every style, since a Rust literal refuses them raw and in
+/// source they reorder the text around them. With the default scope the typographic set of design section
 /// 11.2 is escaped too; [`EscapeStyle::non_ascii`] escapes every non-ASCII character.
 ///
 /// ```
@@ -448,7 +450,11 @@ pub(crate) const fn encoded_bytes(output: Output) -> Triggers {
             _ => MARKUP.union(SET_BYTES),
         },
         Output::Escaped(style) => {
-            let base = Triggers::of(b"\\\"").union(CONTROLS).union(SET_BYTES);
+            // 0xD8 leads U+061C; the other bidi controls start with 0xE2, already in SET_BYTES.
+            let base = Triggers::of(b"\\\"")
+                .union(CONTROLS)
+                .union(SET_BYTES)
+                .union(Triggers::of(&[0xd8]));
             let syntax = match style.syntax {
                 Syntax::Js | Syntax::JsHex | Syntax::JsCodePoint => Triggers::of(b"'`<>&$"),
                 Syntax::Json => Triggers::of(b"<>&"),
@@ -728,6 +734,11 @@ fn escaped_char<O: Out>(o: &mut O, style: EscapeStyle, c: char) -> Res {
         '\0' if syntax == Syntax::Rust => o.put("\\0"),
         '\0'..='\u{1f}' | '\u{7f}' => code(o, syntax, cp),
         '\u{2028}' | '\u{2029}' if js || syntax == Syntax::Json => code(o, syntax, cp),
+        // Bidi controls, in every syntax: rustc refuses them raw in a literal, and in a review
+        // they reorder the code around them (design section 11.6).
+        '\u{61c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}' => {
+            code(o, syntax, cp)
+        }
         _ if (style.scope == Scope::NonAscii && !c.is_ascii()) || typographic(c).is_some() => {
             code(o, syntax, cp)
         }

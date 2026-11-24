@@ -51,11 +51,11 @@ uses (section 11), so the two cannot drift apart:
 - `Html`: `& < > " '`, and the lead bytes of the typographic set except with
   `HtmlStyle::CHARACTERS`; with `CHARACTERS` and a nowrap style, the lead bytes of U+00A0, U+202F
   and U+2011 (0xC2, 0xE2), which a nowrap element changes or makes joints;
-- `Escaped`: `\`, `"`, controls (0x00 to 0x1F, 0x7F), the lead bytes of U+2028, U+2029 and of the
-  typographic set; in addition `'`, the backtick, `< > &` and `$` for `JS`, `JS_HEX` and
-  `JS_CODE_POINT`, `< > &` for `JSON`, and `'` and `<` for `CSS`; with `non_ascii()`, every byte
-  from 0x80. C1 controls such as U+0085 never skip the scan: their lead byte 0xC2 is already in the
-  set through U+00A0.
+- `Escaped`: `\`, `"`, controls (0x00 to 0x1F, 0x7F), the lead bytes of U+2028, U+2029, of the
+  typographic set and of the bidi controls (0xD8 for U+061C; the others start with 0xE2); in
+  addition `'`, the backtick, `< > &` and `$` for `JS`, `JS_HEX` and `JS_CODE_POINT`, `< > &` for
+  `JSON`, and `'` and `<` for `CSS`; with `non_ascii()`, every byte from 0x80. C1 controls such as
+  U+0085 never skip the scan: their lead byte 0xC2 is already in the set through U+00A0.
 
 If no byte matches, the call returns `Cow::Borrowed` without lexing. Lead bytes over-approximate (a
 Cyrillic letter matches only while `number.times` is active, while every character from U+2000 to
