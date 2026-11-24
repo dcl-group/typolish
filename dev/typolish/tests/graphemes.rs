@@ -285,6 +285,20 @@ const CHANGED_BOUNDARIES: &[(&str, &str, &str, &str)] = &[
         "😀\u{200d}❤",
         "😀\u{200d}❤",
     ),
+    // A letter that is `Extended_Pictographic` in every version (U+2139 INFORMATION SOURCE) no
+    // longer joins such a symbol after a ZWJ.
+    (
+        "\u{2139}\u{200d}\u{2605}",
+        "\u{2139}\u{200d}|★",
+        "\u{2139}\u{200d}★",
+        "\u{2139}\u{200d}★",
+    ),
+    (
+        "\u{2605}\u{200d}\u{2139}",
+        "★\u{200d}|\u{2139}",
+        "★\u{200d}\u{2139}",
+        "★\u{200d}\u{2139}",
+    ),
     // U+11A3A ZANABAZAR SQUARE CLUSTER-INITIAL LETTER RA (Unicode 10.0) is no longer `Prepend`, so
     // rule GB9b no longer joins it with the character after it, a quote or a space included.
     ("\u{11a3a}\"", "𑨺|\"", "𑨺\"", "𑨺\""),
@@ -313,10 +327,23 @@ fn boundaries_that_changed_between_versions_of_the_dependency() {
 fn output_that_changed_between_versions_of_the_dependency() {
     // Design sections 5.6 and 15.1: with `unicode-segmentation` 1.12.0 U+11A3A joined the quote,
     // dash or full stop after it into one cluster, which the rules leave alone; with 1.13.3 the
-    // quote, the dash and the ellipsis after it are typeset. The third column is the output
-    // measured with 1.12.0 (the same with 1.10.1).
+    // quote, the dash and the ellipsis after it are typeset. A letter that is
+    // `Extended_Pictographic`, a ZWJ and a symbol that no longer is (U+2605 BLACK STAR) formed one
+    // word with 1.12.0 and are a word and a symbol with 1.13.3, which changes the dash and the
+    // apostrophe next to them. The third column is the output measured with 1.12.0 (the same with
+    // 1.10.1). The measured output changes only for inputs with U+11A3A or with one of `LETTERS`
+    // before a ZWJ, the only letters that are `Extended_Pictographic` (design section 5.6).
+    const LETTERS: [char; 6] = [
+        '\u{2139}',
+        '\u{24c2}',
+        '\u{1f170}',
+        '\u{1f171}',
+        '\u{1f17e}',
+        '\u{1f17f}',
+    ];
     let ru = Typographer::new(Language::RU_RU, RuleSet::PROSE);
     let en = Typographer::new(Language::EN_US, RuleSet::PROSE);
+    let en_interface = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
     let rows: &[(&Typographer, &str, &str, &str)] = &[
         (&ru, "\"\u{11a3a}\"", "«\u{11a3a}»", "\"\u{11a3a}\""),
         (
@@ -339,10 +366,48 @@ fn output_that_changed_between_versions_of_the_dependency() {
             "x (\u{11a3a}) - y",
             "x (\u{11a3a})—y",
         ),
-        // GB9c and the emoji change move boundaries inside a run of letters or symbols only, so
-        // the output stays the same.
+        // GB9c, and the emoji change after an emoji or before a letter, move boundaries inside a
+        // run of letters or symbols only, so the output stays the same.
         (&ru, "\"क्ष\" - да", "«क्ष»\u{a0}— да", "«क्ष»\u{a0}— да"),
         (&en, "\"😀\u{200d}★\"", "“😀\u{200d}★”", "“😀\u{200d}★”"),
+        (&en, "😀\u{200d}★ - y", "😀\u{200d}★ — y", "😀\u{200d}★ — y"),
+        (
+            &en,
+            "★\u{200d}\u{2139} - y",
+            "★\u{200d}\u{2139} — y",
+            "★\u{200d}\u{2139} — y",
+        ),
+        // A letter that is `Extended_Pictographic`, a ZWJ and U+2605 are no longer one word.
+        (
+            &en,
+            "\u{2139}\u{200d}★ - y",
+            "\u{2139}\u{200d}★ — y",
+            "\u{2139}\u{200d}★—y",
+        ),
+        (
+            &en,
+            "\u{2139}\u{fe0f}\u{200d}★ - y",
+            "\u{2139}\u{fe0f}\u{200d}★ — y",
+            "\u{2139}\u{fe0f}\u{200d}★—y",
+        ),
+        (
+            &en_interface,
+            "x - \u{24c2}\u{200d}★",
+            "x — \u{24c2}\u{200d}★",
+            "x—\u{24c2}\u{200d}★",
+        ),
+        (
+            &ru,
+            "\u{1f170}\u{200d}★'s",
+            "\u{1f170}\u{200d}★'s",
+            "\u{1f170}\u{200d}★’s",
+        ),
+        (
+            &en,
+            "\u{1f17f}\u{200d}★'s",
+            "\u{1f17f}\u{200d}★'s",
+            "\u{1f17f}\u{200d}★’s",
+        ),
     ];
     for &(t, input, now, v1_12) in rows {
         assert_eq!(
@@ -351,11 +416,11 @@ fn output_that_changed_between_versions_of_the_dependency() {
             "{}",
             input.escape_unicode()
         );
-        assert_eq!(
-            now != v1_12,
-            input.contains('\u{11a3a}'),
-            "{}",
-            input.escape_unicode()
-        );
+        let changed = input.contains('\u{11a3a}')
+            || LETTERS.iter().any(|c| {
+                input.contains(&format!("{c}\u{200d}"))
+                    || input.contains(&format!("{c}\u{fe0f}\u{200d}"))
+            });
+        assert_eq!(now != v1_12, changed, "{}", input.escape_unicode());
     }
 }

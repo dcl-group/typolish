@@ -38,8 +38,13 @@ stands for U+00A0).
   assigned long before, and with them the output of the built-in sets. Measured between 1.12.0 and
   1.13.3, the version this release requires: U+11A3A ZANABAZAR SQUARE CLUSTER-INITIAL LETTER RA no
   longer joins the character after it, so `"𑨺"` gives `«𑨺»` (Russian, both sets) where 1.12.0 left
-  it as written; `𑨺...` gives `𑨺…`. Callers who need byte-stable output keep the version of the
-  dependency in their lock file. Nothing changes for 0.1.1, which already requires 1.13.3.
+  it as written; `𑨺...` gives `𑨺…`. `Extended_Pictographic` no longer holds for 660 old symbols such
+  as `★`, so a letter that is `Extended_Pictographic` (`ℹ`, `Ⓜ`, `🅰`, `🅱`, `🅾`, `🅿`), a ZWJ and such
+  a symbol are no longer one word: in English, both sets, `ℹ\u{200D}★ - y` gives `ℹ\u{200D}★ — y`
+  where 1.12.0 gave `ℹ\u{200D}★—y`, `x - Ⓜ\u{200D}★` gives `x — Ⓜ\u{200D}★` where it gave
+  `x—Ⓜ\u{200D}★`, and in both languages `🅰\u{200D}★'s` stays as written where 1.12.0 gave
+  `🅰\u{200D}★’s`. Callers who need byte-stable output keep the version of the dependency in their
+  lock file. Nothing changes for 0.1.1, which already requires 1.13.3.
 
 ### Fixed
 

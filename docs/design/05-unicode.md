@@ -136,16 +136,32 @@ break class (the probe lives outside the repository; its findings are the tables
 | ---------------------------------------------------------------------- | ------------- | ------------- | --------------- | --------------------------- |
 | rule GB9c: Indic conjuncts (`क्ष`, `ক্ষ`, `ക്ഷ`) are one cluster          | `क्\|ष`        | `क्ष`          | `क्ष`            | unchanged (letters only)    |
 | GB9c extended to Myanmar and Khmer (`က္က`, `ក្ក`)                        | `က္\|က`        | `က္\|က`        | `က္က`            | unchanged (letters only)    |
-| `Extended_Pictographic` dropped for 660 old symbols (`★`, Unicode 1.1) | `😀\u{200D}★` | `😀\u{200D}★` | `😀\u{200D}\|★` | unchanged (symbols only)    |
+| `Extended_Pictographic` dropped for 660 old symbols (`★`, Unicode 1.1) | `😀\u{200D}★` | `😀\u{200D}★` | `😀\u{200D}\|★` | changed after six letters   |
 | U+11A3A ZANABAZAR SQUARE CLUSTER-INITIAL LETTER RA no longer `Prepend` | `𑨺"`          | `𑨺"`          | `𑨺\|"`          | changed                     |
 
 Under the older versions U+11A3A (Unicode 10.0) joins the character after it, a quote, a space or a
 full stop included, into one cluster, which the rules leave alone; with 1.13.3 they are typeset:
 `"𑨺"` stays as written with 1.12.0 and gives `«𑨺»` with 1.13.3 (Russian, both sets), `𑨺...` gives
-`𑨺…`, `𑨺 - да` gives `𑨺⍽— да`. The other changes move boundaries only inside a run of letters or of
-symbols, which forms the same tokens either way. So a newer dependency can change the output for old
-characters as well; section 15.1 says how the output stability policy treats such an update (choice
-C56).
+`𑨺…`, `𑨺 - да` gives `𑨺⍽— да`.
+
+Six letters are `Extended_Pictographic` in every version: U+2139 `ℹ`, U+24C2 `Ⓜ` and U+1F170,
+U+1F171, U+1F17E, U+1F17F `🅰 🅱 🅾 🅿` (`is_alphabetic` holds for all six). Under the older versions
+rule GB11 joins such a letter, a ZWJ and one of the dropped symbols into one cluster, and a cluster
+led by a letter is part of a word (section 3.5); with 1.13.3 the symbol is a cluster of its own, so
+the token next to the dash or the apostrophe is a symbol. In English, both sets, `ℹ\u{200D}★ - y`
+gives `ℹ\u{200D}★—y` with 1.12.0 and `ℹ\u{200D}★ — y` with 1.13.3, `x - Ⓜ\u{200D}★` gives
+`x—Ⓜ\u{200D}★` and `x — Ⓜ\u{200D}★`; in both languages `🅰\u{200D}★'s` gives `🅰\u{200D}★’s` with
+1.12.0 and stays as written with 1.13.3. A variation selector before the ZWJ (`ℹ\u{FE0F}\u{200D}★`)
+changes nothing in this. A dropped symbol before the ZWJ (`★\u{200D}ℹ`) and after an emoji
+(`😀\u{200D}★`) changes no output.
+
+The other changes move boundaries only inside a run of letters or of symbols, which forms the same
+tokens either way. A sweep of every pair of an `Extended_Pictographic` character of either version
+and a dropped symbol, in both orders, joined by a ZWJ, in ten frames (dash, quotes, ellipsis,
+apostrophe, numbers) and with five typographers, finds output changes only for the six letters
+above; 1.10.1 and 1.12.0 give the same output on all of them. So a newer dependency can change the
+output for old characters as well; section 15.1 says how the output stability policy treats such an
+update (choice C56).
 
 ### 5.7 Mixed languages
 
