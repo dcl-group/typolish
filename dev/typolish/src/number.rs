@@ -216,6 +216,7 @@ impl From<f64> for Number<'static> {
 /// assert_eq!(buf, "12,345 items");
 /// # Ok::<(), core::fmt::Error>(())
 /// ```
+#[must_use = "formats only when displayed"]
 #[derive(Clone, Copy, Debug)]
 pub struct NumberDisplay<'t, 'n> {
     typographer: &'t Typographer,
@@ -233,6 +234,7 @@ pub struct NumberDisplay<'t, 'n> {
 ///
 /// assert_eq!(RU.format_range(-5, -1, Output::Unicode).to_string(), "\u{2212}5–\u{2212}1");
 /// ```
+#[must_use = "formats only when displayed"]
 #[derive(Clone, Copy, Debug)]
 pub struct RangeDisplay<'t, 'n> {
     typographer: &'t Typographer,

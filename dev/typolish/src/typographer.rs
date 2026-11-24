@@ -854,6 +854,7 @@ impl Typographer {
     ///     &DiagnosticKind::UnclosedDelimiter
     /// );
     /// ```
+    #[must_use]
     pub fn report<'a>(&self, text: &'a str, output: Output) -> Report<'a> {
         let (result, records) = engine::scratch::with_thread_scratch(|scratch| {
             engine::report(self, scratch, text, output)
@@ -886,6 +887,7 @@ impl Typographer {
     ///         .all(|s| s.kind() == ProtectedKind::Delimited)
     /// );
     /// ```
+    #[must_use]
     pub fn report_template<'t, S>(
         &self,
         pieces: impl IntoIterator<Item = Piece<'t, S>>,

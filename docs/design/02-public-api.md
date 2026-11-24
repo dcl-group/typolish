@@ -631,6 +631,8 @@ impl Typographer {
     pub fn format_range<'n>(&self, from: impl Into<Number<'n>>, to: impl Into<Number<'n>>, output: Output)
         -> RangeDisplay<'_, 'n>;
 }
+// `NumberDisplay` and `RangeDisplay` are `#[must_use = "formats only when displayed"]`; the two
+// methods carry no attribute of their own (Clippy's `double_must_use`).
 ```
 
 ```rust
@@ -804,7 +806,9 @@ methods (every new output would multiply methods by inputs).
 ```rust
 impl Typographer {
     /// The same result as `typeset`, plus every edit, every protected span and every diagnostic.
+    #[must_use]
     pub fn report<'a>(&self, text: &'a str, output: Output) -> Report<'a>;
+    #[must_use]
     pub fn report_template<'t, S>(&self, pieces: impl IntoIterator<Item = Piece<'t, S>>, output: Output)
         -> Report<'t, Template<'t, S>>;
     /// Source check: diagnostics only, no output is built (section 12.3), in the same order.
