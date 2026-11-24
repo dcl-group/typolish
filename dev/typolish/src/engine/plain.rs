@@ -820,13 +820,18 @@ fn settle_quotes(check: &Check<'_, '_>, scratch: &mut Scratch, cands: &mut [Cand
     };
     let first = check.run(scratch, cands);
     let mut still = broken(cands, &first);
-    // The tiers of `Cand::tier`, tried in turn in the windows that are still broken.
-    for tiers in [&[1u8][..], &[1, 2], &[3]] {
+    // The tiers of `Cand::tier`, tried in turn in the windows that are still broken and hold a
+    // glyph of the last tier of the try (a try without it would repeat the one before).
+    for (tiers, last) in [(&[1u8][..], 1u8), (&[1, 2], 2), (&[3], 3)] {
         let take = |c: &Cand| alternative(c) && tiers.contains(&c.tier);
         let windows: Vec<usize> = still
             .iter()
             .copied()
-            .filter(|&w| cands.iter().any(|c| c.window == w && take(c)))
+            .filter(|&w| {
+                cands
+                    .iter()
+                    .any(|c| c.window == w && alternative(c) && c.tier == last)
+            })
             .collect();
         if windows.is_empty() {
             continue;
