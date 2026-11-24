@@ -523,6 +523,12 @@ fn operators_after_spaces_cut_by_markup() {
                 let ((a, b), expected) = changed;
                 let out = t.typeset_template(pieces(a, b), Output::Unicode);
                 assert_eq!(out.texts(), [expected], "{what}");
+                // Format characters between the spaces cut the run the same way.
+                for (a, b) in unchanged {
+                    for format in ["\u{200b}", "\u{2060}", "\u{2066}"] {
+                        check_unchanged(&what, &t, &format!("{a}{format}{b}"));
+                    }
+                }
             }
         }
     }

@@ -108,10 +108,13 @@ for U+00A0).
   section 8.6), in every language and both sets: `go test ./...`: `go test ./…` → `go test ./...`;
   `src/...`: `src/…` → `src/...`; `C:\dir\... now`: `C:\dir\… now` → `C:\dir\... now`;
   `https://a.b/c...` still gives `https://a.b/c…`.
-- A run of spaces cut by a `Markup` piece is no longer read as a single pattern space by
-  `number.minus`, `symbols.arrows` and `symbols.math` (design section 8.2), in Prose: the template
-  `слово `, `<b>`, ` -15`: `слово <b> −15` → `слово <b> -15`; `a `, `<b>`, ` -> b`: `a <b> → b` →
-  `a <b> -> b`; `x `, `<b>`, ` +- y`: `x <b> ± y` → `x <b> +- y`.
+- A run of spaces cut by a `Markup` piece or by format characters is no longer read as a single
+  pattern space by `number.minus`, `symbols.arrows` and `symbols.math` (design section 8.2), in
+  Prose: the template `слово `, `<b>`, ` -15`: `слово <b> −15` → `слово <b> -15`; `a `, `<b>`,
+  ` -> b`: `a <b> → b` → `a <b> -> b`; `x `, `<b>`, ` +- y`: `x <b> ± y` → `x <b> +- y`; a plain
+  string `слово \u{200b} -15`: `слово \u{200b} −15` → `слово \u{200b} -15` (the same with
+  `\u{2060}`); `a \u{2066} -> b`: `a \u{2066} → b` → `a \u{2066} -> b`; `x \u{200b} +- y`:
+  `x \u{200b} ± y` → `x \u{200b} +- y`.
 - U+061C, U+180E, U+206A to U+206F and U+FFF9 to U+FFFB are format characters of the lexer (design
   section 5.4), as U+200E is, instead of freezing their word as `Technical(Unclassified)`: ru Prose
   `в\u{61c} лесу`: unchanged → `в\u{61c}⍽лесу`.

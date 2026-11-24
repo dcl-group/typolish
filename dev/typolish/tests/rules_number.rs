@@ -261,6 +261,10 @@ fn minus_after_spaces_cut_by_markup() {
             let out = t.typeset_template(pieces("слово", " -15"), Output::Unicode);
             assert_eq!(out.texts(), ["слово<b> −15"], "{what}");
             check_unchanged(&what, &t, "слово  -15");
+            // Format characters between the spaces cut the run the same way.
+            check_unchanged(&what, &t, "слово \u{200b} -15");
+            check_unchanged(&what, &t, "слово \u{2060} -15");
+            check_unchanged(&what, &t, "слово \u{2066} -15");
         }
     }
 }
