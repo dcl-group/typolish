@@ -97,6 +97,10 @@ assert!(Language::from_tag("en-GB").is_err());
 # Ok::<(), typolish::Error>(())
 ```
 
+A caller that falls back tries the full tag, then the bare language subtag
+(`Language::from_tag("en")` gives `en-US`), and only then `Language::COMMON`, which has no quotes
+and no dashes.
+
 A caller can declare its own language as a `const` table in its own crate and use it without any
 rule code (section 7.7):
 
@@ -264,7 +268,9 @@ Rejected: string ids as the only key (typos found at run time only); `struct Rul
 pub struct Typographer { /* private */ }
 
 impl Typographer {
-    /// Language defaults, backtick protection on. Usable in a `static`.
+    /// Language defaults, backtick protection on. Usable in a `static`. Not meant for a `const`:
+    /// every use of a `const` is a fresh copy with an empty compiled cache, so each call compiles
+    /// the rules again.
     pub const fn new(language: Language, rules: RuleSet) -> Typographer;
     /// Starts a builder; `rules` is the base set.
     pub fn builder(language: Language, rules: RuleSet) -> TypographerBuilder;
@@ -364,10 +370,11 @@ Choices and reasons:
 - **The rule set is mandatory** in `new` and `builder`. There is no default set: Prose and Interface
   treat technical text differently, and a silent default would be wrong for half of the callers.
 - **`const fn new`.** A typographer with default settings holds only `&'static` data, empty `Vec`s
-  (`Vec::new()` is `const`) and `None` overrides, so it fits a `static` without `LazyLock`. This is
-  a commitment (section 2.13): the representation of default settings stays computable at compile
-  time. It holds because every derived table (sorted lists) lives in the language data, and the
-  builder stores only additions and removals.
+  (`Vec::new()` is `const`) and `None` overrides, so it fits a `static` without `LazyLock` (not a
+  `const`, which loses the compiled cache on every use). This is a commitment (section 2.13): the
+  representation of default settings stays computable at compile time. It holds because every
+  derived table (sorted lists) lives in the language data, and the builder stores only additions and
+  removals.
 - **The builder is order-independent.** The active set is `(base ∪ enabled) \ disabled`. A rule that
   is both enabled and disabled is `Error::RuleConflict`, not "the last call wins", so behavior does
   not depend on the order of lines in someone else's code. A word both added and removed in the same
@@ -454,8 +461,10 @@ pub enum Piece<'t, S> {
     /// Visible text that is never typeset (a command, a path, code). Acts as one word for its
     /// neighbors; encoded for the output kind.
     Protected(&'t str),
-    /// Invisible markup (for example a tag supplied by an HTML splitter). Transparent for rules;
-    /// written as is in Unicode and HTML output, escaped in escaped output.
+    /// Invisible inline markup (for example `<b>` or `</em>` supplied by an HTML splitter).
+    /// Transparent for rules, so it ends no paragraph: a block boundary such as `</p><p>` is a
+    /// separate call or a `\n\n` at the end of the `Text` piece before it (section 10.8). Written
+    /// as is in Unicode and HTML output, escaped in escaped output.
     Markup(&'t str),
 }
 
@@ -604,7 +613,8 @@ Choices:
   must handle); a string with markers (markers can collide with text).
 - **`Protected` and `Markup` exist from the start**, although HTML is not in version 1. The HTML
   module of stage 6 becomes a splitter: tags become `Markup`, the content of `code`, `pre` and `kbd`
-  becomes `Protected`, text stays `Text`. The core does not change for it.
+  becomes `Protected`, text stays `Text`. The core does not change for inline tags. A block boundary
+  is not expressible by `Markup` (section 10.8): the splitter makes one call per block.
 
 ### 2.7 Input 3: numbers
 
@@ -794,11 +804,13 @@ Choices:
 
 - **The output kind is given with every call**, as the task requires. There is no default in the
   builder, so one typographer serves an HTML page and a JSON response alike.
-- **Output is a separate encoding pass over the Unicode result.** Rules work in Unicode and never
-  see the output kind; explanation, reverse transformation and tests are the same for every output.
+- **Output is encoded while rendering, not by a separate pass.** Rules work in Unicode and never see
+  the output kind, and the encoder writes straight into the output with no intermediate Unicode
+  string (section 11.1); explanation, reverse transformation and tests are the same for every
+  output.
 - **Every output is safe where it is meant to go**: HTML element content, and attribute values with
-  the entity styles, the inside of a JS, JSON or Rust string literal. There is no "entities without
-  escaping markup" mode: it would produce invalid or dangerous HTML. Markup is passed as
+  the entity styles, the inside of a JS, JSON, Rust or CSS string literal. There is no "entities
+  without escaping markup" mode: it would produce invalid or dangerous HTML. Markup is passed as
   `Piece::Markup`.
 - `class` is `&'static str` so that `HtmlStyle` stays `Copy` and usable in `const`; it is escaped as
   an attribute value when written.

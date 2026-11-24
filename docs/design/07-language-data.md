@@ -335,7 +335,9 @@ cannot reach a user.
   `LanguageBuilder::build` normalizes the case first.
 - The four glyphs of `QuotePairs` are pairwise distinct; each is a character the lexer reads as
   `Quote` (section 3.5) other than `"`, `'`, `′` and `″` (so output never becomes input again, and
-  the wrapper of section 3.6 strips it).
+  the wrapper of section 3.6 strips it). The characters that pass are « » „ “ ” ‘ ’ ‚ ‹ ›, so a
+  language whose opening and closing quote is one character (Swedish ”…”) or whose quotes lie
+  outside this list (CJK 「…」) cannot be declared in version 1.
 - List entries are non-empty and contain no whitespace. Every list is strictly sorted by code point
   and free of duplicates; `abbreviations` are sorted by their parts (first part, then the next), and
   no two have the same parts. The word lists (`elisions`, `short_words`, `particles`,
@@ -382,7 +384,8 @@ cannot reach a user.
    `ru_ru.rs`) with a `LanguageData` literal. CLDR values (quotes, number symbols, months, units)
    come from cldr-json of a stated version, recorded in `cldr_version` and in a comment at each
    field; every deviation from CLDR carries a comment with its reason.
-2. A line in the registry `src/lang/mod.rs` and a constant `Language::<TAG>`.
+2. A line in the registry `src/lang/mod.rs`, a line in `DEFAULT_REGIONS` of `src/language.rs` when
+   the language is the default region of its bare subtag, and a constant `Language::<TAG>`.
 3. Test tables for the language in `tests/rules_<group>.rs` (section 13.2), a line in
    `tests/data.rs` (section 13.9) and corpus files in `tests/corpus/` (section 13.7).
 4. Behavior that the format cannot express becomes a new field first (default: off) and at most one

@@ -27,7 +27,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use common::{interface, prose, show, vis};
-use typolish::{DiagnosticKind, Language, Output, Rule, RuleSet, Severity, Typographer};
+use typolish::{
+    DiagnosticKind, HtmlStyle, Language, Output, Piece, Rule, RuleSet, Severity, Typographer,
+};
 
 fn crate_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -891,6 +893,11 @@ fn limits() -> Vec<Limit> {
         // Swiss grouping and digit separators keep the apostrophe.
         limit(EN, Both, "Run 1'000'000 now", "Run 1'000'000 now"),
         limit(EN, Both, "Run 0b1'0000 now", "Run 0b1'0000 now"),
+        // A number grouped with commas is a number only with one group (design section 10.8).
+        limit(EN, Both, "1,234 kg", "1,234⍽kg"),
+        limit(EN, Both, "1,234,567 kg", "1,234,567 kg"),
+        limit(EN, Both, "1,000.5 kg", "1,000.5 kg"),
+        limit(EN, Both, "-1,234,567 kg", "-1,234,567 kg"),
         // Frozen fragments are left alone.
         limit(RU, Both, "50%-ный", "50%-ный"),
         limit(EN, Both, "C#", "C#"),
@@ -909,6 +916,33 @@ fn limits() -> Vec<Limit> {
         limit(EN, Both, "\"\"s' 'x.\"'\"", "“‘s’ 'x.’'”"),
         // The same class with an unpaired `'s` after a nested trailing possessive: P2 fails.
         limit(EN, Both, "\"a \"dogs' 's\" b\"", "“a⍽‘dogs’ 's’ b”"),
+        // A quoted value with a space glued to `=`.
+        limit(
+            EN,
+            Both,
+            "Set title=\"My App\" for the \"main\" window.",
+            "Set title=\"My App\" for⍽the⍽\"main\" window.",
+        ),
+        // A quote glued to a dash belongs to a frozen core; with a space the quotes are placed.
+        limit(RU, Both, "он —\"Да\" и", "он —\"Да\" и"),
+        limit(
+            EN,
+            Both,
+            "He said \"no\"—and left.",
+            "He said \"no\"—and left.",
+        ),
+        limit(RU, Both, "он — \"Да\" и", "он⍽— «Да» и"),
+        // A unit attached to a number freezes it whole.
+        limit(RU, ProseOnly, "Было -15°C, -15 °C", "Было -15°C, −15⍽°C"),
+        // A time range with spaces is not a dash.
+        limit(RU, Both, "Приём 10:00 - 12:00", "Приём 10:00 - 12:00"),
+        limit(RU, ProseOnly, "Приём 10:00-12:00", "Приём 10:00–12:00"),
+        // A chain of short words is glued whole.
+        limit(RU, ProseOnly, "Он и я и ты и мы", "Он⍽и⍽я⍽и⍽ты⍽и⍽мы"),
+        // A capital `В` or `А` after a number is read as a unit.
+        limit(RU, Both, "Часть 3 В лесу", "Часть 3⍽В⍽лесу"),
+        // A percentage range with the sign attached keeps its hyphen.
+        limit(RU, ProseOnly, "10-20% и 10-20 %", "10-20% и⍽10–20⍽%"),
     ]
 }
 
@@ -1046,6 +1080,52 @@ fn an_empty_value_glued_to_a_word_leaves_the_quotes_with_a_warning() {
                 r.diagnostics()
             );
         }
+    }
+}
+
+#[test]
+fn a_block_tag_passed_as_markup_ends_no_paragraph() {
+    // Design section 10.8: `Markup` is inline and transparent, so quotes pair across a block tag
+    // and a dialogue dash right after it is not placed; `\n\n` before the tag restores both.
+    let t = prose(RU.clone());
+    let html = Output::Html(HtmlStyle::NAMED);
+    let run = |pieces: [Piece<'static, ()>; 3]| t.typeset_template(pieces, html).texts().concat();
+    let cases = [
+        (
+            [
+                Piece::Text("Он сказал \"да"),
+                Piece::Markup("</p><p>"),
+                Piece::Text("Нет\" - ответила она."),
+            ],
+            "Он&nbsp;сказал &laquo;да</p><p>Нет&raquo;&nbsp;&mdash; ответила она.",
+        ),
+        (
+            [
+                Piece::Text("Текст."),
+                Piece::Markup("</p><p>"),
+                Piece::Text("- Да, - сказал он."),
+            ],
+            "Текст.</p><p>- Да,&nbsp;&mdash; сказал он.",
+        ),
+        (
+            [
+                Piece::Text("Он сказал \"да\n\n"),
+                Piece::Markup("</p><p>"),
+                Piece::Text("Нет\" - ответила она."),
+            ],
+            "Он&nbsp;сказал &quot;да\n\n</p><p>Нет&quot;&nbsp;&mdash; ответила она.",
+        ),
+        (
+            [
+                Piece::Text("Текст.\n\n"),
+                Piece::Markup("</p><p>"),
+                Piece::Text("- Да, - сказал он."),
+            ],
+            "Текст.\n\n</p><p>&mdash;&nbsp;Да,&nbsp;&mdash; сказал он.",
+        ),
+    ];
+    for (pieces, expected) in cases {
+        assert_eq!(run(pieces), expected);
     }
 }
 

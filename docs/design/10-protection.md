@@ -236,6 +236,11 @@ expectation):
 - A mention such as `@user` is frozen whole as an `Email` (check 2): rules never edit inside it,
   while spaces and dashes next to it are typeset as next to any technical fragment.
 - Swiss grouping `1'000'000` and digit separators `0b1'0000` are frozen (section 3.6) and keep `'`.
+- A number grouped with commas is read as a number only with one group and no decimal part
+  (`1,234 kg` → `1,234⍽kg`, check 15 reads the group as a decimal part): `1,234,567 kg` is a `List`
+  (check 19) and `1,000.5 kg` a `Dotted` core (check 18), both frozen, so `number.minus` and
+  `nbsp.units` do not apply to them, also where `format_number` wrote them. A value is passed as a
+  `Slot::NUMBER`. Recognizing grouped numbers is a change of check 15 (section 15.3).
 - Frozen fragments are left alone even where a rule would be welcome: `50%-ный`, `C#`, `AT&T`
   (sections 3.6, 4.3). This errs on the safe side by design.
 - A quote glued to a punctuation-joined word (`сказал:"привет"`, `сказал,"привет"`) belongs to a
@@ -259,3 +264,23 @@ expectation):
   top-level straight single pair before a number is not idempotent: `'a ""-3'` gives `'a⍽‘’-3'`, and
   a second pass reads the last `'` as a prime (`'a⍽‘’-3′`). This is a defect of the quote phase
   (sections 6.5 and 6.11), not a choice.
+- A quoted value with a space glued to `=` is cut by the space: `title="My` is frozen (`Operator`),
+  the quote after `App` closes nothing, and `Set title="My App" for the "main" window.` keeps every
+  quote of the paragraph straight with `UnmatchedQuote` (warning, sections 6.1 and 6.6). Protect
+  such a notation with backticks.
+- `Piece::Markup` is inline markup, transparent for rules (section 3.4): a block tag passed as
+  `Markup` ends no paragraph, so `"да`, `</p><p>`, `Нет"` pair across the tag (section 6.10), and a
+  dialogue dash right after it is not placed. A splitter passes each block in a call of its own, or
+  ends the `Text` piece before a block tag with `\n\n` (section 2.6).
+- A quote glued to a dash (`он —"Да"`, `"no"—and`) belongs to a frozen `Unclassified` core and stays
+  straight, without a diagnostic; with a space (`он — "Да"`) the quotes are placed.
+- A number with a unit attached without a space (`-15°C`) is not a number core: it is frozen whole
+  and keeps its hyphen, while `-15 °C` gets the minus and the glue in `PROSE` (`−15⍽°C`).
+- A time range with spaces (`10:00 - 12:00`) is not a dash: both sides are technical fragments; the
+  hyphen stays and `AmbiguousHyphen` is reported. `10:00-12:00` gets the en dash in `PROSE`.
+- A chain of short words is glued whole, with no limit on its length (`Он⍽и⍽я⍽и⍽ты⍽и⍽мы`, Russian
+  `PROSE`): a text made of words of one or two letters has no place to break a line.
+- After a number a capital `В` or `А` is read as a unit (volt, ampere) and glued, and the word after
+  it in turn: `Часть 3⍽В⍽лесу`. The glue changes no visible character.
+- A percentage range with a hyphen and the sign attached (`10-20%`) is a frozen fragment and keeps
+  its hyphen; with a space (`10-20 %`) it gets the en dash in `PROSE` (`10–20⍽%`).

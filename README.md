@@ -3,7 +3,8 @@
 `typolish` is a Rust crate that typesets plain text for a language. Text typed the easy way, with
 straight quotes, hyphens, three full stops and ordinary spaces, becomes typeset text: quotes by
 nesting level, apostrophes, dashes, ellipses, no-break spaces, and rules for words, signs and
-numbers. The built-in languages are `ru-RU` and `en-US`; other languages are added as data.
+numbers. The built-in languages are `ru-RU` and `en-US`; other languages are added as data, within
+the limits listed under Languages.
 
 - Three inputs: a whole string, a message template made of text pieces and opaque placeholders whose
   kind is known and whose value is not, and a number to format.
@@ -47,6 +48,9 @@ assert_eq!(
 // Nothing to change: the input comes back borrowed.
 assert!(matches!(RU_UI.typeset("Готово", Output::Unicode), Cow::Borrowed(_)));
 ```
+
+Use `RuleSet::PROSE` for running text written for reading, and `RuleSet::INTERFACE` for UI strings,
+error messages and technical text, where a command or a path may stand as its own fragment.
 
 Rules and settings are chosen when the typographer is built; a rule set can also be parsed from a
 configuration string:
@@ -94,7 +98,11 @@ assert_eq!(t.texts(), ["Удалено ", " файлов из\u{a0}папки «
 assert_eq!(t.slots(), [("n", Slot::NUMBER), ("dir", Slot::WORD)]);
 ```
 
-A build-time generator over Fluent messages is in
+How each slot kind takes part in the rules is the slot participation table of
+[design section 2.6](https://github.com/dcl-group/typolish/blob/main/docs/design/02-public-api.md).
+
+A build-time generator over messages already mapped from Fluent syntax to pieces (design section
+2.14) is in
 [`examples/fluent_generator.rs`](https://github.com/dcl-group/typolish/blob/main/dev/typolish/examples/fluent_generator.rs).
 
 ### Numbers
@@ -221,8 +229,10 @@ numbers, ISO dates, versions, file and host names, identifiers such as `x86` or 
 
 `Language::RU_RU` and `Language::EN_US` are built in; `Language::COMMON` applies only the rules that
 need no language data. `Language::from_tag` returns an error for a language without data, and the
-caller chooses whether to fall back to `COMMON`. A new language is a table of data (quote pairs,
-short words, particles, abbreviations, units, months, number symbols), declared as a `const`
+caller chooses whether to fall back to `COMMON`. A caller that falls back tries the full tag, then
+the bare language subtag (`Language::from_tag("en")` gives `en-US`), and only then
+`Language::COMMON`, which has no quotes and no dashes. A new language is a table of data (quote
+pairs, short words, particles, abbreviations, units, months, number symbols), declared as a `const`
 `LanguageData` or built at run time with `LanguageBuilder`:
 
 ```rust
@@ -238,6 +248,11 @@ fn main() -> Result<(), typolish::Error> {
     Ok(())
 }
 ```
+
+The four quote glyphs of a language are distinct and taken from « » „ “ ” ‘ ’ ‚ ‹ › (design section
+7.6). A language whose opening and closing quote is the same character (Swedish ”…”) or whose quotes
+are outside this list (CJK 「…」) cannot be declared yet: `LanguageBuilder::build` returns
+`Error::InvalidLanguageData`.
 
 ## Known limits
 
@@ -263,6 +278,10 @@ The rules read the shape of the text, not its meaning. These cases are known and
   commands are protected; `INTERFACE` has none of these rules.
 - A mention such as `@user` is frozen whole, like an e-mail address: rules never edit inside it.
 - Swiss grouping `1'000'000` and digit separators `0b1'0000` are frozen and keep `'`.
+- A number grouped with commas is read as a number only with one group and no decimal part
+  (`1,234 kg` → `1,234⍽kg`): `1,234,567 kg` and `1,000.5 kg` are frozen, so `number.minus` and
+  `nbsp.units` do not apply to them, also where `format_number` wrote them. Pass such a value as a
+  `Slot::NUMBER`.
 - Frozen fragments are left alone even where a rule would be welcome: `50%-ный`, `C#`, `AT&T`.
 - A quote glued to a word by punctuation (`сказал:"привет"`, `сказал,"привет"`) belongs to a frozen
   fragment and stays straight; with the space (`сказал: "привет"`) the quotes are placed. An empty
@@ -278,6 +297,25 @@ The rules read the shape of the text, not its meaning. These cases are known and
 - In a declared language whose primary pair is `‘’` (en-GB), `PROSE` is not idempotent on a
   sign-only pair inside straight single quotes before a number: `'a ""-3'` gives `'a⍽‘’-3'`, and a
   second pass gives `'a⍽‘’-3′`. This is a defect, not a choice.
+- A quoted value with a space glued to `=` is cut by the space: `title="My` is frozen, the quote
+  after `App` closes nothing, and `Set title="My App" for the "main" window.` keeps every quote of
+  the paragraph straight with an `UnmatchedQuote` warning. Protect such a notation with backticks.
+- `Piece::Markup` is inline markup and transparent for rules: a block tag passed as `Markup` ends no
+  paragraph, so `"да`, `</p><p>`, `Нет"` pair across the tag, and a dialogue dash right after it is
+  not placed. Pass each block in a call of its own, or end the `Text` piece before a block tag with
+  `\n\n`.
+- A quote glued to a dash (`он —"Да"`, `"no"—and`) belongs to a frozen `Unclassified` core and stays
+  straight, without a diagnostic; with a space (`он — "Да"`) the quotes are placed.
+- A number with a unit attached without a space (`-15°C`) is not a number core: it is frozen whole
+  and keeps its hyphen, while `-15 °C` gets the minus and the glue in `PROSE` (`−15⍽°C`).
+- A time range with spaces (`10:00 - 12:00`) is not a dash: both sides are technical fragments; the
+  hyphen stays and `AmbiguousHyphen` is reported. `10:00-12:00` gets the en dash in `PROSE`.
+- A chain of short words is glued whole, with no limit on its length (`Он⍽и⍽я⍽и⍽ты⍽и⍽мы`, Russian
+  `PROSE`): a text made of words of one or two letters has no place to break a line.
+- After a number a capital `В` or `А` is read as a unit (volt, ampere) and glued, and the word after
+  it in turn: `Часть 3⍽В⍽лесу`. The glue changes no visible character.
+- A percentage range with a hyphen and the sign attached (`10-20%`) is a frozen fragment and keeps
+  its hyphen; with a space (`10-20 %`) it gets the en dash in `PROSE` (`10–20⍽%`).
 
 Here `⍽` stands for a no-break space. The full list, with the reasons, is in section 10.8 of the
 design.

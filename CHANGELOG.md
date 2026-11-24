@@ -22,8 +22,9 @@ supported Rust version: 1.100.
   KiB. `Scratch` is reusable working memory for callers that manage it themselves (`typeset_with`,
   `typeset_template_with`); `typeset_into` writes into a buffer.
 - Three inputs: a whole string (`typeset`), a message template of `Piece`s (`Text`, `Slot` with a
-  `SlotKind` of number, word, date or other, `Protected`, `Markup`) whose slots keep their place in
-  the resulting `Template` (`typeset_template`), and a `Number` (`format_number`, `format_range`).
+  `SlotKind` of number, word, date or other, `Protected`, `Markup`, which is inline markup and
+  transparent for rules) whose slots keep their place in the resulting `Template`
+  (`typeset_template`), and a `Number` (`format_number`, `format_range`).
 - 27 rules with permanent ids, applied in a fixed order of phases whatever the order of enabling:
   - quotes by nesting level, apostrophes and primes (`quotes.apostrophe`, `quotes.pairs`,
     `quotes.primes`); an unpaired or crossing quote is left as it is and reported;
@@ -83,8 +84,8 @@ supported Rust version: 1.100.
   and typesetting it gives the typeset text back except for the losses listed in the repository's
   `roundtrip-known.tsv`.
 - Examples: `numbers` (number formatting), `per_request` (typesetting at run time) and
-  `fluent_generator` (a build-time generator over Fluent messages with `report_template` and
-  `Output::Escaped(EscapeStyle::RUST)`).
+  `fluent_generator` (a build-time generator over messages mapped from Fluent syntax to pieces, with
+  `report_template` and `Output::Escaped(EscapeStyle::RUST)`).
 
 ### Changed before the first publication
 

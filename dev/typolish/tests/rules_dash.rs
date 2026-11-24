@@ -84,6 +84,7 @@ const RU_SPACED: &[(&str, &str)] = &[
     ("tls-server - agent-ca", "tls-server - agent-ca"),
     ("123-45-67 - 123-45-68", "123-45-67 - 123-45-68"),
     ("cat - 123-45-67", "cat - 123-45-67"),
+    ("Приём 10:00 - 12:00", "Приём 10:00 - 12:00"),
     (
         "Выполните diff -u - file.txt",
         "Выполните diff -u - file.txt",
@@ -348,6 +349,12 @@ fn ambiguous_hyphens_are_reported_at_the_hyphen() {
             "123-45-67 [-] 123-45-68",
         ),
         (Language::RU_RU, "cat - 123-45-67", "cat [-] 123-45-67"),
+        // A time range with spaces: technical fragments on both sides (design sections 8.4, 10.8).
+        (
+            Language::RU_RU,
+            "Приём 10:00 - 12:00",
+            "Приём 10:00 [-] 12:00",
+        ),
         (Language::EN_US, "x - 5", "x [-] 5"),
         (Language::EN_US, "5 - x", "5 [-] x"),
         (Language::EN_US, "5 - x - Moscow", "5 [-] x - Moscow"),

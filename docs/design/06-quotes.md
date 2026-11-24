@@ -101,11 +101,12 @@ L ∈ {Space, OpenP, DashC} cannot close. Without them, an opening quote before 
 or around a lone sign would get no role, its partner would stay unpaired, and the whole window would
 keep straight quotes.
 
-A dash may stand left of an opening quote (`—"Да"`) and right of a closing one (`"no"—and`, closed
-style), hence its own class. So in a series after a letter and before a space every straight quote
-is closing, and after a space and before a letter every straight quote is opening. The quotes of a
-series are matched left to right like all others: at the end of `"He said 'hi'"` the `'` meets the
-top of the stack and closes first, then the `"`.
+The class `DashC` stays in the lists, but no input known reaches it: a dash glued to a quote inside
+one fragment (`—"Да"`, `"no"—and`) makes the whole core `Unclassified` (section 3.6, check 24), so
+its quotes stay straight (section 10.8). In a series after a letter and before a space every
+straight quote is closing, and after a space and before a letter every straight quote is opening.
+The quotes of a series are matched left to right like all others: at the end of `"He said 'hi'"` the
+`'` meets the top of the stack and closes first, then the `"`.
 
 A straight quote without a role is not a candidate, never changes, and gives `AmbiguousQuote`
 (info). It does not block the window: it can pair with nothing and creates no ambiguity for the
@@ -251,7 +252,8 @@ go into the neighboring texts. A `Number` slot before a closing straight quote m
 
 The scope of pairing is the window, a paragraph (section 3.3). For pieces it is the same over the
 text of the pieces (an atom between line breaks is content, section 3.3), so a message without blank
-lines is one scope, and a quote opened in one text closes in another.
+lines is one scope, and a quote opened in one text closes in another. A block tag passed as `Markup`
+does not split the scope (section 10.8).
 
 Quotes spanning paragraphs (the book convention of an opening quote at the start of every paragraph
 of a long quotation) do not converge in each paragraph and stay straight, with `UnmatchedQuote`.

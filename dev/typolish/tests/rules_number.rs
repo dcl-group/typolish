@@ -136,6 +136,9 @@ fn minus_in_prose_next_to_a_unit() {
     let t = prose(Language::RU_RU);
     check_exact("ru Prose", &t, ("Температура -12 °C", "Температура −12⍽°C"));
     check_exact("ru Prose", &t, ("-12 °C", "−12⍽°C"));
+    // Without the space the core is a technical fragment and keeps its hyphen (design section
+    // 10.8).
+    check_exact("ru Prose", &t, ("Было -15°C", "Было -15°C"));
     let t = only(Language::RU_RU, &[MINUS]);
     check_exact("ru alone", &t, ("-12 °C", "−12 °C"));
 }
@@ -378,6 +381,9 @@ fn times() {
                 ("10 х\u{200D} 5", "10 × 5"),
                 ("1920x\u{200D}1080", "1920×1080"),
                 ("1920x\u{200C}1080", "1920×1080"),
+                // A digit with a ZWJ attached is a `Symbol` cluster, so the number is frozen
+                // (design section 3.6).
+                ("10\u{200D} x 5", "10\u{200D} x 5"),
                 // The left factor split by a `Format` token is one number, with its leading zero.
                 ("0\u{AD}5 x 3", "0\u{AD}5 x 3"),
             ],

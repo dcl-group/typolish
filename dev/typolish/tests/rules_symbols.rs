@@ -56,6 +56,11 @@ const COPYRIGHT_ROWS: &[(&str, &str)] = &[
     ("Бренд(tm)", "Бренд™"),
     ("Бренд (r)", "Бренд ®"),
     ("(c) 2026 Example Corp", "© 2026 Example Corp"),
+    // A list item followed by a year cannot be told from a copyright sign (design section 8.9).
+    (
+        "Items (a), (b), (c) 2024 plan",
+        "Items (a), (b), © 2024 plan",
+    ),
     // A year split by a `Format` token is one number (design section 3.6).
     ("(c) 20\u{AD}26", "© 20\u{AD}26"),
     // A word of design section 8.2 whatever its number of tokens, and a compound word in the

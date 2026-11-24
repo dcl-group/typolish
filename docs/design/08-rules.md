@@ -16,7 +16,7 @@ of the table is the execution order (section 4.1).
 | `symbols.arrows`     | a lone `->`, `<-`, `<->` between spaces → `→`, `←`, `↔`                                                                                                                                             | all                                    |                                                                                                        |   +   |     -     |
 | `symbols.math`       | a lone `>=`, `<=`, `!=` → `≥`, `≤`, `≠`; `+-` alone or before a number → `±`                                                                                                                        | all                                    |                                                                                                        |   +   |     -     |
 | `ellipsis.dots`      | exactly `...` attached to what precedes it or alone (spaces, line breaks and window edges are boundaries) → `…`; `?...`, `!...`, `?!...` → the language's forms                                     | all                                    |                                                                                                        |   +   |     +     |
-| `ellipsis.inner`     | `...` at a word start or between words (`...и тогда`, `да...нет`) → `…`                                                                                                                             | all                                    |                                                                                                        |   +   |     -     |
+| `ellipsis.inner`     | `...` at a word start after a space or a line start, or between two words without spaces (`...и тогда`, `да...нет`) → `…`                                                                           | all                                    |                                                                                                        |   +   |     -     |
 | `dash.dialogue`      | `- ` or `-- ` at a line start before a word or an opening quote → `—` and glue after it                                                                                                             | ru                                     |                                                                                                        |   +   |     -     |
 | `dash.double-hyphen` | a lone `--` or `---` between operands → a dash in the language's style                                                                                                                              | ru, en                                 | `dash_style`                                                                                           |   +   |     -     |
 | `dash.spaced-hyphen` | a lone `-` between operands → a dash in the language's style; not when each side is a number, a range or a single-letter word, nor between foreign words or technical fragments, nor next to a flag | ru, en                                 | `dash_style`                                                                                           |   +   |     +     |
@@ -256,6 +256,7 @@ comes from the classification of the input of the pass, in which `the` is still 
 | en       | `mother-in-law - father-in-law` | `mother-in-law — father-in-law` | style `Closed` keeps the spaces next to a compound word           |
 | ru       | `кто-то, tls-server`            | unchanged                       | no rule touches an inner hyphen                                   |
 | ru       | `10 - 20 штук`, `5 - 3 = 2`     | unchanged, `AmbiguousHyphen`    | numbers on both sides                                             |
+| ru       | `Приём 10:00 - 12:00`           | unchanged, `AmbiguousHyphen`    | technical fragments on both sides; a time range has no spaces     |
 | en       | `x - 5`, `5 - x`                | unchanged, `AmbiguousHyphen`    | a number and a single letter                                      |
 | ru       | `Выполните cat - file`          | unchanged, `AmbiguousHyphen`    | foreign words on both sides                                       |
 | ru       | `tls-server - agent-ca`         | unchanged, `AmbiguousHyphen`    | Latin compound words: foreign words on both sides                 |
@@ -476,7 +477,8 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
 
 - **`number.minus`** (Prose): a core `-D+` or `-D+[.,]D+`, with an optional `%` or `‰` attached,
   whose fragment starts after a space, a line start or `(` → minus sign: `Минус -5 градусов` →
-  `Минус −5 градусов`, `-12 °C` → `−12⍽°C`, `-5%` → `−5%`. A percentage reads alike in both of its
+  `Минус −5 градусов`, `-12 °C` → `−12⍽°C`, `-5%` → `−5%`. `-12°C` without a space is a technical
+  fragment (section 3.6) and stays as typed (section 10.8). A percentage reads alike in both of its
   forms (section 8.2), so the space that the percent setting inserts (`-5%` → `-5⍽%`) changes
   nothing for the rule (invariant I2). Not in Interface (`head -1`, `tail -5`); in Prose such
   commands are protected with backticks.
@@ -504,14 +506,15 @@ Text rules do not rewrite numbers: separators, decimal marks and groups in text 
   subsection label. A mark attached to a word (`f(c)`, a `Word` by check 23 of section 3.6) is not a
   copyright sign even when a year follows it: `f(c) 2026` stays. A label number or a percentage is
   not a year in either of its forms (section 8.2): `(c) 2026%`, `(c) 2026 %`, `(c) 2020-2026 %` and
-  `№2026 (c)` stay. Otherwise `(c)` is a list item and stays (`вариант (c)`). `(tm)`, `(TM)`, `(r)`,
-  `(R)` → `™`, `®` after a brand name: a word of section 8.2 that starts with a capital letter and
-  has at least two letters, whatever its number of tokens (`McDonald’s(tm)` → `McDonald’s™`), a
-  compound word included in the spaced form (`IT-Systems (tm)` → `IT-Systems ™`; the attached
-  `IT-Systems(tm)` is not a word by check 23 and stays frozen), attached (`Brand(tm)` → `Brand™`) or
-  one space before (`Brand (r)` → `Brand ®`), and not followed by an operator fragment (`=`, `+`,
-  `<`, `>=`). Otherwise it is a function argument and stays: `S(r) = πr²`, `f(r)`, `V(r)`,
-  `area(r)`.
+  `№2026 (c)` stay. Otherwise `(c)` is a list item and stays (`вариант (c)`). A list item followed
+  by a year (`(a), (b), (c) 2024 plan`) is read as a copyright sign; the rule cannot tell the two
+  apart. `(tm)`, `(TM)`, `(r)`, `(R)` → `™`, `®` after a brand name: a word of section 8.2 that
+  starts with a capital letter and has at least two letters, whatever its number of tokens
+  (`McDonald’s(tm)` → `McDonald’s™`), a compound word included in the spaced form (`IT-Systems (tm)`
+  → `IT-Systems ™`; the attached `IT-Systems(tm)` is not a word by check 23 and stays frozen),
+  attached (`Brand(tm)` → `Brand™`) or one space before (`Brand (r)` → `Brand ®`), and not followed
+  by an operator fragment (`=`, `+`, `<`, `>=`). Otherwise it is a function argument and stays:
+  `S(r) = πr²`, `f(r)`, `V(r)`, `area(r)`.
 - **`symbols.arrows`**: an operator fragment that is exactly `->`, `<-` or `<->`, with a space on
   each side → `→`, `←`, `↔`. `=>`, `-->`, `<-->`, `->>` are not in the table; `a->b` is frozen.
 - **`symbols.math`**: an operator fragment that is exactly `>=`, `<=` or `!=`, with a space on each

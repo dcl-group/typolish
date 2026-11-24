@@ -154,7 +154,8 @@ with the slot inside, and a template of `Text` pieces behaves exactly as their c
 A slot, a protected piece or a `Delimited` atom becomes one opaque token (`Slot` or `Protected`): it
 is always `FROZEN`, takes part in rule context through its class (section 3.5), and is never inside
 the range of an edit. A markup atom becomes a zero-width token that is transparent for context:
-rules look through it for neighbors, and edits never touch it.
+rules look through it for neighbors, and edits never touch it. It ends no paragraph either, whatever
+tag it holds (section 10.8).
 
 Lexing reads a run of adjacent `Text` atoms with no other atom between them as one text, so a token
 (a run of dots, dashes or spaces, a word, a number) may span a piece boundary; property 10 of
@@ -316,7 +317,7 @@ from the token `Kind` of section 3.5, although some names coincide (`Number`, `W
 | 12  | `YYYY-MM-DD`; or `YYYY-MM` or `YYYY–MM` with month 01 to 12                                                                                                                                                                                                                                                                                                                                                                                | `IsoDate`; `YearMonth` for the short form   | whole core; no for `YearMonth`          |
 | 13  | `[vV]?` number (`.` number){2,} with an optional `-` or `+` tail; four numbers 0 to 255 joined by `.`; `D.M.YYYY`                                                                                                                                                                                                                                                                                                                          | `Version`                                   | whole core                              |
 | 14  | two or more groups of one or two letters joined by `.`, the core having a stop (`т.е.`, `А.С.`, `Ph.D.`)                                                                                                                                                                                                                                                                                                                                   | `Abbreviation`                              | no                                      |
-| 15  | a number: optional sign (`-`, `+`, `+-`, `−`, `±`, or the minus sign of the settings, section 2.11), digits, optional decimal part with `.` or `,`, optional `%` or `‰`                                                                                                                                                                                                                                                                    | `Number`                                    | no                                      |
+| 15  | a number: optional sign (`-`, `+`, `+-`, `−`, `±`, or the minus sign of the settings, section 2.11), digits, optional decimal part with `.` or `,` (one decimal part, no group separators), optional `%` or `‰`                                                                                                                                                                                                                            | `Number`                                    | no                                      |
 | 16  | `D+` then `x`, `X`, `х`, `Х` or `×` then `D+`, the first factor without a leading zero                                                                                                                                                                                                                                                                                                                                                     | `Dimensions` (the letter becomes `Times`)   | no                                      |
 | 17  | `N-N` or `N–N`, each N an unsigned integer, a decimal with the language's separator, a Roman numeral or a `Number` slot, in any mix (`5-10`, `{a}-5`, `{a}-{b}`); or two `Date` slots joined by `-` or `–`                                                                                                                                                                                                                                 | `Range`                                     | no (only range rules edit its dash)     |
 | 18  | a single `.` between letters or digits (runs of two or more dots do not count)                                                                                                                                                                                                                                                                                                                                                             | `Dotted` (hosts, files)                     | whole core                              |
@@ -424,7 +425,9 @@ checks read a core:
   skipped by every check and by list lookups: `ноя\u{AD}бря` is the word `ноября` for check 23 and
   for the month list, and `сло\u{200D}во` is the word `слово`. They stay in the text. A replacement
   of the cluster that holds a ZWNJ or ZWJ replaces the joiner with it (section 5.1):
-  `10 x\u{200D} 5` → `10 × 5`.
+  `10 x\u{200D} 5` → `10 × 5`. A digit with a ZWNJ or ZWJ attached (`10\u{200D}`) is a `Symbol`
+  cluster (section 3.5), so the number is a frozen technical fragment: `10\u{200D} x 5` stays as
+  written.
 
 **Roman numerals.** A Roman numeral is a `Word` token of Latin capital letters in the standard form
 `M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})`, not empty; its value is 1 to 3999
