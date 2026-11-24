@@ -564,6 +564,27 @@ fn license_files_follow_section_14_6() {
 }
 
 #[test]
+fn the_cldr_extract_carries_the_unicode_license_notice() {
+    // Design section 14.6: `tests/common/cldr49.rs` ships in the package and carries the Unicode
+    // License v3 notice of its source near its top.
+    let text = read(&crate_dir().join("tests/common/cldr49.rs"));
+    let head: Vec<&str> = text.lines().take(15).collect();
+    assert!(
+        head.iter().any(|l| l.contains("Unicode License v3")),
+        "the first 15 lines of cldr49.rs do not name the Unicode License v3"
+    );
+    for needle in [
+        "UNICODE LICENSE V3",
+        "COPYRIGHT AND PERMISSION NOTICE",
+        "Copyright © 1991-2023 Unicode, Inc.",
+        "this copyright and permission notice appear with all copies of the Data",
+        "authorization of the copyright holder.",
+    ] {
+        assert!(text.contains(needle), "cldr49.rs lacks {needle:?}");
+    }
+}
+
+#[test]
 fn ignore_files_protect_local_notes_and_keys() {
     // AGENTS.md: `AGENTS.local.md` is ignored by git and never committed; keys never are.
     let Some(repo) = repository() else {

@@ -237,11 +237,12 @@ change as those rules, so that the gates stay green.
 `tests/common/` are `canonical.rs` (the generators of property 13, section 13.5), `corpus.rs` (the
 corpus of section 13.7), `decode.rs` (the decoders of sections 11.8 and 13.5), `set_glue.rs` (the
 glue of the set-level rows, section 13.2) and `cldr49.rs` (the CLDR extract of `tests/data.rs`,
-section 13.9). `documentation.rs` checks the documentation (section 13.10) and `package.rs` the
-package and this layout (section 13.9); both are stage 5 targets and ship in the package, where
-their checks of the repository skip. `Typographer::lint` and `Typographer::to_plain` are methods in
-`src/typographer.rs`; the lint pass is part of the engine (`src/engine/mod.rs`) and the reverse
-transformation is `src/engine/plain.rs`, so neither has a module at the top of `src/`.
+section 13.9; it carries the Unicode License v3 notice of its source). `documentation.rs` checks the
+documentation (section 13.10) and `package.rs` the package and this layout (section 13.9); both are
+stage 5 targets and ship in the package, where their checks of the repository skip.
+`Typographer::lint` and `Typographer::to_plain` are methods in `src/typographer.rs`; the lint pass
+is part of the engine (`src/engine/mod.rs`) and the reverse transformation is `src/engine/plain.rs`,
+so neither has a module at the top of `src/`.
 
 `AGENTS.md` follows the skeleton of zonewright and adds two hard rules: the name of the reference
 implementation never appears in the repository, and commits end with
