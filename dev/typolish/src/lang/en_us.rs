@@ -55,12 +55,12 @@ pub(crate) const EN_US: LanguageData = LanguageData {
     atom_exceptions: &["a.m.", "cf.", "e.g.", "etc.", "i.e.", "p.m.", "vs."],
     // CLDR 49 units, short and narrow, merged with the project units (`µs`, `µm` with U+00B5).
     units: &[
-        "A", "B", "GB", "GB/s", "GHz", "Gbit", "Gbps", "GiB", "Hz", "K", "KB", "KiB", "L", "MB",
-        "MB/s", "MHz", "MW", "Mbit", "Mbps", "MiB", "TB", "TiB", "V", "W", "bit", "cm", "dpi",
-        "ft", "g", "h", "hPa", "ha", "hr", "in", "kB", "kHz", "kW", "kWh", "kbit", "kbps", "kg",
-        "km", "km/h", "lb", "m", "m/s", "mA", "mL", "mg", "mi", "min", "mm", "mph", "ms", "m²",
-        "nm", "ns", "oz", "ppi", "pt", "px", "rpm", "s", "sec", "t", "yd", "°", "°C", "°F", "µm",
-        "µs", "μm", "μs",
+        "A", "B", "GB", "GB/s", "GHz", "GW", "Gbit", "Gbps", "GiB", "Hz", "K", "KB", "KiB", "L",
+        "MB", "MB/s", "MHz", "MW", "Mbit", "Mbps", "MiB", "TB", "TiB", "V", "W", "a.m.", "bit",
+        "cm", "dpi", "ft", "g", "h", "hPa", "ha", "hr", "in", "kB", "kHz", "kJ", "kPa", "kW",
+        "kWh", "kbit", "kbps", "kg", "km", "km/h", "lb", "m", "m/s", "mA", "mL", "mW", "mg", "mi",
+        "min", "mm", "mph", "ms", "m²", "nm", "ns", "oz", "p.m.", "ppi", "pt", "px", "rpm", "s",
+        "sec", "t", "yd", "°", "°C", "°F", "µm", "µs", "μm", "μs",
     ],
     ambiguous_units: &["in"],
     // CLDR 49 gregorian, wide and abbreviated; the dotted forms are the project's (design section

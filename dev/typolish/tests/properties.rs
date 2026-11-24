@@ -221,6 +221,14 @@ const SEEDS: &[&str] = &[
     "5 $1 and 5$ and 5 $",
     "5 §1 и 5 §",
     "5 °1 и 5° и 5 °",
+    // The units of design sections 7.2 and 7.3 that the families and the superscript forms
+    // complete, and `a.m.` and `p.m.`, which are atom exceptions too.
+    "5 м³ 5 см³ 5 км² 5 см² 5 мм²",
+    "5-10 ГВт и 5 Дж, 10 кбит/с - 3 Ом",
+    "5 ккал… 5 кОм т.е. 5 Па",
+    "5 p.m. and 5 a.m.",
+    "9-11 a.m. - 5:30 p.m., 5 P.M.",
+    "5 kPa - 5 GW, 5 mW... 5 kJ",
 ];
 
 #[test]

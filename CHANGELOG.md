@@ -151,3 +151,12 @@ for U+00A0).
 - `Output::Escaped` escapes the bidi controls U+061C, U+200E, U+200F, U+202A to U+202E and U+2066 to
   U+2069 in every style (design section 11.6), so a `RUST` body compiles: `a\u{202E}b` in `RUST`:
   the raw control → `a\u{202e}b`; in `JS`: the raw control → `a\u202Eb`.
+- The built-in unit lists are extended (design sections 7.2 and 7.3): ru `ГВт`, `Дж`, `Ом`, `Па`,
+  `Тбит`, `кДж`, `кОм`, `кбит`, `кбит/с`, `ккал`, `км²`, `м³`, `мВт`, `мм²`, `см²`, `см³`; en `GW`,
+  `kJ`, `kPa`, `mW`, `a.m.`, `p.m.`. `nbsp.units` glues them in both sets: ru `5 ГВт`: unchanged →
+  `5⍽ГВт`; ru `10 м³`: unchanged → `10⍽м³`; ru `5-10 м³`: `5–10 м³` → `5–10⍽м³` (Prose), unchanged →
+  `5-10⍽м³` (Interface); ru `5 м³ 5 см³ 5 км² 5 см² 5 мм²`: `5 м³⍽5 см³⍽5 км²⍽5 см²⍽5 мм²` →
+  `5⍽м³⍽5⍽см³⍽5⍽км²⍽5⍽см²⍽5⍽мм²` (Prose), unchanged → `5⍽м³ 5⍽см³ 5⍽км² 5⍽см² 5⍽мм²` (Interface); ru
+  `5 кОм и 10 кОм`: `5 кОм и⍽10 кОм` → `5⍽кОм и⍽10⍽кОм`; en `9 a.m.`: unchanged → `9⍽a.m.`; en
+  `5 p.m. and 5 a.m.`: `5 p.m. and⍽5 a.m.` → `5⍽p.m. and⍽5⍽a.m.`; en `5 kPa`: unchanged → `5⍽kPa`.
+  `at 5:30 p.m. today` and `5 P.M.` are not changed by this.

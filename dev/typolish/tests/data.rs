@@ -44,11 +44,13 @@ const RU_UNITS: &[&str] = &[
     "Вт",
     "ГБ",
     "ГБ/с",
+    "ГВт",
     "ГГц",
     "Гбит",
     "Гбит/с",
     "ГиБ",
     "Гц",
+    "Дж",
     "КБ",
     "КБ/с",
     "Кбит",
@@ -61,7 +63,10 @@ const RU_UNITS: &[&str] = &[
     "Мбит",
     "Мбит/с",
     "МиБ",
+    "Ом",
+    "Па",
     "ТБ",
+    "Тбит",
     "ТиБ",
     "бит",
     "г",
@@ -74,10 +79,16 @@ const RU_UNITS: &[&str] = &[
     "кВт",
     "кВт⋅ч",
     "кГц",
+    "кДж",
+    "кОм",
+    "кбит",
+    "кбит/с",
     "кг",
+    "ккал",
     "км",
     "км/ч",
     "км2",
+    "км²",
     "коп.",
     "л",
     "м",
@@ -85,7 +96,9 @@ const RU_UNITS: &[&str] = &[
     "м2",
     "м3",
     "м²",
+    "м³",
     "мА",
+    "мВт",
     "мг",
     "мес.",
     "мин",
@@ -97,6 +110,7 @@ const RU_UNITS: &[&str] = &[
     "млрд",
     "мм",
     "мм2",
+    "мм²",
     "мс",
     "нед.",
     "нм",
@@ -109,6 +123,8 @@ const RU_UNITS: &[&str] = &[
     "см",
     "см2",
     "см3",
+    "см²",
+    "см³",
     "сут.",
     "т",
     "трлн",
@@ -222,11 +238,12 @@ const EN_SHORT_WORDS: &[&str] = &[
 ];
 const EN_ATOM_EXCEPTIONS: &[&str] = &["a.m.", "cf.", "e.g.", "etc.", "i.e.", "p.m.", "vs."];
 const EN_UNITS: &[&str] = &[
-    "A", "B", "GB", "GB/s", "GHz", "Gbit", "Gbps", "GiB", "Hz", "K", "KB", "KiB", "L", "MB",
-    "MB/s", "MHz", "MW", "Mbit", "Mbps", "MiB", "TB", "TiB", "V", "W", "bit", "cm", "dpi", "ft",
-    "g", "h", "hPa", "ha", "hr", "in", "kB", "kHz", "kW", "kWh", "kbit", "kbps", "kg", "km",
-    "km/h", "lb", "m", "m/s", "mA", "mL", "mg", "mi", "min", "mm", "mph", "ms", "m²", "nm", "ns",
-    "oz", "ppi", "pt", "px", "rpm", "s", "sec", "t", "yd", "°", "°C", "°F", "µm", "µs", "μm", "μs",
+    "A", "B", "GB", "GB/s", "GHz", "GW", "Gbit", "Gbps", "GiB", "Hz", "K", "KB", "KiB", "L", "MB",
+    "MB/s", "MHz", "MW", "Mbit", "Mbps", "MiB", "TB", "TiB", "V", "W", "a.m.", "bit", "cm", "dpi",
+    "ft", "g", "h", "hPa", "ha", "hr", "in", "kB", "kHz", "kJ", "kPa", "kW", "kWh", "kbit", "kbps",
+    "kg", "km", "km/h", "lb", "m", "m/s", "mA", "mL", "mW", "mg", "mi", "min", "mm", "mph", "ms",
+    "m²", "nm", "ns", "oz", "p.m.", "ppi", "pt", "px", "rpm", "s", "sec", "t", "yd", "°", "°C",
+    "°F", "µm", "µs", "μm", "μs",
 ];
 const EN_AMBIGUOUS_UNITS: &[&str] = &["in"];
 const EN_MONTHS: &[&str] = &[
@@ -899,10 +916,27 @@ const RU_PROJECT_UNITS: &[&str] = &[
     "см2",
     "см3",
     "мм2",
+    "м³",
+    "км²",
+    "см²",
+    "см³",
+    "мм²",
+    "кбит",
+    "Тбит",
+    "кбит/с",
+    "мВт",
+    "ГВт",
+    "Дж",
+    "кДж",
+    "ккал",
+    "Ом",
+    "кОм",
+    "Па",
 ];
 const EN_PROJECT_UNITS: &[&str] = &[
     "KB", "KiB", "MiB", "GiB", "TiB", "bit", "kbit", "Mbit", "Gbit", "kbps", "Mbps", "Gbps",
-    "MB/s", "GB/s", "µs", "µm", "mph", "rpm", "ppi", "pt", "°",
+    "MB/s", "GB/s", "µs", "µm", "mph", "rpm", "ppi", "pt", "°", "mW", "GW", "kJ", "kPa", "a.m.",
+    "p.m.",
 ];
 
 fn sorted(mut items: Vec<String>) -> Vec<String> {
@@ -942,6 +976,33 @@ fn units_marked_cldr_are_the_short_symbols_of_the_extract() {
     assert_eq!(cldr49::RU.units_short.len(), 53);
     assert_eq!(cldr49::EN.units_short.len(), 49);
     assert_eq!(cldr49::EN.units_narrow.len(), 3);
+}
+
+#[test]
+fn every_unit_typed_without_a_superscript_has_its_superscript_form() {
+    // Design section 7.2: the project units `м2`, `м3`, ... are the forms typed without a
+    // superscript, and each `X2` or `X3` has its `X²` or `X³` in the same list.
+    for data in [&LanguageData::RU_RU, &LanguageData::EN_US] {
+        let stored = list(&fields(data), "units");
+        let mut checked = 0;
+        for unit in &stored {
+            let superscript = match unit.chars().last() {
+                Some('2') => '²',
+                Some('3') => '³',
+                _ => continue,
+            };
+            let mut form: String = unit.chars().take(unit.chars().count() - 1).collect();
+            form.push(superscript);
+            assert!(
+                stored.contains(&form),
+                "{}: {unit} without {form}",
+                data.tag()
+            );
+            checked += 1;
+        }
+        let expected = if data.tag() == "ru-RU" { 6 } else { 0 };
+        assert_eq!(checked, expected, "{}", data.tag());
+    }
 }
 
 #[test]

@@ -194,6 +194,7 @@ and in the order section 7.6 requires; `tests/data.rs` (section 13.9) checks the
 | `atom_exceptions`                          | none (dotted Russian forms are abbreviations)                                                                                                                                             |                                                                                                                               |
 | `units` (a selection of CLDR 49 short)     | Б кБ МБ ГБ ТБ Мбит нс мкс мс с мин ч дн. нед. мес. мг г кг т нм мкм мм см м км л мл га м² Вт кВт МВт кВт⋅ч В А мА Гц кГц МГц ГГц гПа °C °F K км/ч м/с дюйм. фт ярд. фнт унц. пкс тчк/дюйм | CLDR 49 units, short (checked; CLDR separates with U+0020)                                                                    |
 | `units` (project)                          | КБ КиБ МиБ ГиБ ТиБ бит Кбит Гбит Кбит/с Мбит/с Гбит/с КБ/с МБ/с ГБ/с сек. мин. сут. дм ц ° °С ₽ руб. коп. $ € тыс. млн млрд трлн шт. экз. чел. об/мин px dpi м2 м3 км2 см2 см3 мм2        | project                                                                                                                       |
+| `units` (project, completing the families) | м³ км² см² см³ мм² кбит Тбит кбит/с мВт ГВт Дж кДж ккал Ом кОм Па                                                                                                                         | project                                                                                                                       |
 | `ambiguous_units`                          | с (`Ждать 30⍽с.`, but `30 с друзьями` stays)                                                                                                                                              | project                                                                                                                       |
 | `months`                                   | января февраля марта апреля мая июня июля августа сентября октября ноября декабря; янв. февр. мар. апр. июн. июл. авг. сент. окт. нояб. дек.                                              | CLDR 49 gregorian, format wide and abbreviated (checked) (`мая` is both the wide and the abbreviated form and is listed once) |
 | `month_position`                           | AfterDay (`21⍽ноября`)                                                                                                                                                                    |                                                                                                                               |
@@ -212,7 +213,10 @@ and in the order section 7.6 requires; `tests/data.rs` (section 13.9) checks the
 `°С` in the project units has a Cyrillic `С` (U+0421), as typed on a Russian keyboard; the CLDR unit
 `°C` has a Latin `C`. Both are glued. The project units `м2`, `м3`, `км2`, `см2`, `см3`, `мм2` are
 the forms typed without a superscript; they are glued like `м²` and their digit is never changed
-(section 8.12, `NoDigitChange`).
+(section 8.12, `NoDigitChange`). Each of them has its superscript form in the list (`м3` and `м³`),
+and the project row "completing the families" adds the members that the CLDR 49 row leaves out
+(`мВт` and `ГВт` next to `Вт`, `кВт`, `МВт`), so `5 м³` and `5 ГВт` are glued as `5 м²` and `5 МВт`
+are; `tests/data.rs` checks the superscript forms.
 
 `г.` and `в.` are duration units in CLDR; here they are year and century words, so `nbsp.dates`
 handles them (section 8.7) and they are not in `units`.
@@ -237,7 +241,7 @@ CLDR 49 has no separate `en-US` file; `en-US` inherits `en`, and the values belo
 | `abbreviations` Next                       | Dr. Fig. Figs. Mr. Mrs. Ms. Mt. No. Nos. Prof. St. ch. p. pp. sec. vol.                                                                                                                | project                                                                |
 | `atom_exceptions`                          | a.m. cf. e.g. etc. i.e. p.m. vs.                                                                                                                                                       | project                                                                |
 | `units` (a selection of CLDR 49)           | short: kB MB GB TB ns μs ms sec min hr mg g kg t nm μm mm cm m km in ft yd mi lb oz mL L ha m² W kW MW kWh V A mA Hz kHz MHz GHz hPa °C °F K km/h m/s px dpi; narrow: B s h            | CLDR 49 units, short and narrow (checked)                              |
-| `units` (project)                          | KB KiB MiB GiB TiB bit kbit Mbit Gbit kbps Mbps Gbps MB/s GB/s µs µm (U+00B5 forms) mph rpm ppi pt °                                                                                   | project                                                                |
+| `units` (project)                          | KB KiB MiB GiB TiB bit kbit Mbit Gbit kbps Mbps Gbps MB/s GB/s µs µm (U+00B5 forms) mph rpm ppi pt ° mW GW kJ kPa a.m. p.m.                                                            | project                                                                |
 | `ambiguous_units`                          | in (`27⍽in.`, but `5 in the box` stays)                                                                                                                                                | project                                                                |
 | `months`                                   | January February March April May June July August September October November December; Jan Feb Mar Apr Jun Jul Aug Sep Oct Nov Dec; Jan. Feb. Mar. Apr. Aug. Sep. Sept. Oct. Nov. Dec. | CLDR 49 gregorian wide and abbreviated (checked); dotted forms project |
 | `month_position`                           | Both (`November⍽21`, `21⍽November`)                                                                                                                                                    |                                                                        |
@@ -250,6 +254,11 @@ CLDR 49 writes `{0}°C` and `{0}%` without a space in English. With the default
 `PercentSpacing::AsWritten` the crate neither inserts nor removes a space there: an existing space
 is glued (`20 °C` → `20⍽°C`), an attached sign stays attached. The other `PercentSpacing` values
 change this for `%` and `‰` only (section 8.7); `°C` is never affected.
+
+`a.m.` and `p.m.` are units as well as atom exceptions (both are dictionary entries, section 3.6),
+so `nbsp.units` glues them to the number before them: `5 p.m. and 5 a.m.` → `5⍽p.m. and⍽5⍽a.m.`. A
+time such as `5:30` is not a number for `nbsp.units` (`at⍽5:30 p.m. today`), and units are compared
+with case, so `5 P.M.` is not glued.
 
 ### 7.4 COMMON
 

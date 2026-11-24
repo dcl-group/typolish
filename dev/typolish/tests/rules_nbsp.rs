@@ -886,6 +886,30 @@ const RU_UNITS: &[(&str, &str)] = &[
     ("5–10 м2", "5–10⍽м2"),
     ("5 м2x", "5 м2x"),
     ("3 км2", "3⍽км2"),
+    // Each form without a superscript has its superscript form, and each family is complete
+    // (design section 7.2).
+    ("5 м³", "5⍽м³"),
+    ("5 км²", "5⍽км²"),
+    ("5 см²", "5⍽см²"),
+    ("5 см³", "5⍽см³"),
+    ("5 мм²", "5⍽мм²"),
+    ("5 кбит", "5⍽кбит"),
+    ("5 Тбит", "5⍽Тбит"),
+    ("5 кбит/с", "5⍽кбит/с"),
+    ("5 мВт", "5⍽мВт"),
+    ("5 ГВт", "5⍽ГВт"),
+    ("5 Дж", "5⍽Дж"),
+    ("5 кДж", "5⍽кДж"),
+    ("5 ккал", "5⍽ккал"),
+    ("5 Ом", "5⍽Ом"),
+    ("5 кОм", "5⍽кОм"),
+    ("5 Па", "5⍽Па"),
+    (
+        "5 м³ 5 см³ 5 км² 5 см² 5 мм²",
+        "5⍽м³ 5⍽см³ 5⍽км² 5⍽см² 5⍽мм²",
+    ),
+    ("10 м³/ч", "10⍽м³/ч"),
+    ("5 Ома", "5 Ома"),
     // An ambiguous unit is glued only before punctuation, a line break or the end.
     ("Ждать 30 с.", "Ждать 30⍽с."),
     ("30 с друзьями", "30 с друзьями"),
@@ -932,6 +956,18 @@ const EN_UNITS: &[(&str, &str)] = &[
     ("60 km/h", "60⍽km/h"),
     ("3 hr", "3⍽hr"),
     ("10 min.", "10⍽min."),
+    ("5 mW", "5⍽mW"),
+    ("5 GW", "5⍽GW"),
+    ("5 kJ", "5⍽kJ"),
+    ("5 kPa", "5⍽kPa"),
+    // `a.m.` and `p.m.` are units as well as atom exceptions (design section 7.3); the time `5:30`
+    // is not a number for `nbsp.units`, and the list is case-sensitive.
+    ("5 a.m.", "5⍽a.m."),
+    ("5 p.m.", "5⍽p.m."),
+    ("9 a.m., then", "9⍽a.m., then"),
+    ("5:30 p.m.", "5:30 p.m."),
+    ("5 P.M.", "5 P.M."),
+    ("5 pm", "5 pm"),
     ("5–10 kg", "5–10⍽kg"),
     ("5 mb", "5 mb"),
     ("5MB", "5MB"),
@@ -1293,8 +1329,28 @@ fn units_inside_both_sets() {
             ("5 MB", "5⍽MB"),
             ("27 in.", "27⍽in."),
             ("5 in the box", "5 in⍽the⍽box"),
+            // Design section 7.3: `a.m.` and `p.m.` are units.
+            ("5 p.m. and 5 a.m.", "5⍽p.m. and⍽5⍽a.m."),
+            ("at 5:30 p.m. today", "at⍽5:30 p.m. today"),
+            ("5 P.M.", "5 P.M."),
+            ("5 kPa", "5⍽kPa"),
         ],
     );
+    // Design section 7.2: the superscript forms and the members of a family are units; in Prose
+    // `nbsp.short-length` also glues a unit of one or two letters to the number after it.
+    set_rows(
+        ru(),
+        &[
+            (
+                "5 м³ 5 см³ 5 км² 5 см² 5 мм²",
+                "5⍽м³⍽5⍽см³⍽5⍽км²⍽5⍽см²⍽5⍽мм²",
+                "5⍽м³ 5⍽см³ 5⍽км² 5⍽см² 5⍽мм²",
+            ),
+            ("5 ГВт 5 Дж", "5⍽ГВт 5⍽Дж", "5⍽ГВт 5⍽Дж"),
+            ("5-10 м³", "5–10⍽м³", "5-10⍽м³"),
+        ],
+    );
+    set_rows(en(), &[("9-11 a.m.", "9–11⍽a.m.", "9-11⍽a.m.")]);
 }
 
 #[test]
