@@ -246,3 +246,6 @@ expectation):
   `key: ""` gives `key: «»`. A frozen core that does not end in `=` keeps its wrapper quotes as
   candidates, so `Путь /etc/"" и "да".` fails the paragraph the same way, with `UnmatchedQuote`
   (warning, section 6.1), while `key=""` stays as written.
+- Straight quotes nested out of order around a trailing possessive are not idempotent in English:
+  `""s' 'x."'"` gives `“‘s’ 'x.’'”`, and a second pass pairs the remaining `'` (`“‘s’ ‘x.’’”`). This
+  is a defect of the quote phase (section 6.11), not a choice.

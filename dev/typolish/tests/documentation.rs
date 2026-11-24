@@ -875,6 +875,8 @@ fn limits() -> Vec<Limit> {
         limit(RU, Both, "сказал: \"привет\"", "сказал: «привет»"),
         limit(RU, Both, "key: \"\"", "key: «»"),
         limit(RU, Both, "key=\"\"", "key=\"\""),
+        // Straight quotes nested out of order: a defect, not idempotent.
+        limit(EN, Both, "\"\"s' 'x.\"'\"", "“‘s’ 'x.’'”"),
     ]
 }
 
