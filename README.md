@@ -231,7 +231,8 @@ numbers, ISO dates, versions, file and host names, identifiers such as `x86` or 
 need no language data. `Language::from_tag` returns an error for a language without data, and the
 caller chooses whether to fall back to `COMMON`. A caller that falls back tries the full tag, then
 the bare language subtag (`Language::from_tag("en")` gives `en-US`), and only then
-`Language::COMMON`, which has no quotes and no dashes. A new language is a table of data (quote
+`Language::COMMON`, which pairs no quotes and applies no `dash.*` rule; ranges still take the en
+dash there (`10-20` gives `10–20` with `RuleSet::PROSE`). A new language is a table of data (quote
 pairs, short words, particles, abbreviations, units, months, number symbols), declared as a `const`
 `LanguageData` or built at run time with `LanguageBuilder`:
 

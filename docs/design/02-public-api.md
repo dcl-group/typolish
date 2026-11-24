@@ -98,8 +98,9 @@ assert!(Language::from_tag("en-GB").is_err());
 ```
 
 A caller that falls back tries the full tag, then the bare language subtag
-(`Language::from_tag("en")` gives `en-US`), and only then `Language::COMMON`, which has no quotes
-and no dashes.
+(`Language::from_tag("en")` gives `en-US`), and only then `Language::COMMON`, which pairs no quotes
+and applies no `dash.*` rule; ranges still take the en dash there (`10-20` gives `10–20` with
+`RuleSet::PROSE`), and section 7.4 lists the rules that stay active.
 
 A caller can declare its own language as a `const` table in its own crate and use it without any
 rule code (section 7.7):
