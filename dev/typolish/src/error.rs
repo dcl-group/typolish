@@ -38,7 +38,9 @@ pub enum Error {
     #[error("invalid language data for `{}`: {reason}", crate::report::Raw(.tag))]
     #[non_exhaustive]
     InvalidLanguageData {
-        /// The tag of the table.
+        /// The tag as given: the tag of the table passed to `Language::from_data`, or the tag
+        /// passed to `LanguageBuilder::new` or `LanguageBuilder::from_language`, before `build`
+        /// normalizes its case.
         tag: String,
         /// The failed check, naming the field.
         reason: &'static str,

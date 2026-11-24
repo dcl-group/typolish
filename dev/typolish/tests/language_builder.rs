@@ -352,6 +352,29 @@ fn a_sign_is_not_a_percent_sign_or_a_unit() {
     assert_eq!(t.typeset(&once, Output::Unicode), once);
 }
 
+/// The error holds the tag as given, not as `build` normalizes it (design section 2.11).
+#[test]
+fn the_error_holds_the_tag_as_given() {
+    let tag_of = |result: Result<Language, Error>| match result {
+        Err(Error::InvalidLanguageData { tag, .. }) => tag,
+        other => panic!("expected InvalidLanguageData, got {other:?}"),
+    };
+    assert_eq!(tag_of(LanguageBuilder::new("ru-Latn").build()), "ru-Latn");
+    assert_eq!(
+        tag_of(
+            LanguageBuilder::from_language(&Language::EN_US, "EN-gb")
+                .signs(['%'])
+                .build()
+        ),
+        "EN-gb"
+    );
+    // A valid tag in other case is still normalized in the language it builds.
+    let built = LanguageBuilder::from_language(&Language::EN_US, "EN-gb")
+        .build()
+        .unwrap();
+    assert_eq!(built.tag(), "en-GB");
+}
+
 #[test]
 fn the_error_names_the_field() {
     for (builder, field) in [

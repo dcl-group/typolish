@@ -837,8 +837,10 @@ impl LanguageBuilder {
     /// ```
     pub fn build(mut self) -> Result<Language, Error> {
         let tag = normalize_tag(&self.tag);
+        // The error holds the tag as given (design section 2.11), the language the normalized one.
+        let given = self.tag.clone();
         let invalid = |reason| Error::InvalidLanguageData {
-            tag: tag.clone(),
+            tag: given.clone(),
             reason,
         };
         if !is_canonical_tag(&tag) {
