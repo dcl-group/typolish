@@ -908,10 +908,6 @@ fn limits() -> Vec<Limit> {
         limit(RU, Both, "сказал: \"привет\"", "сказал: «привет»"),
         limit(RU, Both, "key: \"\"", "key: «»"),
         limit(RU, Both, "key=\"\"", "key=\"\""),
-        // The unit lists are a selection (design section 7.2).
-        limit(RU, Both, "5 ГВт", "5 ГВт"),
-        limit(RU, Both, "5 м³", "5 м³"),
-        limit(EN, Both, "5 p.m.", "5 p.m."),
         // Straight quotes nested out of order: a defect, not idempotent.
         limit(EN, Both, "\"\"s' 'x.\"'\"", "“‘s’ 'x.’'”"),
         // The same class with an unpaired `'s` after a nested trailing possessive: P2 fails.

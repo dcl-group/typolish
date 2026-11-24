@@ -212,8 +212,7 @@ and in the order section 7.6 requires; `tests/data.rs` (section 13.9) checks the
 `°С` in the project units has a Cyrillic `С` (U+0421), as typed on a Russian keyboard; the CLDR unit
 `°C` has a Latin `C`. Both are glued. The project units `м2`, `м3`, `км2`, `см2`, `см3`, `мм2` are
 the forms typed without a superscript; they are glued like `м²` and their digit is never changed
-(section 8.12, `NoDigitChange`). Of the superscript forms only the CLDR `м²` is listed, so `5 м³` is
-not glued; the lists are a selection, and `5 ГВт` or `5 p.m.` are not glued either (section 10.8).
+(section 8.12, `NoDigitChange`).
 
 `г.` and `в.` are duration units in CLDR; here they are year and century words, so `nbsp.dates`
 handles them (section 8.7) and they are not in `units`.
