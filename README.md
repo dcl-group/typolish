@@ -292,9 +292,6 @@ The rules read the shape of the text, not its meaning. These cases are known and
   gives `«x ''-„“ y»`, and a second pass gives `«x „“-„“ y»`. For the same reason in English
   `"x ''-'' y"` gives `“x ''-‘’ y”`, and its plain form `"x ''-"" y"` gives `“x ‘’-‘’ y”`. This is a
   defect, not a choice.
-- In a declared language whose primary pair is `‘’` (en-GB), `PROSE` is not idempotent on a
-  sign-only pair inside straight single quotes before a number: `'a ""-3'` gives `'a⍽‘’-3'`, and a
-  second pass gives `'a⍽‘’-3′`. This is a defect, not a choice.
 - A quoted value with a space glued to `=` is cut by the space: `title="My` is frozen, the quote
   after `App` closes nothing, and `Set title="My App" for the "main" window.` keeps every quote of
   the paragraph straight with an `UnmatchedQuote` warning. Protect such a notation with backticks.

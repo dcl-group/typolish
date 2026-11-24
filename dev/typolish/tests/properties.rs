@@ -315,6 +315,11 @@ fn idempotence_of_the_seed_with_a_built_language() {
         "\"S' 's\"",
         "it) - 'cause' - 'cause -- \"'cause) DOGS' - 'house' - it, - oz.) '90s\" a",
         "\"S'. a(\n'3,\".'",
+        // A sign-only pair `‘’` before a number inside a straight single pair (design sections 6.3
+        // and 6.5).
+        "'a \"\"-3'",
+        "'a \"\" 3'",
+        "\"\" ('s'’ “”«",
     ] {
         for set in [
             RuleSet::EMPTY,

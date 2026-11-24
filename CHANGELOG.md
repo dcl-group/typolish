@@ -25,6 +25,15 @@ stands for U+00A0).
   `SingleQuotes::Everywhere`, `"S'. a(\n'3,".'`: `‘S’. a(\n'3,’.'` → `‘S'. a(\n'3,’.'`. With only
   text between the possessive and the closer nothing changes (`“He said ‘the⍽dogs’ bowls’”`).
 
+- A typed `’` closes the `‘` of its pair when only signs, or nothing, stand between them and the
+  neighbors allow the sign-only pair (design section 6.3), as the plain `""` that a first pass
+  typesets as `‘’` does; other rules read the same closing role. In a declared language whose
+  primary pair is `‘’` (en-GB), Prose: `'a ""-3'` gives `'a⍽‘’-3'` as before, and the second pass no
+  longer gives `'a⍽‘’-3′`; typed `'a ‘’-3'`: `'a⍽‘’-3′` → `'a⍽‘’-3'`, and likewise `'a ‘’ 3'`.
+  English, both sets: `"a ‘’ b"`: `"a⍽‘’ b"` → `“a⍽‘’ b”`; `"a ‘-’ b"`: `"a⍽‘-’ b"` → `“a⍽‘-’ b”`;
+  `"a ‘’, b"`: `"a⍽‘’, b"` → `“a⍽‘’, b”`. Such a pair is no longer reported: `x ‘’ y` gave
+  `UnmatchedQuote` (info), `"a ‘’ b"` `CrossingQuotes` (warning).
+
 ## 0.1.1 - unreleased
 
 The first version, prepared and not published; the date is set when the version is tagged. Version

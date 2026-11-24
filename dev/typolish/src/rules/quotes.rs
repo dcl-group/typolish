@@ -212,9 +212,10 @@ pub(crate) fn local_role(cx: &Cx<'_>, i: usize) -> Option<Role> {
                 Some(Role::Open)
             } else if c == APOSTROPHE_CHAR && (c == pairs.primary.1 || c == pairs.nested.1) {
                 // `’` is also the apostrophe: it closes only where the closing test of design
-                // section 6.3 holds.
+                // section 6.3 holds, or as the second quote of a sign-only pair.
                 let (l, r) = neighbors(cx, i);
-                (!class(cx, l).opens() && class(cx, r).ends()).then_some(Role::Close)
+                (class(cx, r).ends() && (!class(cx, l).opens() || typed_sign_only(cx, i)))
+                    .then_some(Role::Close)
             } else if c == pairs.primary.1 || c == pairs.nested.1 {
                 Some(Role::Close)
             } else {
@@ -474,8 +475,11 @@ pub(crate) fn analyze<R: Recorder>(
                             });
                 }
                 Cat::Cond => {
-                    // U+2019 can close only where the neighbors allow a closing role.
-                    if !(!lc.opens() && rc.ends()) {
+                    // U+2019 can close only where the neighbors allow a closing role, or as the
+                    // second quote of a sign-only pair with the typed opener before it.
+                    if !(!lc.opens() && rc.ends())
+                        && !(rc.ends() && typed_sign_only(cx, q.tok as usize))
+                    {
                         q.cat = Cat::Skip;
                     }
                 }
@@ -1270,6 +1274,48 @@ fn sign_only_opener(cx: &Cx<'_>, i: usize) -> Option<usize> {
     let (l, _) = neighbors(cx, a);
     (class(cx, l).opens() && sign_only_partner(cx, a, || series_count(cx, a)) == Some(i))
         .then_some(a)
+}
+
+/// Whether the `’` at `i` is the second quote of a sign-only pair whose first quote is a typed
+/// opener of the pair that `’` closes (design section 6.3): the next token before it that is not a
+/// sign, in the same fragment, is that opener, whose series has L of class `Space`, `OpenP` or
+/// `DashC`, and two adjacent quotes are no pair in a series of three or more. It is the typed form
+/// of the sign-only pair of straight quotes, which a first pass sets as such a pair (`""` → `‘’`),
+/// so a second pass reads it as the first did. R of the `’` is the caller's to check.
+fn typed_sign_only(cx: &Cx<'_>, i: usize) -> bool {
+    let Some(pairs) = cx.pairs else {
+        return false;
+    };
+    // The primary pair comes first, as in `categorize`.
+    let open = if pairs.primary.1 == APOSTROPHE_CHAR {
+        pairs.primary.0
+    } else if pairs.nested.1 == APOSTROPHE_CHAR {
+        pairs.nested.0
+    } else {
+        return false;
+    };
+    let Some(frag) = cx.tok(i).map(|t| t.frag) else {
+        return false;
+    };
+    let adjacent = cx.prev(i);
+    let mut j = adjacent;
+    while let Some(k) = j {
+        if cx.tok(k).map(|t| t.frag) != Some(frag) {
+            return false;
+        }
+        if !is_sign(cx, k) {
+            break;
+        }
+        j = cx.prev(k);
+    }
+    let Some(a) = j else {
+        return false;
+    };
+    if !is_quote(cx, a) || cx.chr(a) != Some(open) || cx.tok(a).is_none_or(Tok::is_frozen) {
+        return false;
+    }
+    let (l, _) = neighbors(cx, a);
+    class(cx, l).opens() && !(j == adjacent && series_count(cx, a) >= 3)
 }
 
 /// The number of quotes, of any form, in the series that holds the quote at `i`.

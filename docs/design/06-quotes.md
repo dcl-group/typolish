@@ -120,9 +120,16 @@ Typed glyphs have the role of their glyph in the language's pairs: in Russian `�
 and `“` close; in English `“` and `‘` open, `”` closes. U+2019 `’` closes a `‘` only if one is open
 (on the stack of section 6.4 and covered by nothing but straight `'` entries, so that it never
 causes a crossing) and its neighbors allow a closing role (the closing test above: L ∉ {Space,
-OpenP, DashC} and R ∈ {Space, CloseP, DashC}); otherwise it is an apostrophe and never blocks
-anything (it is both the apostrophe and the English closing single quote). So `’26` and `’tis` at a
-word start are always apostrophes.
+OpenP, DashC} and R ∈ {Space, CloseP, DashC}), or it is the second quote of a sign-only pair with
+that `‘`: nothing but signs between them, in one fragment, L of the series of the `‘` in {Space,
+OpenP, DashC}, R of the `’` in {Space, CloseP, DashC}, and not two adjacent quotes of a series of
+three or more. Otherwise it is an apostrophe and never blocks anything (it is both the apostrophe
+and the English closing single quote). So `’26` and `’tis` at a word start are always apostrophes,
+and `‘’`, `‘-’` and `‘?’` close as the plain `""`, `"-"` and `"?"` that a first pass typesets as
+them do (section 6.11): `"a ‘-’ b"` → `“a ‘-’ b”`. In a language whose primary pair is `‘’` (en-GB)
+a first pass typesets `'a ""-3'` as `'a ‘’-3'`: the closed pair `‘’` leaves the top-level `'` that
+pass 1 left unpaired on top of the stack, so the weak `'` after `3` pairs with it on every pass
+(section 6.5), where an open `‘` would make it a prime on the second.
 
 ### 6.4 Families and stack matching
 
@@ -278,7 +285,9 @@ This is a known limit of version 1 (section 1.5).
 Roles on a second pass are those of the first: a role comes from the classes of the neighbors of a
 series, every `Quote` token is in its series (section 6.3), and the class of a neighbor does not
 change, because an edit never changes the kind of a token (I1). Step 1 removes the same tokens (I4).
-The first pass either converged or did not.
+A sign-only pair that the first pass typesets as `‘’` (or `‘-’`) is a typed pair on the second,
+since `’` closes the `‘` before it by the same rule (section 6.3). The first pass either converged
+or did not.
 
 (a) **Converged.** Every straight `"` became a glyph of a pair or a prime; the new pairs nest
 properly (section 6.5, item 2), and the family of each new glyph is the primary or the nested pair
@@ -378,6 +387,7 @@ enabled; "(`Never`)" marks `SingleQuotes::Never`. A row without a mark holds in 
 | en         | `""s' 'x."'"`                                   | `“‘s' 'x.’'”`                        | no possessive before an unpaired opener in its pair           |
 | en         | `"a "dogs' 's" b"`                              | `“a ‘dogs' 's’ b”`                   | the same                                                      |
 | en         | `"a "dogs' 'x' bowls" b"`                       | `“a ‘dogs' “x” bowls’ b”`            | no possessive before a pair when the closer follows `s`       |
+| en         | `"a ‘-’ b"`                                     | `“a ‘-’ b”`                          | a typed sign-only pair                                        |
 | ru         | `a""b`                                          | unchanged, no diagnostic             | frozen core (section 3.6)                                     |
 
 ### 6.13 Rejected

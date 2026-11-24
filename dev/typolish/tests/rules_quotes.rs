@@ -382,6 +382,40 @@ fn a_trailing_possessive_that_would_close_its_pair_stays_straight() {
     }
 }
 
+#[test]
+fn a_typed_closer_after_its_opener_and_signs_closes_it() {
+    // Design section 6.3: `’` closes the typed opener of its pair when only signs (or nothing)
+    // stand between them, the opener has L of class `Space`, `OpenP` or `DashC` and the `’` has R
+    // of class `Space`, `CloseP` or `DashC`, as the sign-only pair `""` that a first pass typesets
+    // as `‘’` (design section 6.11). Two adjacent quotes in a series of three are no pair.
+    let en = quotes(Language::EN_US);
+    for row in [
+        ("\"a ‘’ b\"", "“a ‘’ b”"),
+        ("\"a ‘-’ b\"", "“a ‘-’ b”"),
+        ("\"a ‘’, b\"", "“a ‘’, b”"),
+        ("\"a \"\" b\"", "“a ‘’ b”"),
+        ("\"a ‘’’ b\"", "\"a ‘’’ b\""),
+    ] {
+        check_exact("en quotes alone", &en, row);
+    }
+    // A language whose primary pair is `‘’` (en-GB): the pair `‘’` is closed, so the opener that
+    // pass 1 left unpaired takes the weak quote after the number on every pass (design section
+    // 6.5).
+    let gb = typolish::LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    let gb = quotes(gb);
+    for row in [
+        ("'a \"\"-3'", "'a ‘’-3'"),
+        ("'a ‘’-3'", "'a ‘’-3'"),
+        ("'a \"\" 3'", "'a ‘’ 3'"),
+        ("'a ‘’ 3'", "'a ‘’ 3'"),
+    ] {
+        check_exact("en-GB quotes alone", &gb, row);
+    }
+}
+
 // The rows of design section 6.12 that need `quotes.primes`: Prose (design section 6.5), and what
 // Interface does.
 #[test]
