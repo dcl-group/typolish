@@ -479,19 +479,34 @@ mod tests {
 
     const LANGUAGES: [Language; 3] = [Language::RU_RU, Language::EN_US, Language::COMMON];
 
-    fn outputs() -> [Output; 10] {
-        [
-            Output::Unicode,
-            Output::Html(HtmlStyle::NAMED),
-            Output::Html(HtmlStyle::CHARACTERS),
-            Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap")),
-            Output::Html(HtmlStyle::CHARACTERS.nowrap_style()),
-            Output::Escaped(EscapeStyle::JS),
-            Output::Escaped(EscapeStyle::JS_HEX),
-            Output::Escaped(EscapeStyle::JSON),
-            Output::Escaped(EscapeStyle::RUST),
-            Output::Escaped(EscapeStyle::CSS.non_ascii()),
-        ]
+    /// Every output kind: `Unicode`, each HTML style plain and with each nowrap form, each escaped
+    /// syntax with the typographic set and with `non_ascii()` (design section 13.5, property 8).
+    fn outputs() -> Vec<Output> {
+        let html = [
+            HtmlStyle::NAMED,
+            HtmlStyle::DECIMAL,
+            HtmlStyle::HEX,
+            HtmlStyle::CHARACTERS,
+        ];
+        let escaped = [
+            EscapeStyle::JS,
+            EscapeStyle::JS_HEX,
+            EscapeStyle::JS_CODE_POINT,
+            EscapeStyle::JSON,
+            EscapeStyle::RUST,
+            EscapeStyle::CSS,
+        ];
+        let mut out = vec![Output::Unicode];
+        for style in html {
+            out.push(Output::Html(style));
+            out.push(Output::Html(style.nowrap_class("nowrap")));
+            out.push(Output::Html(style.nowrap_style()));
+        }
+        for style in escaped {
+            out.push(Output::Escaped(style));
+            out.push(Output::Escaped(style.non_ascii()));
+        }
+        out
     }
 
     proptest! {
