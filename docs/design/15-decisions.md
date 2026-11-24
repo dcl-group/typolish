@@ -139,10 +139,6 @@ Decided by the maintainer on 2026-11-23; not reopened here:
 34. Publishing on crates.io waits for the maintainer's command; until then only the GitHub
     repository is pushed (items 1 and 15). The tag `v0.1.1` is set and pushed only on that command
     too (section 14.7).
-35. After the fixes of the review of 2026-11-24 the version is raised to `0.1.1`, a patch: the first
-    published release is `0.1.1`, and `0.1.0` is never published. Publication on crates.io and the
-    tag `v0.1.1` wait for a separate command of the maintainer (item 34, section 15.1). Decided by
-    the maintainer on 2026-11-24.
 
 The task itself fixes further points used throughout: the minus sign U+2212 for numbers, the
 mandatory negative cases, HTML outside the core, `thiserror` for errors, `cargo deny check` clean,
