@@ -288,9 +288,12 @@ pub(crate) struct Work {
     qs: Vec<Q>,
     stack: Vec<Entry>,
     /// Per quote, for the trailing possessive (design section 6.6): the number of straight `'`
-    /// openers before it that take part and stayed unpaired, and the number of quotes before it
-    /// that belong to a pair that is not cancelled.
-    before: Vec<[u32; 2]>,
+    /// openers before it that take part and stayed unpaired, the number of quotes before it that
+    /// belong to a pair that is not cancelled, the opener of the innermost pair around it, and
+    /// the first quote at or after it that could close a straight `'` opener on a second pass,
+    /// and, for the opener of a pair that `’` closes, the outermost pair of the run of such pairs
+    /// around one another that starts with it.
+    before: Vec<[u32; 5]>,
 }
 
 impl Work {
@@ -305,7 +308,7 @@ impl Work {
     pub(crate) fn heap_bytes(&self) -> usize {
         self.qs.capacity() * size_of::<Q>()
             + self.stack.capacity() * size_of::<Entry>()
-            + self.before.capacity() * size_of::<[u32; 2]>()
+            + self.before.capacity() * size_of::<[u32; 5]>()
     }
 }
 
@@ -759,37 +762,28 @@ pub(crate) fn analyze<R: Recorder>(
     }
 
     // What lies between a trailing possessive and the closer of the pair around it (design section
-    // 6.6): straight `'` openers that stayed unpaired, and quotes of pairs. Only a language with
-    // the trailing possessive needs it.
+    // 6.6): straight `'` openers that stayed unpaired, quotes of pairs, and the opener of the
+    // innermost pair around each quote. Only a language with the trailing possessive needs it.
     let possessives = cx.data.trailing_possessive;
-    let mut open_s = 0u32;
     let mut paired = 0u32;
     before.clear();
-    for q in qs.iter().filter(|_| possessives) {
-        before.push([open_s, paired]);
+    stack.clear();
+    for (idx, q) in qs.iter().enumerate().filter(|_| possessives) {
+        let around = stack.last().map_or(NONE, |e| e.q);
+        // For the opener of a pair that `’` closes: the outermost pair of the run of such pairs,
+        // each directly inside the next, that starts with this one.
+        let mut chain = NONE;
+        if in_pair(q) && (q.partner as usize) > idx && closed_by_apostrophe(qs, marks, idx) {
+            chain = u32::try_from(idx).unwrap_or(NONE);
+            if closed_by_apostrophe(qs, marks, around as usize)
+                && let Some(b) = before.get(around as usize)
+            {
+                chain = b[4];
+            }
+        }
+        before.push([NONE, paired, around, NONE, chain]);
         if in_pair(q) {
             paired = paired.saturating_add(1);
-        } else if q.cat == Cat::Straight
-            && q.fam == S
-            && q.role == Some(Role::Open)
-            && !never
-            && !q.prime
-        {
-            open_s = open_s.saturating_add(1);
-        }
-    }
-
-    // Primes, the trailing possessive, the decade apostrophe and an elision that waited for
-    // pairing (design sections 6.2, 6.5 and 6.6). `stack` holds the openers of the pairs around
-    // the current quote.
-    let data = cx.data;
-    stack.clear();
-    for (idx, q) in qs.iter().enumerate() {
-        let i = q.tok as usize;
-        if in_pair(q) {
-            if !possessives {
-                continue;
-            }
             if (q.partner as usize) > idx {
                 if let Ok(index) = u32::try_from(idx) {
                     stack.push(Entry {
@@ -806,43 +800,100 @@ pub(crate) fn analyze<R: Recorder>(
                     }
                 }
             }
-            continue;
-        }
-        if q.prime {
-            if let Some(m) = marks.get_mut(i) {
-                *m = Mark::Prime(if q.glyph == '"' { '″' } else { '′' });
-            }
-            continue;
-        }
-        if q.cat != Cat::Straight || q.glyph != '\'' || q.partner != NONE {
-            continue;
-        }
-        let prev = cx.prev(i);
-        let next = cx.next(i);
-        let possessive = data.trailing_possessive
-            && prev.is_some_and(|p| {
-                matches!(cx.kind(p), Some(Kind::Word(_))) && cx.src(p).ends_with(['s', 'S'])
-            })
-            && !next.is_some_and(|n| matches!(cx.kind(n), Some(Kind::Word(_))))
-            && (neutral_apostrophe_opener == NONE || neutral_apostrophe_opener > q.tok)
-            && !possessive_closes(cx, qs, before, marks, idx, stack.last().map(|e| e.q));
-        // A number run split by `Format` or `Markup` tokens is one number (design section 3.6).
-        let decade = data.decade_apostrophe
-            && word_start(cx, i)
-            && next.is_some_and(|n| {
-                cx.kind(n) == Some(Kind::Number) && cx.digits_len(n, cx.number_end(n)) == 2
-            })
-            && !next
-                .and_then(|n| cx.next(cx.number_end(n)))
-                .is_some_and(|a| matches!(cx.kind(a), Some(Kind::Word(_) | Kind::Number)));
-        // An elision that a straight `'` closed waited for pairing (design section 6.2).
-        let elided = elision(cx, i) == Some(true);
-        if (possessive || decade || elided)
-            && let Some(m) = marks.get_mut(i)
-        {
-            *m = Mark::Apostrophe;
         }
     }
+
+    // Primes, the trailing possessive, the decade apostrophe and an elision that waited for
+    // pairing (design sections 6.2, 6.5 and 6.6). The quotes are visited from the end, so the
+    // possessive sees the final marks of the quotes after it, and the fourth count of `before`
+    // records the next quote that could close a straight `'` opener on a second pass.
+    let data = cx.data;
+    for idx in (0..qs.len()).rev() {
+        let Some(q) = qs.get(idx).copied() else {
+            continue;
+        };
+        let i = q.tok as usize;
+        if !in_pair(&q) {
+            if q.prime {
+                if let Some(m) = marks.get_mut(i) {
+                    *m = Mark::Prime(if q.glyph == '"' { '″' } else { '′' });
+                }
+            } else if q.cat == Cat::Straight && q.glyph == '\'' && q.partner == NONE {
+                let prev = cx.prev(i);
+                let next = cx.next(i);
+                let possessive = data.trailing_possessive
+                    && prev.is_some_and(|p| {
+                        matches!(cx.kind(p), Some(Kind::Word(_))) && cx.src(p).ends_with(['s', 'S'])
+                    })
+                    && !next.is_some_and(|n| matches!(cx.kind(n), Some(Kind::Word(_))))
+                    && (neutral_apostrophe_opener == NONE || neutral_apostrophe_opener > q.tok)
+                    && !possessive_closes(cx, qs, before, marks, idx);
+                // A number run split by `Format` or `Markup` tokens is one number (design section
+                // 3.6).
+                let decade = data.decade_apostrophe
+                    && word_start(cx, i)
+                    && next.is_some_and(|n| {
+                        cx.kind(n) == Some(Kind::Number) && cx.digits_len(n, cx.number_end(n)) == 2
+                    })
+                    && !next
+                        .and_then(|n| cx.next(cx.number_end(n)))
+                        .is_some_and(|a| matches!(cx.kind(a), Some(Kind::Word(_) | Kind::Number)));
+                // An elision that a straight `'` closed waited for pairing (design section 6.2).
+                let elided = elision(cx, i) == Some(true);
+                if (possessive || decade || elided)
+                    && let Some(m) = marks.get_mut(i)
+                {
+                    *m = Mark::Apostrophe;
+                }
+            }
+        }
+        if possessives {
+            let this = u32::try_from(idx).unwrap_or(NONE);
+            let later = before.get(idx + 1).map_or([NONE; 5], |b| *b);
+            let next_opener = if unpaired_s_opener(&q, marks, never) {
+                this
+            } else {
+                later[0]
+            };
+            let next_closer = if may_close_s(&q, marks, never) {
+                this
+            } else {
+                later[3]
+            };
+            if let Some(b) = before.get_mut(idx) {
+                b[0] = next_opener;
+                b[3] = next_closer;
+            }
+        }
+    }
+}
+
+/// Whether the quote is a straight `'` opener that takes part, stayed unpaired and stays straight
+/// (design section 6.6).
+fn unpaired_s_opener(q: &Q, marks: &[Mark], never: bool) -> bool {
+    q.cat == Cat::Straight
+        && q.fam == S
+        && q.role == Some(Role::Open)
+        && !never
+        && !q.prime
+        && !in_pair(q)
+        && marks.get(q.tok as usize) != Some(&Mark::Apostrophe)
+}
+
+/// Whether the quote could close a straight `'` opener on a second pass, or stands for one that
+/// could (design section 6.6): a straight `'` that may close (a closing role, weak quotes
+/// included), is in no pair that is not cancelled and is not placed as an apostrophe; or a `′`,
+/// which a weak `'` resolved as a prime becomes where `quotes.primes` is enabled.
+fn may_close_s(q: &Q, marks: &[Mark], never: bool) -> bool {
+    if q.glyph == '′' {
+        return true;
+    }
+    q.cat == Cat::Straight
+        && q.glyph == '\''
+        && q.role == Some(Role::Close)
+        && !never
+        && !in_pair(q)
+        && marks.get(q.tok as usize) != Some(&Mark::Apostrophe)
 }
 
 /// Whether the quote belongs to a pair that is not cancelled (design sections 6.4 to 6.8).
@@ -850,54 +901,82 @@ fn in_pair(q: &Q) -> bool {
     q.partner != NONE && !q.cancelled && matches!(q.cat, Cat::Straight | Cat::Typed | Cat::Cond)
 }
 
-/// Whether a trailing possessive at `qs[idx]` would be read as the closer of the pair around it,
-/// whose opener is `qs[around]`, and so change what lies between them (design section 6.6).
-/// `before` holds the counts of `Work::before`.
-///
-/// The pair is closed by `’` and the neighbors of `q` allow a closing role (design section 6.3):
-/// on a second pass the possessive `’` would close the pair at once, and `to_plain` reads it as
-/// the closer when the true closer follows `s` or `S` as well (design section 12.1). That
-/// changes nothing when only text lies between them. It changes the result when a straight `'`
-/// opener that stayed unpaired lies between, which the closer of the pair popped and which could
-/// pair once the pair has closed early; or, for `to_plain`, when the closer follows `s` or `S`
-/// and a quote of a pair lies between, whose level would drop by one.
-fn possessive_closes(
-    cx: &Cx<'_>,
-    qs: &[Q],
-    before: &[[u32; 2]],
-    marks: &[Mark],
-    idx: usize,
-    around: Option<u32>,
-) -> bool {
-    let Some(c) = around
-        .and_then(|o| qs.get(o as usize))
-        .map(|o| o.partner as usize)
-    else {
-        return false;
-    };
-    let (Some(q), Some(close), Some(&[open_q, paired_q]), Some(&[open_c, paired_c])) =
-        (qs.get(idx), qs.get(c), before.get(idx), before.get(c))
-    else {
+/// Whether the closer of the pair whose opener is `qs[opener]` is `’`, after the levels (design
+/// section 6.7).
+fn closed_by_apostrophe(qs: &[Q], marks: &[Mark], opener: usize) -> bool {
+    let Some(close) = qs.get(opener).and_then(|o| qs.get(o.partner as usize)) else {
         return false;
     };
     let glyph = match marks.get(close.tok as usize) {
         Some(Mark::Glyph(g)) => *g,
         _ => close.glyph,
     };
-    if glyph != APOSTROPHE_CHAR {
+    glyph == APOSTROPHE_CHAR
+}
+
+/// Whether a trailing possessive at `qs[idx]` would be read as the closer of the pair around it
+/// and so change what lies between them (design section 6.6). `before` holds the counts of
+/// `Work::before`; those of the quotes after `idx` are complete.
+///
+/// The pair is closed by `’` and the neighbors of `q` allow a closing role (design section 6.3):
+/// on a second pass the possessive `’` would close the pair at once, and `to_plain` reads it as
+/// the closer when the true closer follows `s` or `S` as well (design section 12.1). That
+/// changes nothing when only text lies between them. It changes the result in two cases.
+///
+/// A straight `'` opener that stayed unpaired lies between, which the closer of the pair popped,
+/// and a quote that could close it follows the closer before the pair around the pair closes: on
+/// a second pass the two would pair. When the pair around is closed by `’` too, its old closer
+/// closes it early in turn, so the run of such pairs counts as one.
+///
+/// Or, for `to_plain`, the closer follows `s` or `S` and an unpaired straight `'` opener or a
+/// quote of a pair lies between: the opener would move out of the pair and the level of the quote
+/// would drop by one.
+fn possessive_closes(
+    cx: &Cx<'_>,
+    qs: &[Q],
+    before: &[[u32; 5]],
+    marks: &[Mark],
+    idx: usize,
+) -> bool {
+    let Some(&[_, paired_q, around, _, _]) = before.get(idx) else {
+        return false;
+    };
+    if !closed_by_apostrophe(qs, marks, around as usize) {
         return false;
     }
+    let Some(q) = qs.get(idx) else {
+        return false;
+    };
     let (l, r) = neighbors(cx, q.tok as usize);
     if class(cx, l).opens() || !class(cx, r).ends() {
         return false;
     }
-    if open_c > open_q {
-        return true;
-    }
-    let after_s = cx.prev(close.tok as usize).is_some_and(|p| {
+    let Some(&[_, _, _, _, outermost]) = before.get(around as usize) else {
+        return false;
+    };
+    let close = |opener: u32| qs.get(opener as usize).map_or(NONE, |o| o.partner);
+    let (c, c_last) = (close(around), close(outermost));
+    let (Some(closer), Some(&[_, paired_c, _, _, _])) =
+        (qs.get(c as usize), before.get(c as usize))
+    else {
+        return false;
+    };
+    // The first unpaired straight `'` opener after the possessive.
+    let opener = before.get(idx + 1).map_or(NONE, |b| b[0]);
+    let after_s = cx.prev(closer.tok as usize).is_some_and(|p| {
         matches!(cx.kind(p), Some(Kind::Word(_))) && cx.src(p).ends_with(['s', 'S'])
     });
-    after_s && paired_c > paired_q
+    if after_s && (opener < c || paired_c > paired_q) {
+        return true;
+    }
+    if opener >= c_last {
+        return false;
+    }
+    // A quote after that opener that could close it, before the closer of the pair around the
+    // run, if there is one.
+    let next = before.get(opener as usize + 1).map_or(NONE, |b| b[3]);
+    let limit = before.get(outermost as usize).map_or(NONE, |b| close(b[2]));
+    next != NONE && next < limit
 }
 
 /// The series of quotes that starts at `qs[start]`: the index after its last quote, and its L and

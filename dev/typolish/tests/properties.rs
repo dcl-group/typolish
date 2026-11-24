@@ -221,6 +221,13 @@ const SEEDS: &[&str] = &[
     "“\"s' '.\"'”",
     "\"a \"dogs' 's\" b\"",
     "\"a \"DOGS' 'S\" b\"",
+    // A possessive placed where nothing after the closer could close the unpaired opener; and one
+    // that stays straight because a weak `'` follows, which a second pass would pair with it.
+    "\"a \"dogs' 'x\" b\"",
+    "\"a \"s' 'x\" 5' b\"",
+    // A run of pairs closed by `’`: the possessive closes the inner one early, a second possessive
+    // the outer one, and the opener between them meets the `'` after them.
+    "“\"S ‘s'\ns'\n't’ x' s\"”",
     // A sign or a unit next to a number with and without a space (design section 8.7): two rules
     // must not read one character.
     "5 %1 and 5% and 5 %",
@@ -313,6 +320,9 @@ fn idempotence_of_the_seed_with_a_built_language() {
         .unwrap();
     for seed in [
         "\"S' 's\"",
+        "\"s' 'x\" 5' a",
+        "\"s' 'x\" a",
+        "S\n\"boss'\n'27\nbowls\"",
         "it) - 'cause' - 'cause -- \"'cause) DOGS' - 'house' - it, - oz.) '90s\" a",
         "\"S'. a(\n'3,\".'",
         // A sign-only pair `‘’` before a number inside a straight single pair (design sections 6.3

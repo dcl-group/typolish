@@ -323,7 +323,8 @@ fn an_apostrophe_whose_plain_reading_would_pair_keeps_its_character() {
 fn a_trailing_possessive_that_would_close_its_pair_round_trips() {
     // Design sections 6.6 and 12.2: a trailing possessive that `to_plain` would read as the closer
     // of the pair around it, with a quote between them, stays straight, so P2 holds; and so does
-    // one before an unpaired straight `'` opener, which a second pass would pair.
+    // one before an unpaired straight `'` opener, which a second pass would pair. One that nothing
+    // could pair again is placed, and P2 holds as well.
     let gb = LanguageBuilder::from_language(&en(), "en-GB")
         .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
         .build()
@@ -334,12 +335,19 @@ fn a_trailing_possessive_that_would_close_its_pair_round_trips() {
         "\"a \"dogs' 'x' bowls\" b\"",
         "\"\"s' 'x.\"'\"",
         "“\"s' '.\"'”",
+        "\"a \"dogs' 'x\" b\"",
+        "\"a \"s' 'x\" 5' b\"",
     ];
     let gb_inputs = [
         "\"S' 's\"",
         "it) - 'cause' - 'cause -- \"'cause) DOGS' - 'house' - it, - oz.) '90s\" a",
         "\"the dogs' 'x' bowls\"",
         "\"S'. a(\n'3,\".'",
+        "\"the dogs' 'bowls\" today",
+        "\"s' 'x\"",
+        "\"s' 'x\" 5' a",
+        "S\n\"boss'\n'27\nbowls\"",
+        "\"I read 'Jones' and the dogs' 'house\"",
     ];
     let mut failures = Vec::new();
     for (language, inputs) in [(en(), &en_inputs[..]), (gb, &gb_inputs[..])] {

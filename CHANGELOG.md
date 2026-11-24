@@ -14,25 +14,40 @@ stands for U+00A0).
 
 - A trailing possessive inside a pair that `’` closes stays straight where a second pass or
   `to_plain` would read it as the closer of the pair and change what stands between them (design
-  section 6.6), so the first pass is a fixed point and P2 holds. English, both sets: `""s' 'x."'"`:
-  `“‘s’ 'x.’'”` (then `“‘s’ ‘x.’’”` on a second pass) → `“‘s' 'x.’'”`; `“"s' '."'”`: `“‘s’ '.’'”` →
-  `“‘s' '.’'”`; `"a "dogs' 's" b"`: `“a⍽‘dogs’ 's’ b”` → `“a⍽‘dogs' 's’ b”`; `"a "DOGS' 'S" b"`:
-  `“a⍽‘DOGS’ 'S’ b”` → `“a⍽‘DOGS' 'S’ b”`; `"a "dogs' 'x' bowls" b"`: `“a⍽‘dogs’ “x” bowls’ b”` →
-  `“a⍽‘dogs' “x” bowls’ b”`. A declared language whose primary pair is `‘’` (en-GB), both sets:
-  `"S' 's"`: `‘S’ 's’` → `‘S' 's’`; `"the dogs' 'x' bowls"`: `‘the⍽dogs’ “x” bowls’` →
-  `‘the⍽dogs' “x” bowls’`; `it) - 'cause' - 'cause -- "'cause) DOGS' - 'house' - it, - oz.) '90s" a`
-  (Prose): `… ‘’cause) DOGS’ — “house” — …` → `… ‘’cause) DOGS' — “house” — …`; with
-  `SingleQuotes::Everywhere`, `"S'. a(\n'3,".'`: `‘S’. a(\n'3,’.'` → `‘S'. a(\n'3,’.'`. With only
-  text between the possessive and the closer nothing changes (`“He said ‘the⍽dogs’ bowls’”`).
+  section 6.6): a straight `'` opener that stayed unpaired stands after it, and a straight `'` or a
+  prime that could close that opener follows; or the closer follows `s` or `S` and such an opener or
+  a quote of a pair stands between them. So the first pass is a fixed point and P2 holds. English,
+  Prose, Interface and `ALL`: `""s' 'x."'"`: `“‘s’ 'x.’'”` (then `“‘s’ ‘x.’’”` on a second pass) →
+  `“‘s' 'x.’'”`; `“"s' '."'”`: `“‘s’ '.’'”` → `“‘s' '.’'”`; `"a "dogs' 's" b"`: `“a⍽‘dogs’ 's’ b”` →
+  `“a⍽‘dogs' 's’ b”`; `"a "DOGS' 'S" b"`: `“a⍽‘DOGS’ 'S’ b”` → `“a⍽‘DOGS' 'S’ b”`;
+  `"a "dogs' 'x' bowls" b"`: `“a⍽‘dogs’ “x” bowls’ b”` → `“a⍽‘dogs' “x” bowls’ b”`. A declared
+  language whose primary pair is `‘’` (en-GB), Prose, Interface and `ALL`, every `SingleQuotes`
+  mode: `"S' 's"`: `‘S’ 's’` → `‘S' 's’`; `"the dogs' 'x' bowls"`: `‘the⍽dogs’ “x” bowls’` →
+  `‘the⍽dogs' “x” bowls’`; `"the dogs' 'bowls" today`: `‘the⍽dogs’ 'bowls’ today` →
+  `‘the⍽dogs' 'bowls’ today`; `"S'. a(\n'3,".'`: `‘S’. a(\n'3,’.'` → `‘S'. a(\n'3,’.'`;
+  `it) - 'cause' - 'cause -- "'cause) DOGS' - 'house' - it, - oz.) '90s" a`:
+  `… ‘’cause) DOGS’ — “house” — …` → `… ‘’cause) DOGS' — “house” — …`. Typed text, English and
+  en-GB, the same sets: `‘bowls' 'x S’ a`: `‘bowls’ 'x S’ a` → `‘bowls' 'x S’ a`; `to_plain` reads
+  such a `’` back as itself, and `lint` no longer reports it (en-GB: `“S’ 'dogs" -the` gave
+  `"S' 'dogs" -the` and `TypographicChar`, now `"S’ 'dogs" -the` and no report). Where nothing could
+  pair with the opener, the possessive is placed as before (`"a "dogs' 'x" b"` gives
+  `“a⍽‘dogs’ 'x’ b”`, en-GB `"s' 'x"` gives `‘s’ 'x’`), and with only text between the possessive
+  and the closer nothing changes (`“He said ‘the⍽dogs’ bowls’”`).
 
 - A typed `’` closes the `‘` of its pair when only signs, or nothing, stand between them and the
   neighbors allow the sign-only pair (design section 6.3), as the plain `""` that a first pass
   typesets as `‘’` does; other rules read the same closing role. In a declared language whose
   primary pair is `‘’` (en-GB), Prose: `'a ""-3'` gives `'a⍽‘’-3'` as before, and the second pass no
-  longer gives `'a⍽‘’-3′`; typed `'a ‘’-3'`: `'a⍽‘’-3′` → `'a⍽‘’-3'`, and likewise `'a ‘’ 3'`.
-  English, both sets: `"a ‘’ b"`: `"a⍽‘’ b"` → `“a⍽‘’ b”`; `"a ‘-’ b"`: `"a⍽‘-’ b"` → `“a⍽‘-’ b”`;
-  `"a ‘’, b"`: `"a⍽‘’, b"` → `“a⍽‘’, b”`. Such a pair is no longer reported: `x ‘’ y` gave
-  `UnmatchedQuote` (info), `"a ‘’ b"` `CrossingQuotes` (warning).
+  longer gives `'a⍽‘’-3′`. Typed `'a ‘’-3'`, and likewise `'a ‘’ 3'`: in English and en-GB, Prose
+  and `ALL`, `'a⍽‘’-3′` → `'a⍽‘’-3'`; with `SingleQuotes::Everywhere` the outer pair now pairs:
+  English `'a⍽‘’-3′` (Prose, `ALL`) and `'a⍽‘’-3'` (Interface) → `“a⍽‘’-3”`, en-GB `'a⍽‘’-3′`
+  (Prose, `ALL`) and `'a⍽‘’-3'` (Interface) → `‘a⍽‘’-3’`. English, both sets: `"a ‘’ b"`: `"a⍽‘’ b"`
+  → `“a⍽‘’ b”`; `"a ‘-’ b"`: `"a⍽‘-’ b"` → `“a⍽‘-’ b”`; `"a ‘’, b"`: `"a⍽‘’, b"` → `“a⍽‘’, b”`. The
+  closed `‘` no longer counts as a neutral opener, so a trailing possessive after it is placed
+  (English and en-GB, Prose, Interface and `ALL`: `‘’\n”bowls'`: `‘’\n”bowls'` → `‘’\n”bowls’`), and
+  the rules that read the role of a quote read it too (English and en-GB, the same sets:
+  `)(\n ‘’ - ')“` gives `‘’ —` where it gave `‘’ -`). Such a pair is no longer reported: `x ‘’ y`
+  gave `UnmatchedQuote` (info), `"a ‘’ b"` `CrossingQuotes` (warning).
 - `to_plain`, `to_plain_template`, `lint` and `lint_template` are linear in the length of the text
   on long runs of quote characters in one paragraph as well (design section 12.1): the neighbors of
   a series of quotes, the open pairs and the later closer of a `’` after `s` were searched again for

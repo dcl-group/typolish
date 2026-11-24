@@ -202,15 +202,26 @@ Then, when the window converges:
   window, section 6.4) stands before it anywhere in the window; then it stays straight (a second
   pass would let that `’` close the opener). It also stays straight inside a pair that `’` closes (a
   new pair whose closer is `’` at its level, or a typed pair `‘…’` of English), when the neighbors
-  of its series allow a closing role (section 6.3) and either a straight `'` opener that stayed
-  unpaired stands between it and the closer of the pair, or the closer follows `s` or `S` and a
-  quote of a pair stands between them. A second pass would let the possessive `’` close the pair at
-  once, and the unpaired opener, which the closer had popped, could then pair: `""s' 'x."'"` gives
-  `“‘s' 'x.’'”`, where `“‘s’ 'x.’'”` would become `“‘s’ ‘x.’’”`. And `to_plain` reads the first `’`
-  after `s` or `S` as the closer when the closer follows `s` or `S` too (section 12.1), which would
-  take the quotes between them out of the pair: `"a "dogs' 's" b"` gives `“a ‘dogs' 's’ b”`. With
-  only text between them the possessive is placed (`“He said ‘the dogs’ bowls’”`): there the early
-  close changes no glyph;
+  of its series allow a closing role (section 6.3) and a second pass or `to_plain` would change what
+  stands between it and the closer of the pair. A second pass lets the possessive `’` close the pair
+  at once, and the old closer then closes in turn the pair around it if `’` closes that one too, and
+  so on: call the pair and those around it the run. An opener that the closers of the run popped is
+  left at the level of the nearest pair around the run, whose closer pops it again; before that it
+  changes only if a quote pairs with it. So the possessive stays straight when, after it and before
+  the closer of the run, stands a straight `'` opener that stayed unpaired and stays straight
+  (neither a decade nor an elision), and after that opener, before the closer of the pair around the
+  run, a quote that could close it and stays as it is: a straight `'` with a closing role (weak
+  quotes included) that is in no pair and stays straight, or a `′`, which a weak `'` resolved as a
+  prime becomes where `quotes.primes` is enabled (it stays `'` where it is not, and both passes must
+  decide alike). `""s' 'x."'"` gives `“‘s' 'x.’'”`, where `“‘s’ 'x.’'”` would become `“‘s’ ‘x.’’”`;
+  `"a "dogs' 'x" b"` gives `“a ‘dogs’ 'x’ b”`, since nothing could pair with `'x`. And `to_plain`
+  reads the first `’` after `s` or `S` as the closer when the closer follows `s` or `S` too (section
+  12.1), which would take what stands between them out of the pair; so the possessive also stays
+  straight when the closer follows `s` or `S` and such an opener or a quote of a pair stands between
+  them: `"a "dogs' 's" b"` gives `“a ‘dogs' 's’ b”`, and in en-GB `"the dogs' 'bowls" today` gives
+  `‘the dogs' 'bowls’ today` (with `SingleQuotes::Everywhere` the reading `"the dogs" 'bowls' today`
+  would pair `'bowls'`). With only text between them the possessive is placed
+  (`“He said ‘the dogs’ bowls’”`): there the early close changes no glyph;
 - a straight `'` that is in no pair after pass 2 (the quotes of a pair cancelled by `SingleQuotes`,
   section 6.8, are in a pair and stay straight) at a word start before exactly two digits and then a
   character that is neither a letter nor a digit, or the end of the window, becomes `’` if the
@@ -303,13 +314,18 @@ every pair of straight `"` and every typed pair of the first pass, and a re-pair
 inside a first-pass pair would have been a crossing, which contradicts convergence. A
 trailing-possessive `’` could close a neutral `‘` on the second pass; section 6.6 therefore does not
 produce it after a neutral `‘`. It can also close the pair around it, a new pair or a typed one that
-`’` closes, earlier than the first pass did. The pairs between the possessive and the old closer are
-typed by then and keep their glyphs, and the old closer becomes an apostrophe. The only straight
-quotes whose pairing the early close could change are straight `'` openers between them that the old
-closer popped unpaired: at the possessive the stack holds no straight `'` entry (a closing straight
-`'` that met one would have paired with it, or crossed the typed or `"` entry above it), so a
-straight `'` pushed before the possessive was popped before it in both passes. Section 6.6 does not
-produce the possessive where such an opener stands between them. So cancelled `'` pairs stay
+`’` closes, earlier than the first pass did, and the old closer can then close the pair around that
+one if `’` closes it too (the run of section 6.6). The pairs between the possessive and the old
+closers are typed by then and keep their glyphs, and the last old closer becomes an apostrophe. The
+only straight quotes whose pairing the early close could change are straight `'` openers that the
+old closers popped unpaired: at the possessive the stack holds no straight `'` entry (a closing
+straight `'` that met one would have paired with it, or crossed the typed or `"` entry above it), so
+a straight `'` pushed before the possessive was popped before it in both passes. Such an opener
+stays on the stack until the closer of the nearest pair around the run pops it, and it changes only
+if a quote between pairs with it: a straight `'` that may close and stayed straight, or a weak `'`
+that pass 2 left a prime (`′` where `quotes.primes` is enabled, `'` where it is not). Section 6.6
+does not produce the possessive where such an opener and such a quote follow it; every count it
+reads is the same on the second pass, where a `′` stands for the prime. So cancelled `'` pairs stay
 cancelled and count for no level, unpaired `'` stay unpaired, primes are not candidates, and nothing
 changes.
 

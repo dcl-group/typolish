@@ -345,12 +345,14 @@ fn a_trailing_possessive_after_a_capital_s() {
 fn a_trailing_possessive_that_would_close_its_pair_stays_straight() {
     // Design section 6.6: inside a pair closed by `’`, a trailing possessive stays straight where a
     // second pass or `to_plain` would read it as the closer of the pair and change what lies
-    // between them: a straight `'` opener that stayed unpaired, or, when the closer follows `s` or
-    // `S` too, a quote of a pair.
+    // between them: a straight `'` opener that stayed unpaired, when a quote that could close it
+    // follows the closer; or, when the closer follows `s` or `S` too, such an opener or a quote of
+    // a pair.
     let en = quotes(Language::EN_US);
     for row in [
         ("\"\"s' 'x.\"'\"", "“‘s' 'x.’'”"),
         ("“\"s' '.\"'”", "“‘s' '.’'”"),
+        ("\"a \"dogs' 'x\" it' b\"", "“a ‘dogs' 'x’ it' b”"),
         ("\"a \"dogs' 's\" b\"", "“a ‘dogs' 's’ b”"),
         ("\"a \"DOGS' 'S\" b\"", "“a ‘DOGS' 'S’ b”"),
         ("\"a \"dogs' 'x' bowls\" b\"", "“a ‘dogs' “x” bowls’ b”"),
@@ -360,6 +362,10 @@ fn a_trailing_possessive_that_would_close_its_pair_stays_straight() {
             "“He said ‘the dogs’ bowls’”",
         ),
         ("\"a \"dogs' 'x' bowl\" b\"", "“a ‘dogs’ “x” bowl’ b”"),
+        // An unpaired opener that nothing after the closer could close: a second pass pairs it
+        // with nothing, so the possessive is placed.
+        ("\"a \"dogs' 'x\" b\"", "“a ‘dogs’ 'x’ b”"),
+        ("\"a \"dogs' 'x\" b\" it'", "“a ‘dogs’ 'x’ b” it'"),
     ] {
         check_exact("en quotes alone", &en, row);
     }
@@ -373,6 +379,17 @@ fn a_trailing_possessive_that_would_close_its_pair_stays_straight() {
         ("\"S' 's\"", "‘S' 's’"),
         ("\"the dogs' 'x' bowls\"", "‘the dogs' “x” bowls’"),
         ("\"the dogs' bowl\"", "‘the dogs’ bowl’"),
+        ("\"the dogs' 'bowls\" today", "‘the dogs' 'bowls’ today"),
+        ("\"s' 'x\" it'", "‘s' 'x’ it'"),
+        ("\"s' 'x\" 5'", "‘s' 'x’ 5′"),
+        ("\"s' 'x\"", "‘s’ 'x’"),
+        ("\"s' '.\"", "‘s’ '.’"),
+        (
+            "\"I read 'Jones' and the dogs' 'house\"",
+            "‘I read “Jones” and the dogs’ 'house’",
+        ),
+        // An opener placed as an apostrophe (the decade of design section 6.6) stays no opener.
+        ("\"boss'\n'27\nbowls\"", "‘boss’\n’27\nbowls’"),
         (
             "it) - \"'cause) DOGS' - 'house' - oz.) '90s\" a",
             "it) - ‘’cause) DOGS' - “house” - oz.) ’90s’ a",

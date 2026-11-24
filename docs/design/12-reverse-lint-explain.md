@@ -113,13 +113,14 @@ it neither ends that pair nor the search (`“‘a dogs’ b “c dogs’ d” e
 `“‘Hi,’ said the dogs’ owner”` → `""Hi," said the dogs' owner"`. When every candidate follows `s` or
 `S` (`‘the dogs’ bowls’`, `‘THE DOGS’ BOWLS’`), the first one closes, and the round trip lists the
 case as a known loss (`NestedPossessive`, section 12.2). That reading gives the same glyphs as long
-as only text stands between the two; where a quote of a pair stands between them, the forward rule
-leaves the possessive straight (section 6.6: `“a ‘dogs' 's’ b”`), so the pair has one candidate. A
-`’` read as an apostrophe must come back as `’`; where its `'` would pair as a quote instead, the
-`’` stays: in `“a ‘dogs’ bowl ’twas’ b”` the possessive closes the nested pair, and `'twas'` would
-be a pair (section 6.2), so it reads as `"a "dogs" bowl ’twas' b"`. The classes of the neighbors are
-those of section 6.3: a character inside a protected span (a frozen core, a delimited span) is of
-class `Word`, so the `’` of `“x ‘y 2026{’”` closes.
+as only text stands between the two; where a quote of a pair or an unpaired straight `'` opener
+stands between them, the forward rule leaves the possessive straight (section 6.6:
+`“a ‘dogs' 's’ b”`), so the pair has one candidate. A `’` read as an apostrophe must come back as
+`’`; where its `'` would pair as a quote instead, the `’` stays: in `“a ‘dogs’ bowl ’twas’ b”` the
+possessive closes the nested pair, and `'twas'` would be a pair (section 6.2), so it reads as
+`"a "dogs" bowl ’twas' b"`. The classes of the neighbors are those of section 6.3: a character
+inside a protected span (a frozen core, a delimited span) is of class `Word`, so the `’` of
+`“x ‘y 2026{’”` closes.
 
 The canonical plain form, for the enabled rules, is the Plain column of the table above, with these
 choices: no typographic character that the rules produce; a dash between words written `-` (not
