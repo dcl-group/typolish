@@ -1017,11 +1017,21 @@ fn step1(cx: &Cx<'_>, i: usize, glyph: char) -> Option<Mark> {
         {
             last = j;
         }
+        // A straight `'` that closes the word (`'round'`) means the elision is a quoted word: it
+        // waits for pairing, as `'n'` does (design section 6.2).
+        let closed = cx.next(last).is_some_and(|c| {
+            is_quote(cx, c)
+                && cx.chr(c) == Some('\'')
+                && !cx
+                    .next(c)
+                    .is_some_and(|a| matches!(cx.kind(a), Some(Kind::Word(_) | Kind::Number)))
+        });
         let key = core::iter::once('\'').chain(cx.visible(n, last).map(fold_char));
-        if data
-            .elisions
-            .binary_search_by(|e| e.chars().cmp(key.clone()))
-            .is_ok()
+        if !closed
+            && data
+                .elisions
+                .binary_search_by(|e| e.chars().cmp(key.clone()))
+                .is_ok()
         {
             return Some(Mark::Apostrophe);
         }

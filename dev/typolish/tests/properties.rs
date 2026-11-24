@@ -143,6 +143,10 @@ const SEEDS: &[&str] = &[
     "Т. д. так",
     "Буква Т. е. не",
     "Т. Е. Иванов",
+    // An elision closed by a straight quote waits for pairing (design section 6.2).
+    "Choose the 'round' button",
+    "\"Say 'twas' or 'tis'\"",
+    "'Tis 'round' here",
     "5'10\"",
     "90's",
     "'90s",

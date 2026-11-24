@@ -225,6 +225,56 @@ fn english_rows_of_section_6_12() {
     rows(&Language::EN_US, EN_ROWS);
 }
 
+#[test]
+fn an_elision_closed_by_a_straight_quote_waits_for_pairing() {
+    // Design section 6.2: an elision of the list that a straight `'` closes at once (`'round'`)
+    // can open a quoted word, so it waits for pairing, as `'n'` does; an elision that goes on into
+    // the text stays an apostrophe. Rows: input, the quote rules alone, Prose and Interface.
+    let rows: &[(&str, &str, &str)] = &[
+        (
+            "Choose the 'round' button",
+            "Choose the 'round' button",
+            "Choose the⍽'round' button",
+        ),
+        (
+            "\"Say 'twas' or 'tis'\"",
+            "“Say ‘twas’ or ‘tis’”",
+            "“Say ‘twas’ or⍽‘tis’”",
+        ),
+        (
+            "'Tis 'round' here",
+            "’Tis 'round' here",
+            "’Tis 'round' here",
+        ),
+        (
+            "the 'round', then",
+            "the 'round', then",
+            "the⍽'round', then",
+        ),
+        ("Go 'round'", "Go 'round'", "Go 'round'"),
+        (
+            "He said 'tis the season and 'twas",
+            "He said ’tis the season and ’twas",
+            "He said ’tis the⍽season and ’twas",
+        ),
+        ("'cause it's late", "’cause it’s late", "’cause it’s late"),
+        ("'em and 'til now", "’em and ’til now", "’em and ’til now"),
+        (
+            "'round the corner",
+            "’round the corner",
+            "’round the⍽corner",
+        ),
+    ];
+    let alone = quotes(Language::EN_US);
+    let sets = [prose(Language::EN_US), interface(Language::EN_US)];
+    for &(input, quoted, full) in rows {
+        check_exact("en quotes alone", &alone, (input, quoted));
+        for t in &sets {
+            check_exact(&format!("en {}", t.rules()), t, (input, full));
+        }
+    }
+}
+
 // The rows of design section 6.12 that need `quotes.primes`: Prose (design section 6.5), and what
 // Interface does.
 #[test]

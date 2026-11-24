@@ -54,9 +54,12 @@ typeset text; it is a constant of the crate, not a field of `LanguageData` (sect
 Step 1 holds only contexts in which a quote cannot be meant. Two look alike but can open a quoted
 value, so they wait for pairing: a decade without `s` (`'26`) becomes an apostrophe only if it stays
 unpaired (section 6.6), so `Press '42' to confirm` and `'12:30'` keep a pair of quotes; and `'n'` is
-not in the elision list, because `Press 'y' to confirm, 'n' to cancel` quotes a letter.
-`rock'n'roll` gets apostrophes between letters; `rock 'n' roll` with spaces is a top-level single
-pair and stays straight under `NestedOnly` (section 10.8).
+not in the elision list, because `Press 'y' to confirm, 'n' to cancel` quotes a letter. An elision
+closed at once by a straight `'` (`'round'`, followed by a `'` that no letter or digit follows)
+waits for pairing, like `'n'`: `Choose the 'round' button` keeps its straight pair, and
+`"Say 'twas' or 'tis'"` gives nested pairs. `rock'n'roll` gets apostrophes between letters;
+`rock 'n' roll` with spaces is a top-level single pair and stays straight under `NestedOnly`
+(section 10.8).
 
 ### 6.3 Roles
 
@@ -307,6 +310,9 @@ enabled; "(`Never`)" marks `SingleQuotes::Never`. A row without a mark holds in 
 | ru         | `Это rock'n'roll и don't.`                      | `Это rock’n’roll и don’t.`           | any script                                                    |
 | en         | `Press '42' to confirm`                         | unchanged                            | a pair, not a decade                                          |
 | en         | `Press 'y' or 'n' now`                          | unchanged                            | `'n'` is not an elision                                       |
+| en         | `Choose the 'round' button`                     | unchanged                            | an elision closed by `'` waits for pairing                    |
+| en         | `"Say 'twas' or 'tis'"`                         | `“Say ‘twas’ or ‘tis’”`              | the same, nested                                              |
+| en         | `'Tis 'round' here`                             | `’Tis 'round' here`                  |                                                               |
 | en         | `Set the time to '12:30'`                       | unchanged                            | a pair, not a decade                                          |
 | en         | `"Enter '42' now"`                              | `“Enter ‘42’ now”`                   | the weak quote pairs                                          |
 | en         | `"a 'b c" 5'` (Prose)                           | `“a 'b c” 5′`                        | an opener popped by a fixed pair is not taken by a weak quote |

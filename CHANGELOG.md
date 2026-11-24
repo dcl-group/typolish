@@ -119,3 +119,7 @@ for U+00A0).
   with a full stop (design section 7.1), so a capitalized `Т. е.` at a sentence start is the
   abbreviation: `Т. е. так`: unchanged → `Т.⍽е. так`; `Т.е. так`: unchanged → `Т.⍽е. так`;
   `Т. д. так`: `Т. д.⍽так` → `Т.⍽д. так`; `Буква Т. е. не`: `Буква⍽Т. е. не` → `Буква⍽Т.⍽е. не`.
+- An English elision of the list that a straight `'` closes at once waits for pairing (design
+  section 6.2), as `'n'` does, in both sets: `Choose the 'round' button`:
+  `Choose the ’round' button` → `Choose the⍽'round' button`; `"Say 'twas' or 'tis'"`:
+  `“Say ’twas’ or ’tis’”` → `“Say ‘twas’ or⍽‘tis’”`; `'tis'`: `’tis’` → `'tis'`.
