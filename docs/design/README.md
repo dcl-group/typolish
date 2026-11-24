@@ -83,8 +83,8 @@ The task names four uses. Each shapes part of the API:
    quotes around `"{name}"` follow the language. Slots are returned untouched and in place (section
    2.6, build-time use in 2.14).
 2. **Run time, a finished string** (a site, a report, a letter): a string and a language in, a
-   typeset string out, on every request, without allocation when nothing changes (sections 2.5,
-   2.12, 2.15).
+   typeset string out, on every request, without allocation when nothing changes for an input up to
+   about 50 KiB (sections 2.5, 2.12, 2.15).
 3. **Run time, numbers**: group separator, decimal separator and minus sign by the language, in a
    separate function, so that a template and the value put into it are typeset consistently (section
    2.7).
