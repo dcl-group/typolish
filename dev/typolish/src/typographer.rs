@@ -1212,8 +1212,10 @@ impl TypographerBuilder {
     /// added unit is empty, contains whitespace, starts with an ASCII digit or is also removed; is
     /// equal to a short word or a particle (with case) and not an ambiguous unit of the language,
     /// which the builder cannot declare (`в` in Russian; `с` and `В` are accepted); or is one
-    /// character equal to a sign of the language (`§`). Such a unit would be read by two rules,
-    /// and a second pass would differ (design sections 2.11 and 7.6).
+    /// character equal to a sign of the language (`§`). Two rules would read such a unit, each in
+    /// its own way: `nbsp.units` would glue a short word after a number as a unit (`5⍽в⍽лесу`),
+    /// and a sign would be glued both to the number before it and to the number after it
+    /// (`5⍽§⍽1`; design sections 2.11 and 7.6).
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
@@ -1716,8 +1718,8 @@ fn normalize_list(edit: &mut ListEdit, setting: &'static str, fold: bool) -> Res
 
 /// Checks the added units against the other lists (design sections 2.11 and 7.6): a unit equal to
 /// a short word or a particle (compared with case) must be an ambiguous unit of the language, which
-/// a builder cannot list, and a unit of one character must not be a sign of the language. Both
-/// rules would read such a unit, and a second pass would differ.
+/// a builder cannot list, and a unit of one character must not be a sign of the language. Two
+/// rules would read such a unit, each in its own way (`5⍽в⍽лесу`, `5⍽§⍽1`).
 fn check_units(language: &Language, settings: &Settings) -> Result<(), Error> {
     let data = language.data();
     let offending = settings

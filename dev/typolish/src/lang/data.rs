@@ -1275,8 +1275,9 @@ impl LanguageData {
 
     /// Sets the signs that name a number (`№`, `§`, `¶`): sorted by code point, each a
     /// punctuation character of the lexer (`#`, `№`, `§`, `¶`, …; design sections 3.5 and 7.6)
-    /// other than `%` and `‰`, and none equal to a unit: two rules would read such a sign, and a
-    /// second pass would differ.
+    /// other than `%` and `‰`, and none equal to a unit. Two rules would read such a sign: the
+    /// percent rule and `nbsp.signs` disagree on a second pass, and a sign that is also a unit is
+    /// glued both to the number before it and to the number after it (`5⍽$⍽1`).
     ///
     /// ```
     /// use typolish::{Language, LanguageData, Output, Rule, RuleSet, Typographer};
@@ -1857,8 +1858,9 @@ impl Table<'_> {
         {
             return Err("signs: a sign must be a punctuation character of design section 3.5");
         }
-        // A sign that is also a percent sign or a unit is read by two rules of design section 8.7
-        // that disagree on a second pass.
+        // A sign that is also a percent sign or a unit is read by two rules of design section 8.7:
+        // with a percent sign they disagree on a second pass, and a unit is glued to the numbers on
+        // both sides.
         if self.signs.iter().any(|c| {
             matches!(c, '%' | '\u{2030}') || self.units.iter().any(|unit| unit.chars().eq([*c]))
         }) {

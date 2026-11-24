@@ -343,7 +343,9 @@ cannot reach a user.
   `abbreviations`, `units` and `ambiguous_units` keep the case they are printed in (lookups: section
   7.1). Units do not start with an ASCII digit (0-9); ambiguous units are also in `units`.
 - A unit equal to a short word or a particle (compared with case: `с` must be listed, `В` need not)
-  must be listed in `ambiguous_units`.
+  must be listed in `ambiguous_units`: `nbsp.units` glues an ambiguous unit only before punctuation,
+  a line break or the end (section 8.7), while a plain unit would also be read as the short word,
+  and the two rules would glue it on both sides (`5⍽в⍽лесу`).
 - `decimal != group` (a group separator set on the typographer's builder is held to it too, section
   2.11); `min_grouping_digits <= 4`; `minus`, `group` and `decimal` are not letters or digits;
   `decimal` is not whitespace, not a control or format character (the whole general category `Cf`,
@@ -367,11 +369,12 @@ cannot reach a user.
   `format_number` writes them as they are and each must show and not read as a number; signs are
   characters of the lexer's `Punct` class (section 3.5), so no letter, digit or whitespace, other
   than `%` and `‰`, and none equals a unit (a sign that is also a percent sign or a unit is read by
-  two rules of section 8.7, which disagree on a second pass); each ellipsis form is its own sign or
-  signs (none, `?`, `!`, `?!` or `!?`) followed by a non-empty run of `.` and `…` that does not end
-  in `…` and exactly three full stops; the run is what the rule writes in place of the dots, so a
-  sign in it, or three full stops of their own after `…`, would read as a new ellipsis on a second
-  pass (section 4.4), and a sign of another form would be lost.
+  two rules of section 8.7: with a percent sign they disagree on a second pass, `5 %1` gives `5 %⍽1`
+  and then `5⍽%⍽1`; a sign that is also a unit is glued to the numbers on both sides, `5⍽$⍽1`); each
+  ellipsis form is its own sign or signs (none, `?`, `!`, `?!` or `!?`) followed by a non-empty run
+  of `.` and `…` that does not end in `…` and exactly three full stops; the run is what the rule
+  writes in place of the dots, so a sign in it, or three full stops of their own after `…`, would
+  read as a new ellipsis on a second pass (section 4.4), and a sign of another form would be lost.
 
 ### 7.7 Adding a language
 

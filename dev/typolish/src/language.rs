@@ -773,8 +773,9 @@ impl LanguageBuilder {
 
     /// Sets the signs that name a number (`№`, `§`, `¶`); `build` sorts them. Each is a
     /// punctuation character of the lexer (`#`, `№`, `§`, `¶`, …; design sections 3.5 and 7.6)
-    /// other than `%` and `‰`, and none equals a unit: two rules would read such a sign, and a
-    /// second pass would differ.
+    /// other than `%` and `‰`, and none equals a unit. Two rules would read such a sign: the
+    /// percent rule and `nbsp.signs` disagree on a second pass, and a sign that is also a unit is
+    /// glued both to the number before it and to the number after it (`5⍽$⍽1`).
     ///
     /// ```
     /// use typolish::{LanguageBuilder, Output, Rule, RuleSet, Typographer};
