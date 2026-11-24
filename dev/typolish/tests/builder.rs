@@ -439,8 +439,9 @@ fn units_may_not_start_with_a_digit_but_may_contain_one() {
 }
 
 /// An added unit equal to a short word or a particle (compared with case) that is not an ambiguous
-/// unit of the language, or of one character equal to a sign of the language, is read by two rules
-/// and breaks idempotence (design sections 2.11 and 7.6).
+/// unit of the language, or of one character equal to a sign of the language, is read by two rules,
+/// each in its own way, which glue it on both sides: `5⍽в⍽лесу`, `5⍽§⍽1` (design sections 2.11 and
+/// 7.6). The result is stable; the check is about the two readings, not about a second pass.
 #[test]
 fn an_added_unit_must_not_be_a_short_word_a_particle_or_a_sign() {
     let (setting, reason) = setting_error(base().add_units(["в"]));

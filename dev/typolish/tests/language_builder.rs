@@ -315,8 +315,9 @@ fn build_validates_like_from_data() {
     );
 }
 
-/// A sign that is also a percent sign or a unit is read by two rules of design section 8.7, which
-/// disagree on a second pass (design section 7.6).
+/// A sign that is also a percent sign or a unit is read by two rules of design section 8.7 (design
+/// section 7.6). With a percent sign they disagree on a second pass (`5 %1` gives `5 %⍽1` and then
+/// `5⍽%⍽1`); a sign that is also a unit is glued to the numbers on both sides (`5⍽$⍽1`).
 #[test]
 fn a_sign_is_not_a_percent_sign_or_a_unit() {
     let signs = |base: &Language, sign: char| {
