@@ -58,7 +58,12 @@ the quote readings in place, and a quote reading comes back when it gives a glyp
 any level (or `’`). In a window where one does not come back, the glyphs of the nested pair read as
 `'` instead, if that brings every quote of the window back: the double quotes of `«x „“.»`, read as
 `"x "".`, do not pair again (the closer of the nested pair and the last quote form the sign-only
-pair `"."`, section 6.3), while `"x ''."` gives `«x „“.»`. Otherwise the double quotes stay. Every
+pair `"."`, section 6.3), while `"x ''."` gives `«x „“.»`. In a window that this does not bring
+back, the glyphs of the nested pair and, with `SingleQuotes::Everywhere`, those of the primary pair
+read as `'` (`“3" 0”` as `'3" 0'` in Interface, since `"3" 0"` gives `“3” 0"`); in a window that
+neither brings back, the glyphs of the primary pair inside a nested pair (the third level of ru)
+read as `'` alone (`«„«6»“»` as `""'6'""`, since `"""6"""` is a series that does not pair). Each try
+is kept only where it brings every quote of the window back. Otherwise the double quotes stay. Every
 other character is undone only where an enabled rule produces it, and the rules decide that
 themselves: the engine runs forward on the text with the readings in place, and a reading is dropped
 (the character stays) when it does not come back as its character, or when it makes a rule edit the
@@ -110,10 +115,11 @@ choices: no typographic character that the rules produce; a dash between words w
 `--`, unless `dash.double-hyphen` is on and `dash.spaced-hyphen` off) with spaces on both sides; a
 range written `a-b` with no spaces; `x`, `(c)`, `(r)`, `(tm)` in lowercase Latin letters;
 abbreviations with a space (`т. е.`); `№ 5` with a space; double quotes at every level (a nested
-pair reads as `'` only where the double quotes do not pair again, see above, and such text is not
-canonical); `'` only for apostrophes and primes; `...` for an ellipsis; `?..` after a question in
-Russian; a percentage in the form that `PercentSpacing` keeps: either form with `AsWritten`, `100%`
-with `Attached` and with `Language` for en, `100 %` with `Spaced` and with `Language` for ru.
+pair, or a primary pair in the cases above, reads as `'` only where the double quotes do not pair
+again, see above, and such text is not canonical); `'` only for apostrophes and primes; `...` for an
+ellipsis; `?..` after a question in Russian; a percentage in the form that `PercentSpacing` keeps:
+either form with `AsWritten`, `100%` with `Attached` and with `Language` for en, `100 %` with
+`Spaced` and with `Language` for ru.
 
 It is a method of the typographer because it needs the enabled rules, the quote pairs, single-quote
 mode and dash style of the typographer (the language data with the builder's overrides), and the

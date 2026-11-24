@@ -286,6 +286,48 @@ fn nested_pairs_of_signs_and_possessives_round_trip() {
 }
 
 #[test]
+fn primary_glyphs_read_as_single_quotes_where_double_quotes_do_not_pair_again() {
+    // Design section 12.1: in a window where neither reading of the nested glyphs brings the
+    // quotes back, the primary pair inside a nested pair reads as `'` alone (the third level of
+    // ru), and with `SingleQuotes::Everywhere` the primary pair may read as `'` too. P2 holds.
+    let mut failures = Vec::new();
+    for (what, t) in sets_and_all(&ru()) {
+        for x in ["\"\"'6'\"\"", "\"a \"'9' е\"\"", "\"a '2-3' - b\""] {
+            if let Err(e) = p2(&t, x) {
+                failures.push(format!("{what}: {e}"));
+            }
+        }
+    }
+    for (what, t) in sets_of(&ru()) {
+        check_plain(&what, &t, ("«„«6»“»", "\"\"'6'\"\""));
+        // Two levels pair again as double quotes: the canonical form stays.
+        check_plain(&what, &t, ("«a „b“ c»", "\"a \"b\" c\""));
+    }
+    for language in [en(), ru()] {
+        for set in [RuleSet::PROSE, RuleSet::INTERFACE] {
+            let t = Typographer::builder(language.clone(), set)
+                .single_quotes(SingleQuotes::Everywhere)
+                .build()
+                .unwrap();
+            let what = format!("{language} {set} Everywhere");
+            for x in ["'3\" 0'", "'5\" 5'", "'x'", "\"a 'b' c\""] {
+                if let Err(e) = p2(&t, x) {
+                    failures.push(format!("{what}: {e}"));
+                }
+            }
+        }
+    }
+    let everywhere = Typographer::builder(en(), RuleSet::PROSE)
+        .single_quotes(SingleQuotes::Everywhere)
+        .build()
+        .unwrap();
+    check_plain("en Everywhere", &everywhere, ("“3\" 0”", "'3\" 0'"));
+    // Where the double quotes pair again, they stay (`SingleQuote`, design section 12.2).
+    check_plain("en Everywhere", &everywhere, ("“x”", "\"x\""));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[test]
 fn each_of_the_two_quote_rules_undoes_only_its_own_character() {
     // `quotes.pairs` alone: the apostrophe stays.
     let (what, pairs) = with_rules(&en(), &[Rule::QuotesPairs]);

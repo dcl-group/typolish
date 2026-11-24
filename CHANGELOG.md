@@ -136,6 +136,10 @@ for U+00A0).
 - An apostrophe between two letters inside a frozen core no longer keeps the quotes around the
   fragment straight (design section 6.1), in both sets: en `Say "it's:fine" now`: unchanged →
   `Say “it's:fine” now`; ru `Файл "it's:fine" тут`: unchanged → `Файл «it's:fine» тут`.
+- `to_plain` reads the primary quote pair as `'` where double quotes would not pair again (design
+  section 12.1), so typesetting its result gives the text back: ru `«„«6»“»`: `"""6"""` → `""'6'""`;
+  ru `«a „«9» е“»`: `"a ""9" е""` → `"a "'9' е""`; with `SingleQuotes::Everywhere` in Interface, en
+  `“3" 0”`: `"3" 0"` → `'3" 0'`, ru `«5" 5»`: `"5" 5"` → `'5" 5'`.
 - `Output::Escaped` escapes the bidi controls U+061C, U+200E, U+200F, U+202A to U+202E and U+2066 to
   U+2069 in every style (design section 11.6), so a `RUST` body compiles: `a\u{202E}b` in `RUST`:
   the raw control → `a\u{202e}b`; in `JS`: the raw control → `a\u202Eb`.

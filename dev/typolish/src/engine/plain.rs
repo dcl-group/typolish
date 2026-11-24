@@ -25,7 +25,7 @@ use super::record::{NoRecord, Recorder};
 use super::render::{REdit, merge, write_text};
 use super::scratch::Scratch;
 use crate::report::{Change, Diagnostic, ProtectedKind, ProtectedSpan};
-use crate::{Rule, Typographer};
+use crate::{Rule, SingleQuotes, Typographer};
 
 /// How far apart, in bytes, two readings are tried in one forward run: farther than any rule
 /// looks (the longest pattern, `nbsp.phone`, spans at most 24 tokens).
@@ -74,6 +74,11 @@ struct Cand {
     /// Whether it is a quote glyph or `’`: it comes back as any glyph of the pairs or `’`, since
     /// the level decides the glyph and not the reading.
     quote: bool,
+    /// For a quote glyph with the second reading `'`, when `settle_quotes` tries that reading: 1
+    /// for a glyph of the nested pair, 2 for a glyph of the primary pair with
+    /// `SingleQuotes::Everywhere`, 3 for a glyph of the primary pair inside a nested pair (the
+    /// third level, `«` of `«„«x»“»`); 0 for any other candidate.
+    tier: u8,
 }
 
 impl Cand {
@@ -788,10 +793,13 @@ impl Check<'_, '_> {
 /// other candidates as they are, and in a window where a quote reading does not come back as a
 /// glyph (the double quotes of `«x „“.»` read as `"x "".` do not pair again), the glyphs of the
 /// nested pair read as `'` instead, if that brings every quote of the window back (design section
-/// 12.1).
+/// 12.1). In a window that this does not bring back, the glyphs of the nested pair and, with
+/// `SingleQuotes::Everywhere`, those of the primary pair read as `'` (`“3" 0”` as `'3" 0'`); in a
+/// window that neither brings back, the glyphs of the primary pair inside a nested pair read as `'`
+/// alone (`«„«6»“»` as `""'6'""`). Each try is kept only where it brings the window back.
 fn settle_quotes(check: &Check<'_, '_>, scratch: &mut Scratch, cands: &mut [Cand]) {
-    let nested = |c: &Cand| c.fixed && c.on && c.alts.len() > 1;
-    if !cands.iter().any(nested) {
+    let alternative = |c: &Cand| c.fixed && c.on && c.alts.len() > 1;
+    if !cands.iter().any(alternative) {
         return;
     }
     let on: Vec<bool> = cands.iter().map(|c| c.on).collect();
@@ -811,23 +819,31 @@ fn settle_quotes(check: &Check<'_, '_>, scratch: &mut Scratch, cands: &mut [Cand
         windows
     };
     let first = check.run(scratch, cands);
-    let windows: Vec<usize> = broken(cands, &first)
-        .into_iter()
-        .filter(|&w| cands.iter().any(|c| c.window == w && nested(c)))
-        .collect();
-    if !windows.is_empty() {
+    let mut still = broken(cands, &first);
+    // The tiers of `Cand::tier`, tried in turn in the windows that are still broken.
+    for tiers in [&[1u8][..], &[1, 2], &[3]] {
+        let take = |c: &Cand| alternative(c) && tiers.contains(&c.tier);
+        let windows: Vec<usize> = still
+            .iter()
+            .copied()
+            .filter(|&w| cands.iter().any(|c| c.window == w && take(c)))
+            .collect();
+        if windows.is_empty() {
+            continue;
+        }
         for cand in cands.iter_mut() {
-            if nested(cand) && windows.contains(&cand.window) {
-                cand.alt = 1;
+            if cand.fixed && windows.contains(&cand.window) {
+                cand.alt = usize::from(take(cand));
             }
         }
-        let second = check.run(scratch, cands);
-        let still = broken(cands, &second);
+        let verdict = check.run(scratch, cands);
+        let now = broken(cands, &verdict);
         for cand in cands.iter_mut() {
-            if cand.fixed && cand.alt == 1 && still.contains(&cand.window) {
+            if cand.fixed && windows.contains(&cand.window) && now.contains(&cand.window) {
                 cand.alt = 0;
             }
         }
+        still.retain(|w| !windows.contains(w) || now.contains(w));
     }
     for (cand, was) in cands.iter_mut().zip(on) {
         cand.on = was;
@@ -907,6 +923,9 @@ struct Reading {
     minus: Option<char>,
     /// Whether `quotes.apostrophe` is enabled.
     apostrophe: bool,
+    /// Whether single quotes are paired at every level (`SingleQuotes::Everywhere`), so that a
+    /// glyph of the primary pair may come from `'` too.
+    everywhere: bool,
 }
 
 impl Reading {
@@ -918,10 +937,12 @@ impl Reading {
             .map(|p| p.glyphs());
         let minus = Some(typographer.minus_sign()).filter(|&c| c != '-');
         let apostrophe = active.contains(Rule::QuotesApostrophe);
+        let everywhere = typographer.single_quotes() == SingleQuotes::Everywhere;
         Reading {
             pairs,
             minus,
             apostrophe,
+            everywhere,
         }
     }
 
@@ -1285,6 +1306,7 @@ fn candidates(
             window: boundaries.partition_point(|&b| b <= at),
             dash: c == '\u{2014}',
             quote: c == APOSTROPHE || reading.is_glyph(c),
+            tier: 0,
         });
     }
     let readings = quote_readings(reading, &quotes);
@@ -1292,9 +1314,10 @@ fn candidates(
     for cand in &mut out {
         if cand.alts.is_empty() {
             match next.next() {
-                Some(&alts) => {
+                Some(&(alts, tier)) => {
                     cand.alts = alts;
                     cand.fixed = true;
+                    cand.tier = tier;
                 }
                 None => cand.on = false,
             }
@@ -1307,14 +1330,28 @@ fn candidates(
 /// The readings of the quote glyphs and apostrophes, in order: a glyph is `"`; a `’` closes the
 /// innermost open pair whose closer it is, or is an apostrophe (design section 12.1). A glyph of
 /// the nested pair has the second reading `'`, which `settle_quotes` takes where `"` does not come
-/// back.
-fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<&'static [&'static str]> {
+/// back; so has a glyph of the primary pair inside a nested pair or with
+/// `SingleQuotes::Everywhere`. Each reading comes with its tier (`Cand::tier`).
+fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<(&'static [&'static str], u8)> {
     const QUOTE: &[&str] = &["\""];
     const NESTED: &[&str] = &["\"", "'"];
     // An apostrophe is undone only with `quotes.apostrophe`; otherwise it has no reading.
     let apostrophe: &'static [&'static str] = if reading.apostrophe { &["'"] } else { &[] };
     let Some([open1, close1, open2, close2]) = reading.pairs else {
-        return quotes.iter().map(|_| apostrophe).collect();
+        return quotes.iter().map(|_| (apostrophe, 0)).collect();
+    };
+    // The readings of a glyph of the pairs and their tier: `nested` for the nested pair, `deep`
+    // for the primary pair inside a nested one.
+    let glyph = |nested: bool, deep: bool| -> (&'static [&'static str], u8) {
+        if nested {
+            (NESTED, 1)
+        } else if deep {
+            (NESTED, 3)
+        } else if reading.everywhere {
+            (NESTED, 2)
+        } else {
+            (QUOTE, 0)
+        }
     };
     let glyphs = [open1, close1, open2, close2];
     let mut out = Vec::with_capacity(quotes.len());
@@ -1329,41 +1366,46 @@ fn quote_readings(reading: &Reading, quotes: &[QuoteAt]) -> Vec<&'static [&'stat
         let c = q.c;
         if c == APOSTROPHE && (c == close1 || c == close2) {
             let nested = c == close2;
-            let closer = if nested { NESTED } else { QUOTE };
+            let below = stack.len().saturating_sub(1);
+            let deep = stack.get(..below).is_some_and(|s| s.contains(&true));
+            let closer = glyph(nested, deep);
             if q.sign_only && stack.last() == Some(&nested) {
                 // The mirror of a sign-only pair (design section 6.3): `‘’`, `‘-’`.
                 stack.pop();
                 out.push(closer);
             } else if q.closing && stack.last() == Some(&nested) {
                 if q.after_s && later_closer(quotes, k, glyphs, nested) {
-                    out.push(apostrophe);
+                    out.push((apostrophe, 0));
                 } else {
                     stack.pop();
                     out.push(closer);
                 }
             } else {
-                out.push(apostrophe);
+                out.push((apostrophe, 0));
             }
             continue;
         }
         if c == APOSTROPHE && !reading.is_glyph(c) {
-            out.push(apostrophe);
+            out.push((apostrophe, 0));
             continue;
         }
-        let nested = if c == open1 || c == open2 {
+        let (nested, deep) = if c == open1 || c == open2 {
             let nested = c == open2 && c != open1;
+            let deep = stack.contains(&true);
             stack.push(nested);
-            nested
+            (nested, deep)
         } else if c == close1 || c == close2 {
             let nested = c == close2 && c != close1;
+            let mut deep = stack.contains(&true);
             if let Some(level) = stack.iter().rposition(|&n| n == nested) {
+                deep = stack.get(..level).is_some_and(|s| s.contains(&true));
                 stack.truncate(level);
             }
-            nested
+            (nested, deep)
         } else {
-            false
+            (false, false)
         };
-        out.push(if nested { NESTED } else { QUOTE });
+        out.push(glyph(nested, deep));
     }
     out
 }
