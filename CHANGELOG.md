@@ -108,3 +108,7 @@ for U+00A0).
   section 8.6), in every language and both sets: `go test ./...`: `go test ./…` → `go test ./...`;
   `src/...`: `src/…` → `src/...`; `C:\dir\... now`: `C:\dir\… now` → `C:\dir\... now`;
   `https://a.b/c...` still gives `https://a.b/c…`.
+- A run of spaces cut by a `Markup` piece is no longer read as a single pattern space by
+  `number.minus`, `symbols.arrows` and `symbols.math` (design section 8.2), in Prose: the template
+  `слово `, `<b>`, ` -15`: `слово <b> −15` → `слово <b> -15`; `a `, `<b>`, ` -> b`: `a <b> → b` →
+  `a <b> -> b`; `x `, `<b>`, ` +- y`: `x <b> ± y` → `x <b> +- y`.

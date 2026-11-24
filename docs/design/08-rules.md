@@ -114,13 +114,15 @@ Conditions that hold for every rule:
   spaces, line breaks and spaces at a window boundary are never glued.
 - A **pattern space** is a `Space` token of exactly one character: U+0020, or a glued U+00A0 or
   U+202F (read as already done, invariants I3 and I4). A tab, a run of spaces, U+2009 and a frozen
-  `Space` are not pattern spaces. Wherever a pattern says "a space", "one space", "single spaces" or
-  "one space away" (`dash.*`, `symbols.*`, `range.context`, `number.minus`, `nbsp.*`), it needs a
-  pattern space; at any other `Space` token the pattern does not match, so the rule does not fire
-  and reports no diagnostic. The boundaries of `ellipsis.*` (section 8.6) are not patterns of this
-  kind: there a space is any `Space` token, a tab or a run of spaces included, since those rules
-  change no space. The indentation before `dash.dialogue` may be any horizontal whitespace; between
-  the dash and the word stands one pattern space.
+  `Space` are not pattern spaces. A run of spaces cut by `Markup` is still a run: a `Space` token
+  that touches another `Space` token across `Markup` or `Format` tokens is not a pattern space
+  (`слово <b> -15` and `a <b> -> b` stay, as `слово  -15` does). Wherever a pattern says "a space",
+  "one space", "single spaces" or "one space away" (`dash.*`, `symbols.*`, `range.context`,
+  `number.minus`, `nbsp.*`), it needs a pattern space; at any other `Space` token the pattern does
+  not match, so the rule does not fire and reports no diagnostic. The boundaries of `ellipsis.*`
+  (section 8.6) are not patterns of this kind: there a space is any `Space` token, a tab or a run of
+  spaces included, since those rules change no space. The indentation before `dash.dialogue` may be
+  any horizontal whitespace; between the dash and the word stands one pattern space.
 - A space is glued only if the next fragment starts with a letter, a digit, a slot (not `Other`), a
   protected span, an opening quote or the opening bracket `(` (`[` and `{` start technical notation,
   section 3.6, so `в [х]` stays; section 15.2, item 21), except where a rule names the next token

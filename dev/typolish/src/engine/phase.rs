@@ -366,6 +366,15 @@ impl<'a> Cx<'a> {
         })
     }
 
+    /// A pattern space that no other `Space` token touches through transparent tokens: a run of
+    /// spaces cut by a `Markup` token is a run, not a single space (design section 8.2).
+    pub(crate) fn lone_space(&self, i: usize) -> bool {
+        let space = |j: Option<usize>| {
+            j.is_some_and(|j| self.toks.get(j).is_some_and(|t| t.kind == Kind::Space))
+        };
+        self.pattern_space(i) && !space(self.prev(i)) && !space(self.next(i))
+    }
+
     /// Whether a token is a single U+0020 without glue.
     pub(crate) fn plain_space(&self, i: usize) -> bool {
         self.toks.get(i).is_some_and(|t| {

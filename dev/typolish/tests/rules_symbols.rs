@@ -495,6 +495,40 @@ fn symbols_in_every_output_kind() {
 }
 
 #[test]
+fn operators_after_spaces_cut_by_markup() {
+    // A run of spaces cut by a `Markup` piece is still a run, not a pattern space (design section
+    // 8.2): the operator stays, as it does between two spaces.
+    let pieces = |a: &'static str, b: &'static str| {
+        [Piece::<()>::Text(a), Piece::Markup("<b>"), Piece::Text(b)]
+    };
+    for language in [Language::RU_RU, Language::EN_US] {
+        for (rule, unchanged, changed) in [
+            (
+                ARROWS,
+                [("a ", " -> b"), ("a ", " <- b")],
+                (("a", " -> b"), "a<b> → b"),
+            ),
+            (
+                MATH,
+                [("x ", " +- y"), ("a ", " != b")],
+                (("x", " +- y"), "x<b> ± y"),
+            ),
+        ] {
+            for (what, t) in configs(&language, rule) {
+                for (a, b) in unchanged {
+                    let out = t.typeset_template(pieces(a, b), Output::Unicode);
+                    assert_eq!(out.texts(), [format!("{a}<b>{b}")], "{what}");
+                    assert!(!out.changed(), "{what}");
+                }
+                let ((a, b), expected) = changed;
+                let out = t.typeset_template(pieces(a, b), Output::Unicode);
+                assert_eq!(out.texts(), [expected], "{what}");
+            }
+        }
+    }
+}
+
+#[test]
 fn symbols_with_a_slot_next_to_them() {
     for (what, t) in configs(&Language::EN_US, ARROWS) {
         let out = t.typeset_template(

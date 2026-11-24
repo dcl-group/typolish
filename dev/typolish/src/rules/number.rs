@@ -59,7 +59,7 @@ pub(crate) fn minus(cx: &Cx<'_>, i: usize) -> Option<Match> {
         Some(j) if cx.kind(j) == Some(Kind::Open('(')) && cx.next(j) == Some(i) => j,
         Some(_) => return None,
     };
-    let after_space = cx.prev(start).is_some_and(|p| cx.pattern_space(p));
+    let after_space = cx.prev(start).is_some_and(|p| cx.lone_space(p));
     if !after_space && !cx.line_start(start) {
         return None;
     }

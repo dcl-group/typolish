@@ -201,8 +201,8 @@ fn spaced_operator(cx: &Cx<'_>, i: usize) -> bool {
     };
     f.kind == FragKind::OperatorRun
         && ends(cx, f) == Some((i, i))
-        && cx.prev(i).is_some_and(|s| cx.pattern_space(s))
-        && cx.next(i).is_some_and(|s| cx.pattern_space(s))
+        && cx.prev(i).is_some_and(|s| cx.lone_space(s))
+        && cx.next(i).is_some_and(|s| cx.lone_space(s))
         && cx.prev(i).and_then(|s| cx.prev(s)).is_some()
         && cx.next(i).and_then(|s| cx.next(s)).is_some()
 }

@@ -245,6 +245,27 @@ fn minus_disabled() {
 }
 
 #[test]
+fn minus_after_spaces_cut_by_markup() {
+    // A run of spaces cut by a `Markup` piece is still a run, not a pattern space (design section
+    // 8.2): the sign stays, as it does after two spaces; markup with one space still gives it.
+    for language in [Language::RU_RU, Language::EN_US] {
+        for (what, t) in configs(&language, MINUS) {
+            let pieces = |a: &'static str, b: &'static str| {
+                [Piece::<()>::Text(a), Piece::Markup("<b>"), Piece::Text(b)]
+            };
+            let out = t.typeset_template(pieces("слово ", " -15"), Output::Unicode);
+            assert_eq!(out.texts(), ["слово <b> -15"], "{what}");
+            assert!(!out.changed(), "{what}");
+            let out = t.typeset_template(pieces("слово ", "-15"), Output::Unicode);
+            assert_eq!(out.texts(), ["слово <b>−15"], "{what}");
+            let out = t.typeset_template(pieces("слово", " -15"), Output::Unicode);
+            assert_eq!(out.texts(), ["слово<b> −15"], "{what}");
+            check_unchanged(&what, &t, "слово  -15");
+        }
+    }
+}
+
+#[test]
 fn minus_with_a_slot_next_to_it() {
     for (what, t) in configs(&Language::RU_RU, MINUS) {
         let out = t.typeset_template(
