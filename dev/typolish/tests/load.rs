@@ -1,9 +1,10 @@
 //! Linearity of the pathological inputs (design sections 3.12 and 13.8): `load_is_linear` is
 //! `#[ignore]`, because it needs a release build and time:
 //! `cargo test --release -p typolish --test load -- --ignored` from `dev/`.
-//! `to_plain_is_linear_on_prose` (also `#[ignore]`) does the same for `to_plain` on ordinary prose
-//! (design section 12.1). `generators_keep_their_size` checks the sizes of the generated inputs in
-//! every run.
+//! `to_plain_is_linear_on_prose` (also `#[ignore]`) does the same for `to_plain` on ordinary prose,
+//! and `to_plain_is_linear_on_many_paragraphs_with_broken_quotes` on many short paragraphs whose
+//! quotes do not come back as double quotes (design section 12.1). `generators_keep_their_size`
+//! checks the sizes of the generated inputs in every run.
 //!
 //! The time per byte for 16 MiB is at most twice that for 64 KiB, separately for each input. There
 //! are no absolute thresholds: the machine is shared.
@@ -141,6 +142,32 @@ fn to_plain_is_linear_on_prose() {
         );
         if ratio > 2.0 {
             failures.push(format!("{sentence:?}: ratio {ratio:.2} > 2"));
+        }
+    }
+    assert!(failures.is_empty(), "nonlinear inputs: {failures:#?}");
+}
+
+/// `to_plain` on many short paragraphs whose quote readings do not come back as double quotes is
+/// linear: the bookkeeping of the windows that stay broken is linear in their number (design
+/// section 12.1). `«x „“»` stays broken in every tier; `«„«6»“»` is settled by the last one. The
+/// time per byte for 512 KiB is at most twice that for 64 KiB.
+#[test]
+#[ignore = "needs a release build and time; run with --release -- --ignored"]
+fn to_plain_is_linear_on_many_paragraphs_with_broken_quotes() {
+    let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    let mut failures = Vec::new();
+    for paragraph in ["«x „“»\n\n", "«„«6»“»\n\n"] {
+        let make = |size: usize| paragraph.repeat(size / paragraph.len() + 1);
+        let small = plain_per_byte(&t, &make(SMALL), 3);
+        let large = plain_per_byte(&t, &make(8 * SMALL), 1);
+        let ratio = large / small;
+        println!(
+            "{paragraph:?}: 64 KiB {:.1} ns/B, 512 KiB {:.1} ns/B, ratio {ratio:.2}",
+            small * 1e9,
+            large * 1e9
+        );
+        if ratio > 2.0 {
+            failures.push(format!("{paragraph:?}: ratio {ratio:.2} > 2"));
         }
     }
     assert!(failures.is_empty(), "nonlinear inputs: {failures:#?}");

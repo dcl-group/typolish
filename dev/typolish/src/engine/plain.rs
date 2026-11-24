@@ -808,14 +808,23 @@ fn settle_quotes(check: &Check<'_, '_>, scratch: &mut Scratch, cands: &mut [Cand
             cand.on = false;
         }
     }
-    let broken = |cands: &[Cand], verdict: &Verdict| -> Vec<usize> {
-        let mut windows: Vec<usize> = cands
-            .iter()
-            .zip(&verdict.failed)
-            .filter(|(c, f)| c.on && c.quote && c.alts.first() == Some(&"\"") && **f)
-            .map(|(c, _)| c.window)
-            .collect();
-        windows.dedup();
+    // Per window, flags rather than lists of windows: every lookup below is constant, so the
+    // bookkeeping stays linear however many windows stay broken (design section 12.1). The
+    // candidates are in text order, so the last one has the highest window.
+    let count = cands.last().map_or(0, |c| c.window.saturating_add(1));
+    let is_set = |flags: &[bool], w: usize| flags.get(w).copied().unwrap_or(false);
+    let broken = |cands: &[Cand], verdict: &Verdict| -> Vec<bool> {
+        let mut windows = vec![false; count];
+        for (c, &f) in cands.iter().zip(&verdict.failed) {
+            if c.on
+                && c.quote
+                && c.alts.first() == Some(&"\"")
+                && f
+                && let Some(w) = windows.get_mut(c.window)
+            {
+                *w = true;
+            }
+        }
         windows
     };
     let first = check.run(scratch, cands);
@@ -824,31 +833,38 @@ fn settle_quotes(check: &Check<'_, '_>, scratch: &mut Scratch, cands: &mut [Cand
     // glyph of the last tier of the try (a try without it would repeat the one before).
     for (tiers, last) in [(&[1u8][..], 1u8), (&[1, 2], 2), (&[3], 3)] {
         let take = |c: &Cand| alternative(c) && tiers.contains(&c.tier);
-        let windows: Vec<usize> = still
-            .iter()
-            .copied()
-            .filter(|&w| {
-                cands
-                    .iter()
-                    .any(|c| c.window == w && alternative(c) && c.tier == last)
-            })
-            .collect();
-        if windows.is_empty() {
+        let mut windows = vec![false; count];
+        let mut any = false;
+        for c in cands.iter() {
+            if alternative(c)
+                && c.tier == last
+                && is_set(&still, c.window)
+                && let Some(w) = windows.get_mut(c.window)
+            {
+                *w = true;
+                any = true;
+            }
+        }
+        if !any {
             continue;
         }
         for cand in cands.iter_mut() {
-            if cand.fixed && windows.contains(&cand.window) {
+            if cand.fixed && is_set(&windows, cand.window) {
                 cand.alt = usize::from(take(cand));
             }
         }
         let verdict = check.run(scratch, cands);
         let now = broken(cands, &verdict);
         for cand in cands.iter_mut() {
-            if cand.fixed && windows.contains(&cand.window) && now.contains(&cand.window) {
+            if cand.fixed && is_set(&windows, cand.window) && is_set(&now, cand.window) {
                 cand.alt = 0;
             }
         }
-        still.retain(|w| !windows.contains(w) || now.contains(w));
+        for ((s, &tried), &bad) in still.iter_mut().zip(&windows).zip(&now) {
+            if tried {
+                *s = bad;
+            }
+        }
     }
     for (cand, was) in cands.iter_mut().zip(on) {
         cand.on = was;
