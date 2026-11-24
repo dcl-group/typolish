@@ -158,14 +158,15 @@ for U+00A0).
   `5-10⍽м³` (Interface); ru `5 м³ 5 см³ 5 км² 5 см² 5 мм²`: `5 м³⍽5 см³⍽5 км²⍽5 см²⍽5 мм²` →
   `5⍽м³⍽5⍽см³⍽5⍽км²⍽5⍽см²⍽5⍽мм²` (Prose), unchanged → `5⍽м³ 5⍽см³ 5⍽км² 5⍽см² 5⍽мм²` (Interface); ru
   `5 кОм и 10 кОм`: `5 кОм и⍽10 кОм` → `5⍽кОм и⍽10⍽кОм`; en `9 a.m.`: unchanged → `9⍽a.m.`; en
-  `5 p.m. and 5 a.m.`: `5 p.m. and⍽5 a.m.` → `5⍽p.m. and⍽5⍽a.m.`; en `5 kPa`: unchanged → `5⍽kPa`.
-  `at 5:30 p.m. today` and `5 P.M.` are not changed by this.
+  `5 p.m. and 5 a.m.`: `5 p.m. and⍽5 a.m.` → `5⍽p.m. and⍽5⍽a.m.`; en `5 kPa`: unchanged → `5⍽kPa`;
+  ru `Скорость 5 кбит/с - это мало`: `Скорость 5 кбит/с⍽— это мало` → `Скорость 5⍽кбит/с⍽— это мало`
+  (the dash is kept, by the change below). `at 5:30 p.m. today` and `5 P.M.` are not changed by
+  this.
 - A `Dictionary` core that is not a word and has no full stop inside (`км/ч`, `кВт⋅ч`, `°C`, `₽`) is
   an operand of the dash rules and `nbsp.dash`, read as the word or technical fragment it would be
   without the list (design section 8.2), so a unit of the list changes no dash. In both sets: ru
   `Скорость 60 км/ч - это много`: `Скорость 60⍽км/ч - это много` → `Скорость 60⍽км/ч⍽— это много`;
-  ru `Скорость 5 кбит/с - это мало` (the unit added above): `Скорость 5⍽кбит/с - это мало` →
-  `Скорость 5⍽кбит/с⍽— это мало`; ru `Скорость 5 кбит/с — это мало`: `Скорость 5⍽кбит/с — это мало`
-  → `Скорость 5⍽кбит/с⍽— это мало`; ru `Было 5 °C - это мало`: `Было 5⍽°C - это мало` →
-  `Было 5⍽°C⍽— это мало`; en `Speed 60 km/h - fast`: `Speed 60⍽km/h - fast` →
-  `Speed 60⍽km/h — fast`. `км/ч - м/с` and `See - e.g. this` are not changed.
+  ru `Было 5 °C - это мало`: `Было 5⍽°C - это мало` → `Было 5⍽°C⍽— это мало`; en
+  `Speed 60 km/h - fast`: `Speed 60⍽km/h - fast` → `Speed 60⍽km/h — fast`. `км/ч - м/с` is not
+  changed and now reports `AmbiguousHyphen`, as two technical fragments do; `See - e.g. this` is not
+  changed.
