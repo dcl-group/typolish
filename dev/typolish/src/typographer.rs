@@ -1678,6 +1678,12 @@ fn normalize_list(edit: &mut ListEdit, setting: &'static str, fold: bool) -> Res
     };
     let added: Vec<String> = edit.added.iter().map(normalize).collect();
     let removed: Vec<String> = edit.removed.iter().map(normalize).collect();
+    // Sorted copies make the check of a word both added and removed a binary search, so the
+    // check is O(n log n) rather than quadratic in the length of the lists.
+    let (added_sorted, removed_sorted) = (sorted(added.clone()), sorted(removed.clone()));
+    let both = |normal: &String| {
+        added_sorted.binary_search(normal).is_ok() && removed_sorted.binary_search(normal).is_ok()
+    };
     let offending = edit
         .added
         .iter()
@@ -1690,7 +1696,7 @@ fn normalize_list(edit: &mut ListEdit, setting: &'static str, fold: bool) -> Res
                 "contains whitespace"
             } else if setting == "units" && word.starts_with(|c: char| c.is_ascii_digit()) {
                 "starts with an ASCII digit"
-            } else if added.contains(normal) && removed.contains(normal) {
+            } else if both(normal) {
                 "is both added and removed"
             } else {
                 return None;
@@ -1703,8 +1709,8 @@ fn normalize_list(edit: &mut ListEdit, setting: &'static str, fold: bool) -> Res
     if let Some((_, reason)) = smallest(offending) {
         return Err(invalid(setting, reason));
     }
-    edit.added = sorted(added);
-    edit.removed = sorted(removed);
+    edit.added = added_sorted;
+    edit.removed = removed_sorted;
     Ok(())
 }
 

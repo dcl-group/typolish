@@ -391,6 +391,39 @@ fn a_word_both_added_and_removed_is_an_error() {
 }
 
 #[test]
+fn long_lists_are_checked_in_n_log_n() {
+    // 20 000 added words, one of them also removed: the check is a binary search per word, not a
+    // scan of the other list (the quadratic scan took over a second here in a release build).
+    let word = |mut i: u32| {
+        let mut w = String::from("w");
+        for _ in 0..4 {
+            w.push(char::from(b'a' + u8::try_from(i % 26).unwrap()));
+            i /= 26;
+        }
+        w
+    };
+    let words: Vec<String> = (0..20_000).map(word).collect();
+    let last = word(19_999);
+    let (setting, reason) =
+        setting_error(base().add_short_words(&words).remove_short_words([&last]));
+    assert_eq!(setting, "short_words");
+    assert!(
+        reason.contains(&format!("`{last}` is both added and removed")),
+        "{reason}"
+    );
+    let t = base()
+        .add_short_words(&words)
+        .remove_short_words([word(20_000)])
+        .short_words_any_script(true)
+        .build()
+        .unwrap();
+    assert_eq!(
+        t.typeset(&format!("{last} слово"), Output::Unicode),
+        format!("{last}\u{a0}слово")
+    );
+}
+
+#[test]
 fn units_may_not_start_with_a_digit_but_may_contain_one() {
     assert_eq!(setting_of(base().add_units(["5G"])), "units");
     assert_eq!(setting_of(base().remove_units(["0px"])), "units");
