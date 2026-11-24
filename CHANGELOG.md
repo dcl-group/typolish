@@ -63,8 +63,9 @@ supported Rust version: 1.100.
   names, lists, identifiers); slots and protected text are never edited.
 - Number formatting by the language: decimal separator, grouping from `min_grouping_digits`, group
   separator, minus sign U+2212, range pattern, and the symbols of not-a-number and infinity, for
-  every integer type, `f32`, `f64`, `Number::decimal` (digits as written) and `Number::fixed`. The
-  lazy displays `NumberDisplay` and `RangeDisplay` allocate nothing.
+  every integer type, `f32`, `f64`, `Number::decimal` (digits as written) and `Number::fixed`;
+  integers compare by value whatever their type. The lazy displays `NumberDisplay` and
+  `RangeDisplay` allocate nothing.
 - Output kinds, given with every call: `Output::Unicode`; `Output::Html` with named, decimal or
   hexadecimal references or characters (`HtmlStyle`) and no-break groups as entities or as nowrap
   elements (`nowrap_class`, `nowrap_style`); `Output::Escaped` with the body of a string literal for

@@ -665,6 +665,8 @@ write!(buf, "{}", RU.format_number(42u32, Output::Unicode)).unwrap();
 
 Formatting rules:
 
+- Integers compare by value whatever their type (`Number::from(1u8) == Number::from(1i32)`, section
+  2.13).
 - Integers go through `unsigned_abs()`, so `i128::MIN` does not overflow. `f64` uses the shortest
   representation of core (`{}`), which is deterministic on every platform and has no exponent; `f32`
   keeps a variant of its own and uses the shortest representation of `f32`, so `0.1f32` is `0,1`,
@@ -1064,7 +1066,8 @@ included); streaming without a buffer (quote pairing defers decisions to the end
   `QuotePairs` to `NumberData`) implement `Debug`, `PartialEq`, `Eq` and `Hash`, and the value types
   also `Copy`, so a field added to them later must have these traits too (language data holds
   strings, characters, numbers and flags, which do); rule ids are permanent. `Number` holds floats
-  and is `PartialEq` only.
+  and is `PartialEq` only; integers compare by value whatever their type, while `1`, `1.0` and
+  `Number::decimal("1")` are three different numbers.
 - Not part of the contract: the order of `Rule::ALL` (it is the execution order, and a new rule may
   go into the middle); the representation of `RuleSet`; the contents of language lists; the text of
   `summary()` and of the `Display` of `Error`, `Diagnostic` and `Report`. The `Display` of `Rule`,

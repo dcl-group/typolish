@@ -147,6 +147,22 @@ fn every_integer_type_converts() {
     same("f64", num(&EN, 1234.5f64), "1,234.5");
 }
 
+/// Integers compare by value whatever their type; an integer, a float and a decimal string are
+/// different numbers (design section 2.13).
+#[test]
+fn integers_compare_by_value() {
+    assert_eq!(Number::from(1u8), Number::from(1i32));
+    assert_eq!(Number::from(0i64), Number::from(0usize));
+    assert_eq!(Number::from(7isize), Number::from(7u128));
+    assert_eq!(Number::from(-1i8), Number::from(-1i64));
+    assert_eq!(Number::from(-1isize), Number::from(-1i128));
+    assert_eq!(Number::from(u64::MAX), Number::from(i128::from(u64::MAX)));
+    assert_ne!(Number::from(1u8), Number::from(-1i8));
+    assert_ne!(Number::from(1), Number::from(1.0));
+    assert_ne!(Number::from(1), Number::decimal("1").unwrap());
+    assert_ne!(Number::from(1.0f32), Number::from(1.0f64));
+}
+
 #[test]
 fn the_widest_integers_do_not_overflow() {
     // `i128::MIN` has no positive counterpart: the integers go through `unsigned_abs()`.

@@ -11,8 +11,10 @@ use crate::{Error, Output, Typographer};
 /// A number to format: an integer, an `f32` or `f64`, or an ASCII decimal string.
 ///
 /// Every integer type and both float types convert with `From`; [`Number::decimal`] takes digits
-/// as written and [`Number::fixed`] rounds a float to a number of fraction digits. Floats compare
-/// as floats, so a `NaN` is not equal to itself.
+/// as written and [`Number::fixed`] rounds a float to a number of fraction digits. Integers compare
+/// by value whatever their type (`Number::from(1u8) == Number::from(1i32)`); `1`, `1.0` and
+/// `Number::decimal("1")` are three different numbers. Floats compare as floats, so a `NaN` is not
+/// equal to itself.
 ///
 /// ```
 /// use typolish::{Language, Number, Output, RuleSet, Typographer};
@@ -44,6 +46,17 @@ enum Repr<'n> {
         int: &'n str,
         frac: Option<&'n str>,
     },
+}
+
+impl Repr<'_> {
+    /// A non-negative signed integer becomes the unsigned one, so that equal integers of different
+    /// types compare equal (design section 2.13).
+    fn normalized(self) -> Self {
+        match self {
+            Repr::Signed(v) => u128::try_from(v).map_or(self, Repr::Unsigned),
+            other => other,
+        }
+    }
 }
 
 impl<'n> Number<'n> {
@@ -142,7 +155,7 @@ macro_rules! from_int {
         impl From<$t> for Number<'static> {
             /// The integer as it is.
             fn from(value: $t) -> Number<'static> {
-                Number { repr: Repr::$variant(<$wide>::from(value)) }
+                Number { repr: Repr::$variant(<$wide>::from(value)).normalized() }
             }
         }
     )*};
@@ -156,7 +169,7 @@ impl From<isize> for Number<'static> {
     fn from(value: isize) -> Number<'static> {
         // Widening: `isize` is never wider than `i128`, so the cast is exact.
         Number {
-            repr: Repr::Signed(value as i128),
+            repr: Repr::Signed(value as i128).normalized(),
         }
     }
 }
