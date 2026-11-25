@@ -39,11 +39,18 @@ otherwise:
 | en-US                                | `‘S' "x’" s’`                                       | `‘S' ‘x’’ s’`                                       | `‘S’ ‘x’’ s’`                                       |
 | en-US                                | `"He said "the boys’ dogs' "x" bowls" were empty."` | `“He said ‘the⍽boys’ dogs' “x” bowls’ were empty.”` | `“He said ‘the⍽boys’ dogs’ “x” bowls’ were empty.”` |
 | en-GB, `NestedOnly` and `Everywhere` | `She said "the boys’ dogs' 'bowls" were empty.`     | `She said ‘the⍽boys’ dogs' 'bowls’ were empty.`     | `She said ‘the⍽boys’ dogs’ 'bowls’ were empty.`     |
-| en-GB, Prose, `NestedOnly`           | `"a’ s' 's"`                                        | `‘a’ s' 's’`                                        | `‘a’ s’ 's’`                                        |
+| en-GB, `NestedOnly` and `Everywhere` | `"a’ s' 's"`                                        | `‘a’ s' 's’`                                        | `‘a’ s’ 's’`                                        |
 
-0.1.1 gave the second pass at once on every row (P2 fails on the en-US rows in 0.1.1 as well). Found
-by review with a generator of nested typed and straight quotes: 22 distinct inputs out of 4,000, in
-48 configurations, that 0.1.1 gave at once.
+0.1.1 gave the second pass at once on every row. P2 (design section 12.2) fails on every row of both
+tables, since `to_plain` of the first pass typesets as the second pass does or to another result. On
+the en-US rows, and on `"s' y’ "" s"` in en-GB, 0.1.1 failed P2 as well. On the other en-GB rows P2
+held in 0.1.1 and fails since C54: with `NestedOnly`, `"a’ s' 's"` and
+`She said "the boys’ dogs' 'bowls" were empty.` give a plain form that typesets as the second pass,
+and `‘S' ‘s'’ s’` (en-GB, Prose and Interface) gives the plain form `"S' "s'" s"`, which typesets as
+`‘S' “s’” s’`. These three run in `windows_that_are_no_fixed_point_break_p2` of
+`tests/roundtrip.rs`, which fails when P2 holds on them again. Found by review with a generator of
+nested typed and straight quotes: 22 distinct inputs out of 4,000, in 48 configurations, that 0.1.1
+gave at once.
 
 ## Analysis so far
 
@@ -72,6 +79,8 @@ corpus and on the tables of `tests/` stays the same.
 - The inputs above are in `SEEDS` of `tests/properties.rs` (the en-GB rows in the idempotence test
   with a built language).
 - The limit is removed from design section 10.8, the README and `limits()` of
-  `tests/documentation.rs`, and the filter `OPENER_REPAIRED` from `grammar_known_failure` (with its
-  rows in `the_grammar_filters_name_their_limits`) once `todo/quotes-neutral-opener-repaired.md` is
-  closed as well.
+  `tests/documentation.rs` (its second passes too), and the filter `OPENER_REPAIRED` from
+  `grammar_known_failure` (with its rows in `the_grammar_filters_name_their_limits`) once
+  `todo/quotes-neutral-opener-repaired.md` is closed as well.
+- P2 holds on the en-GB rows again, and they leave `windows_that_are_no_fixed_point_break_p2` of
+  `tests/roundtrip.rs`; design section 12.2 no longer names them.

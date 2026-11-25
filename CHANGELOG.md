@@ -83,17 +83,17 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `to_plain` would read it as the closer of the pair and change what stands between them (design
   section 6.6): a straight `'` opener that stayed unpaired stands after it, and a straight `'` or a
   prime that could close that opener follows; or the closer follows `s` or `S` and such an opener or
-  a quote of a pair stands between them. So the first pass is a fixed point and P2 holds. English,
-  Prose, Interface and `ALL`: `""s' 'x."'"`: `“‘s’ 'x.’'”` (then `“‘s’ ‘x.’’”` on a second pass) →
-  `“‘s' 'x.’'”`; `“"s' '."'”`: `“‘s’ '.’'”` → `“‘s' '.’'”`; `"a "dogs' 's" b"`: `“a⍽‘dogs’ 's’ b”` →
-  `“a⍽‘dogs' 's’ b”`; `"a "DOGS' 'S" b"`: `“a⍽‘DOGS’ 'S’ b”` → `“a⍽‘DOGS' 'S’ b”`;
-  `"a "dogs' 'x' bowls" b"`: `“a⍽‘dogs’ “x” bowls’ b”` → `“a⍽‘dogs' “x” bowls’ b”`. A declared
-  language whose primary pair is `‘’` (en-GB), Prose, Interface and `ALL`,
-  `SingleQuotes::NestedOnly` and `Everywhere` (with `SingleQuotes::Never` these rows keep the output
-  of 0.1.1): `"S' 's"`: `‘S’ 's’` → `‘S' 's’`; `"the dogs' 'x' bowls"`: `‘the⍽dogs’ “x” bowls’` →
-  `‘the⍽dogs' “x” bowls’`; `"the dogs' 'bowls" today`: `‘the⍽dogs’ 'bowls’ today` →
-  `‘the⍽dogs' 'bowls’ today`; `"S'. a(\n'3,".'`: `‘S’. a(\n'3,’.'` → `‘S'. a(\n'3,’.'`;
-  `it) - 'cause' - 'cause -- "'cause) DOGS' - 'house' - it, - oz.) '90s" a`:
+  a quote of a pair stands between them. So the first pass is a fixed point and P2 holds on these
+  inputs. English, Prose, Interface and `ALL`: `""s' 'x."'"`: `“‘s’ 'x.’'”` (then `“‘s’ ‘x.’’”` on a
+  second pass) → `“‘s' 'x.’'”`; `“"s' '."'”`: `“‘s’ '.’'”` → `“‘s' '.’'”`; `"a "dogs' 's" b"`:
+  `“a⍽‘dogs’ 's’ b”` → `“a⍽‘dogs' 's’ b”`; `"a "DOGS' 'S" b"`: `“a⍽‘DOGS’ 'S’ b”` →
+  `“a⍽‘DOGS' 'S’ b”`; `"a "dogs' 'x' bowls" b"`: `“a⍽‘dogs’ “x” bowls’ b”` →
+  `“a⍽‘dogs' “x” bowls’ b”`. A declared language whose primary pair is `‘’` (en-GB), Prose,
+  Interface and `ALL`, `SingleQuotes::NestedOnly` and `Everywhere` (with `SingleQuotes::Never` these
+  rows keep the output of 0.1.1): `"S' 's"`: `‘S’ 's’` → `‘S' 's’`; `"the dogs' 'x' bowls"`:
+  `‘the⍽dogs’ “x” bowls’` → `‘the⍽dogs' “x” bowls’`; `"the dogs' 'bowls" today`:
+  `‘the⍽dogs’ 'bowls’ today` → `‘the⍽dogs' 'bowls’ today`; `"S'. a(\n'3,".'`: `‘S’. a(\n'3,’.'` →
+  `‘S'. a(\n'3,’.'`; `it) - 'cause' - 'cause -- "'cause) DOGS' - 'house' - it, - oz.) '90s" a`:
   `… ‘’cause) DOGS’ — “house” — …` → `… ‘’cause) DOGS' — “house” — …`. Typed text, English and
   en-GB, the same sets: `‘bowls' 'x S’ a`: `‘bowls’ 'x S’ a` → `‘bowls' 'x S’ a`; `to_plain` reads
   such a `’` back as itself, and `lint` no longer reports it (en-GB: `“S’ 'dogs" -the` gave
@@ -115,8 +115,13 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `“He said ‘the⍽boys’ dogs' “x” bowls’ were empty.”` (then the first form again). en-GB, the same
   sets, `NestedOnly` and `Everywhere`: `She said "the boys’ dogs' 'bowls" were empty.`:
   `She said ‘the⍽boys’ dogs’ 'bowls’ were empty.` → `She said ‘the⍽boys’ dogs' 'bowls’ were empty.`
-  (then the first form again). Listed in design section 10.8.
-
+  (then the first form again); `"a’ s' 's"`: `‘a’ s’ 's’` → `‘a’ s' 's’` (then the first form
+  again). P2 fails on all of these inputs too, since `to_plain` of the new result typesets as a
+  second pass does or to another result; on the English rows 0.1.1 failed it as well, while on the
+  en-GB rows it held in 0.1.1: with `NestedOnly`, `"a’ s' 's"` and
+  `She said "the boys’ dogs' 'bowls" were empty.` now give a plain form that typesets as the second
+  pass, and `‘S' ‘s'’ s’` gives the plain form `"S' "s'" s"`, which typesets as `‘S' “s’” s’`.
+  Listed in design sections 10.8 and 12.2.
 - A typed `’` closes the `‘` of its pair when only signs, or nothing, stand between them and the
   neighbors allow the sign-only pair (design section 6.3), as the plain `""` that a first pass
   typesets as `‘’` does; other rules read the same closing role. In a declared language whose
@@ -135,7 +140,19 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `Он сказал "" - и ушёл`: `Он⍽сказал ‘’ — и⍽ушёл` → `Он⍽сказал ‘’⍽— и⍽ушёл` (Interface:
   `Он сказал ‘’⍽— и⍽ушёл`); `"" - ""`: `‘’ — ‘’` → `‘’⍽— ‘’`; `Он сказал "-" - и ушёл`: `‘-’ —` →
   `‘-’⍽—`. Such a pair is no longer reported: `x ‘’ y` gave `UnmatchedQuote` (info), `"a ‘’ b"`
-  `CrossingQuotes` (warning).
+  `CrossingQuotes` (warning). Typed input is not a fixed point in every case since this change
+  (design section 10.8), and 0.1.1 gave the first result on both passes on each of the following
+  inputs. Where the first pass writes a straight quote as `‘` before signs, or nothing, and a typed
+  `’`, a second pass reads them as a sign-only pair and the `’` as its closer: English, Prose and
+  Interface, `NestedOnly` and `Everywhere`, `"a '-’ - x' c"` gives `“a⍽‘-’ - x’ c”`, then
+  `“a⍽‘-’ — x’ c”`; en-GB, Prose: `"-’ - x"` gives `‘-’ - x’`, then `‘-’ — x’`; en-GB, Prose,
+  `SingleQuotes::Everywhere`: `‘'—’ l' s'` gives `‘‘—’ l’ s'`, then `‘‘—’ l’ s’`. A typed `‘-’`
+  before a straight pair no longer keeps a trailing possessive straight on a second pass: en-GB,
+  Prose, Interface and `ALL`, every `SingleQuotes` mode, `‘"-" "S'’"` gives `‘‘-’ ‘S'’’`, then
+  `‘‘-’ ‘S’’’`. The typed `‘’` that a first pass writes in a chain of sign-only pairs closes on a
+  second pass and cuts the chain: English, every set, `NestedOnly` (the default) and `Everywhere`,
+  `"x ''-'' y"` gives `“x ''-‘’ y”`, then `“x ‘’-‘’ y”`, and `"""x\n''-''\ne"""` gives
+  `“‘“x\n''-‘’\ne”’”`, then `“‘“x\n‘’-‘’\ne”’”`.
 - `to_plain`, `to_plain_template`, `lint` and `lint_template` are linear in the length of the text
   on long runs of quote characters in one paragraph as well (design section 12.1): the neighbors of
   a series of quotes, the open pairs and the later closer of a `’` after `s` were searched again for

@@ -315,11 +315,11 @@ The rules read the shape of the text, not its meaning. These cases are known and
   value glued the same way (`key:""`) leaves the paragraph's quotes straight with an
   `UnmatchedQuote` warning; `key=""` stays as written.
 - Sign-only pairs that share a quote, as in `''-''`, are not idempotent: in Russian `"x ''-'' y"`
-  gives `«x ''-„“ y»`, and a second pass gives `«x „“-„“ y»`. For the same reason in English
-  `"x ''-'' y"` gives `“x ''-‘’ y”`, and its plain form `"x ''-"" y"` gives `“x ‘’-‘’ y”`. Since
-  0.1.2 a typed `‘’` that the first pass writes cuts such a chain on a second pass too: in English
-  `"""x\n''-''\ne"""` gives `“‘“x\n''-‘’\ne”’”`, and a second pass gives `“‘“x\n‘’-‘’\ne”’”`, where
-  version 0.1.1 was a fixed point. This is a defect, not a choice.
+  gives `«x ''-„“ y»`, and a second pass gives `«x „“-„“ y»`. Since 0.1.2 a typed `‘’` that the
+  first pass writes cuts such a chain on a second pass too, so in English, with the default single
+  quotes, `"x ''-'' y"` gives `“x ''-‘’ y”`, and both a second pass and its plain form `"x ''-"" y"`
+  give `“x ‘’-‘’ y”`; so does `"""x\n''-''\ne"""`, which gives `“‘“x\n''-‘’\ne”’”`, then
+  `“‘“x\n‘’-‘’\ne”’”`. Version 0.1.1 was a fixed point on both. This is a defect, not a choice.
 - A typed `‘` that the first pass leaves open and a second pass pairs lets a trailing possessive
   through, or pairs a single-quote pair that the first pass left straight, so the output is not
   idempotent. In a declared language whose primary pair is `‘’` (en-GB) a straight pair around a
@@ -340,7 +340,10 @@ The rules read the shape of the text, not its meaning. These cases are known and
   `‘S' ‘s’’ s’`, and a second pass gives `‘S’ ‘s’’ s’`. A typed `’` inside a straight pair, which
   the first pass reads as an apostrophe and a second pass as the closer of the pair, moves the
   closer the same way: in English `‘S' "x’" s’` gives `‘S' ‘x’’ s’`, then `‘S’ ‘x’’ s’`. Version
-  0.1.1 gave the second result at once. This is a defect, not a choice.
+  0.1.1 gave the second result at once. The plain form typesets to another result too: in a declared
+  language whose primary pair is `‘’` (en-GB) `"a’ s' 's"` gives `‘a’ s' 's’`, and both a second
+  pass and its plain form give `‘a’ s’ 's’`, where version 0.1.1 gave `‘a’ s’ 's’` at once and its
+  plain form typeset back. This is a defect, not a choice.
 - `to_plain` does not always give back a text that typesets to the same result when the quotes are
   tangled: in Russian `"a '(" x' "y'" b"` gives `«a „(" x“ „y'“ b»`, whose plain form
   `"a "(" x" "y'" b"` keeps every quote straight; in English `"'S '5' 3'"` gives `“‘S “5” 3’”`,

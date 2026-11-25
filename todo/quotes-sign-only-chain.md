@@ -24,8 +24,15 @@ P2 (design section 12.2) fails on the same class in the default mode, in English
 
 Choice C55 (0.1.2) extends the class to inputs on which 0.1.1 was a fixed point: the typed `‘’` that
 the first pass writes now closes on the second pass and cuts the chain. English, Prose, Interface
-and `ALL`, `NestedOnly` and `Everywhere`: `"""x\n''-''\ne"""` gives `“‘“x\n''-‘’\ne”’”`, then
-`“‘“x\n‘’-‘’\ne”’”`; 0.1.1 gave the first pass on both passes.
+and `ALL`, `NestedOnly` (the default) and `Everywhere`:
+
+| Input               | First pass          | Second pass         |
+| ------------------- | ------------------- | ------------------- |
+| `"x ''-'' y"`       | `“x ''-‘’ y”`       | `“x ‘’-‘’ y”`       |
+| `"""x\n''-''\ne"""` | `“‘“x\n''-‘’\ne”’”` | `“‘“x\n‘’-‘’\ne”’”` |
+
+0.1.1 gave the first pass on both passes. So the first row of the P2 table fails idempotence as well
+since 0.1.2.
 
 Found while re-checking P2 after the fix of the mis-nested possessive (0.1.2), with a random
 generator over quotes, signs and short words in `en-US`, `ru-RU` and a declared language whose
@@ -33,12 +40,12 @@ primary pair is `‘’`, all three `SingleQuotes` modes. The case is listed in 
 in the README.
 
 The structured grammar of design section 13.5 finds the class in every language it runs, also with a
-dash or a parenthesis as the sign: Russian `''—''` (`''—«»`, then `«»—«»`), English and en-GB
-`'('')'` with `SingleQuotes::Everywhere` (`'('“)”`, then `“(”“)”`). The properties over the grammar
-skip a failure whose input holds such a chain and whose second pass changes straight quotes only,
-and a P2 failure on such an input where `to_plain` read a `"` as `'` or the other way round
-(`SIGN_ONLY_CHAIN` of `grammar_known_failure` and `grammar_known_p2_failure` in
-`tests/common/strategies.rs`); that filter goes with this task.
+dash or a parenthesis as the sign, both with `SingleQuotes::Everywhere`: Russian `''—''` (`''—«»`,
+then `«»—«»`; in the other modes it stays as written), English and en-GB `'('')'` (`'('“)”`, then
+`“(”“)”`). The properties over the grammar skip a failure whose input holds such a chain and whose
+second pass changes straight quotes only, and a P2 failure on such an input where `to_plain` read a
+`"` as `'` or the other way round (`SIGN_ONLY_CHAIN` of `grammar_known_failure` and
+`grammar_known_p2_failure` in `tests/common/strategies.rs`); that filter goes with this task.
 
 ## Analysis so far
 
@@ -60,4 +67,5 @@ the corpus and on the tables of `tests/` stays the same and `local_role` stays l
 - The limit is removed from design section 10.8, from the README (both the known limit and the
   exception in the feature list, if no other remains), from `limits()` of `tests/documentation.rs`
   and from the exception of P2 in design section 12.2, and its filter `SIGN_ONLY_CHAIN` from
-  `grammar_known_failure` and `grammar_known_p2_failure` (with its rows in the filter tests).
+  `grammar_known_failure` and `grammar_known_p2_failure` (with its rows in the filter tests), and
+  its English row from `windows_that_are_no_fixed_point_break_p2` of `tests/roundtrip.rs`.

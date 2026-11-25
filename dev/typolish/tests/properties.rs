@@ -2251,6 +2251,8 @@ fn the_grammar_filters_name_their_limits() {
     for (lang, single, text, limit) in [
         (0, NestedOnly, "\"x ''-'' y\"", SIGN_ONLY_CHAIN),
         (0, Everywhere, "''—''", SIGN_ONLY_CHAIN),
+        // In English since 0.1.2, in the default mode: the typed `‘’` of the first pass closes.
+        (1, NestedOnly, "\"x ''-'' y\"", SIGN_ONLY_CHAIN),
         (1, Everywhere, "''-''", SIGN_ONLY_CHAIN),
         (1, Everywhere, "'('')'", SIGN_ONLY_CHAIN),
         (1, NestedOnly, "He said ‘the dogs' \"5\"’", OPENER_REPAIRED),

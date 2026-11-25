@@ -256,11 +256,12 @@ expectation):
 - Sign-only pairs that share a quote (section 6.3; in `''-''` the second `'` closes the pair `''`
   and opens the pair `'-'`) are not idempotent: a later pair overrides the roles of an earlier one,
   so in Russian `"x ''-'' y"` gives `«x ''-„“ y»`, and a second pass, where the glyphs cut the
-  chain, pairs the first two quotes (`«x „“-„“ y»`). The same class breaks P2 (section 12.2) in
-  English: `"x ''-'' y"` gives `“x ''-‘’ y”`, whose `to_plain` `"x ''-"" y"` is typeset as
+  chain, pairs the first two quotes (`«x „“-„“ y»`). The same class breaks P2 (section 12.2): in
+  English `"x ''-'' y"` gives `“x ''-‘’ y”`, whose `to_plain` `"x ''-"" y"` is typeset as
   `“x ‘’-‘’ y”`. Choice C55 (0.1.2) extends the class to inputs on which 0.1.1 was a fixed point,
-  since the typed `‘’` that a first pass writes now closes on the second pass and cuts the chain:
-  English, `NestedOnly` and `Everywhere`, `"""x\n''-''\ne"""` gives `“‘“x\n''-‘’\ne”’”`, then
+  since the typed `‘’` that a first pass writes now closes on the second pass and cuts the chain.
+  English, every set, `NestedOnly` (the default) and `Everywhere`: `"x ''-'' y"` gives
+  `“x ''-‘’ y”`, then `“x ‘’-‘’ y”`, and `"""x\n''-''\ne"""` gives `“‘“x\n''-‘’\ne”’”`, then
   `“‘“x\n‘’-‘’\ne”’”`. This is a defect of the quote phase (sections 6.3 and 6.11), not a choice.
 - A typed `‘` that the first pass leaves neutral and a second pass pairs lets a trailing possessive
   through, or a straight `'` pair that the first pass cancelled, so the output is not idempotent:
@@ -304,8 +305,13 @@ expectation):
   `“He said ‘the⍽boys’ dogs’ “x” bowls’ were empty.”`; en-GB (`NestedOnly` and `Everywhere`):
   `She said "the boys’ dogs' 'bowls" were empty.` gives
   `She said ‘the⍽boys’ dogs' 'bowls’ were empty.`, then
-  `She said ‘the⍽boys’ dogs’ 'bowls’ were empty.`. 0.1.1 gave the second result at once on all of
-  them. This is a defect of the quote phase (sections 6.6 and 6.11), not a choice.
+  `She said ‘the⍽boys’ dogs’ 'bowls’ were empty.`; en-GB, `NestedOnly` and `Everywhere`:
+  `"a’ s' 's"` gives `‘a’ s' 's’`, then `‘a’ s’ 's’`. 0.1.1 gave the second result at once on all of
+  them. P2 fails on these inputs too (section 12.2), since `to_plain` of the first result typesets
+  as a second pass does or to another result: on the en-US rows 0.1.1 failed it as well, while on
+  the en-GB rows (`‘S' ‘s'’ s’`, which now gives `‘S' “s’” s’` from its plain form,
+  `She said "the boys’ dogs' 'bowls" were empty.` and `"a’ s' 's"` with `NestedOnly`) 0.1.1 held it.
+  This is a defect of the quote phase (sections 6.6 and 6.11), not a choice.
 - `to_plain` reads the glyphs of a pair as `"`, or as `'` where that does not pair again (section
   12.1); in a window where no reading it tries brings the quotes back, P2 fails (section 12.2),
   although the typeset text is a fixed point. A straight `"` without a role inside a pair turns into

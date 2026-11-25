@@ -410,6 +410,46 @@ fn windows_whose_plain_form_does_not_typeset_back_are_listed() {
 }
 
 #[test]
+fn windows_that_are_no_fixed_point_break_p2() {
+    // Design sections 10.8 and 12.2: where the first pass is no fixed point, `to_plain` of its
+    // output typesets to what the second pass gives, so P2 fails as well. The possessive run of
+    // choice C54 (0.1.2) breaks P2 in en-GB on inputs where 0.1.1 held it; the sign-only chain
+    // breaks it in English in the default mode. When a row holds P2, its defect is gone: remove it
+    // from design sections 10.8 and 12.2, the README and `limits()` of `tests/documentation.rs`.
+    let gb = LanguageBuilder::from_language(&en(), "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    let mut fixed = Vec::new();
+    for (language, x, again) in [
+        (gb.clone(), "\"a’ s' 's\"", "‘a’ s’ 's’"),
+        (gb.clone(), "‘S' ‘s'’ s’", "‘S' “s’” s’"),
+        (
+            gb,
+            "She said \"the boys’ dogs' 'bowls\" were empty.",
+            "She said ‘the⍽boys’ dogs’ 'bowls’ were empty.",
+        ),
+        (en(), "\"x ''-'' y\"", "“x ‘’-‘’ y”"),
+    ] {
+        for set in [RuleSet::PROSE, RuleSet::INTERFACE] {
+            let t = Typographer::builder(language.clone(), set)
+                .single_quotes(SingleQuotes::NestedOnly)
+                .build()
+                .unwrap();
+            let y = t.typeset(x, Output::Unicode).into_owned();
+            let plain = t.to_plain(&y).into_owned();
+            let got = t.typeset(&plain, Output::Unicode);
+            if got == y {
+                fixed.push(format!("{language} {set} {x:?}"));
+            } else {
+                assert_eq!(got, vis(again), "{language} {set} {x:?}");
+            }
+        }
+    }
+    assert!(fixed.is_empty(), "P2 holds now: {}", fixed.join(", "));
+}
+
+#[test]
 fn primary_glyphs_read_as_single_quotes_where_double_quotes_do_not_pair_again() {
     // Design section 12.1: in a window where neither reading of the nested glyphs brings the
     // quotes back, the primary pair inside a nested pair reads as `'` alone (the third level of
