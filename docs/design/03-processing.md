@@ -223,7 +223,7 @@ pub(crate) enum Kind {
     Number,           // a run of ASCII digits
     Space,            // a run of horizontal whitespace: U+0020, U+00A0, U+202F, U+2009, tab, ...
     Newline,          // \n, \r\n, \r, U+0085, U+2028; U+2029 always ends a window and is never a token
-    Format,           // U+00AD, U+200B, U+200E, U+200F, U+202A..U+202E, U+2060..U+2064, U+2066..U+2069, U+FEFF; U+200C and U+200D only in a cluster of ZWNJ and ZWJ only (section 5.4)
+    Format,           // U+00AD, U+200B, U+200E, U+200F, U+202A..U+202E, U+2060..U+2064, U+2066..U+2069, U+061C, U+180E, U+206A..U+206F, U+FFF9..U+FFFB, U+FEFF; U+200C and U+200D only in a cluster of ZWNJ and ZWJ only (section 5.4)
     Quote,            // " ' « » „ “ ” ‘ ’ ‚ ‹ › ′ ″
     Dash,             // a run of '-' (length 1..), U+2010 ‐, U+2011 ‑, U+2012 ‒, – — U+2015 ―, −
     Dots,             // a run of '.' (length 1..), …
@@ -301,17 +301,17 @@ is frozen, it is neither technical nor an operand (section 8.2), and its tokens 
 any wrapper. A fragment with any other token keeps that token in its core: `"-"` has the core `-` (a
 dash fragment, special cases below), and `«{x}»` has the core `{x}`.
 
-The classifier scans the core left to right at most three times (constant work per character) and
-applies the checks strictly in this order; the first check that matches decides. The Kind column
-lists the values of the fragment kind, an engine-private enum `FragKind` with one variant per name
-in that column, plus `Times`, `Sign` and `Punctuation` (special cases below). It is a different type
-from the token `Kind` of section 3.5, although some names coincide (`Number`, `Word`, `Operator`,
-`Times`); "kind" of a fragment or a core below always means `FragKind`:
+The classifier scans the core left to right a constant number of times (linear scans, constant work
+per character) and applies the checks strictly in this order; the first check that matches decides.
+The Kind column lists the values of the fragment kind, an engine-private enum `FragKind` with one
+variant per name in that column, plus `Times`, `Sign` and `Punctuation` (special cases below). It is
+a different type from the token `Kind` of section 3.5, although some names coincide (`Number`,
+`Word`, `Operator`, `Times`); "kind" of a fragment or a core below always means `FragKind`:
 
 | No. | Check on the core                                                                                                                                                                                                                                                                                                                                                                                                                          | Kind                                        | Frozen                                  |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- | --------------------------------------- |
 | 0   | equals an entry of the language's dictionaries: units (also user-added), abbreviation parts, elisions, month forms, atom exceptions (`e.g.`, `i.e.`, `etc.`, `vs.`, `cf.`, `a.m.`, `p.m.`), each compared as section 7.1 says; an entry ending in `.` matches a core that has a stop (`т.е.`, `т.е...`, `т.е…`)                                                                                                                            | `Dictionary`                                | no                                      |
-| 1   | contains `://`, or starts with `www.`                                                                                                                                                                                                                                                                                                                                                                                                      | `Url`                                       | whole core                              |
+| 1   | contains `://`, or starts with `www` and one full stop (`www.foo`; `www..foo` is not a `Url`)                                                                                                                                                                                                                                                                                                                                              | `Url`                                       | whole core                              |
 | 2   | `@` not first and not last; or `@` followed by a letter or digit at the start                                                                                                                                                                                                                                                                                                                                                              | `Email`                                     | whole core                              |
 | 3   | starts with `-` and an ASCII letter, or with `--` and an ASCII letter or digit                                                                                                                                                                                                                                                                                                                                                             | `Flag`                                      | whole core                              |
 | 4   | contains `/` or `\`                                                                                                                                                                                                                                                                                                                                                                                                                        | `Path`                                      | whole core                              |

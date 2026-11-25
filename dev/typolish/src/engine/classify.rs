@@ -770,7 +770,7 @@ fn value(text: &str, unit: &Unit) -> Option<u32> {
     (n > 0 && n <= 9).then_some(v)
 }
 
-/// Check 1: contains `://`, or starts with `www.`.
+/// Check 1: contains `://`, or starts with `www` and one full stop (`www..foo` is no `Url`).
 fn is_url(text: &str, u: &[Unit]) -> bool {
     let scheme = u.windows(3).any(|w| {
         matches!(

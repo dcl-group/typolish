@@ -189,10 +189,10 @@ test decoder (a strict parser of CSS) read as U+FFFD. The encoder writes a raw U
 therefore run on `x` with every U+0000 replaced by U+FFFD; the encoding of U+0000 itself is checked
 by the fixed row `a\u{0}b` → `a\fffd b` of section 13.2. For `Output::Html` the guarantee is about
 the test decoder, which reads the text as the encoder writes it. An HTML parser differs on two
-characters the encoder writes as they are: it drops a U+0000 in element content (U+FFFD in an
-attribute value) and reads CR and CR LF as LF. The text carries what the input had; nothing else is
-lost. Both are property tests with decoders written as test helpers (section 13.5), for every kind
-including the nowrap styles: the decoder turns an element back into its content, reads an ordinary
-space inside it as U+00A0 and every reference as its character. Encoded output fed back as input is
-plain text with literal ampersands and backslashes, and is encoded again; this is documented, not a
-defect.
+characters the encoder writes as they are: it drops a U+0000 in element content (U+FFFD in foreign
+content and in an attribute value) and reads CR and CR LF as LF. The text carries what the input
+had; nothing else is lost. Both are property tests with decoders written as test helpers (section
+13.5), for every kind including the nowrap styles: the decoder turns an element back into its
+content, reads an ordinary space inside it as U+00A0 and every reference as its character. Encoded
+output fed back as input is plain text with literal ampersands and backslashes, and is encoded
+again; this is documented, not a defect.

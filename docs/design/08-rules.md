@@ -380,8 +380,10 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   `Next` or `NextCapitalized` entry directly after a number, a range, a `YearMonth` core, a date
   core (section 8.2) or a `Number` or `Date` slot does not bind forward: it is a unit or a year with
   a sentence full stop (`5 ч. Потом`, `5–10 ч. Потом`, `2026 г. Затем`, `1990–2000 г. Затем`,
-  `21.11.2026 г. Затем`, `21.11.26 г. Затем`, `{d} г. Затем`). A label number or label range and a
-  percentage do not count here (section 8.2). A label number is not a number here:
+  `21.11.2026 г. Затем`, `21.11.26 г. Затем`, `{d} г. Затем`). The words that open a range (`стр.`,
+  `vol.`, `p.`) are `Next` entries too, so after a number they do not bind forward either:
+  `том 2 стр. 5` stays as written and `vol. 2 p. 5` gives `vol.⍽2 p. 5`. A label number or label
+  range and a percentage do not count here (section 8.2). A label number is not a number here:
   `Школа №5 г. Москвы` → `Школа №⍽5 г.⍽Москвы`, `§5 ч. 2` → `§⍽5 ч.⍽2`. With `narrow_glue` for
   abbreviations, `Narrow` goes only to the spaces between the parts of an entry (`т.⎵д.`); the space
   after a leading word (`и⍽т.`) and the forward glue of `Next` entries are always `NoBreak`. The
@@ -421,7 +423,10 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   range, a `YearMonth` core, a date core (section 8.2; the core stays frozen, only the space after
   it is glued) or a `Number`/`Date` slot before a year word ending in `.` (`2026⍽г.`,
   `1990–2000⍽гг.`, `2010-11⍽гг.`, `21.11.2026⍽г.`, `21.11.26⍽г.`); a Roman numeral, a number or a
-  range of them before a century word ending in `.` (`XIX⍽в.`, `XIX–XX⍽вв.`). Labels and percentages
+  range of them before a century word ending in `.` (`XIX⍽в.`, `XIX–XX⍽вв.`). A year or century word
+  without a full stop (`года`, `году`, `века`) is not glued to its number: the full stop is what
+  marks an abbreviation that is written after its number, and such words serve `range.context` only
+  (`с⍽1998 года.`: the glue before the number belongs to the short word `с`). Labels and percentages
   are not numbers here (section 8.2).
 - **`nbsp.units`.** A number (not a label or a percentage), a `Number` slot or a range, one space,
   then a unit of the list (longest match, case-sensitive, followed by a non-letter and non-digit) →
