@@ -726,7 +726,8 @@ fn design_references_say_design() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// CHANGELOG (design sections 15.2 and 15.4: a prepared 0.1.1 entry).
+// CHANGELOG (design sections 15.2 and 15.4: a prepared entry of the version of `Cargo.toml` first,
+// and the 0.1.1 entry, the first one, naming every rule).
 
 fn changelog_entry(text: &str, version: &str) -> String {
     let mut out = String::new();
@@ -757,33 +758,31 @@ fn changelog_has_the_prepared_entry() {
     assert!(text.contains("keepachangelog.com"));
     assert!(text.contains("semver.org"));
     let headings: Vec<&str> = text.lines().filter(|l| l.starts_with("## ")).collect();
-    assert_eq!(
-        headings[0], "## Unreleased",
-        "the first entry is Unreleased"
-    );
     let version = env!("CARGO_PKG_VERSION");
-    assert_eq!(version, "0.1.1");
-    assert!(
-        headings[1].starts_with(&format!("## {version}")),
-        "the second entry is the version of Cargo.toml: {}",
-        headings[1]
+    assert_eq!(version, "0.1.2");
+    assert_eq!(
+        headings.first().copied(),
+        Some(format!("## {version} - unreleased").as_str()),
+        "the first entry is the version of Cargo.toml, prepared and not released"
     );
-    let entry = changelog_entry(&text, version);
-    assert!(entry.contains("### Added"));
-    assert!(
-        entry.contains("1.100"),
-        "the entry names the minimum Rust version"
+    assert_eq!(
+        headings.get(1).copied(),
+        Some("## 0.1.1 - unreleased"),
+        "the second entry is the first version"
     );
-    assert!(
-        entry.contains("not published") || entry.contains("unreleased"),
-        "a prepared entry says that nothing is published yet"
-    );
-    assert!(
-        !headings
-            .iter()
-            .any(|h| h.contains("-rc") || h.contains("yanked")),
-        "no other versions before 0.1.1"
-    );
+    assert_eq!(headings.len(), 2, "no other versions: {headings:?}");
+    for v in [version, "0.1.1"] {
+        let entry = changelog_entry(&text, v);
+        assert!(entry.contains("### Added"), "the {v} entry has Added");
+        assert!(
+            entry.contains("1.100"),
+            "the {v} entry names the minimum Rust version"
+        );
+        assert!(
+            entry.contains("not published"),
+            "a prepared entry says that nothing is published yet"
+        );
+    }
 }
 
 #[test]
@@ -791,7 +790,8 @@ fn changelog_names_every_rule_and_its_counts() {
     let Some(text) = changelog() else {
         return;
     };
-    let entry = changelog_entry(&text, env!("CARGO_PKG_VERSION"));
+    // The first version introduces every rule; later entries list only what changed.
+    let entry = changelog_entry(&text, "0.1.1");
     for rule in Rule::ALL {
         assert!(
             entry.contains(&format!("`{}`", rule.id())),

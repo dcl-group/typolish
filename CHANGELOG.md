@@ -4,11 +4,11 @@ All notable changes to this crate are recorded in this file. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the crate follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) as Cargo applies it.
 
-## Unreleased
+## 0.1.2 - unreleased
 
-These entries are for version 0.1.2; the heading takes the version when the release sets it in
-`Cargo.toml`. Each change of the output gives an input, the output of 0.1.1 and the output now (`⍽`
-stands for U+00A0).
+A patch release, prepared and not published; the date is set when the version is tagged. It holds
+everything since 0.1.1. Each change of the output gives an input, the output of 0.1.1 and the output
+now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
 
 ### Added
 

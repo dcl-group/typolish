@@ -99,7 +99,7 @@ print_stdout = "deny"
 print_stderr = "deny"
 ```
 
-`dev/typolish/Cargo.toml`: `name = "typolish"`, `version = "0.1.1"`, a one-line description,
+`dev/typolish/Cargo.toml`: `name = "typolish"`, `version = "0.1.2"`, a one-line description,
 `readme = "README.md"`, `keywords = ["typography", "typesetting", "quotes", "nbsp", "i18n"]`,
 `categories = ["text-processing", "internationalization"]` (both slugs exist on crates.io, checked
 on 2026-11-21), workspace inheritance for edition, rust-version, license and repository,
