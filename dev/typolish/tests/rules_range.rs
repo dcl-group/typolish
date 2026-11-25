@@ -588,8 +588,20 @@ fn ranges_in_the_full_sets() {
             "Приём 10:00–12:30",
             "Приём 10:00-12:30",
         ),
+        // A label range: `range.digits` (Prose) and `nbsp.signs` and `nbsp.abbreviations` (both
+        // sets) together.
+        ("§§ 5-7 г. Москвы", "§§⍽5–7 г.⍽Москвы", "§§⍽5-7 г.⍽Москвы"),
+        ("№ 5-7", "№⍽5–7", "№⍽5-7"),
+        ("§§ 5-7", "§§⍽5–7", "§§⍽5-7"),
     ];
     for (input, prose_out, ui_out) in rows {
+        common::check_exact("Prose", &p, (input, prose_out));
+        common::check_exact("Interface", &ui, (input, ui_out));
+    }
+    let p = prose(Language::EN_US);
+    let ui = interface(Language::EN_US);
+    for (input, prose_out, ui_out) in [("§§ 5-7", "§§⍽5–7", "§§⍽5-7"), ("№ 5-7", "№⍽5–7", "№⍽5-7")]
+    {
         common::check_exact("Prose", &p, (input, prose_out));
         common::check_exact("Interface", &ui, (input, ui_out));
     }

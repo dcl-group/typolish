@@ -147,7 +147,9 @@ gives the output of the whole set.
   `№ 5%` → `№⍽5⍽%` (`Spaced`, ru `Language`), en `№ 5 %` → `№⍽5%` (`Language`), `№5%` and `§5%`
   unchanged in every setting, `№5 % - норма` → `№⍽5⍽%⍽— норма`, and `№5 %` → `№5⍽%` without
   `nbsp.signs`; ru `1990–2000 г. Затем`, `2010-11 г. Затем`, `5–10 ч. Потом` → no glue after `г.` or
-  `ч.`, while `§§ 5-7 г. Москвы` → `г.⍽Москвы` (a label range); ru `21.11.2026 г.` →
+  `ч.`, while `§§ 5-7 г. Москвы` glues `г.⍽Москвы` (a label range; with `nbsp.abbreviations` alone,
+  and in Prose in full `§§⍽5–7 г.⍽Москвы`, pinned in `ranges_in_the_full_sets` of
+  `tests/rules_range.rs` with `№ 5-7` → `№⍽5–7` and en `§§ 5-7` → `§§⍽5–7`); ru `21.11.2026 г.` →
   `21.11.2026⍽г.`; ru `Договор от 21.11.2026 г. Затем` → no glue after `г.`, and
   `report().protected()` lists `Technical(Version)` for the date; ru `21.11.26 г.` → `21.11.26⍽г.`;
   ru `Договор от 21.11.26 г. Затем` → no glue after `г.`; ru `0.2.27 г.` → unchanged (not a date
