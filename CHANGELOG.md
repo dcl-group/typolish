@@ -68,7 +68,11 @@ stands for U+00A0).
   `"S' 'dogs" -the` and `TypographicChar`, now `"S’ 'dogs" -the` and no report). Where nothing could
   pair with the opener, the possessive is placed as before (`"a "dogs' 'x" b"` gives
   `“a⍽‘dogs’ 'x’ b”`, en-GB `"s' 'x"` gives `‘s’ 'x’`), and with only text between the possessive
-  and the closer nothing changes (`“He said ‘the⍽dogs’ bowls’”`).
+  and the closer nothing changes (`“He said ‘the⍽dogs’ bowls’”`). Typed input is not a fixed point
+  in every case since this change: a possessive kept straight because the closer of its typed pair
+  follows `s` is placed by a second pass when a possessive placed inside the same pair closes it
+  early. English, Prose and Interface: `‘S' ‘s'’ s’` gives `‘S' ‘s’’ s’`, then `‘S’ ‘s’’ s’`, which
+  0.1.1 gave at once; listed in design section 10.8.
 
 - A typed `’` closes the `‘` of its pair when only signs, or nothing, stand between them and the
   neighbors allow the sign-only pair (design section 6.3), as the plain `""` that a first pass

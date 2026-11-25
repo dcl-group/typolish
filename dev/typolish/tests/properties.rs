@@ -22,7 +22,10 @@ use std::borrow::Cow;
 
 use common::decode::{TYPOGRAPHIC, all_outputs, check_safe_alphabet, decode};
 use common::show;
-use common::strategies::{GenPiece, any_text, borrow, pieces, risky_text, rule_set};
+use common::strategies::{
+    GRAMMAR_LANGUAGES, GenPiece, GrammarConfig, any_text, borrow, grammar_known_limit, pieces,
+    risky_text, rule_set, run_grammar,
+};
 use proptest::prelude::*;
 use typolish::{
     Change, DashStyle, Diagnostic, DiagnosticKind, EscapeStyle, HtmlStyle, Language,
@@ -2088,4 +2091,170 @@ proptest! {
         let t = typographer(lang, set, 0, 0);
         assert_lint_template_is_well_formed(&t, &parts)?;
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The structured grammar (design section 13.5, properties 1 to 3)
+// ---------------------------------------------------------------------------------------------
+
+/// The seed of the default run of the grammar properties; the language index is added to it.
+const GRAMMAR_SEED: u64 = 0x7970_6f6c_6973_6801;
+/// The seed of the long run.
+const GRAMMAR_SEED_LONG: u64 = 0x7970_6f6c_6973_6802;
+
+/// Whether a change inserts or removes a space: a split or a merge of design section 4.3 (I2),
+/// after which the fragments of the two passes may differ.
+fn structural(report: &Report<'_>, change: &Change) -> bool {
+    let spaces = |s: &str| {
+        s.chars()
+            .filter(|c| matches!(c, ' ' | '\u{a0}' | '\u{202f}'))
+            .count()
+    };
+    spaces(report.original(change)) != spaces(change.replacement())
+}
+
+/// Idempotence (1), the fixed point (2) and the invariants I1 to I5 (3) of design section 13.5 for
+/// one sentence of the grammar, as far as the public API shows them: the second pass changes
+/// nothing; a change that is no symbol or times rule inserts a space or glue, removes one space, or
+/// replaces no letter and no digit (I1); the kinds of the protected spans of both passes are equal
+/// where no change inserted or removed a space (I2); every change starts from a plain form (I3);
+/// the report of the second pass holds no change (I4); and a window without a line break that does
+/// not converge changes no straight `"` and a straight `'` only into `’` or `′` (I5). A sentence of
+/// a known limit is skipped (`grammar_known_limit`).
+fn grammar_properties(config: &GrammarConfig, text: &str) -> Result<(), TestCaseError> {
+    if grammar_known_limit(config.lang, text).is_some() {
+        return Ok(());
+    }
+    let t = config.typographer();
+    let report = t.report(text, Output::Unicode);
+    let once = report.result().to_string();
+    let second = t.report(&once, Output::Unicode);
+    prop_assert!(
+        second.result() == &once && second.changes().is_empty(),
+        "idempotence and I4: {:?}\nfirst pass:\n{}\nsecond pass:\n{}",
+        text,
+        report,
+        second
+    );
+    let mut split = false;
+    for change in report.changes() {
+        let original = report.original(change);
+        let replacement = change.replacement();
+        let rule = change.rule();
+        split |= structural(&report, change);
+        if !rule.id().starts_with("symbols.") && rule != Rule::NumberTimes {
+            let kept = if original.is_empty() {
+                is_glue_or_space(replacement)
+            } else if replacement.is_empty() {
+                original == " "
+            } else {
+                !original.chars().any(char::is_alphanumeric)
+                    && !replacement.chars().any(char::is_alphanumeric)
+            };
+            prop_assert!(
+                kept,
+                "I1: {rule:?} {original:?} -> {replacement:?} in {text:?}"
+            );
+        }
+        for c in original.chars() {
+            prop_assert!(
+                !TYPOGRAPHIC.contains(&c) && (c.is_ascii() || matches!(c, 'с' | 'С' | 'х' | 'Х')),
+                "I3: {rule:?} changed {original:?} in {text:?}"
+            );
+        }
+    }
+    if !split {
+        prop_assert_eq!(
+            kinds(&report),
+            kinds(&second),
+            "I2: {:?} -> {:?}",
+            text,
+            once
+        );
+    }
+    let blocked = report.diagnostics().iter().any(|d| {
+        (d.kind() == &DiagnosticKind::UnmatchedQuote && d.severity() == Severity::Warning)
+            || d.kind() == &DiagnosticKind::CrossingQuotes
+    });
+    if blocked && !text.contains(['\n', '\r', '\u{85}', '\u{2028}', '\u{2029}']) {
+        for change in report.changes() {
+            let original = report.original(change);
+            prop_assert!(
+                original != "\"" && (original != "'" || matches!(change.replacement(), "’" | "′")),
+                "I5: {:?} changed {:?} in {:?} -> {:?}",
+                change.rule(),
+                original,
+                text,
+                once
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn grammar_properties_hold() {
+    // Design section 13.5: properties 1 to 3 over the structured grammar, in `ru-RU`, `en-US`,
+    // `COMMON` and the two declared languages of `grammar_language`, with fixed seeds.
+    for lang in 0..GRAMMAR_LANGUAGES {
+        run_grammar(lang, 512, GRAMMAR_SEED + lang as u64, grammar_properties);
+    }
+}
+
+#[test]
+#[ignore = "long run of design section 13.5, properties 1 to 3 over the grammar"]
+fn grammar_properties_hold_long() {
+    std::thread::scope(|scope| {
+        for lang in 0..GRAMMAR_LANGUAGES {
+            scope.spawn(move || {
+                run_grammar(
+                    lang,
+                    1_000_000,
+                    GRAMMAR_SEED_LONG + lang as u64,
+                    grammar_properties,
+                );
+            });
+        }
+    });
+}
+
+#[test]
+fn the_grammar_filters_name_their_limits() {
+    // The filters of `grammar_known_limit` match the inputs of their limits (design section 10.8)
+    // and leave the neighbors of those inputs to the properties.
+    for (lang, text, limit) in [
+        (0, "''-''", true),
+        (1, "'('')'", true),
+        (0, "x ''—'' y", true),
+        (0, "\"--\"\"\"", false),
+        (0, "\"\"\"", false),
+        (0, "\"a\" - \"b\"", false),
+        (1, "‘s' \"0\"’", true),
+        (3, "‘S' ‘s'’ s’", true),
+        (0, "‘s' \"0\"’", false),
+        (1, "dogs' ‘a’", false),
+        (1, "x ‘a 'b' \"2\"’ y", true),
+        (1, "\"a '-’ - x' c\"", true),
+        (3, "\"-’ - x\"", true),
+        (1, "\"a '-” - x' c\"", false),
+        (0, "\"a '-’ - x' c\"", false),
+    ] {
+        assert_eq!(
+            grammar_known_limit(lang, text).is_some(),
+            limit,
+            "{lang} {text:?}"
+        );
+    }
+    // A known limit that the filter skips still fails (when it does not, the limit is fixed and its
+    // filter goes, with its entry in design section 10.8).
+    let gb = GrammarConfig {
+        lang: 3,
+        set: RuleSet::PROSE,
+        dash: None,
+        single: SingleQuotes::NestedOnly,
+        percent: PercentSpacing::AsWritten,
+    }
+    .typographer();
+    let once = gb.typeset("‘s' \"0\"’", Output::Unicode).into_owned();
+    assert_ne!(gb.typeset(&once, Output::Unicode), once);
 }

@@ -13,8 +13,8 @@ the limits listed under Languages.
 - 27 rules with stable ids, two ready sets (`PROSE` and `INTERFACE`), and sets of your own.
 - Protection of commands, paths and code: backticks, delimiters of your own, protected pieces, and
   technical fragments the crate recognizes by itself.
-- Deterministic, and idempotent except for the cases of straight quotes listed under Known limits;
-  an unchanged string is returned borrowed and, after the first call on a thread, without allocation
+- Deterministic, and idempotent except for the cases of quotes listed under Known limits; an
+  unchanged string is returned borrowed and, after the first call on a thread, without allocation
   for an input up to about 50 KiB.
 - Explanation of every edit, a check of plain sources, and the reverse transformation.
 - No `unsafe`, no regular expressions, no panics, and nothing read from the environment.
@@ -318,14 +318,30 @@ The rules read the shape of the text, not its meaning. These cases are known and
   gives `«x ''-„“ y»`, and a second pass gives `«x „“-„“ y»`. For the same reason in English
   `"x ''-'' y"` gives `“x ''-‘’ y”`, and its plain form `"x ''-"" y"` gives `“x ‘’-‘’ y”`. This is a
   defect, not a choice.
-- In a declared language whose primary pair is `‘’` (en-GB), a typed `‘` left open before a straight
-  pair around a typed `’` is not idempotent: `‘ "dogs'’" x` gives `‘ ‘dogs'’’ x`, and a second pass
-  gives `‘ ‘dogs’’’ x`. This is a defect, not a choice.
+- A typed `‘` that the first pass leaves open and a second pass pairs lets a trailing possessive
+  through, or pairs a single-quote pair that the first pass left straight, so the output is not
+  idempotent. In a declared language whose primary pair is `‘’` (en-GB) a straight pair around a
+  typed `’` leaves it open: `‘ "dogs'’" x` gives `‘ ‘dogs'’’ x`, and a second pass gives
+  `‘ ‘dogs’’’ x`. In English a straight pair closed after a number does too:
+  `He said ‘the dogs' "5"’` gives `He said ‘the⍽dogs' “5”’`, and a second pass gives
+  `He said ‘the⍽dogs’ “5”’`, and `x ‘a 'b' "2"’ y` gives `x ‘a⍽'b' “2”’ y`, then `x ‘a⍽‘b’ “2”’ y`.
+  This is a defect, not a choice.
+- A straight quote written as `‘` before a sign and a typed `’` is read by a second pass as a
+  sign-only pair, which changes the role of the `’`: in English `"a '-’ - x' c"` gives
+  `“a⍽‘-’ - x’ c”`, and a second pass gives `“a⍽‘-’ — x’ c”`. Version 0.1.1 gave the first result on
+  both passes. This is a defect, not a choice.
+- A trailing possessive placed inside a typed pair that `’` closes is read by a second pass as the
+  closer of that pair, which then closes early; a possessive that the first pass kept straight
+  because of where the old closer stood is placed then: in English `‘S' ‘s'’ s’` gives
+  `‘S' ‘s’’ s’`, and a second pass gives `‘S’ ‘s’’ s’`. Version 0.1.1 gave the second result at
+  once. This is a defect, not a choice.
 - `to_plain` does not always give back a text that typesets to the same result when the quotes are
   tangled: in Russian `"a '(" x' "y'" b"` gives `«a „(" x“ „y'“ b»`, whose plain form
   `"a "(" x" "y'" b"` keeps every quote straight; in English `"'S '5' 3'"` gives `“‘S “5” 3’”`,
-  whose plain form `""S "5" 3""` keeps its quotes straight. The typeset text itself is stable. This
-  is a defect, not a choice.
+  whose plain form `""S "5" 3""` keeps its quotes straight; in a declared language whose primary
+  pair is `‘’` (en-GB), with `SingleQuotes::Never`, `"dogs' - 'tis"` gives `‘dogs’ - ’tis’`, whose
+  plain form `"dogs" - 'tis'` gives the same quotes and a dash, `‘dogs’ — ’tis’`. The typeset text
+  itself is stable. This is a defect, not a choice.
 - A quoted value with a space glued to `=` is cut by the space: `title="My` is frozen, the quote
   after `App` closes nothing, and `Set title="My App" for the "main" window.` keeps every quote of
   the paragraph straight with an `UnmatchedQuote` warning. Protect such a notation with backticks.

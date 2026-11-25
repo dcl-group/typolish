@@ -27,6 +27,12 @@ generator over quotes, signs and short words in `en-US`, `ru-RU` and a declared 
 primary pair is `‘’`, all three `SingleQuotes` modes. The case is listed in design section 10.8 and
 in the README.
 
+The structured grammar of design section 13.5 finds the class in every language it runs, also with a
+dash or a parenthesis as the sign: Russian `''—''` (`''—«»`, then `«»—«»`), English and en-GB
+`'('')'` with `SingleQuotes::Everywhere` (`'('“)”`, then `“(”“)”`). The properties over the grammar
+skip every input with such a chain (`grammar_known_limit` in `tests/common/strategies.rs`); that
+filter goes with this task.
+
 ## Analysis so far
 
 Reading the chain greedily from the left (a quote that closes a sign-only pair opens none) makes the
@@ -46,4 +52,4 @@ the corpus and on the tables of `tests/` stays the same and `local_role` stays l
 - The inputs above are in `SEEDS` of `tests/properties.rs` and the P2 rows run in a test.
 - The limit is removed from design section 10.8, from the README (both the known limit and the
   exception in the feature list, if no other remains), from `limits()` of `tests/documentation.rs`
-  and from the exception of P2 in design section 12.2.
+  and from the exception of P2 in design section 12.2, and its filter from `grammar_known_limit`.

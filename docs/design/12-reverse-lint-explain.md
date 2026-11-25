@@ -144,8 +144,8 @@ decoders, section 13.5).
 
 ### 12.2 Round trip
 
-Two properties and one table, for both languages and the rule sets of section 13.5 (property "Round
-trip"):
+Two properties and one table, for both languages and the declared languages of the test setup and
+the rule sets of section 13.5 (property "Round trip"):
 
 - **P1**: `to_plain(typeset(x)) == x` for every `x` in the canonical plain form (section 12.1) for
   the settings under test, except the pattern of `NestedPossessive` (two `s'` or `S'` at the same
@@ -154,13 +154,15 @@ trip"):
   below included, except the defects listed in section 10.8: sign-only pairs that share a quote, a
   neutral `‘` before a straight pair in a language whose primary pair is `‘’`, and windows where no
   reading of the quotes that `to_plain` tries brings them back (a straight `"` without a role inside
-  a pair, a weak quote after a digit that closes a pair).
+  a pair, a weak quote after a digit that closes a pair, a reading that brings the quotes back but
+  not a dash that reads them).
 
 There is no external corpus (decided by the maintainer on 2026-11-21); stage reports say that the
 corpus is the project's own. P1 runs on a generator of canonical strings and on the corpus files of
 section 13.7: `prose.txt` and `ui.tmpl` with both sets, `tech.txt` with Interface only (Prose turns
-a lone `--` between words into `—`, section 10.5). P2 runs on a generator of any plain strings and
-on every corpus file with both sets.
+a lone `--` between words into `—`, section 10.5). P2 runs on a generator of any plain strings, on
+the plain forms of the sentences of the structured grammar of section 13.5 in `ru-RU`, `en-US`,
+`COMMON` and two declared languages, and on every corpus file with both sets.
 
 Known losses are rows of `tests/corpus/roundtrip-known.tsv` with the columns language, settings,
 input, `typeset`, `to_plain` and code. The test checks each row: `typeset(input)` and `to_plain` of

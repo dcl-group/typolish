@@ -369,11 +369,38 @@ included), U+007F, U+0085, U+2028, U+2029, characters above the BMP, and a typog
 followed by a hex digit); strings from the corpus with insertions; and arbitrary Unicode strings for
 the no-panic test.
 
+A structured grammar (`grammar` in `tests/common/strategies.rs`) builds sentences instead of joining
+fragments: words of the language (compound words and words with an apostrophe among them), short
+words and particles, abbreviations compact and with spaces (`т. е.`, `и т.д.`, `St.`, `p.m.`),
+numbers with units after them, with a space or attached, labels (`№5`, `§V`), technical fragments,
+dashes in every form (a spaced `-`, a spaced `--`, an attached `-`, a spaced `–`, an attached `—`, a
+spaced `—`, and a dialogue dash at a line start), parentheses, ellipses, sentence ends, line breaks,
+stray quotes, and quotes of every glyph, straight, typed and mixed, nested with the parentheses up
+to a depth of four. Its configuration (`grammar_config`) varies the rule set (Prose, Interface,
+`ALL`), the dash style (the language's own, `Spaced`, `SpacedGlued`, `Closed`), the `SingleQuotes`
+mode and the percent setting, in five languages (`grammar_language`): `ru-RU`, `en-US`, `COMMON`
+with the words of both, and two languages declared with `LanguageBuilder`, `en-GB` (primary pair
+`‘’`, nested `“”`) and `xx` (Russian data, `«»` with `‹›` nested, the closed style, the ellipsis
+forms `?…`, `!…`, `?!…`). The runs are deterministic: a fixed seed per language, no clock and no
+file of failures (`run_grammar`). Properties 1 to 3 (`grammar_properties_hold` in
+`tests/properties.rs`: idempotence, the second pass without a change, and I1 to I5 as the public API
+shows them) and P2 (`p2_over_the_grammar` in `tests/roundtrip.rs`, on the plain form of each
+sentence, `to_plain` of it, where that holds no typographic character, with P1 on the plain form of
+the output) run 512 sentences per language in a normal run and 1 000 000 per language in the
+`#[ignore]` tests `grammar_properties_hold_long` and `p2_over_the_grammar_long`. A sentence that
+falls under a known limit of section 10.8 is skipped by a filter that names the limit
+(`grammar_known_limit`: two straight quotes that close and open sign-only pairs around one quote; in
+`en-US` and `en-GB`, a typed `‘` before a straight `'`, and a straight quote before signs, or
+nothing, and a typed `’`), and a P2 failure whose plain form differs from the input only in which
+straight quotes it holds is the `to_plain` limit; `the_grammar_filters_name_their_limits` checks the
+filters, and each goes with its limit.
+
 1. **Idempotence**: `f(f(x)) == f(x)` for {ru, en, COMMON} × {Prose, Interface, all, random subsets}
-   × the three `SingleQuotes` modes, with fixed seeds for every split and merge of invariant I2
-   (every case that section 4.3 lists under I2, among them `details - a - т.е.sk` and
-   `5 - x - Moscow`; `5'10"`, `90's`, `'90s`, `'tis`, `""`, `"""`, `key=""`, `"He said 'hi'"`,
-   `"a 'b c" 5'`, `"/etc/"`, `Токен "SGVsbG8gd29ybGQ=" и "имя".`,
+   × the three `SingleQuotes` modes, and over the structured grammar for its five languages, two of
+   them declared, × {Prose, Interface, all} × every dash style, with fixed seeds for every split and
+   merge of invariant I2 (every case that section 4.3 lists under I2, among them
+   `details - a - т.е.sk` and `5 - x - Moscow`; `5'10"`, `90's`, `'90s`, `'tis`, `""`, `"""`,
+   `key=""`, `"He said 'hi'"`, `"a 'b c" 5'`, `"/etc/"`, `Токен "SGVsbG8gd29ybGQ=" и "имя".`,
    `‘Note: 'beta' builds of the developers' tools`, `‚Wort‘` with a `LanguageBuilder` language whose
    pairs are `„“` and `‚‘`; the sign-only pair next to a dash, `Слово - "" да`, `"" - 5`, `- "" да`;
    the rule of three, `"--"""` and `''''- a' b'`; and a neutral typed closer inside a new pair of
@@ -437,7 +464,8 @@ the no-panic test.
     settings under test, percentages included, without the `NestedPossessive` pattern) and on the
     corpus as section 12.2 says; P2 on generated plain strings and on the corpus; the table test of
     `roundtrip-known.tsv` (section 12.2). Generated strings run for {ru, en} × {Prose, Interface,
-    each rule alone, random subsets}; the corpus runs with Prose and Interface only.
+    each rule alone, random subsets}; the corpus runs with Prose and Interface only; P2 also runs on
+    the plain forms of the structured grammar in its five languages with Prose, Interface and `ALL`.
 14. **No panic** on arbitrary strings and arbitrary pieces, including lone combining marks, control
     characters and noncharacters: 10 000 cases in a normal run, 1 000 000 in an `#[ignore]` test.
 15. **lint matches to_plain**: `lint(x)` contains a `TypographicChar` exactly when

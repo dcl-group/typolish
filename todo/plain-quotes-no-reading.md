@@ -28,6 +28,19 @@ them only with `SingleQuotes::Everywhere`. It is listed in design section 10.8, 
 `windows_whose_plain_form_does_not_typeset_back_are_listed` in `tests/roundtrip.rs` pins the first
 two rows.
 
+The structured grammar of design section 13.5 found a third form, also older than 0.1.2: a reading
+that brings the quotes back but not a rule that reads them. In a declared language whose primary
+pair is `‘’` (en-GB), Prose and Interface, `SingleQuotes::Never`:
+
+| Input            | Typeset          | `to_plain`       | Typeset again    |
+| ---------------- | ---------------- | ---------------- | ---------------- |
+| `"dogs' - 'tis"` | `‘dogs’ - ’tis’` | `"dogs" - 'tis'` | `‘dogs’ — ’tis’` |
+
+`to_plain` reads the first `’` after `s` as the closer, since the closer follows `s` too (design
+section 12.1); the quotes come back, and the dash between them is placed. P2 over the grammar skips
+a failure whose plain form differs from the input only in which straight quotes it holds
+(`quotes_read_differently` in `tests/roundtrip.rs`); that filter goes with this task.
+
 ## Analysis so far
 
 Adding the tries "nested and deep glyphs as `'`" and "nested, primary and deep glyphs as `'`" to
@@ -44,4 +57,5 @@ P2 holds on these inputs, with `to_plain` linear in the length of the text, and 
 
 - The rows above run as P2 tests in `tests/roundtrip.rs`.
 - The limit is removed from design section 10.8, the README, `limits()` of `tests/documentation.rs`
-  and the exception of P2 in design section 12.2.
+  and the exception of P2 in design section 12.2, and the filter `quotes_read_differently` from
+  `p2_over_the_grammar` in `tests/roundtrip.rs`.

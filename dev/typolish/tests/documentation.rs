@@ -911,6 +911,21 @@ fn limits() -> Vec<Limit> {
         // Sign-only pairs that share a quote: a defect, not idempotent.
         limit(RU, Both, "\"x ''-'' y\"", "«x ''-„“ y»"),
         limit(EN, Both, "\"x ''-'' y\"", "“x ''-‘’ y”"),
+        // A typed `‘` that the first pass leaves neutral and a second pass pairs: a defect, not
+        // idempotent.
+        limit(
+            EN,
+            Both,
+            "He said ‘the dogs' \"5\"’",
+            "He said ‘the⍽dogs' “5”’",
+        ),
+        limit(EN, Both, "x ‘a 'b' \"2\"’ y", "x ‘a⍽'b' “2”’ y"),
+        // A new `‘` before a sign and a typed `’` is a sign-only pair on a second pass: a defect,
+        // not idempotent.
+        limit(EN, Both, "\"a '-’ - x' c\"", "“a⍽‘-’ - x’ c”"),
+        // A possessive placed inside a typed pair closes it early on a second pass: a defect, not
+        // idempotent.
+        limit(EN, Both, "‘S' ‘s'’ s’", "‘S' ‘s’’ s’"),
         // Windows whose plain form does not typeset back: a defect of `to_plain`, P2 fails.
         limit(RU, Both, "\"a '(\" x' \"y'\" b\"", "«a „(\" x“ „y'“ b»"),
         limit(EN, Both, "\"'S '5' 3'\"", "“‘S “5” 3’”"),

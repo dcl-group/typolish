@@ -23,6 +23,28 @@ The case is older than 0.1.2 (the output of 0.1.1 is the same). In en-US, whose 
 the same input inside a straight `"` pair is a fixed point. Found by a random generator over typed
 and straight quotes after the fixes of 0.1.2; listed in design section 10.8 and the README.
 
+The structured grammar of design section 13.5 found two more causes of the neutral `‘`. In English
+(en-US and en-GB) a straight `"` opener whose closer is a weak quote after a digit (design section
+6.5) stands above the `‘` when its typed `’` comes; pass 1 ignores weak quotes, so the `’` finds the
+`"` entry on top and the `‘` stays neutral. Older than 0.1.2. Prose and Interface:
+
+| Language and mode | Input                     | First pass                | Second pass               |
+| ----------------- | ------------------------- | ------------------------- | ------------------------- |
+| en-US, every mode | `He said ‘the dogs' "5"’` | `He said ‘the⍽dogs' “5”’` | `He said ‘the⍽dogs’ “5”’` |
+| en-US, every mode | `‘s' "0"’`                | `‘s' “0”’`                | `‘s’ “0”’`                |
+| en-US, every mode | `‘"0" S'’`                | `‘“0” S'’`                | `‘“0” S’’`                |
+| en-GB, every mode | `‘"8"’ s'`                | `‘‘8’’ s'`                | `‘‘8’’ s’`                |
+
+The same neutral `‘`, paired on the second pass, also encloses a straight `'` pair that the first
+pass cancelled as a top-level pair (`SingleQuotes::NestedOnly`, design section 6.8), which then
+pairs; section 6.11 states that a re-pairing cannot enclose such a pair. Older than 0.1.2. English,
+Prose and Interface, `NestedOnly`: `x ‘a 'b' "2"’ y` gives `x ‘a⍽'b' “2”’ y`, then
+`x ‘a⍽‘b’ “2”’ y`; en-GB: `‘ '' "2"’` gives `‘ '' ‘2’’`, then `‘ “” ‘2’’`.
+
+The properties over the grammar skip every input with a typed `‘` before a straight `'` in `en-US`
+and `en-GB` (`grammar_known_limit` in `tests/common/strategies.rs`); that filter goes with this task
+and with `todo/quotes-possessive-run.md`.
+
 ## Goal
 
 The first pass is a fixed point on these inputs, while the output of the first pass on the corpus
@@ -30,5 +52,8 @@ and on the tables of `tests/` stays the same.
 
 ## Acceptance
 
-- The inputs above run in an idempotence test with the declared pairs.
-- The limit is removed from design section 10.8 and from the README.
+- The inputs above run in an idempotence test with the declared pairs, and the English rows in
+  `SEEDS` of `tests/properties.rs`.
+- The limit is removed from design section 10.8, the README and `limits()` of
+  `tests/documentation.rs`, and the filter of the typed `‘` from `grammar_known_limit` once
+  `todo/quotes-possessive-run.md` is closed as well.

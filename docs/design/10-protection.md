@@ -259,11 +259,36 @@ expectation):
   chain, pairs the first two quotes (`«x „“-„“ y»`). The same class breaks P2 (section 12.2) in
   English: `"x ''-'' y"` gives `“x ''-‘’ y”`, whose `to_plain` `"x ''-"" y"` is typeset as
   `“x ‘’-‘’ y”`. This is a defect of the quote phase (sections 6.3 and 6.11), not a choice.
-- In a declared language whose primary pair is `‘’` (en-GB), a typed `‘` that stays neutral before a
-  straight pair around a typed `’` and a trailing possessive is not idempotent: `‘ "dogs'’" x` gives
-  `‘ ‘dogs'’’ x`, where the neutral `‘` keeps the possessive straight (section 6.6), and a second
-  pass pairs that `‘` with the new `’` and places the possessive (`‘ ‘dogs’’’ x`). This is a defect
-  of the quote phase (sections 6.6 and 6.11), not a choice.
+- A typed `‘` that the first pass leaves neutral and a second pass pairs lets a trailing possessive
+  through, or a straight `'` pair that the first pass cancelled, so the output is not idempotent:
+  the neutral `‘` keeps the possessive straight (section 6.6), and the second pass pairs the `‘` and
+  places the possessive. In a declared language whose primary pair is `‘’` (en-GB) a straight pair
+  around a typed `’` covers that `’` on the first pass: `‘ "dogs'’" x` gives `‘ ‘dogs'’’ x`, then
+  `‘ ‘dogs’’’ x`. In English a straight `"` opener whose closer is a weak quote after a digit
+  (section 6.5) covers the typed `’` in pass 1, which ignores weak quotes: `He said ‘the dogs' "5"’`
+  gives `He said ‘the⍽dogs' “5”’`, then `He said ‘the⍽dogs’ “5”’` (also `‘"0" S'’`). Both are older
+  than 0.1.2. The same re-pairing also encloses a straight `'` pair that the first pass cancelled at
+  the top level (`SingleQuotes::NestedOnly`, section 6.8), which then pairs: English
+  `x ‘a 'b' "2"’ y` gives `x ‘a⍽'b' “2”’ y`, then `x ‘a⍽‘b’ “2”’ y` (older than 0.1.2). This is a
+  defect of the quote phase (sections 6.6 and 6.11), not a choice.
+- A straight quote that the first pass writes as `‘` before signs, or nothing, and a typed `’` is a
+  sign-only pair on the second pass (choice C55: a typed `’` closes the `‘` of a sign-only pair),
+  which the first pass did not see, so the second pass reads the quotes and their roles differently.
+  English, Prose and Interface: `"a '-’ - x' c"` gives `“a⍽‘-’ - x’ c”`, then `“a⍽‘-’ — x’ c”` (with
+  `NestedOnly` and `Everywhere`), where the `’` now closes the sign-only pair and the dash rule
+  reads it as a closing quote; en-GB, Prose: `"-’ - x"` gives `‘-’ - x’`, then `‘-’ — x’`; with
+  `SingleQuotes::Everywhere`, `‘'—’ l' s'` gives `‘‘—’ l’ s'`, then `‘‘—’ l’ s’`. Version 0.1.1 gave
+  the first result on both passes; the defect came with C55 in 0.1.2. This is a defect of the quote
+  phase (sections 6.3 and 6.11), not a choice.
+- A trailing possessive placed inside a typed pair that `’` closes lets a second pass close that
+  pair early, and the pairs around it whose closer is `’` with it (the run of section 6.6); a
+  possessive that the first pass kept straight because of where the old closer stood (section 6.6,
+  choice C54: the closer follows `s` and a quote of a pair stands between) then reads another pair
+  and is placed. English, Prose and Interface: `‘S' ‘s'’ s’` gives `‘S' ‘s’’ s’`, then `‘S’ ‘s’’ s’`
+  (every `SingleQuotes` mode); `‘"s'" s' 's’` gives `‘‘s’’ s' 's’`, then `‘‘s’’ s’ 's’`
+  (`NestedOnly` and `Everywhere`). Version 0.1.1 gave the second result in one pass; the defect came
+  with C54 in 0.1.2. The grammar generator of section 13.5 found it only with a typed `‘` in the
+  input. This is a defect of the quote phase (sections 6.6 and 6.11), not a choice.
 - `to_plain` reads the glyphs of a pair as `"`, or as `'` where that does not pair again (section
   12.1); in a window where no reading it tries brings the quotes back, P2 fails (section 12.2),
   although the typeset text is a fixed point. A straight `"` without a role inside a pair turns into
@@ -271,9 +296,13 @@ expectation):
   `«a „(" x“ „y'“ b»`, whose `to_plain` `"a "(" x" "y'" b"` pairs `"("` and keeps every quote of the
   paragraph straight. A weak quote after a digit (section 6.5) that closes a pair reads differently
   when the pair is read as `"`: in English `"'S '5' 3'"` gives `“‘S “5” 3’”`, whose `to_plain`
-  `""S "5" 3""` keeps its quotes straight. Both are older than 0.1.2, in every `SingleQuotes` mode
-  and more often with `SingleQuotes::Everywhere`. This is a defect of `to_plain` (section 12.1), not
-  a choice.
+  `""S "5" 3""` keeps its quotes straight. And a reading that brings the quotes back can miss a rule
+  that reads them: in a declared language whose primary pair is `‘’` (en-GB), with
+  `SingleQuotes::Never`, `"dogs' - 'tis"` gives `‘dogs’ - ’tis’`, and `to_plain` reads the first `’`
+  after `s` as the closer, since the closer follows `s` too (section 12.1); its plain form
+  `"dogs" - 'tis'` gives the same quotes and places the dash: `‘dogs’ — ’tis’`. All three are older
+  than 0.1.2, in every `SingleQuotes` mode and more often with `SingleQuotes::Everywhere`. This is a
+  defect of `to_plain` (section 12.1), not a choice.
 - A quoted value with a space glued to `=` is cut by the space: `title="My` is frozen (`Operator`),
   the quote after `App` closes nothing, and `Set title="My App" for the "main" window.` keeps every
   quote of the paragraph straight with `UnmatchedQuote` (warning, sections 6.1 and 6.6). Protect

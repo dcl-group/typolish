@@ -25,6 +25,8 @@ use common::corpus::{
     FILES, LANGS, SETS, known_rows, messages, read, settings_typographer, split_template,
     template_pieces, text_lines, texts_and_slots, typographer,
 };
+use common::decode::TYPOGRAPHIC;
+use common::strategies::{GRAMMAR_LANGUAGES, GrammarConfig, grammar_known_limit, run_grammar};
 use common::{configs, interface, parse_tmpl, prose, show, vis, without_rule};
 use proptest::prelude::*;
 use typolish::{
@@ -1759,4 +1761,82 @@ fn the_whole_corpus_files_round_trip_too() {
 
 fn first_lines(text: &str) -> String {
     text.lines().take(4).collect::<Vec<_>>().join("\n")
+}
+
+// ---------------------------------------------------------------------------------------------
+// The structured grammar (design sections 12.2 and 13.5)
+// ---------------------------------------------------------------------------------------------
+
+/// The seed of the default run of P2 over the grammar; the language index is added to it.
+const GRAMMAR_SEED: u64 = 0x7970_6f6c_6973_6811;
+/// The seed of the long run.
+const GRAMMAR_SEED_LONG: u64 = 0x7970_6f6c_6973_6812;
+
+/// P2 on the plain form of one sentence of the grammar: the sentence holds typed glyphs, and P2
+/// is stated for plain input (design section 12.2), so the input is `to_plain` of the sentence,
+/// skipped where that still holds a character of the typographic set or falls under a known limit
+/// (`grammar_known_limit`). With P2, `to_plain` of the output is a fixed point of `to_plain`, and
+/// P1 holds for it: `to_plain(typeset(z)) == z` for `z = to_plain(typeset(x))`.
+fn grammar_round_trip(config: &GrammarConfig, text: &str) -> Result<(), TestCaseError> {
+    let t = config.typographer();
+    let x = t.to_plain(text).into_owned();
+    if x.contains(TYPOGRAPHIC) || grammar_known_limit(config.lang, &x).is_some() {
+        return Ok(());
+    }
+    if let Err(error) = p2(&t, &x) {
+        let y = t.typeset(&x, Output::Unicode);
+        if quotes_read_differently(&x, &t.to_plain(&y)) {
+            // The known limit of `to_plain` of design section 10.8: no reading it tries brings the
+            // window back (`todo/plain-quotes-no-reading.md`).
+            return Ok(());
+        }
+        return Err(TestCaseError::fail(error));
+    }
+    let y = t.typeset(&x, Output::Unicode);
+    let z = t.to_plain(&y).into_owned();
+    prop_assert_eq!(
+        t.to_plain(&z),
+        z.as_str(),
+        "to_plain is not stable on {:?}",
+        x
+    );
+    p1(&t, &z).map_err(TestCaseError::fail)?;
+    Ok(())
+}
+
+/// Whether `plain` differs from `x` only in straight quotes that stand where `x` has a straight
+/// quote: `to_plain` read the quotes of a window in another way than the input had them, the
+/// signature of the known limit of design section 10.8 whose windows do not typeset back.
+fn quotes_read_differently(x: &str, plain: &str) -> bool {
+    x != plain
+        && x.chars().count() == plain.chars().count()
+        && x.chars()
+            .zip(plain.chars())
+            .all(|(a, b)| a == b || (matches!(a, '"' | '\'') && matches!(b, '"' | '\'')))
+}
+
+#[test]
+fn p2_over_the_grammar() {
+    // P2 over the structured grammar of design section 13.5, in `ru-RU`, `en-US`, `COMMON` and the
+    // two declared languages of `grammar_language`, with fixed seeds.
+    for lang in 0..GRAMMAR_LANGUAGES {
+        run_grammar(lang, 512, GRAMMAR_SEED + lang as u64, grammar_round_trip);
+    }
+}
+
+#[test]
+#[ignore = "long run of design section 13.5, property 13 over the grammar"]
+fn p2_over_the_grammar_long() {
+    std::thread::scope(|scope| {
+        for lang in 0..GRAMMAR_LANGUAGES {
+            scope.spawn(move || {
+                run_grammar(
+                    lang,
+                    1_000_000,
+                    GRAMMAR_SEED_LONG + lang as u64,
+                    grammar_round_trip,
+                );
+            });
+        }
+    });
 }
