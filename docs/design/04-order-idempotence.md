@@ -123,6 +123,15 @@ agree and that every rule appears once.
   `5–10 %`, `100 % - норма`, `5–10% - норма` and `Рост - 5–10%` under every `PercentSpacing`,
   `100⍽%` under `Attached` and `Language` (en), en Closed `word⍽- word`, `Sign in - it's free`.
 
+  One reading changes without a space. The classifier reads a straight `'` before the first letter
+  of a fragment as a letter of the word (an elision, `'cause`, `'tis`) and a typed opener as no part
+  of the core. Where the quote phase makes such a `'` the opening quote of a pair, the kind of that
+  fragment may differ on f(x): English, `“'cause''”` → `“‘cause’'”` reads `'cause` as a `Dictionary`
+  core and `cause` as a `Word`; with `SingleQuotes::Everywhere`, `'St.’` → `“St.”` reads a `Word`
+  and then the `Dictionary` core `St.`. Its extent, its flags and every other fragment stay. The
+  rules of the first pass read the first kind, and the output is a fixed point: the properties over
+  the grammar (section 13.5) find no second pass that changes such a sentence.
+
 - **I3. Products are not triggers.** A rule changes only plain forms: straight `"` and `'`, `-`,
   `--`, `---`, a run of exactly three full stops, `(c)` `(C)` `(с)` `(С)` `(r)` `(R)` `(tm)` `(TM)`,
   `->` `<-` `<->` `>=` `<=` `!=` `+-`, `x` `X` `х` `Х` between numbers, and a single U+0020. Its
@@ -152,7 +161,15 @@ agree and that every rule appears once.
   (section 15.3, C42); where an inserted space split a fragment, the rules that read the parts match
   them with empty edits. A dash that `dash.double-hyphen` wrote is matched on f(x) by
   `dash.spaced-hyphen` (section 8.4), and by no rule when that rule is off; no edit is lost either
-  way. So on f(x) no rule matches with a non-empty edit.
+  way. Two more dash matches may not recur, and in both the dash on x is written or refused and
+  stays, so no edit is lost and no refusal turns into a match. A dash rule reads a straight `'`
+  after the dash and its space by its local role (`local_role`, section 6.6), an opener; where the
+  quote phase writes it as `’` (an elision with `SingleQuotes::Never`, a quote after a number), the
+  `’` after a space has no role on f(x) and is no part of the core, so no dash rule matches there
+  (English, Prose, `Never`: `S -- 'tis'` → `S — ’tis’`, `I - '10 x 5'` → `I - ’10 × 5′`). And a dash
+  before a label that `nbsp.signs` splits has the sign alone as its right operand on f(x), which is
+  no operand (`word – §5` → `word – §⍽5`, `- №V` → `—⍽№⍽V`). So on f(x) no rule matches with a
+  non-empty edit.
 - **I5. Quotes are all or nothing per window** (section 6.6).
 
 ### 4.4 Proof sketch

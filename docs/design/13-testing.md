@@ -433,6 +433,18 @@ idempotence before the settling as fixed points.
    `dash.double-hyphen` is matched by `dash.spaced-hyphen`, and by no rule when `dash.spaced-hyphen`
    is off, section 8.4, and that a dash match whose operand a removed space merged into a `Joined`
    fragment does not recur, section 4.3), I5 (in a non-converging window no straight quote changed).
+   The full I2 and I4, every fragment with its kind, flags and extent and every match with its rule
+   and `consume`, is the unit test `i2_and_i4` in `src/engine/mod.rs`: over `any_text` and over the
+   structured grammar in its five languages (both forms of each sentence; an `#[ignore]` long run of
+   20 000 sentences per configuration) without the `nbsp.*` rules, and with every rule on the splits
+   and merges of I2. It leaves out what section 4.3 names and nothing else
+   (`the_exemptions_of_i2_and_i4_name_only_their_cases`): a fragment next to a split or a merge,
+   also one that a replacement makes by dropping a space (the percent setting); a match inside such
+   a fragment or a short word or a particle whose trigger word is one; a fragment that starts with a
+   straight `'` that became an opener; and a dash before a straight `'` that became `’`. Over the
+   grammar, `grammar_properties` compares the protected spans of both passes outside the fragments
+   next to a split or a merge (`local_kinds`, with the rows of
+   `i2_over_the_grammar_leaves_out_only_the_fragments_next_to_a_split`).
 4. **Slots and protected spans**: number, order, kinds and payloads of slots are kept;
    `texts().len() == slots().len() + 1`; protected spans and markup are byte for byte in place.
 5. **Technical fragments**: fragments classified as technical in the input, and compound words

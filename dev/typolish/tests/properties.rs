@@ -344,6 +344,19 @@ const SEEDS: &[&str] = &[
     "‘\"s'\" s' 's’",
     "‘S' \"x’\" s’",
     "\"He said \"the boys’ dogs' \"x\" bowls\" were empty.\"",
+    // A straight `'` that pairs before a word, and a dash before one written as `’` (design
+    // section 4.3, I2 and I4).
+    "! s: S -- 'tis'",
+    "'don't S a file rock'n'roll 'cause'",
+    "“'cause''”",
+    "'St.’",
+    "B “” S an U.S. — '10-20?!’",
+    "?-( - rock'n'roll) 1941-1945 km file — '27 % host:8080’",
+    "I - '10 x 5'",
+    "5 - '10 kg'",
+    // A dash before a label that `nbsp.signs` splits.
+    "word – §5",
+    "- №V дом",
 ];
 
 #[test]
@@ -831,9 +844,13 @@ fn no_panic_on_hand_picked_hard_strings() {
 // The invariants of design section 4.3 (properties 3 of design section 13.5), observed through
 // `report`.
 //
-// Before stage 3 the sets run without the `nbsp.*` rules, as the set-level tables do (design
-// section 15.4); stage 3 lifts the filter where the invariant allows it (I2 with a percent sign
-// that a space splits, design section 4.3, keeps it).
+// The properties over `any_text` run the sets without the `nbsp.*` rules, as the set-level tables
+// do (design section 15.4): a glued space is a structural change for I2 only where it is inserted,
+// and a label that `nbsp.signs` splits changes the dash matches next to it (design section 4.3,
+// I4). The grammar (`grammar_properties`) runs every rule and compares I2 outside the fragments
+// next to a split or a merge (`local_kinds`), and the unit test
+// `i2_and_i4_hold_on_the_splits_and_merges_with_every_rule` in `src/engine/mod.rs` runs the splits
+// and merges of I2 with every rule.
 
 /// A rule set without the `nbsp.*` rules.
 fn stage2_set() -> impl Strategy<Value = RuleSet> {
@@ -2207,7 +2224,7 @@ const GRAMMAR_SEED: u64 = 0x7970_6f6c_6973_6801;
 const GRAMMAR_SEED_LONG: u64 = 0x7970_6f6c_6973_6802;
 
 /// Whether a change inserts or removes a space: a split or a merge of design section 4.3 (I2),
-/// after which the fragments of the two passes may differ.
+/// after which the fragments next to it may differ between the passes.
 fn structural(report: &Report<'_>, change: &Change) -> bool {
     let spaces = |s: &str| {
         s.chars()
@@ -2217,11 +2234,84 @@ fn structural(report: &Report<'_>, change: &Change) -> bool {
     spaces(report.original(change)) != spaces(change.replacement())
 }
 
+/// Where the byte `p` of the input of `report` lies in its result: `end` maps the exclusive end of
+/// a range, so a change that starts there is after it.
+fn map_position(report: &Report<'_>, p: usize, end: bool) -> usize {
+    let mut at = p;
+    for change in report.changes() {
+        let r = change.range();
+        if r.end < p || (r.end == p && (!end || r.start < r.end)) {
+            at = at + change.replacement().len() - r.len();
+        }
+    }
+    at
+}
+
+/// The byte ranges of the result of `report` around its structural changes (`structural`): each
+/// change widened to the fragments on both sides of it, up to the nearest whitespace of the
+/// input, as closed intervals.
+fn structural_zones(report: &Report<'_>, text: &str) -> Vec<(usize, usize)> {
+    let space = |c: char| c.is_whitespace();
+    report
+        .changes()
+        .iter()
+        .filter(|c| structural(report, c))
+        .map(|c| {
+            let r = c.range();
+            let before = text.get(..r.start).unwrap_or("");
+            let start = before
+                .trim_end_matches(space)
+                .rfind(space)
+                .map_or(0, |i| i + 1);
+            let after = text.get(r.end..).unwrap_or("");
+            let rest = after.trim_start_matches(space);
+            let skipped = after.len() - rest.len();
+            let end = r.end + skipped + rest.find(space).unwrap_or(rest.len());
+            (
+                map_position(report, start, false),
+                map_position(report, end, true),
+            )
+        })
+        .collect()
+}
+
+/// A protected span by its kind and its byte range.
+type Span = (ProtectedKind, usize, usize);
+
+/// The protected spans of the first pass, mapped into its result, and those of the second pass,
+/// each with its kind, leaving out the spans that touch a structural zone (`structural_zones`):
+/// I2 of design section 4.3 holds them equal outside the splits and merges.
+fn local_kinds(first: &Report<'_>, second: &Report<'_>, text: &str) -> (Vec<Span>, Vec<Span>) {
+    let zones = structural_zones(first, text);
+    let free = |s: usize, e: usize| !zones.iter().any(|&(zs, ze)| s <= ze && zs <= e);
+    let before = first
+        .protected()
+        .iter()
+        .map(|p| {
+            let r = p.range();
+            (
+                p.kind(),
+                map_position(first, r.start, false),
+                map_position(first, r.end, true),
+            )
+        })
+        .filter(|&(_, s, e)| free(s, e))
+        .collect();
+    let after = second
+        .protected()
+        .iter()
+        .map(|p| (p.kind(), p.range().start, p.range().end))
+        .filter(|&(_, s, e)| free(s, e))
+        .collect();
+    (before, after)
+}
+
 /// Idempotence (1), the fixed point (2) and the invariants I1 to I5 (3) of design section 13.5 for
 /// one sentence of the grammar, as far as the public API shows them: the second pass changes
 /// nothing; a change that is no symbol or times rule inserts a space or glue, removes one space, or
-/// replaces no letter and no digit (I1); the kinds of the protected spans of both passes are equal
-/// where no change inserted or removed a space (I2); every change starts from a plain form (I3);
+/// replaces no letter and no digit (I1); the protected spans of both passes have the same kinds
+/// and places outside the fragments next to a change that inserted or removed a space (I2,
+/// `local_kinds`); every change starts from a plain form (I3);
 /// the report of the second pass holds no change (I4); and a window without a line break that does
 /// not converge changes no straight `"` and a straight `'` only into `’` or `′` (I5). Every
 /// sentence is checked in full.
@@ -2246,12 +2336,10 @@ fn grammar_properties(config: &GrammarConfig, sentence: &Sentence) -> Result<(),
             second
         );
     }
-    let mut split = false;
     for change in report.changes() {
         let original = report.original(change);
         let replacement = change.replacement();
         let rule = change.rule();
-        split |= structural(&report, change);
         if !rule.id().starts_with("symbols.") && rule != Rule::NumberTimes {
             let kept = if original.is_empty() {
                 is_glue_or_space(replacement)
@@ -2273,15 +2361,8 @@ fn grammar_properties(config: &GrammarConfig, sentence: &Sentence) -> Result<(),
             );
         }
     }
-    if !split {
-        prop_assert_eq!(
-            kinds(&report),
-            kinds(&second),
-            "I2: {:?} -> {:?}",
-            text,
-            once
-        );
-    }
+    let (before, after) = local_kinds(&report, &second, text);
+    prop_assert_eq!(before, after, "I2: {:?} -> {:?}", text, once);
     let blocked = report.diagnostics().iter().any(|d| {
         (d.kind() == &DiagnosticKind::UnmatchedQuote && d.severity() == Severity::Warning)
             || d.kind() == &DiagnosticKind::CrossingQuotes
@@ -2300,6 +2381,91 @@ fn grammar_properties(config: &GrammarConfig, sentence: &Sentence) -> Result<(),
         }
     }
     Ok(())
+}
+
+#[test]
+fn i2_over_the_grammar_leaves_out_only_the_fragments_next_to_a_split() {
+    // `local_kinds` (design sections 4.3, I2, and 13.5) leaves out only the protected spans next
+    // to a change that inserts or removes a space: each zone is the change widened to the
+    // whitespace on both sides, in bytes of the result, and the spans elsewhere are compared.
+    let ru = 0;
+    let en = 1;
+    for (lang, percent, dash, text, zones, compared) in [
+        // An inserted space splits `т.е.`: `т.⍽е.` is bytes 10..18 of the result, and 8..16
+        // after `x=1 и⍽`.
+        (
+            ru,
+            PercentSpacing::AsWritten,
+            None,
+            "host:8080 т.е. так",
+            vec![(10, 18)],
+            1,
+        ),
+        (
+            ru,
+            PercentSpacing::AsWritten,
+            None,
+            "x=1 и т.е. a=b",
+            vec![(8, 16)],
+            2,
+        ),
+        // A removed space merges a percentage: `100%` is 4..8 of the result.
+        (
+            ru,
+            PercentSpacing::Attached,
+            None,
+            "a=b 100 % host:8080",
+            vec![(4, 8)],
+            2,
+        ),
+        (
+            ru,
+            PercentSpacing::Attached,
+            None,
+            "100 % a=b",
+            vec![(0, 4)],
+            1,
+        ),
+        // The closed dash merges `Moscow - the` into `Moscow—the` (12 bytes): two removed
+        // spaces, one zone each, `Moscow—` and `—the`.
+        (
+            en,
+            PercentSpacing::AsWritten,
+            Some(DashStyle::Closed),
+            "Moscow - the capital host:8080",
+            vec![(0, 9), (6, 12)],
+            1,
+        ),
+        // No structural change: every span is compared.
+        (
+            en,
+            PercentSpacing::AsWritten,
+            None,
+            "a=b - host:8080",
+            vec![],
+            2,
+        ),
+    ] {
+        let t = GrammarConfig {
+            lang,
+            set: RuleSet::PROSE,
+            dash,
+            single: SingleQuotes::NestedOnly,
+            percent,
+        }
+        .typographer();
+        let first = t.report(text, Output::Unicode);
+        let once = first.result().to_string();
+        let second = t.report(&once, Output::Unicode);
+        assert_eq!(
+            structural_zones(&first, text),
+            zones,
+            "{text:?} -> {once:?}"
+        );
+        let (before, after) = local_kinds(&first, &second, text);
+        assert_eq!(before, after, "{text:?}");
+        assert_eq!(before.len(), compared, "{text:?} -> {once:?}: {before:?}");
+    }
 }
 
 #[test]

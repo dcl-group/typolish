@@ -476,7 +476,7 @@ mod strategies;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{EscapeStyle, HtmlStyle, Language, Piece, RuleSet, SingleQuotes};
+    use crate::{DashStyle, EscapeStyle, HtmlStyle, Language, Piece, RuleSet, SingleQuotes};
     use proptest::prelude::*;
 
     const LANGUAGES: [Language; 3] = [Language::RU_RU, Language::EN_US, Language::COMMON];
@@ -575,6 +575,10 @@ mod tests {
         matches: Vec<Matched>,
         /// Byte range and length of the replacement.
         changes: Vec<(u32, u32, usize)>,
+        /// The replacement of each change.
+        replacements: Vec<String>,
+        /// Whether each change inserts or removes a space (`trace` fills it).
+        spaced: Vec<bool>,
     }
 
     impl Recorder for Trace {
@@ -588,6 +592,7 @@ mod tests {
                 u32::try_from(range.end).unwrap_or(u32::MAX),
                 change.replacement().len(),
             ));
+            self.replacements.push(change.replacement().to_owned());
         }
 
         fn protected(&mut self, _span: crate::report::ProtectedSpan) {}
@@ -629,16 +634,21 @@ mod tests {
     /// A closed byte interval.
     type Interval = (i64, i64);
 
-    /// The structural changes of I2 (an inserted or a removed space) as closed byte intervals of x
-    /// and of f(x).
-    fn structural(changes: &[(u32, u32, usize)]) -> (Vec<Interval>, Vec<Interval>) {
-        let mut sorted = changes.to_vec();
+    /// The structural changes of I2 (an inserted or a removed space, also where a replacement
+    /// drops or adds one, as the percent setting does) as closed byte intervals of x and of f(x).
+    fn structural(tr: &Trace) -> (Vec<Interval>, Vec<Interval>) {
+        let mut sorted: Vec<_> = tr
+            .changes
+            .iter()
+            .zip(&tr.spaced)
+            .map(|(&(s, e, len), &spaced)| (s, e, len, spaced))
+            .collect();
         sorted.sort_unstable();
         let (mut x, mut y) = (Vec::new(), Vec::new());
         let mut shift = 0i64;
-        for (s, e, len) in sorted {
+        for (s, e, len, spaced) in sorted {
             let ys = i64::from(s) + shift;
-            if s == e || len == 0 {
+            if s == e || len == 0 || spaced {
                 x.push((i64::from(s), i64::from(e)));
                 y.push((ys, ys + len as i64));
             }
@@ -649,6 +659,32 @@ mod tests {
 
     fn touches(intervals: &[Interval], start: i64, end: i64) -> bool {
         intervals.iter().any(|&(s, e)| start <= e && s <= end)
+    }
+
+    /// Whether a match on x lies inside a fragment that an inserted or a removed space split or
+    /// merged (`structural`), or is the match of a short word or a particle whose trigger word is
+    /// such a fragment: its tokens or its trigger word are in the merged fragment, so it may not
+    /// recur (design section 4.3, I4: `5–10 %` → `5–10%`, where `range.digits` no longer reads the
+    /// `–`; `nbsp.short-words` on `the` in `Moscow—the⍽capital`).
+    fn inside_a_merge(tx: &Trace, sx: &[Interval], m: &Matched) -> bool {
+        let merged = |f: &&(classify::FragKind, bool, bool, u32, u32)| {
+            touches(sx, i64::from(f.3), i64::from(f.4))
+        };
+        let inside = tx
+            .frags
+            .iter()
+            .filter(merged)
+            .any(|f| f.3 <= m.1 && m.2 <= f.4);
+        // The trigger word of a short word glues the space after it, a particle the space
+        // before it (design section 8.7).
+        let before = || tx.frags.iter().filter(|f| f.4 <= m.1).max_by_key(|f| f.4);
+        let after = || tx.frags.iter().filter(|f| f.3 >= m.2).min_by_key(|f| f.3);
+        let trigger = match m.0 {
+            Rule::NbspShortWords | Rule::NbspShortLength => before().is_some_and(|f| merged(&f)),
+            Rule::NbspParticles => after().is_some_and(|f| merged(&f)),
+            _ => false,
+        };
+        inside || trigger
     }
 
     /// Whether a dash match on x has an operand that a removed space merged into a `Joined`
@@ -682,6 +718,19 @@ mod tests {
     fn trace(t: &Typographer, scratch: &mut Scratch, text: &str) -> (Trace, String) {
         let mut tr = Trace::default();
         let changed = run(t, scratch, &[Input::Text(text)], &mut tr);
+        let spaces = |s: &str| {
+            s.chars()
+                .filter(|c| matches!(c, ' ' | '\u{a0}' | '\u{202f}'))
+                .count()
+        };
+        tr.spaced = tr
+            .changes
+            .iter()
+            .zip(&tr.replacements)
+            .map(|(&(s, e, _), r)| {
+                spaces(text.get(s as usize..e as usize).unwrap_or("")) != spaces(r)
+            })
+            .collect();
         let out = if changed {
             render::render_text(text, &scratch.edits, &t.language().data()).into_owned()
         } else {
@@ -708,22 +757,161 @@ mod tests {
         // A removed space is structural: `Moscow - the` merges into one `Joined` fragment.
         let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
         let (tx, _) = trace(&t, &mut scratch, "Moscow - the capital");
-        let (sx, sy) = structural(&tx.changes);
+        let (sx, sy) = structural(&tx);
         assert_eq!(sx.len(), 2, "{:?}", tx.changes);
         assert_eq!(sy.len(), 2);
+    }
+
+    /// I2 and I4 of design section 4.3 (design section 13.5, property 3) on `text` with `t`,
+    /// whose rule set is `set`. I2: outside the fragments that an inserted or a removed space split
+    /// or merged, the fragments of f(x) have the kinds, flags and extents of those of x. I4: no
+    /// match on f(x) has an edit, and every match on x outside those fragments recurs on f(x) with
+    /// the same rule (`dash.double-hyphen` as `dash.spaced-hyphen`) and `consume`, except a dash
+    /// match whose operand a removed space merged into a `Joined` fragment (design section 8.4: a
+    /// `Joined` core is not an operand); the quote phase has its own proof (design section 6.11)
+    /// and is left out of the recurrence.
+    /// Whether a straight `'` before the first letter or digit of the fragment `f` of x became
+    /// the opening quote of a pair, `‘` or `“` in f(x). The classification reads a straight `'`
+    /// before a word as a letter of the word (an elision, `'cause`, `'tis`) and a typed opener as
+    /// no part of its core, so the kind of such a fragment may differ between the passes
+    /// (`“'cause''”` is `Dictionary`, `“‘cause’'”` a `Word`; `'St.'` a `Word`, `“St.”`
+    /// `Dictionary`); its extent, its flags and every other fragment do not (design section 4.3,
+    /// I2).
+    fn straight_opens_a_pair(
+        changes: &[(u32, u32, usize)],
+        text: &str,
+        out: &str,
+        f: &(classify::FragKind, bool, bool, u32, u32),
+    ) -> bool {
+        let Some(frag) = text.get(f.3 as usize..f.4 as usize) else {
+            return false;
+        };
+        frag.char_indices()
+            .take_while(|(_, c)| !c.is_alphanumeric())
+            .filter(|&(_, c)| c == '\'')
+            .any(|(i, _)| {
+                let at = map(changes, f.3 + i as u32, false);
+                usize::try_from(at)
+                    .ok()
+                    .and_then(|at| out.get(at..))
+                    .is_some_and(|rest| rest.starts_with(['‘', '“']))
+            })
+    }
+
+    /// Whether a dash match on x has a straight `'` as its right operand that the quote phase
+    /// wrote as `’`. The dash rules read such a quote by its local role (design section 6.4): an
+    /// opener after the space, so the right side holds; the quote phase made it an apostrophe or a
+    /// closer, and on f(x) the `’` after a space has no role and no core, so the match does not
+    /// recur. The dash is written on x, so f(x) is a fixed point (design section 4.3, I4).
+    fn before_an_opener_written_as_apostrophe(
+        changes: &[(u32, u32, usize)],
+        text: &str,
+        out: &str,
+        m: &Matched,
+    ) -> bool {
+        // The right operand: the first character after the spaces after the match, which ends
+        // after the dash where it is refused and after the space where it is not.
+        let Some(rest) = text.get(m.2 as usize..) else {
+            return false;
+        };
+        let gap = rest.len() - rest.trim_start_matches(' ').len();
+        let at = map(changes, m.2 + gap as u32, false);
+        matches!(m.0, Rule::DashSpacedHyphen | Rule::DashDoubleHyphen)
+            && rest[gap..].starts_with('\'')
+            && usize::try_from(at)
+                .ok()
+                .and_then(|at| out.get(at..))
+                .is_some_and(|rest| rest.starts_with('’'))
+    }
+
+    fn i2_and_i4(t: &Typographer, set: RuleSet, text: &str) -> Result<(), TestCaseError> {
+        let mut scratch = Scratch::new();
+        let (tx, out) = trace(t, &mut scratch, text);
+        let (ty, _) = trace(t, &mut scratch, &out);
+        let (sx, sy) = structural(&tx);
+
+        let before: Vec<_> = tx
+            .frags
+            .iter()
+            .filter(|f| !touches(&sx, i64::from(f.3), i64::from(f.4)))
+            .map(|f| {
+                let start = map(&tx.changes, f.3, false);
+                let kind = (!straight_opens_a_pair(&tx.changes, text, &out, f)).then_some(f.0);
+                (kind, f.1, f.2, start, map(&tx.changes, f.4, true))
+            })
+            .collect();
+        // The fragments of f(x) whose kind `straight_opens_a_pair` leaves out.
+        let opened: Vec<i64> = before
+            .iter()
+            .filter(|f| f.0.is_none())
+            .map(|f| f.3)
+            .collect();
+        let after: Vec<_> = ty
+            .frags
+            .iter()
+            .filter(|f| !touches(&sy, i64::from(f.3), i64::from(f.4)))
+            .map(|f| {
+                let start = i64::from(f.3);
+                let kind = (!opened.contains(&start)).then_some(f.0);
+                (kind, f.1, f.2, start, i64::from(f.4))
+            })
+            .collect();
+        prop_assert_eq!(before, after, "I2: {:?} -> {:?}", text, out);
+
+        for m in &ty.matches {
+            prop_assert!(
+                !m.4,
+                "I4: {:?} has an edit on {:?} (from {:?})",
+                m,
+                out,
+                text
+            );
+        }
+        let quotes = [
+            Rule::QuotesApostrophe,
+            Rule::QuotesPairs,
+            Rule::QuotesPrimes,
+        ];
+        // The dash that `dash.double-hyphen` writes is matched by `dash.spaced-hyphen`, never by
+        // itself (design section 8.4): with `dash.spaced-hyphen` off, no rule matches it on
+        // f(x).
+        let spaced = set.contains(Rule::DashSpacedHyphen);
+        for m in tx
+            .matches
+            .iter()
+            .filter(|m| !quotes.contains(&m.0))
+            .filter(|m| spaced || m.0 != Rule::DashDoubleHyphen)
+            .filter(|m| !touches(&sx, i64::from(m.1), i64::from(m.2)))
+            .filter(|m| !inside_a_merge(&tx, &sx, m))
+            .filter(|m| !beside_a_merge(&tx, &ty, &sy, m))
+            .filter(|m| !before_an_opener_written_as_apostrophe(&tx.changes, text, &out, m))
+        {
+            let rule = if m.0 == Rule::DashDoubleHyphen {
+                Rule::DashSpacedHyphen
+            } else {
+                m.0
+            };
+            let (s, e) = (map(&tx.changes, m.1, false), map(&tx.changes, m.2, true));
+            prop_assert!(
+                ty.matches.iter().any(|n| (n.0 == m.0 || n.0 == rule)
+                    && i64::from(n.1) == s
+                    && i64::from(n.2) == e
+                    && n.3 == m.3),
+                "I4: {:?} on {:?} does not recur on {:?}: {:?}; changes {:?}",
+                m,
+                text,
+                out,
+                ty.matches,
+                tx.changes
+            );
+        }
+        Ok(())
     }
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(1024))]
 
-        /// I2 and I4 of design section 4.3 (design section 13.5, property 3), with the stage 2
-        /// rules (no `nbsp.*`). I2: outside the fragments that an inserted or a removed space split
-        /// or merged, the fragments of f(x) have the kinds, flags and extents of those of x. I4: no
-        /// match on f(x) has an edit, and every match on x outside those fragments recurs on f(x)
-        /// with the same rule (`dash.double-hyphen` as `dash.spaced-hyphen`) and `consume`, except
-        /// a dash match whose operand a removed space merged into a `Joined` fragment (design
-        /// section 8.4: a `Joined` core is not an operand); the quote phase has its own proof
-        /// (design section 6.11) and is left out of the recurrence.
+        /// `i2_and_i4` with the stage 2 rules (no `nbsp.*`) over `any_text`.
         #[test]
         fn i2_and_i4_hold_on_the_classification_and_the_matches(
             text in strategies::any_text(), lang in 0usize..3, set in strategies::rule_set(),
@@ -735,51 +923,269 @@ mod tests {
                 .single_quotes(mode)
                 .build()
                 .unwrap();
-            let mut scratch = Scratch::new();
-            let (tx, out) = trace(&t, &mut scratch, &text);
-            let (ty, _) = trace(&t, &mut scratch, &out);
-            let (sx, sy) = structural(&tx.changes);
+            i2_and_i4(&t, set, &text)?;
+        }
+    }
 
-            let before: Vec<_> = tx
-                .frags
-                .iter()
-                .filter(|f| !touches(&sx, i64::from(f.3), i64::from(f.4)))
-                .map(|f| (f.0, f.1, f.2, map(&tx.changes, f.3, false), map(&tx.changes, f.4, true)))
-                .collect();
-            let after: Vec<_> = ty
-                .frags
-                .iter()
-                .filter(|f| !touches(&sy, i64::from(f.3), i64::from(f.4)))
-                .map(|f| (f.0, f.1, f.2, i64::from(f.3), i64::from(f.4)))
-                .collect();
-            prop_assert_eq!(before, after, "I2: {:?} -> {:?}", text, out);
+    /// The typographer of a configuration of the grammar with its rule set (`all` false: without
+    /// the `nbsp.*` rules), and that set.
+    fn grammar_typographer(
+        config: &strategies::GrammarConfig,
+        all: bool,
+    ) -> (Typographer, RuleSet) {
+        let set: RuleSet = config
+            .set
+            .iter()
+            .filter(|r| all || !r.id().starts_with("nbsp."))
+            .collect();
+        let builder = Typographer::builder(config.language(), set)
+            .single_quotes(config.single)
+            .percent(config.percent);
+        let t = match config.dash {
+            Some(style) => builder.dash_style(style),
+            None => builder,
+        }
+        .build()
+        .unwrap();
+        (t, set)
+    }
 
-            for m in &ty.matches {
-                prop_assert!(!m.4, "I4: {:?} has an edit on {:?} (from {:?})", m, out, text);
+    #[test]
+    fn i2_and_i4_hold_on_the_rows_of_the_grammar() {
+        // Sentences of the grammar that broke `i2_and_i4` (design section 4.3): an elision or a
+        // word after a straight `'` that pairs, and a dash match next to a straight `'` before a
+        // number that becomes `’`. Every `SingleQuotes` mode, Prose, Interface and all rules.
+        use strategies::GrammarConfig;
+        for (lang, dash, text) in [
+            (3, None, "! s: S -- 'tis'"),
+            (
+                1,
+                Some(DashStyle::Closed),
+                "'don't S a file rock'n'roll 'cause'",
+            ),
+            (1, None, "“'cause''”"),
+            (1, None, "'St.’"),
+            (
+                1,
+                Some(DashStyle::SpacedGlued),
+                "B “” S an U.S. — '10-20?!’",
+            ),
+            (
+                3,
+                None,
+                "?-( - rock'n'roll) 1941-1945 km file — '27 % host:8080’",
+            ),
+        ] {
+            for single in strategies::GRAMMAR_SINGLE_QUOTES {
+                for set in [RuleSet::PROSE, RuleSet::INTERFACE, RuleSet::ALL] {
+                    let config = GrammarConfig {
+                        lang,
+                        set,
+                        dash,
+                        single,
+                        percent: crate::PercentSpacing::AsWritten,
+                    };
+                    let (t, set) = grammar_typographer(&config, false);
+                    if let Err(e) = i2_and_i4(&t, set, text) {
+                        panic!("{} {text:?}: {e}", config.describe());
+                    }
+                }
             }
-            let quotes = [Rule::QuotesApostrophe, Rule::QuotesPairs, Rule::QuotesPrimes];
-            // The dash that `dash.double-hyphen` writes is matched by `dash.spaced-hyphen`, never by
-            // itself (design section 8.4): with `dash.spaced-hyphen` off, no rule matches it on
-            // f(x).
-            let spaced = set.contains(Rule::DashSpacedHyphen);
-            for m in tx
-                .matches
-                .iter()
-                .filter(|m| !quotes.contains(&m.0))
-                .filter(|m| spaced || m.0 != Rule::DashDoubleHyphen)
-                .filter(|m| !touches(&sx, i64::from(m.1), i64::from(m.2)))
-                .filter(|m| !beside_a_merge(&tx, &ty, &sy, m))
-            {
-                let rule = if m.0 == Rule::DashDoubleHyphen { Rule::DashSpacedHyphen } else { m.0 };
-                let (s, e) = (map(&tx.changes, m.1, false), map(&tx.changes, m.2, true));
-                prop_assert!(
-                    ty.matches.iter().any(|n| (n.0 == m.0 || n.0 == rule)
-                        && i64::from(n.1) == s
-                        && i64::from(n.2) == e
-                        && n.3 == m.3),
-                    "I4: {:?} on {:?} does not recur on {:?}: {:?}", m, text, out, ty.matches
-                );
+        }
+    }
+
+    /// How many fragments and matches of x each exemption of `i2_and_i4` leaves out:
+    /// `straight_opens_a_pair`, `before_an_opener_written_as_apostrophe` and `inside_a_merge`.
+    fn exempted(t: &Typographer, text: &str) -> (usize, usize, usize) {
+        let mut scratch = Scratch::new();
+        let (tx, out) = trace(t, &mut scratch, text);
+        let (sx, _) = structural(&tx);
+        let opened = tx
+            .frags
+            .iter()
+            .filter(|f| straight_opens_a_pair(&tx.changes, text, &out, f))
+            .count();
+        let apostrophe = tx
+            .matches
+            .iter()
+            .filter(|m| before_an_opener_written_as_apostrophe(&tx.changes, text, &out, m))
+            .count();
+        let merged = tx
+            .matches
+            .iter()
+            .filter(|m| inside_a_merge(&tx, &sx, m))
+            .count();
+        (opened, apostrophe, merged)
+    }
+
+    #[test]
+    fn the_exemptions_of_i2_and_i4_name_only_their_cases() {
+        // Each exemption of `i2_and_i4` (design section 4.3) leaves out the fragments and the
+        // matches it names, and nothing on the rows next to them.
+        use crate::PercentSpacing::{AsWritten, Attached};
+        use SingleQuotes::{Everywhere, NestedOnly, Never};
+        let en = Language::EN_US;
+        let ru = Language::RU_RU;
+        let no_nbsp: RuleSet = RuleSet::PROSE
+            .iter()
+            .filter(|r| !r.id().starts_with("nbsp."))
+            .collect();
+        for (language, set, single, percent, text, expected) in [
+            // A straight `'` before a word that the quote phase made an opener.
+            (&en, no_nbsp, Everywhere, AsWritten, "x 'tis' y", (1, 0, 0)),
+            (&en, no_nbsp, NestedOnly, AsWritten, "“'cause''”", (1, 0, 0)),
+            (&en, no_nbsp, Everywhere, AsWritten, "'St.'", (1, 0, 0)),
+            // ... and not where it became `’`, stayed straight, stands inside a word, or is `"`.
+            (&en, no_nbsp, Never, AsWritten, "x 'tis' y", (0, 0, 0)),
+            (&en, no_nbsp, NestedOnly, AsWritten, "x 'tis y", (0, 0, 0)),
+            (
+                &en,
+                no_nbsp,
+                NestedOnly,
+                AsWritten,
+                "don't rock'n'roll",
+                (0, 0, 0),
+            ),
+            (
+                &en,
+                no_nbsp,
+                NestedOnly,
+                AsWritten,
+                "x \"tis\" y",
+                (0, 0, 0),
+            ),
+            // A dash before a straight `'` that the quote phase wrote as `’`.
+            (&en, no_nbsp, Never, AsWritten, "S -- 'tis'", (0, 1, 0)),
+            (&en, no_nbsp, Never, AsWritten, "I - '10 x 5'", (0, 1, 0)),
+            // ... and not before a `'` that became an opener, before a word or `"`, or after `'`.
+            (&en, no_nbsp, Everywhere, AsWritten, "S -- 'tis'", (1, 0, 0)),
+            (&en, no_nbsp, Never, AsWritten, "S -- tis", (0, 0, 0)),
+            (&en, no_nbsp, Never, AsWritten, "S -- \"tis\"", (0, 0, 0)),
+            (&en, no_nbsp, Never, AsWritten, "'tis' -- S", (0, 0, 0)),
+            // A match inside a merged fragment, or a no-break match triggered by one.
+            (
+                &ru,
+                RuleSet::PROSE,
+                NestedOnly,
+                Attached,
+                "5–10 % - норма",
+                (0, 0, 1),
+            ),
+            (
+                &en,
+                RuleSet::PROSE,
+                NestedOnly,
+                AsWritten,
+                "Moscow - the capital",
+                (0, 0, 1),
+            ),
+            // ... and not where nothing merges.
+            (
+                &ru,
+                RuleSet::PROSE,
+                NestedOnly,
+                AsWritten,
+                "5–10 % - норма",
+                (0, 0, 0),
+            ),
+            (
+                &en,
+                RuleSet::PROSE,
+                NestedOnly,
+                AsWritten,
+                "Moscow - 5 capital",
+                (0, 0, 0),
+            ),
+        ] {
+            let t = Typographer::builder(language.clone(), set)
+                .single_quotes(single)
+                .percent(percent)
+                .build()
+                .unwrap();
+            assert_eq!(
+                exempted(&t, text),
+                expected,
+                "{language} {single:?} {text:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn i2_and_i4_hold_on_the_splits_and_merges_with_every_rule() {
+        // The splits and merges of design section 4.3, I2, with the `nbsp.*` rules on, which the
+        // properties over `any_text` and the grammar leave out: Prose, Interface and all rules,
+        // every percent setting.
+        for (lang, text) in [
+            (0, "т.е. 5"),
+            (0, "Школа №5 г. Москвы"),
+            (0, "§5 ч. 2"),
+            (0, "¶IV"),
+            (0, "и т.д..."),
+            (0, "Слово - т.е."),
+            (0, "5 - т.е."),
+            (0, "т.е. - 5"),
+            (0, "100%"),
+            (0, "100 %"),
+            (0, "5–10%"),
+            (0, "5–10 % - норма"),
+            (0, "Рост - 5–10%"),
+            (0, "1,5-2,5 т.е. так"),
+            (0, "5 кг"),
+            (1, "Moscow - the capital"),
+            (1, "100 %"),
+            (1, "No. 5"),
+        ] {
+            for set in [RuleSet::PROSE, RuleSet::INTERFACE, RuleSet::ALL] {
+                for percent in [
+                    crate::PercentSpacing::AsWritten,
+                    crate::PercentSpacing::Language,
+                    crate::PercentSpacing::Attached,
+                    crate::PercentSpacing::Spaced,
+                ] {
+                    for dash in [None, Some(DashStyle::Closed)] {
+                        let config = strategies::GrammarConfig {
+                            lang,
+                            set,
+                            dash,
+                            single: SingleQuotes::NestedOnly,
+                            percent,
+                        };
+                        let (t, set) = grammar_typographer(&config, true);
+                        if let Err(e) = i2_and_i4(&t, set, text) {
+                            panic!("{} {text:?}: {e}", config.describe());
+                        }
+                    }
+                }
             }
+        }
+    }
+
+    #[test]
+    #[ignore = "long run of design section 13.5, property 3 over the grammar"]
+    fn i2_and_i4_hold_over_the_grammar_long() {
+        // 20 000 sentences for each configuration of `grammar_long_configurations`.
+        strategies::run_grammar_long(20_000, 0x7970_6f6c_6973_6822, |config, sentence| {
+            let (t, set) = grammar_typographer(config, false);
+            i2_and_i4(&t, set, &sentence.text)?;
+            i2_and_i4(&t, set, &sentence.plain)
+        });
+    }
+
+    #[test]
+    fn i2_and_i4_hold_over_the_grammar() {
+        // `i2_and_i4` over the structured grammar of design section 13.5 in its five languages,
+        // on the sentence with its typed glyphs and on the plain one, with fixed seeds.
+        for lang in 0..strategies::GRAMMAR_LANGUAGES {
+            strategies::run_grammar(
+                lang,
+                512,
+                0x7970_6f6c_6973_6821 + lang as u64,
+                |config, sentence| {
+                    let (t, set) = grammar_typographer(config, false);
+                    i2_and_i4(&t, set, &sentence.text)?;
+                    i2_and_i4(&t, set, &sentence.plain)
+                },
+            );
         }
     }
 
@@ -812,7 +1218,7 @@ mod tests {
             let (ty, again) = trace(&t, &mut scratch, &out);
             assert_eq!(again, out, "{text:?}");
             assert!(ty.matches.iter().all(|m| !m.4), "{out:?}: {:?}", ty.matches);
-            let (sx, sy) = structural(&tx.changes);
+            let (sx, sy) = structural(&tx);
             let beside: Vec<_> = tx
                 .matches
                 .iter()
@@ -833,7 +1239,7 @@ mod tests {
         // Without the merge the same dash recurs with an empty edit.
         let (tx, out) = trace(&t, &mut scratch, "x - a - т.е.sk");
         let (ty, _) = trace(&t, &mut scratch, &out);
-        let (_, sy) = structural(&tx.changes);
+        let (_, sy) = structural(&tx);
         assert!(tx.matches.iter().all(|m| !beside_a_merge(&tx, &ty, &sy, m)));
         assert!(
             ty.matches
