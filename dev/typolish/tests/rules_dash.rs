@@ -23,8 +23,8 @@ mod common;
 mod probe;
 
 use common::{
-    assert_changed_by, assert_changed_by_with_glue, check_in, check_rows, check_unchanged, configs,
-    interface, only, prose, show, vis, without_rule,
+    assert_changed_by, assert_changed_by_with_glue, check_exact, check_in, check_rows,
+    check_unchanged, configs, interface, only, prose, show, vis, without_rule,
 };
 use probe::{diag_ranges, diagnostics_of};
 use typolish::{
@@ -106,6 +106,9 @@ const RU_SPACED: &[(&str, &str)] = &[
     ("10–1,5% - 27", "10–1,5% - 27"),
     ("1,5–2,5% - и", "1,5–2,5% - и"),
     ("5 - 1,5–2,5%", "5 - 1,5–2,5%"),
+    // A single letter on the left gets no dash, whatever the first side of the range.
+    ("x - I–10%", "x - I–10%"),
+    ("x - XIX–10%", "x - XIX–10%"),
     ("Use - --force", "Use - --force"),
     ("tar -cf - -C dir", "tar -cf - -C dir"),
     // Not a pattern: no single space on each side, or a `--` run (design section 8.2).
@@ -132,6 +135,10 @@ const RU_SPACED_PERCENT_FOREIGN: &[(&str, &str)] = &[
     ("word - 1,5–2,5%", "word — 1,5–2,5%"),
     ("word - V–X%", "word — V–X%"),
     ("word - 5-10%", "word — 5-10%"),
+    // A Roman first side: the range is read whole (design section 8.2), so the dash depends on
+    // the word on the left, not on the side.
+    ("слово - XIX–10%", "слово — XIX–10%"),
+    ("word - V–10%", "word — V–10%"),
 ];
 
 const RU_SPACED_NOT_PROSE: &[(&str, &str)] = &[
@@ -167,6 +174,27 @@ fn spaced_hyphen_in_russian() {
     for (what, t) in &all {
         assert_changed_by_with_glue(what, t, "Москва - столица", SPACED);
         assert_changed_by_with_glue(what, t, "Привет, - сказал он.", SPACED);
+    }
+}
+
+#[test]
+fn a_roman_first_side_of_a_percentage_range_gets_the_dash_of_its_left_side() {
+    // Design section 8.2: a range written with `–` and a Roman first side, the sign attached, reads
+    // as the whole range, so after a word it gets the dash, glued in Russian by `nbsp.dash`, as
+    // the range with the sign after spaces does. A single letter on the left or a line start gets
+    // none, which is why `x - XIX–10%` and `- XIX–10%` keep their hyphen.
+    for (language, input, expected) in [
+        (Language::RU_RU, "слово - XIX–10%", "слово⍽— XIX–10%"),
+        (Language::RU_RU, "слово - XIX–10 %", "слово⍽— XIX–10⍽%"),
+        (Language::RU_RU, "word - V–10%", "word⍽— V–10%"),
+        (Language::RU_RU, "x - I–10%", "x - I–10%"),
+        (Language::RU_RU, "x - XIX–10%", "x - XIX–10%"),
+        (Language::EN_US, "word - XIX–10%", "word — XIX–10%"),
+        (Language::EN_US, "x - XIX–10%", "x - XIX–10%"),
+    ] {
+        for t in [prose(language.clone()), interface(language.clone())] {
+            check_exact("set", &t, (input, expected));
+        }
     }
 }
 
