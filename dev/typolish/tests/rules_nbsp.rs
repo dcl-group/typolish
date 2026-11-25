@@ -1549,6 +1549,23 @@ fn signs_are_not_borrowed_when_a_space_is_inserted() {
 }
 
 #[test]
+fn a_space_inserted_after_the_last_of_many_taken_tokens_is_written_once() {
+    // `№`, 254 format characters and `5` are 256 tokens, the most one match takes: the space
+    // inserted before the last of them is written once, and the output is a fixed point.
+    for t in [alone(ru(), SIGN), set(ru(), RuleSet::PROSE)] {
+        for n in [0, 253, 254] {
+            let zwsp = "\u{200b}".repeat(n);
+            let input = format!("№{zwsp}5");
+            let expected = format!("№{zwsp}\u{a0}5");
+            let once = t.typeset(&input, Output::Unicode).into_owned();
+            let glued = once.matches('\u{a0}').count();
+            assert!(once == expected, "{n}: {glued} no-break spaces");
+            assert_eq!(t.typeset(&once, Output::Unicode), once, "{n}");
+        }
+    }
+}
+
+#[test]
 fn signs_with_narrow_glue() {
     let t = with(ru(), &[SIGN], |b| b.narrow_glue(NarrowGlue::SIGNS));
     check_in("ru", &t, ("№ 5", "№⎵5"));

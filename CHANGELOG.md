@@ -60,6 +60,10 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `a.⍽b.⍽c.⍽d.⍽e.⍽f.⍽g.h.` → `a.b.c.d.e.f.g.h.`; `NextCapitalized` entry of seven parts `a. … g.`,
   `a. b. c. d. e. f. g. Word`: `a.⍽b.⍽c.⍽d.⍽e.⍽f.⍽g. Word` → `a. b. c. d. e. f. g. Word`. Found by
   review.
+- A space inserted before the last of 256 tokens that one match takes is written once (design
+  section 3.8): the engine wrote it a second time as the insertion after the match. Russian,
+  `nbsp.signs` alone and Prose, `№`, 254 × U+200B, `5`: `№…⍽⍽5` (258 characters) → `№…⍽5` (257). The
+  same path served a compact abbreviation and a `Markup` piece of a template. Found by review.
 - The dash rules read a range with its percent sign attached as a percentage range, as they read the
   range with the sign after spaces, whatever its sides and its joint (design sections 3.6 and 8.2):
   a side may be a Roman numeral (`XIX-XX %` and `XIX–10 %` are ranges by check 17) or a decimal

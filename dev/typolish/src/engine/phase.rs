@@ -750,7 +750,10 @@ fn emit<R: Recorder>(
             outcome.moved = true;
         }
     }
-    insert(m.consume.saturating_add(1), out, sink, outcome);
+    // An insertion after the last taken token; with 256 taken tokens no offset names that place.
+    if let Some(after) = m.consume.checked_add(1) {
+        insert(after, out, sink, outcome);
+    }
 }
 
 /// Moves the token ranges of the fragments to their tokens after a phase inserted or removed a
