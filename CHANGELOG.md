@@ -73,6 +73,14 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `field—p. 1941-45`: `field—p.⍽1941-45` → `field—p.⍽1941–45`; Prose, Interface and `ALL`:
   `spring—May 5`: `spring—May 5` → `spring—May⍽5`. Interface has no `range.context`, and its output
   of the range rows does not change. Found by review.
+- `nbsp.initials` reads a compound surname with words of two scripts, one of them the language's, as
+  a surname, as design section 8.2 reads such a word as a word of each script (design section 8.7,
+  C62). Russian, Prose, Interface and `ALL`: `А. Пушкин-Smith`: `А. Пушкин-Smith` →
+  `А.⍽Пушкин-Smith`; `Пушкин-Smith А. С.`: `Пушкин-Smith А. С.` → `Пушкин-Smith⍽А.⍽С.`;
+  `А. Smith-Пушкин`: `А. Smith-Пушкин` → `А.⍽Smith-Пушкин`. English, the same sets:
+  `J. Smith-Петров`: `J. Smith-Петров` → `J.⍽Smith-Петров`; `Петров-Smith J.`: `Петров-Smith J.` →
+  `Петров-Smith⍽J.`. A surname with no word of the language's script stays unglued
+  (`А. Smith-Jones`). Found by review.
 - The dash rules read a range with its percent sign attached as a percentage range, as they read the
   range with the sign after spaces, whatever its sides and its joint (design sections 3.6 and 8.2):
   a side may be a Roman numeral (`XIX-XX %` and `XIX–10 %` are ranges by check 17) or a decimal

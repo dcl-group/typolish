@@ -635,7 +635,8 @@ fn first_visible(cx: &Cx<'_>, f: &Frag) -> Option<usize> {
     (f.start as usize..f.end as usize).find(|&j| !cx.kind(j).is_some_and(Kind::is_transparent))
 }
 
-/// A surname: a capitalized word of the language's script of at least two letters.
+/// A surname: a capitalized word of the language's script of at least two letters. A compound word
+/// with words of two scripts (`Пушкин-Smith`) is a word of each of them (design section 8.2).
 fn surname(cx: &Cx<'_>, f: &Frag) -> bool {
     if !is_word(cx, f)
         || cx
@@ -645,7 +646,9 @@ fn surname(cx: &Cx<'_>, f: &Frag) -> bool {
         return false;
     }
     let (mask, n) = letters(cx, f);
-    n >= 2 && mask == language_bit(cx) && cx.core_chars(f).next().is_some_and(char::is_uppercase)
+    n >= 2
+        && mask & language_bit(cx) != 0
+        && cx.core_chars(f).next().is_some_and(char::is_uppercase)
 }
 
 /// The space after a fragment and the token after that space, when the space is a pattern space.

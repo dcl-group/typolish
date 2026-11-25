@@ -621,6 +621,11 @@ const RU_INITIALS: &[(&str, &str)] = &[
     // The script of the language only.
     ("J. R. R. Tolkien", "J. R. R. Tolkien"),
     ("J. Smith", "J. Smith"),
+    // A compound word with words of two scripts is a word of each (design section 8.2).
+    ("А. Пушкин-Smith", "А.⍽Пушкин-Smith"),
+    ("Пушкин-Smith А. С.", "Пушкин-Smith⍽А.⍽С."),
+    ("А. Smith-Пушкин", "А.⍽Smith-Пушкин"),
+    ("А. Smith-Jones", "А. Smith-Jones"),
     // Spaces other than a single U+0020 are not glued.
     ("А.\tПетров", "А.\tПетров"),
     ("А.\nПетров", "А.\nПетров"),
@@ -656,6 +661,10 @@ const EN_INITIALS: &[(&str, &str)] = &[
     ),
     ("J. smith", "J. smith"),
     ("А. С. Пушкин", "А. С. Пушкин"),
+    // A compound word with words of two scripts is a word of each (design section 8.2).
+    ("J. Smith-Петров", "J.⍽Smith-Петров"),
+    ("Петров-Smith J.", "Петров-Smith⍽J."),
+    ("J. Петров-Сидоров", "J. Петров-Сидоров"),
 ];
 
 #[test]

@@ -307,6 +307,9 @@ const SEEDS: &[&str] = &[
     "- река—ООО",
     "1,5-2,5 ккал—бы",
     "1.5-2.5 mW—rock",
+    // A surname of two scripts next to initials (design sections 8.2 and 8.7).
+    "А. Пушкин-Smith - Пушкин-Smith А. С.",
+    "J. Smith-Петров - Петров-Smith J.",
     // A `Joined` core before a context range or a day reads as its last word (design section 4.3,
     // I4).
     "поле - с. 1941-45",
