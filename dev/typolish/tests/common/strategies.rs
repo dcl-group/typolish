@@ -353,7 +353,7 @@ pub fn delimiter_text() -> impl Strategy<Value = String> {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The structured grammar (design section 13.5, "a grammar of sentences")
+// The structured grammar (design section 13.5)
 // ---------------------------------------------------------------------------------------------
 
 /// The words a sentence of the grammar is made of: those of Russian, of English, or both.
@@ -381,6 +381,9 @@ struct Words {
     numbers: &'static [&'static str],
     /// A sign with its number (`№5`, `§V`).
     labels: &'static [&'static str],
+    /// Percentage ranges and percentages: a Roman or a decimal side, a typed `–` or a hyphen, the
+    /// sign attached or after a space (design sections 3.6 and 8.2).
+    percents: &'static [&'static str],
 }
 
 const RU_WORDS: Words = Words {
@@ -478,6 +481,22 @@ const RU_WORDS: Words = Words {
         "1,5–2,5",
     ],
     labels: &["№5", "№ 5", "§V", "§ 12", "№V", "¶IV", "§5", "№10"],
+    percents: &[
+        "XIX–10%",
+        "XIX-10%",
+        "XIX-XX%",
+        "XIX–XX%",
+        "I–10%",
+        "V–X%",
+        "1,5–2,5%",
+        "1,5-2,5%",
+        "10–1,5%",
+        "5-10%",
+        "5–10%",
+        "XIX–10 %",
+        "1,5–2,5 %",
+        "100%",
+    ],
 };
 
 const EN_WORDS: Words = Words {
@@ -535,6 +554,19 @@ const EN_WORDS: Words = Words {
         "1.5–2.5",
     ],
     labels: &["№5", "§V", "§ 12", "§5", "¶IV", "№V"],
+    percents: &[
+        "XIX–10%",
+        "I-5%",
+        "V-X%",
+        "I–V%",
+        "XIX–XX%",
+        "1.5–2.5%",
+        "1.5-2.5%",
+        "5-10%",
+        "XIX–10 %",
+        "1.5–2.5 %",
+        "100%",
+    ],
 };
 
 /// Technical fragments of design section 10.5, in every vocabulary.
@@ -560,7 +592,9 @@ const TECHNICAL: &[&str] = &[
 /// spaced `—`. At the start of a line the dash is a dialogue dash, `- ` or `— `.
 const DASHES: &[&str] = &[" - ", " -- ", "-", " – ", "—", " — "];
 
-/// Opening and closing glyphs of a quote pair: straight, typed in every form, and mixed.
+/// Opening and closing glyphs of a quote pair: straight, typed in every form, and mixed. The two
+/// straight pairs stand twice each: a weight, so that a sentence with typed glyphs holds straight
+/// pairs about as often as typed ones (in the plain form only the straight pairs are left).
 const QUOTE_PAIRS: &[(&str, &str)] = &[
     ("\"", "\""),
     ("\"", "\""),
@@ -583,7 +617,8 @@ const ELLIPSES: &[&str] = &[
     "...", "…", "?..", "!..", "?...", "!...", "?!..", "?!...", "?…",
 ];
 
-/// Sentence ends and other punctuation, attached to what precedes them.
+/// Sentence ends and other punctuation, attached to what precedes them. The comma stands twice: a
+/// weight, as it is the most frequent mark inside a sentence.
 const ENDS: &[&str] = &[".", "!", "?", ":", ";", "?!", ",", ","];
 
 /// Line breaks.
@@ -607,6 +642,9 @@ pub enum GrammarOp {
     Number(u16),
     /// A label.
     Label(u16),
+    /// A percentage range or a percentage; by the second number alone, after a spaced dash (a
+    /// dialogue dash at a line start), or before one.
+    Percent(u16, u8),
     /// A technical fragment.
     Technical(u16),
     /// A dash.
@@ -639,6 +677,7 @@ fn grammar_op() -> impl Strategy<Value = GrammarOp> {
         2 => (any::<u16>(), any::<u16>(), any::<bool>()).prop_map(|(n, u, s)| GrammarOp::Quantity(n, u, s)),
         1 => any::<u16>().prop_map(GrammarOp::Number),
         1 => any::<u16>().prop_map(GrammarOp::Label),
+        2 => (any::<u16>(), any::<u8>()).prop_map(|(i, d)| GrammarOp::Percent(i, d)),
         1 => any::<u16>().prop_map(GrammarOp::Technical),
         3 => any::<u16>().prop_map(GrammarOp::Dash),
         3 => any::<u16>().prop_map(GrammarOp::Open),
@@ -658,9 +697,37 @@ fn pick<'a>(list: &[&'a str], i: u16) -> &'a str {
 /// The characters of the typographic set (`decode.rs`, which the unit tests of the engine that
 /// include this file do not have) that the lists of the grammar hold: dashes, the ellipsis and
 /// typed quotes.
-const TYPED: &[char] = &[
+pub const TYPED: &[char] = &[
     '–', '—', '…', '«', '»', '„', '“', '”', '‘', '’', '‚', '‹', '›',
 ];
+
+/// Every entry of the lists of the grammar: the words of both vocabularies, the technical
+/// fragments, dashes, both glyphs of each quote pair, ellipses, ends, line breaks and strays.
+/// `the_plain_grammar_holds_no_typographic_character` in `tests/roundtrip.rs` checks `TYPED`
+/// against the typographic set of `decode.rs` on them.
+pub fn grammar_entries() -> Vec<&'static str> {
+    let mut all = Vec::new();
+    for words in [&RU_WORDS, &EN_WORDS] {
+        for list in [
+            words.words,
+            words.short,
+            words.abbreviations,
+            words.units,
+            words.numbers,
+            words.labels,
+            words.percents,
+        ] {
+            all.extend_from_slice(list);
+        }
+    }
+    for list in [TECHNICAL, DASHES, ELLIPSES, ENDS, BREAKS, STRAYS] {
+        all.extend_from_slice(list);
+    }
+    for &(opener, closer) in QUOTE_PAIRS {
+        all.extend([opener, closer]);
+    }
+    all
+}
 
 /// `pick` from the entries of `list` that hold no character of the typographic set when `plain`.
 fn pick_in<'a>(list: &[&'a str], i: u16, plain: bool) -> &'a str {
@@ -734,6 +801,24 @@ fn write_steps(vocabulary: Vocabulary, plain: bool, ops: &[GrammarOp]) -> String
             }
             GrammarOp::Number(i) => item(&mut out, &mut space, pick(w(i).numbers, i / 2)),
             GrammarOp::Label(i) => item(&mut out, &mut space, pick(w(i).labels, i / 2)),
+            GrammarOp::Percent(i, d) => {
+                let core = pick(w(i).percents, i / 2);
+                match d % 3 {
+                    1 if out.is_empty() || out.ends_with('\n') => {
+                        out.push_str("- ");
+                        space = false;
+                    }
+                    1 => {
+                        out.push_str(" - ");
+                        space = false;
+                    }
+                    _ => {}
+                }
+                item(&mut out, &mut space, core);
+                if d % 3 == 2 {
+                    out.push_str(" -");
+                }
+            }
             GrammarOp::Technical(i) => item(&mut out, &mut space, pick(TECHNICAL, i)),
             GrammarOp::Dash(i) => {
                 let dash = pick(DASHES, i);
@@ -805,14 +890,6 @@ fn write_steps(vocabulary: Vocabulary, plain: bool, ops: &[GrammarOp]) -> String
     out
 }
 
-/// Sentences of the grammar in a vocabulary: words, abbreviations (`т. е.`, `и т. д.`, `St.`,
-/// `p.m.`), units after numbers, particles and short words, labels (`№5`, `§V`), dashes in every
-/// form, wrappers, ellipses and sentence ends, and quotes of every glyph nested up to a depth of
-/// four (design section 13.5).
-pub fn grammar(vocabulary: Vocabulary) -> impl Strategy<Value = String> {
-    prop::collection::vec(grammar_op(), 1..32).prop_map(move |ops| write_grammar(vocabulary, &ops))
-}
-
 /// One sentence of the grammar written twice from the same steps: as `write_grammar` writes it,
 /// with typed glyphs, and as `write_plain_grammar` writes it.
 #[derive(Clone, Debug)]
@@ -823,7 +900,10 @@ pub struct Sentence {
     pub plain: String,
 }
 
-/// Sentences of the grammar in both forms (`Sentence`).
+/// Sentences of the grammar in a vocabulary, in both forms (`Sentence`): words, abbreviations
+/// (`т. е.`, `и т. д.`, `St.`, `p.m.`), units after numbers, particles and short words, labels
+/// (`№5`, `§V`), dashes in every form, wrappers, ellipses and sentence ends, and quotes of every
+/// glyph nested up to a depth of four (design section 13.5).
 pub fn grammar_sentence(vocabulary: Vocabulary) -> impl Strategy<Value = Sentence> {
     prop::collection::vec(grammar_op(), 1..32).prop_map(move |ops| Sentence {
         text: write_grammar(vocabulary, &ops),
@@ -1083,8 +1163,9 @@ pub const NO_READING: &str = "`to_plain` finds no reading that brings the quotes
 /// fixed point or where P2 holds. Otherwise P2 fails where `to_plain` reads the quotes of a window
 /// in another way than `x` had them (`p2_misread`), so that the window does not typeset back, or
 /// typesets back with its quotes but not with a rule that reads them
-/// (`todo/plain-quotes-no-reading.md`), and that reading alone explains the failure: `x` with the
-/// quotes of the plain form in their place (`with_quotes_of`) typesets as the plain form does.
+/// (`todo/plain-quotes-no-reading.md`), and that reading alone explains the failure: the plain form
+/// with the quotes of `x` in their place (`with_quotes_of`) typesets to `y`, so `to_plain` lost
+/// nothing but the quotes.
 pub fn grammar_known_p2_failure(t: &Typographer, x: &str, y: &str) -> Option<&'static str> {
     let second = t.report(y, Output::Unicode);
     if second.result() != y || !second.changes().is_empty() {
@@ -1096,8 +1177,8 @@ pub fn grammar_known_p2_failure(t: &Typographer, x: &str, y: &str) -> Option<&'s
         return None;
     }
     let limit = p2_misread(x, &plain)?;
-    let reread = with_quotes_of(x, &plain)?;
-    (t.typeset(&reread, Output::Unicode) == again).then_some(limit)
+    let restored = with_quotes_of(&plain, x)?;
+    (t.typeset(&restored, Output::Unicode) == y).then_some(limit)
 }
 
 /// Whether `c` is a quote that `p2_misread` reads: `"`, `'`, `’`, or a prime `′` or `″`.

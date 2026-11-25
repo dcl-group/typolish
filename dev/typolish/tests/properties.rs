@@ -354,6 +354,8 @@ const SEEDS: &[&str] = &[
     "?-( - rock'n'roll) 1941-1945 km file — '27 % host:8080’",
     "I - '10 x 5'",
     "5 - '10 kg'",
+    // A window that `to_plain` reads back with other quotes (design section 10.8).
+    "'-\" - §5 '\" \"\" dogs' word \"v1.2.3\"'\"'",
     // A dash before a label that `nbsp.signs` splits.
     "word – §5",
     "- №V дом",

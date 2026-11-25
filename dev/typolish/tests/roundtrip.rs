@@ -27,8 +27,8 @@ use common::corpus::{
 };
 use common::decode::TYPOGRAPHIC;
 use common::strategies::{
-    GRAMMAR_LANGUAGES, GrammarConfig, NO_READING, Sentence, grammar_known_p2_failure, p2_misread,
-    run_grammar, run_grammar_long, with_quotes_of,
+    GRAMMAR_LANGUAGES, GrammarConfig, NO_READING, Sentence, TYPED, grammar_entries,
+    grammar_known_p2_failure, p2_misread, run_grammar, run_grammar_long, with_quotes_of,
 };
 use common::{configs, interface, parse_tmpl, prose, show, vis, without_rule};
 use proptest::prelude::*;
@@ -1851,6 +1851,20 @@ fn plain_round_trip(t: &Typographer, x: &str) -> Result<(), TestCaseError> {
 }
 
 #[test]
+fn the_plain_grammar_holds_no_typographic_character() {
+    // `write_plain_grammar` keeps the entries without a character of `TYPED` (design section
+    // 13.5); that is the same as keeping those without a character of the typographic set, so the
+    // plain sentence is plain input for P2 (design section 12.2).
+    for entry in grammar_entries() {
+        assert_eq!(
+            entry.contains(TYPED),
+            entry.contains(TYPOGRAPHIC),
+            "{entry:?}"
+        );
+    }
+}
+
+#[test]
 fn p2_over_the_grammar() {
     // P2 over the structured grammar of design section 13.5, in `ru-RU`, `en-US`, `COMMON` and the
     // two declared languages of `grammar_language`, with fixed seeds.
@@ -1881,6 +1895,14 @@ fn the_p2_filters_name_their_limits() {
         // `to_plain` keeps a `’` that reads as an apostrophe and splits a label.
         (3, NestedOnly, "\"\"dogs'\" word '1920x1080'\"", NO_READING),
         (1, NestedOnly, "\"\"S'\" '0'\"", NO_READING),
+        // `to_plain` also writes `§⍽5` as `§ 5`, which the misread quotes decide; with the quotes
+        // of the input back the plain form typesets to the output (found by the long run).
+        (
+            1,
+            Everywhere,
+            "'-\" - §5 '\" \"\" dogs' word \"v1.2.3\"'\"'",
+            NO_READING,
+        ),
         (
             3,
             Everywhere,
@@ -1927,7 +1949,8 @@ fn the_p2_filters_name_nothing_else() {
         assert_eq!(p2_misread(x, plain), Some(NO_READING), "{x:?} {plain:?}");
     }
     // A failure that the reading of the quotes does not explain: `y` is the output of a row of
-    // `the_p2_filters_name_their_limits`, and `x` differs from its source by more than the quotes.
+    // `the_p2_filters_name_their_limits`, and the plain form of `y` with the quotes of `x` in their
+    // place does not typeset back to `y`, since `x` holds its quotes in another order.
     let t = GrammarConfig {
         lang: 1,
         set: RuleSet::PROSE,
@@ -1939,7 +1962,7 @@ fn the_p2_filters_name_nothing_else() {
     let source = "\"'S '5' 3'\"";
     let y = t.typeset(source, Output::Unicode);
     assert_eq!(grammar_known_p2_failure(&t, source, &y), Some(NO_READING));
-    for x in ["\"'S '5' 3'\" ...", "\"'S '5' 3'\" - x", "\"'S '5' 4'\""] {
+    for x in ["'\"S \"5\" 3\"'", "\"'S '5' 3\"'"] {
         assert_eq!(p2_misread(x, &t.to_plain(&y)), Some(NO_READING), "{x:?}");
         assert_eq!(grammar_known_p2_failure(&t, x, &y), None, "{x:?}");
     }

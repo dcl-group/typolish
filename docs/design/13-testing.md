@@ -371,11 +371,14 @@ included), U+007F, U+0085, U+2028, U+2029, characters above the BMP, and a typog
 followed by a hex digit); strings from the corpus with insertions; and arbitrary Unicode strings for
 the no-panic test.
 
-A structured grammar (`grammar` in `tests/common/strategies.rs`) builds sentences instead of joining
-fragments: words of the language (compound words and words with an apostrophe among them), short
-words and particles, abbreviations compact and with spaces (`т. е.`, `и т.д.`, `St.`, `p.m.`),
-numbers (ranges with a Roman or a decimal side among them, which a `%` after them makes a percentage
-range, section 8.2) with units after them, with a space or attached, labels (`№5`, `§V`), technical
+A structured grammar (`grammar_sentence` in `tests/common/strategies.rs`, run by `run_grammar` and
+`run_grammar_long`) builds sentences instead of joining fragments: words of the language (compound
+words and words with an apostrophe among them), short words and particles, abbreviations compact and
+with spaces (`т. е.`, `и т.д.`, `St.`, `p.m.`), numbers (ranges with a Roman or a decimal side among
+them, which a `%` after them makes a percentage range, section 8.2) with units after them, with a
+space or attached, labels (`№5`, `§V`), percentage ranges and percentages (a Roman or a decimal
+side, a typed `–` or a hyphen, the sign attached or after a space: `XIX–10%`, `1,5–2,5%`, `I-5%`,
+`XIX–10 %`), alone, after a spaced dash (a dialogue dash at a line start) or before one, technical
 fragments, dashes in every form (a spaced `-`, a spaced `--`, an attached `-`, a spaced `–`, an
 attached `—`, a spaced `—`, and a dialogue dash at a line start), parentheses, ellipses, sentence
 ends, line breaks, stray quotes, and quotes of every glyph, straight, typed and mixed, nested with
@@ -402,13 +405,13 @@ reported. No failure of idempotence is skipped: since the quote phase settles it
 sentence that fails P2 is measured against the known limit of `to_plain` in section 10.8, so every
 other sentence is checked in full: a failure of P2 is skipped when `grammar_known_p2_failure` names
 the limit, where the output is a fixed point, P2 fails on it, `to_plain` read a `"` of the input as
-`'` or the other way round (`p2_misread`), and that reading alone explains the failure: the input
-with the quotes of the plain form in their place (`with_quotes_of`) typesets as the plain form does.
-`the_p2_filters_name_their_limits` checks that the filter names the inputs of the limit and that
-those inputs still fail, and the filter goes with its limit; `the_p2_filters_name_nothing_else`
-holds the rows the filter must not name (no misreading, quotes of another number, an output that is
-no fixed point, an input where P2 holds, a failure that the reading of the quotes does not explain),
-so a filter that names more than its limit fails;
+`'` or the other way round (`p2_misread`), and that reading alone explains the failure: the plain
+form with the quotes of the input in their place (`with_quotes_of`) typesets to the output, so
+`to_plain` lost nothing but the quotes. `the_p2_filters_name_their_limits` checks that the filter
+names the inputs of the limit and that those inputs still fail, and the filter goes with its limit;
+`the_p2_filters_name_nothing_else` holds the rows the filter must not name (no misreading, quotes of
+another number, an output that is no fixed point, an input where P2 holds, a failure that the
+reading of the quotes does not explain), so a filter that names more than its limit fails;
 `the_grammar_rows_of_the_settled_windows_are_fixed_points` keeps the sentences that failed
 idempotence before the settling as fixed points.
 
