@@ -13,7 +13,9 @@ confidence-threshold = 0.8
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-# No TLS or crypto stacks, no regular-expression engines (the core is a pass over characters).
+# Banned: the TLS stacks `ring`, `openssl*` and `native-tls`, and the regular-expression engines (the
+# core is a pass over characters). The dev-only RNG crates behind `proptest` (`rand`, `chacha20`) are
+# expected; design section 14.1 lists them.
 deny = [
     { crate = "ring" },
     { crate = "openssl" },

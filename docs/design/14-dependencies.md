@@ -149,7 +149,9 @@ confidence-threshold = 0.8
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-# No TLS or crypto stacks, no regular-expression engines (the core is a pass over characters).
+# Banned: the TLS stacks `ring`, `openssl*` and `native-tls`, and the regular-expression engines (the
+# core is a pass over characters). The dev-only RNG crates behind `proptest` (`rand`, `chacha20`) are
+# expected; design section 14.1 lists them.
 deny = [
     { crate = "ring" },
     { crate = "openssl" },
@@ -257,10 +259,13 @@ directory outside the repository (section 14.6): `cargo fmt --check`,
 `cargo hack --each-feature test`, `cargo +1.100.0 check --all-targets` (the MSRV toolchain,
 installed once with `rustup toolchain install 1.100.0` and again whenever the MSRV is raised;
 identical to the other gates while the installed stable is 1.100, it keeps the MSRV checked when
-stable moves on). Formatting of Markdown and JSON is a manual step before the commit, not a gate, as
-in zonewright: `npx --yes prettier@3.10.1 --write --ignore-path .prettierignore -- <paths>`
-(`proseWrap: always`, width 100); TOML is tidied by hand. Plus the script outside the repository
-that rejects the reference implementation's name in `git diff --cached` (contents and paths) and, as
-a `commit-msg` hook, in the commit message. Commits are small, in Conventional Commits style with
-English subjects, staged by explicit path; nothing is pushed or published without the maintainer's
-word.
+stable moves on). Before a release, besides these, the long runs that `#[ignore]` keeps out of
+`cargo test`: `cargo test --release -- --ignored _long` (the property tests whose names end in
+`_long`) and `cargo test --release --test load -- --ignored` (the linearity checks), both for the
+`typolish` package from `dev/`; `update_snapshots` of `tests/corpus.rs` is never part of them.
+Formatting of Markdown and JSON is a manual step before the commit, not a gate, as in zonewright:
+`npx --yes prettier@3.10.1 --write --ignore-path .prettierignore -- <paths>` (`proseWrap: always`,
+width 100); TOML is tidied by hand. Plus the script outside the repository that rejects the
+reference implementation's name in `git diff --cached` (contents and paths) and, as a `commit-msg`
+hook, in the commit message. Commits are small, in Conventional Commits style with English subjects,
+staged by explicit path; nothing is pushed or published without the maintainer's word.
