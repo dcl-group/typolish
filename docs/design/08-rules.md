@@ -309,7 +309,11 @@ itself is an ordinary word for the rules, with the script of its letters (sectio
   the report names `range.digits`, the earlier rule. An ambiguous unit counts as context only where
   `nbsp.units` would glue it (before punctuation, a line break or the end), so
   `Порты 8000-8100 с балансировкой` has no context for this rule (`range.digits` still gives
-  `8000–8100` in Prose, section 10.6). A label range takes no context (`§§ 5-7 г.`, section 8.2).
+  `8000–8100` in Prose, section 10.6). A label range takes no context (`§§ 5-7 г.`, section 8.2). A
+  compact abbreviation as the next fragment reads as its first part with its full stop, the fragment
+  that `nbsp.abbreviations` splits off (section 4.3, I4): `т.е.` reads as `т.`, so `1,5-2,5 т.е.` →
+  `1,5–2,5⍽т.⍽е.` in one pass, as `1,5-2,5 т. е.` does, where the whole `т.е.` was no unit and a
+  second pass found the unit `т` in the split `т.`.
 - **`range.time`** (Prose): `HH:MM[:SS]-HH:MM[:SS]` (check 5) → the same two times with `–` in place
   of the hyphen (`10:00-12:30` → `10:00–12:30`, `10:00:15-12:30:45` → `10:00:15–12:30:45`).
 

@@ -184,6 +184,10 @@ const RU_CONTEXT: &[(&str, &str)] = &[
     ("в 2010-11 гг.", "в 2010–11 гг."),
     ("сезон 2011-12 годов", "сезон 2011–12 годов"),
     ("Ждать 1,5-2,5 с.", "Ждать 1,5–2,5 с."),
+    // A compact abbreviation reads as its first part, the fragment `nbsp.abbreviations` splits
+    // off: `т.е.` as `т.`, a unit (design sections 4.3, I4, and 8.5).
+    ("1,5-2,5 т.е.", "1,5–2,5 т.е."),
+    ("1,5-2,5 т. е.", "1,5–2,5 т. е."),
     // The tail is not greater than the last two digits of the year; no year word; no context.
     ("2026-11 гг.", "2026-11 гг."),
     ("2010-11", "2010-11"),

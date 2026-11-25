@@ -249,6 +249,10 @@ const SEEDS: &[&str] = &[
     "г-н — это",
     "г-н - cat - 5 км/ч - г-жа",
     "- г-н Иванов\n-- м2 это",
+    // A context range before a compact abbreviation whose first part is a unit (design sections
+    // 4.3, I4, and 8.5): `т.е.` reads as `т.`, the part `nbsp.abbreviations` splits off.
+    "1,5-2,5 т.е.",
+    "Ждать 1,5-2,5 т.е. и т.д.",
 ];
 
 #[test]

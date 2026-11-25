@@ -90,6 +90,14 @@ stands for U+00A0).
   every quote. Measured in a release build, one paragraph of 96 KB: `’` repeated (Russian Prose) 5.7
   s → 17 ms; `«„` repeated, `x`, `“»` repeated (Russian Prose) 4.4 s → 43 ms; `“‘a dogs’ ` repeated,
   `b`, `’”` repeated (English Prose) 0.6 s → 31 ms. The results are the same.
+- `range.context` reads a compact abbreviation after a range as its first part, the fragment that
+  `nbsp.abbreviations` splits off (design sections 4.3 and 8.5), so the first pass is a fixed point
+  and P2 holds: the whole `т.е.` was no unit, the split `т.` of the output is the unit `т`, and a
+  second pass placed the range dash. Russian, Prose and `ALL`: `1,5-2,5 т.е.`: `1,5-2,5⍽т.⍽е.` (then
+  `1,5–2,5⍽т.⍽е.` on a second pass) → `1,5–2,5⍽т.⍽е.`, as `1,5-2,5 т. е.` gives;
+  `Ждать 1,5-2,5 т.е. и т.д.`: `Ждать 1,5-2,5⍽т.⍽е. и⍽т.⍽д.` → `Ждать 1,5–2,5⍽т.⍽е. и⍽т.⍽д.`.
+  Interface has no `range.context` and does not change. Found by the grammar generator of design
+  section 13.5.
 
 ## 0.1.1 - unreleased
 

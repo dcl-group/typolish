@@ -5,7 +5,7 @@
 
 use core::cmp::Ordering;
 
-use super::{FragKind, Triggers, folded_in, with_key};
+use super::{Frag, FragKind, Triggers, compact_abbreviation, folded_in, with_key};
 use crate::SlotKind;
 use crate::engine::lex::{Kind, Repl};
 use crate::engine::phase::{Cx, Edit, Edits, Match};
@@ -280,6 +280,7 @@ fn context_after(cx: &Cx<'_>, last: usize) -> bool {
     if f.core_start >= f.core_end || cx.core(f).next() != Some(n) {
         return false;
     }
+    let f = &first_part(cx, f);
     let data = cx.data;
     let chars = cx.core_chars(f);
     let unit = |key: &str| cx.t.has_unit(key);
@@ -304,6 +305,34 @@ fn context_after(cx: &Cx<'_>, last: usize) -> bool {
         folded_in(list, chars.clone()) || (f.stop && folded_in(list, chars.clone().chain(['.'])))
     };
     words(data.year_words) || words(data.century_words)
+}
+
+/// The fragment after a range as `range.context` reads it: a compact abbreviation (`т.е.`) reads as
+/// its first part with its full stop (`т.`), the fragment that `nbsp.abbreviations` splits off, so
+/// the split of the first pass changes nothing for the rule (design section 4.3, I4). Any other
+/// fragment reads as itself.
+fn first_part(cx: &Cx<'_>, f: &Frag) -> Frag {
+    if !compact_abbreviation(cx, f) {
+        return *f;
+    }
+    let mut core = cx.core(f);
+    let part = core
+        .next()
+        .zip(core.next())
+        .and_then(|(word, stop)| Some((u32::try_from(word).ok()?, u32::try_from(stop).ok()?)));
+    match part {
+        Some((word, stop)) => Frag {
+            start: f.start,
+            end: stop.saturating_add(1),
+            core_start: word,
+            core_end: stop,
+            kind: FragKind::Dictionary,
+            stop: true,
+            label: false,
+            other_slot: false,
+        },
+        None => *f,
+    }
 }
 
 /// A range lead word before the range.

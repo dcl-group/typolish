@@ -87,15 +87,17 @@ agree and that every rule appears once.
   - an inserted space splits only a non-technical fragment, into parts that the rules read as
     before: `т.е.` → `т.` and `е.` (abbreviation parts, read as entries only by
     `nbsp.abbreviations`, which matches both forms, and as words by the other rules in both forms:
-    the compact form is a compact abbreviation, a word by section 8.2); `т.д…` → `т.` and `д…` (both
-    abbreviation parts, the second through its stop); `№5` → `№` and `5` (a label number in both
-    forms, section 3.6, so no rule that reads a quantity or a year starts to match; the sign alone
-    is a `Sign` fragment); `¶IV` → `¶` and `IV` (a Roman numeral after a sign is a label in both
-    forms); `100%` → `100` and `%`, `100‰` → `100` and `‰`, `5–10%` → `5–10` and `%` with
-    `PercentSpacing::Language` (ru) or `Spaced` (a percentage or a percentage range in both forms,
-    section 8.2, the dash rules reading the sign after spaces with its number or range; a lone `%`
-    is an `OperatorRun` by check 7, a lone `‰` falls through to check 24 and is frozen, but no rule
-    edits the sign, and the space before it lies outside its fragment, section 3.7);
+    the compact form is a compact abbreviation, a word by section 8.2; `range.context` reads the
+    compact form as its first part, so `т.е.` after a range is the unit `т.` in both forms, section
+    8.5); `т.д…` → `т.` and `д…` (both abbreviation parts, the second through its stop); `№5` → `№`
+    and `5` (a label number in both forms, section 3.6, so no rule that reads a quantity or a year
+    starts to match; the sign alone is a `Sign` fragment); `¶IV` → `¶` and `IV` (a Roman numeral
+    after a sign is a label in both forms); `100%` → `100` and `%`, `100‰` → `100` and `‰`, `5–10%`
+    → `5–10` and `%` with `PercentSpacing::Language` (ru) or `Spaced` (a percentage or a percentage
+    range in both forms, section 8.2, the dash rules reading the sign after spaces with its number
+    or range; a lone `%` is an `OperatorRun` by check 7, a lone `‰` falls through to check 24 and is
+    frozen, but no rule edits the sign, and the space before it lies outside its fragment, section
+    3.7);
   - a removed space merges fragments only into a non-technical `Joined` fragment (the closed-style
     dash) or a percentage into a percentage, a range and its sign into a percentage range (the
     percent setting). The closed-style dash removes its two spaces, each a single U+0020, only
