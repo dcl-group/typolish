@@ -92,9 +92,7 @@ fn run_on<R: Recorder>(
     lens.clear();
     if R::ACTIVE {
         lens.extend(input.iter().map(|item| match item {
-            Input::Text(s) | Input::Protected(s) | Input::Markup(s) | Input::Block(s) => {
-                u32::try_from(s.len()).unwrap_or(u32::MAX)
-            }
+            Input::Text(s) | Input::Protected(s) | Input::Markup(s) | Input::Block(s) => s.len(),
             Input::Slot(_) => 0,
         }));
     }

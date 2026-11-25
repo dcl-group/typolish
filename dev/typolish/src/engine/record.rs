@@ -148,8 +148,9 @@ pub(crate) struct Sink<'a, R> {
     pub(crate) rec: &'a mut R,
     /// The `Text` pieces of the input with their ranges in the call's text, in order.
     pub(crate) pieces: &'a [TextPiece],
-    /// The length of every input piece, by piece index.
-    pub(crate) lens: &'a [u32],
+    /// The length of every input piece, by piece index; a protected piece is not part of the
+    /// call's text, so its length may exceed `u32::MAX`.
+    pub(crate) lens: &'a [usize],
 }
 
 impl<R: Recorder> Sink<'_, R> {
@@ -210,7 +211,7 @@ impl<R: Recorder> Sink<'_, R> {
                     _ => self.lens.get(piece as usize).copied().unwrap_or(0),
                 };
                 self.rec
-                    .protected(ProtectedSpan::new(piece as usize, 0..len as usize, kind));
+                    .protected(ProtectedSpan::new(piece as usize, 0..len, kind));
             }
             Loc::Flat(start, end) => {
                 let records: Vec<(usize, Range<usize>)> = self.split(start, end).collect();

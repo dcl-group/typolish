@@ -81,6 +81,9 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `J. Smith-Петров`: `J. Smith-Петров` → `J.⍽Smith-Петров`; `Петров-Smith J.`: `Петров-Smith J.` →
   `Петров-Smith⍽J.`. A surname with no word of the language's script stays unglued
   (`А. Smith-Jones`). Found by review.
+- `report_template` gives a `Protected` piece longer than `u32::MAX` bytes its whole length in its
+  protected span; the range was cut to `u32::MAX` (design section 3.11). Such a piece is no part of
+  the call's text, so the limit of design section 3.4 does not apply to it. Found by review.
 - The dash rules read a range with its percent sign attached as a percentage range, as they read the
   range with the sign after spaces, whatever its sides and its joint (design sections 3.6 and 8.2):
   a side may be a Roman numeral (`XIX-XX %` and `XIX–10 %` are ranges by check 17) or a decimal

@@ -1642,7 +1642,7 @@ mod tests {
         let mut sink = Sink {
             rec: &mut rec,
             pieces: &pieces,
-            lens: &[len],
+            lens: &[text.len()],
         };
         classify(&t, text, &mut tokens, &mut cs, &mut sink);
         cs.frags
@@ -1681,7 +1681,7 @@ mod tests {
         let mut sink = Sink {
             rec: &mut rec,
             pieces: &pieces,
-            lens: &[len],
+            lens: &[text.len()],
         };
         classify(&t, text, &mut tokens, &mut cs, &mut sink);
         cs.frags[0]
@@ -1937,7 +1937,7 @@ mod tests {
         let mut sink = Sink {
             rec: &mut rec,
             pieces: &pieces,
-            lens: &[len],
+            lens: &[text.len()],
         };
         classify(&t, text, &mut tokens, &mut cs, &mut sink);
         let [first, second] = cs.frags[..] else {

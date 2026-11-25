@@ -38,7 +38,7 @@ pub struct Scratch {
     /// The call's text when it is copied from several `Text` pieces.
     pub(crate) text: String,
     pub(crate) pieces: Vec<TextPiece>,
-    pub(crate) lens: Vec<u32>,
+    pub(crate) lens: Vec<usize>,
     pub(crate) atoms: Vec<Atom>,
     pub(crate) next_atoms: Vec<Atom>,
     pub(crate) delim: DelimScratch,
@@ -91,7 +91,7 @@ impl Scratch {
     fn heap_bytes(&self) -> usize {
         self.text.capacity()
             + self.pieces.capacity() * size_of::<TextPiece>()
-            + self.lens.capacity() * size_of::<u32>()
+            + self.lens.capacity() * size_of::<usize>()
             + (self.atoms.capacity() + self.next_atoms.capacity()) * size_of::<Atom>()
             + self.delim.heap_bytes()
             + self.clusters.capacity() * size_of::<(u32, u32)>()
