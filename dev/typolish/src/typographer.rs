@@ -715,12 +715,14 @@ impl Typographer {
 
     /// Typesets plain text. Returns the input borrowed when the output equals it byte for byte.
     ///
-    /// Uses a thread-local working buffer; after the first call on a thread an unchanged string
-    /// costs no allocation while the buffer stays under 4 MiB, that is for an input up to about 50
-    /// KiB (design section 2.12). Memory is linear in the input, about 20 to 230 bytes per byte of
-    /// a paragraph, the most for text of one-letter words and quotes (design section 3.12); for
-    /// longer inputs use [`Typographer::typeset_with`] with a [`Scratch`] of your own, which is
-    /// never shrunk.
+    /// Uses a thread-local working buffer. After the first call on a thread that runs the rules
+    /// (the first one that the quick check at the start does not settle), an unchanged string costs
+    /// no allocation as long as the buffer stays under 4 MiB: that holds for prose-shaped input up
+    /// to about 50 KiB, while input dense in straight quotes or one-letter words grows the buffer
+    /// past the limit sooner and then allocates on every call (design section 2.12).
+    /// Memory is linear in the input, about 20 to 230 bytes per byte of a paragraph, the most for
+    /// text of one-letter words and quotes (design section 3.12); for longer inputs use
+    /// [`Typographer::typeset_with`] with a [`Scratch`] of your own, which is never shrunk.
     ///
     /// ```
     /// use std::borrow::Cow;
@@ -937,8 +939,10 @@ impl Typographer {
     /// So `lint(text)` has a `TypographicChar` exactly when `to_plain(text) != text`, and
     /// `to_plain` is the matching fix. Like `to_plain`, it uses the thread-local working memory and
     /// makes no allocation promise. It is the tooling path: the time is linear in the length of the
-    /// text, long runs of quote characters in one paragraph included, and on ordinary text about
-    /// 100 to 200 times that of `typeset` (design section 12.1).
+    /// text, long runs of quote characters in one paragraph included, and on ordinary text a few
+    /// times that of `typeset`; text dense in glue and typographic characters costs about 100 to
+    /// 150 times that, 10 to 15 microseconds per byte in a release build, so limit the length of
+    /// untrusted input (design section 12.1).
     ///
     /// ```
     /// use typolish::{DiagnosticKind, Language, RuleSet, Typographer};
@@ -966,7 +970,9 @@ impl Typographer {
     /// [`Typographer::to_plain_template`] would change. A diagnostic over several pieces is
     /// reported at its first piece (design section 3.11). It is the tooling path: the time is
     /// linear in the length of the text, long runs of quote characters in one paragraph included,
-    /// and on ordinary text about 100 to 200 times that of `typeset` (design section 12.1).
+    /// and on ordinary text a few times that of `typeset`; text dense in glue and typographic
+    /// characters costs about 100 to 150 times that, 10 to 15 microseconds per byte in a release
+    /// build, so limit the length of untrusted input (design section 12.1).
     ///
     /// ```
     /// use typolish::{DiagnosticKind, Language, Piece, RuleSet, Severity, Slot, Typographer};
@@ -996,8 +1002,10 @@ impl Typographer {
     /// normalized, the result holds no character that `to_plain` would change, and text without
     /// such characters comes back borrowed. It uses the thread-local working memory and makes no
     /// allocation promise. It is the tooling path: the time is linear in the length of the text,
-    /// long runs of quote characters in one paragraph included, and on ordinary text about 100 to
-    /// 200 times that of `typeset` (design section 12.1).
+    /// long runs of quote characters in one paragraph included, and on ordinary text a few times
+    /// that of `typeset`; text dense in glue and typographic characters costs about 100 to 150
+    /// times that, 10 to 15 microseconds per byte in a release build, so limit the length of
+    /// untrusted input (design section 12.1).
     ///
     /// ```
     /// use typolish::{Language, RuleSet, Typographer};
@@ -1019,7 +1027,9 @@ impl Typographer {
     /// `BlockMarkup` piece ends the paragraph, as in `typeset_template`), and the texts are
     /// in the n + 1 form of [`Template`] (design section 2.10). It is the tooling path: the time is
     /// linear in the length of the text, long runs of quote characters in one paragraph included,
-    /// and on ordinary text about 100 to 200 times that of `typeset` (design section 12.1).
+    /// and on ordinary text a few times that of `typeset`; text dense in glue and typographic
+    /// characters costs about 100 to 150 times that, 10 to 15 microseconds per byte in a release
+    /// build, so limit the length of untrusted input (design section 12.1).
     ///
     /// ```
     /// use typolish::{Language, Piece, RuleSet, Slot, Typographer};
@@ -1142,7 +1152,11 @@ impl TypographerBuilder {
     /// Sets the quote pairs instead of the language's, for example
     /// `QuotePairs::new(('«', '»'), ('„', '“'))`.
     ///
-    /// Affects the rule `quotes.pairs`.
+    /// Affects the rule `quotes.pairs`. The pairs of a language are set with
+    /// `LanguageBuilder::quotes`.
+    ///
+    /// A value that [`build`](TypographerBuilder::build) refuses is reported as
+    /// [`Error::InvalidSetting`] for `quote_pairs`.
     ///
     /// ```
     /// use typolish::{Language, Output, QuotePairs, RuleSet, Typographer};
@@ -1222,13 +1236,14 @@ impl TypographerBuilder {
     /// # Errors
     ///
     /// [`build`](TypographerBuilder::build) returns [`Error::InvalidSetting`] for `units` when an
-    /// added unit is empty, contains whitespace, starts with an ASCII digit or is also removed; is
-    /// equal to a short word or a particle (with case) and not an ambiguous unit of the language,
-    /// which the builder cannot declare (`в` in Russian; `с` and `В` are accepted); or is one
-    /// character equal to a sign of the language (`§`). Two rules would read such a unit, each in
-    /// its own way: `nbsp.units` would glue a short word after a number as a unit (`5⍽в⍽лесу`),
-    /// and a sign would be glued both to the number before it and to the number after it
-    /// (`5⍽§⍽1`; design sections 2.11 and 7.6).
+    /// added or a removed unit is empty, contains whitespace or starts with an ASCII digit, or a
+    /// unit is both added and removed; or when an added unit is equal to a short word or a
+    /// particle (with case) and not an ambiguous unit of the language, which the builder cannot
+    /// declare (`в` in Russian; `с` and `В` are accepted); or is one character equal to a sign of
+    /// the language (`§`). Two rules would read such a unit, each in its own way: `nbsp.units`
+    /// would glue a short word after a number as a unit (`5⍽в⍽лесу`), and a sign would be glued
+    /// both to the number before it and to the number after it (`5⍽§⍽1`; design sections 2.11 and
+    /// 7.6).
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
@@ -1251,6 +1266,9 @@ impl TypographerBuilder {
     /// Removes units from the language's list.
     ///
     /// Affects the rules `range.context` and `nbsp.units`.
+    ///
+    /// A value that [`build`](TypographerBuilder::build) refuses is reported as
+    /// [`Error::InvalidSetting`] for `units`.
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
@@ -1275,6 +1293,9 @@ impl TypographerBuilder {
     ///
     /// Affects the rule `nbsp.short-words`.
     ///
+    /// A value that [`build`](TypographerBuilder::build) refuses is reported as
+    /// [`Error::InvalidSetting`] for `short_words`.
+    ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
     ///
@@ -1296,6 +1317,9 @@ impl TypographerBuilder {
     /// Removes short words from the language's list.
     ///
     /// Affects the rule `nbsp.short-words`.
+    ///
+    /// A value that [`build`](TypographerBuilder::build) refuses is reported as
+    /// [`Error::InvalidSetting`] for `short_words`.
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
@@ -1359,6 +1383,9 @@ impl TypographerBuilder {
     /// and the rules `nbsp.short-words` and `nbsp.short-length`, which glue nothing after a
     /// particle so placed (`Знаешь ли ты` → `Знаешь\u{a0}ли ты`).
     ///
+    /// A value that [`build`](TypographerBuilder::build) refuses is reported as
+    /// [`Error::InvalidSetting`] for `particles`.
+    ///
     /// ```
     /// use typolish::{Language, Output, Rule, RuleSet, Typographer};
     ///
@@ -1382,6 +1409,9 @@ impl TypographerBuilder {
     /// Affects the rule `nbsp.particles`, which glues a particle to the word or slot before it,
     /// and the rules `nbsp.short-words` and `nbsp.short-length`, which glue nothing after a
     /// particle so placed (`Знаешь ли ты` → `Знаешь\u{a0}ли ты`).
+    ///
+    /// A value that [`build`](TypographerBuilder::build) refuses is reported as
+    /// [`Error::InvalidSetting`] for `particles`.
     ///
     /// ```
     /// use typolish::{Language, Output, Rule, RuleSet, Typographer};
@@ -1423,6 +1453,9 @@ impl TypographerBuilder {
     /// Sets the minimum grouping digits of `format_number` and `format_range`: from 1 to 4,
     /// numbers are grouped from `3 + digits` digits; 0 never groups.
     ///
+    /// A value that [`build`](TypographerBuilder::build) refuses is reported as
+    /// [`Error::InvalidSetting`] for `min_grouping_digits`.
+    ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
     ///
@@ -1442,6 +1475,9 @@ impl TypographerBuilder {
     /// a letter, whitespace other than U+00A0 and U+202F, a character with the Unicode `Dash`
     /// property, a character that does not show on its own between two digits, and the decimal
     /// separator of the language (design sections 2.11 and 7.6).
+    ///
+    /// A value that [`build`](TypographerBuilder::build) refuses is reported as
+    /// [`Error::InvalidSetting`] for `group_separator`.
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
@@ -1465,6 +1501,9 @@ impl TypographerBuilder {
     /// Affects the rule `number.minus`. The sign is `-` or a dash, U+2010 to U+2015 or U+2212:
     /// the signs that the second pass reads as the sign of a number again; `build` rejects any
     /// other one with `Error::InvalidSetting` (design section 2.11).
+    ///
+    /// A value that [`build`](TypographerBuilder::build) refuses is reported as
+    /// [`Error::InvalidSetting`] for `minus_sign`.
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
@@ -1504,6 +1543,9 @@ impl TypographerBuilder {
 
     /// Adds a pair of protection delimiters, for example `("{{", "}}")` (design section 10.1).
     ///
+    /// A value that [`build`](TypographerBuilder::build) refuses is reported as
+    /// [`Error::InvalidSetting`] for `protect_between`.
+    ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
     ///
@@ -1530,6 +1572,26 @@ impl TypographerBuilder {
     /// added units against the short words, the particles and the signs), then the group
     /// separator, the minus sign and the minimum grouping digits. Within a check, the offending
     /// value that is smallest in code point order is reported.
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::RuleConflict`]: a rule is both enabled and disabled.
+    /// - [`Error::InvalidSetting`], with the setting named in `setting`:
+    ///   - `protect_between`: a delimiter is empty, contains whitespace, a letter or a digit, is
+    ///     equal to or a prefix of a delimiter of another pair, or is a proper prefix of the other
+    ///     delimiter of its pair;
+    ///   - `quote_pairs`: a glyph is `"`, `'`, whitespace or a letter, is not a quote character a
+    ///     language may use, or appears more than once;
+    ///   - `units`, `short_words` and `particles`: a word, added or removed, is empty or contains
+    ///     whitespace, or a word is both added and removed; for `units` also a unit, added or
+    ///     removed, that starts with an ASCII digit;
+    ///   - `units`, added: a unit that is also a short word or a particle (with case) and not an
+    ///     ambiguous unit of the language, or that is one character equal to a sign of the
+    ///     language (see [`add_units`](TypographerBuilder::add_units));
+    ///   - `group_separator`: not U+00A0, U+202F or a visible character that is not a digit, a
+    ///     letter, whitespace or a dash; or the decimal separator of the language;
+    ///   - `minus_sign`: not `-` or a dash, U+2010 to U+2015 or U+2212;
+    ///   - `min_grouping_digits`: above 4.
     ///
     /// ```
     /// use typolish::{Error, Language, RuleSet, Typographer};
@@ -1563,7 +1625,7 @@ impl TypographerBuilder {
             return Err(invalid(
                 "group_separator",
                 format!(
-                    "{:?} is not U+00A0, U+202F or a visible character of its own (a digit, a letter, whitespace or a dash)",
+                    "{:?} is not U+00A0, U+202F or a visible character that is not a digit, a letter, whitespace or a dash",
                     c
                 ),
             ));

@@ -462,7 +462,7 @@ fn readme_numbers_agree_with_the_code() {
     let text = readme();
     // "27 rules": the number of rules the crate has.
     assert!(
-        text.contains(&format!("- {} rules with stable ids", Rule::ALL.len())),
+        text.contains(&format!("- {} rules with permanent ids", Rule::ALL.len())),
         "the README does not state the rule count {}",
         Rule::ALL.len()
     );

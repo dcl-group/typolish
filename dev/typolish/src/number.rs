@@ -11,10 +11,12 @@ use crate::{Error, Output, Typographer};
 /// A number to format: an integer, an `f32` or `f64`, or an ASCII decimal string.
 ///
 /// Every integer type and both float types convert with `From`; [`Number::decimal`] takes digits
-/// as written and [`Number::fixed`] rounds a float to a number of fraction digits. Integers compare
-/// by value whatever their type (`Number::from(1u8) == Number::from(1i32)`); `1`, `1.0` and
-/// `Number::decimal("1")` are three different numbers. Floats compare as floats, so a `NaN` is not
-/// equal to itself.
+/// as written and [`Number::fixed`] rounds a float to a number of fraction digits. A float
+/// converted with `From` is written with its shortest digits in full, never with an exponent, so
+/// `1e30` has thirty-one digits and `0.1 + 0.2` is `0.30000000000000004` in English; use `fixed` or
+/// `decimal` to control the digits. Integers compare by value whatever their type
+/// (`Number::from(1u8) == Number::from(1i32)`); `1`, `1.0` and `Number::decimal("1")` are three
+/// different numbers. Floats compare as floats, so a `NaN` is not equal to itself.
 ///
 /// ```
 /// use typolish::{Language, Number, Output, RuleSet, Typographer};
@@ -194,7 +196,10 @@ impl From<f32> for Number<'static> {
 }
 
 impl From<f64> for Number<'static> {
-    /// The float with the shortest representation of `f64`.
+    /// The float with the shortest digits that read back as the same `f64`, written in full and
+    /// never with an exponent: `1e30` is thirty-one grouped digits and `1e-30` is `0.000…001`, and
+    /// the sum `0.1 + 0.2` is `0.30000000000000004` in English. For a fixed number of fraction
+    /// digits use [`Number::fixed`]; for digits as you have them, [`Number::decimal`].
     fn from(value: f64) -> Number<'static> {
         Number {
             repr: Repr::F64(value),

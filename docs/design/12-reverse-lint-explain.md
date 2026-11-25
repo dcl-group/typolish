@@ -76,26 +76,34 @@ would break there. Glue of either width counts as glue, and the spaces that the 
 around a dash do not count; the restored spaces of a closed dash are exempt from the second test,
 because the closed form joins two words into one fragment, which by design changes the rules around
 it (section 8.4). A reading that failed only because a neighboring reading was wrong is tried again
-alone in its neighborhood: readings farther apart than any rule looks (256 bytes; the longest
-pattern, `nbsp.phone`, spans at most 24 tokens) are tried in one forward run, and a problem of the
-run is laid at the nearest of them, so the number of runs does not grow with the length of the text,
-and the bookkeeping of the candidates is linear (a reading is compared with its neighbors only). The
-whole pass repeats on its own output until nothing changes, so `to_plain` is stable by construction.
-There is no second copy of the rule patterns to drift from them. The price is up to about (readings
-within 256 bytes) × (readings of a character) forward runs per pass, each over the whole text: on
-dense typographic text that is hundreds of runs. On ordinary text the time is linear in its length
-and about 100 to 200 times that of `typeset`, which the tooling path allows (section 2.12) and the
-maintainer accepted (section 15.2, item 28). A long run of quote characters in one paragraph is
-linear too. The readings of the quotes are found in one pass over them: the neighbors of a series of
-quotes (section 6.3) are found once for the series, not once for each of its quotes; the open pairs
-are kept with the places of the entries of each kind, so the innermost pair of a kind and whether a
-nested pair is open below it are found in constant time; and the later `’` that the rule for `’`
-below looks for is found for every `’` after `s` or `S` in one pass, the `’` that wait at the same
-depth grouped together. Before version 0.1.2 each of these was searched again for every quote, and
-96 KB of `’` in one paragraph took about 5 s; it now takes about 20 ms, and `«„` repeated, `x`, `“»`
-repeated (96 KB, Russian Prose) about 45 ms instead of 4.4 s. Every pass that changes something
-turns at least one non-ASCII character into ASCII text, so the passes end; on the inputs measured,
-ordinary prose and long runs of quotes in one paragraph alike, there are one or two.
+alone in its neighborhood: readings farther apart than 256 bytes are tried in one forward run, and a
+problem of the run is laid at the nearest of them, so the number of runs does not grow with the
+length of the text, and the bookkeeping of the candidates is linear (a reading is compared with its
+neighbors only). The 256 bytes bound the work and are not a claim about the rules: the longest
+pattern, `nbsp.phone`, spans at most 24 tokens, but a chain of short words has no limit, and a rule
+can carry its effect along it. What the bound misses is caught by the checks of a round that run the
+rules over the whole text with every kept reading in place and drop each reading that does not come
+back. The whole pass repeats on its own output until nothing changes, so `to_plain` is stable by
+construction. There is no second copy of the rule patterns to drift from them. The price is up to
+about (readings within 256 bytes) × (readings of a character) forward runs per pass, each over the
+whole text: on dense typographic text that is hundreds of runs. On ordinary text the time is linear
+in its length and a few times that of `typeset` (1.5 to 6 times on the files of `tests/corpus`,
+measured on text that `typeset` had written, release build). On text dense in glue and typographic
+characters it is about 100 to 150 times that of `typeset`, 10 to 15 microseconds per byte (`a⍽b⍽`
+and `в⍽«а»⍽— ` repeated to 64 KiB in Russian, `a⍽“b”⍽— ` in English, Prose, release build), which
+the tooling path allows (section 2.12) and the maintainer accepted (section 15.2, item 28, which
+gives the earlier figure of 100 to 200 times without telling the two kinds of text apart). A long
+run of quote characters in one paragraph is linear too. The readings of the quotes are found in one
+pass over them: the neighbors of a series of quotes (section 6.3) are found once for the series, not
+once for each of its quotes; the open pairs are kept with the places of the entries of each kind, so
+the innermost pair of a kind and whether a nested pair is open below it are found in constant time;
+and the later `’` that the rule for `’` below looks for is found for every `’` after `s` or `S` in
+one pass, the `’` that wait at the same depth grouped together. Before version 0.1.2 each of these
+was searched again for every quote, and 96 KB of `’` in one paragraph took about 5 s; it now takes
+about 20 ms, and `«„` repeated, `x`, `“»` repeated (96 KB, Russian Prose) about 45 ms instead of 4.4
+s. Every pass that changes something turns at least one non-ASCII character into ASCII text, so the
+passes end; on the inputs measured, ordinary prose and long runs of quotes in one paragraph alike,
+there are one or two.
 
 **Which `’` is an apostrophe** (English, where `’` is both the apostrophe and the nested closing
 quote). A `’` in a fixed apostrophe context of section 6.2 (between letters, after a digit before a

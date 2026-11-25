@@ -27,8 +27,10 @@ use super::scratch::Scratch;
 use crate::report::{Change, Diagnostic, ProtectedKind, ProtectedSpan};
 use crate::{Rule, SingleQuotes, Typographer};
 
-/// How far apart, in bytes, two readings are tried in one forward run: farther than any rule
-/// looks (the longest pattern, `nbsp.phone`, spans at most 24 tokens).
+/// How far apart, in bytes, two readings are tried in one forward run. It bounds the work, not the
+/// reach of the rules: a chain of short words can carry a rule's effect past it. A reading that two
+/// trials broke together is caught by the checks of `round` that run the rules over the whole text
+/// with every kept reading in place and drop the readings that do not come back.
 const REACH: usize = 256;
 
 /// The apostrophe, also the English closing single quote (design section 6.2).

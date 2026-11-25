@@ -49,6 +49,12 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   into a temporary vector before recording it; the result does not change. Measured in a release
   build, Russian Prose, `Он - "врач", см. host:8080 и т. д. ` repeated 20 times (140 changes, 20
   protected spans): 314 → 154 allocations per `report` call.
+- The reason of `Error::InvalidSetting` for `group_separator` no longer reads as if a digit were not
+  a digit: `group_separator('5')` gave
+  `'5' is not U+00A0, U+202F or a visible character of its own (a digit, a letter, whitespace or a dash)`,
+  now
+  `'5' is not U+00A0, U+202F or a visible character that is not a digit, a letter, whitespace or a dash`.
+  The checked set does not change.
 
 ### Fixed
 

@@ -10,11 +10,13 @@ the limits listed under Languages.
   kind is known and whose value is not, and a number to format.
 - Output as Unicode, as HTML text (entities or nowrap elements), or as the escaped body of a string
   literal for JavaScript, JSON, Rust or CSS; the output kind is given with every call.
-- 27 rules with stable ids, two ready sets (`PROSE` and `INTERFACE`), and sets of your own.
+- 27 rules with permanent ids, two ready sets (`PROSE` and `INTERFACE`), and sets of your own.
 - Protection of commands, paths and code: backticks, delimiters of your own, protected pieces, and
   technical fragments the crate recognizes by itself.
 - Deterministic and idempotent; an unchanged string is returned borrowed and, after the first call
-  on a thread, without allocation for an input up to about 50 KiB.
+  on a thread that runs the rules (the first one the quick check does not settle), without
+  allocation for prose-shaped input up to about 50 KiB; input dense in straight quotes or one-letter
+  words grows the working memory past its 4 MiB limit sooner (design section 2.12).
 - Explanation of every edit, a check of plain sources, and the reverse transformation.
 - No `unsafe`, no regular expressions, no panics, and nothing read from the environment.
 
@@ -150,6 +152,10 @@ assert_eq!(
     "&minus;1&nbsp;234,5"
 );
 ```
+
+A float converted with `From` is written with its shortest digits in full and never with an
+exponent: `1e30` is thirty-one digits and `0.1 + 0.2` is `0.30000000000000004` in English. For
+control over the digits use `Number::fixed` or `Number::decimal`.
 
 ### Output kinds
 

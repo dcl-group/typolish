@@ -256,6 +256,12 @@ fn number_settings() {
             ..
         }
     ));
+    // The reason says what the separator must not be, so a digit reads as a digit.
+    assert_eq!(
+        build(base().group_separator('5')).to_string(),
+        "invalid setting `group_separator`: '5' is not U+00A0, U+202F or a visible character \
+         that is not a digit, a letter, whitespace or a dash"
+    );
     // Design section 7.6: a dash as the group separator would make `12-345` a range on a second
     // pass; a quote character is followed by three digits and stays.
     assert!(matches!(

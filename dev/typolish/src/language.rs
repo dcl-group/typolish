@@ -396,7 +396,8 @@ impl LanguageBuilder {
         self
     }
 
-    /// Sets the quote pairs; `None` makes `quotes.pairs` inert.
+    /// Sets the quote pairs; `None` makes `quotes.pairs` inert. The same pairs are set on a
+    /// `Typographer` by `TypographerBuilder::quote_pairs`.
     ///
     /// ```
     /// use typolish::{Language, LanguageBuilder, Rule};
