@@ -27,8 +27,8 @@ use common::corpus::{
 };
 use common::decode::TYPOGRAPHIC;
 use common::strategies::{
-    GRAMMAR_LANGUAGES, GrammarConfig, NO_READING, Sentence, grammar_known_p2_failure, run_grammar,
-    run_grammar_long,
+    GRAMMAR_LANGUAGES, GrammarConfig, NO_READING, Sentence, grammar_known_p2_failure, p2_misread,
+    run_grammar, run_grammar_long, with_quotes_of,
 };
 use common::{configs, interface, parse_tmpl, prose, show, vis, without_rule};
 use proptest::prelude::*;
@@ -1899,5 +1899,102 @@ fn the_p2_filters_name_their_limits() {
         assert!(p2(&t, x).is_err(), "P2 holds for {x:?}");
         let y = t.typeset(x, Output::Unicode);
         assert_eq!(grammar_known_p2_failure(&t, x, &y), Some(limit), "{x:?}");
+    }
+}
+
+#[test]
+fn the_p2_filters_name_nothing_else() {
+    // Design section 13.5: the filter of the P2 failures names only the misreading of
+    // `p2_misread`, on a typeset text that is a fixed point. Each row is `None`: a filter that
+    // names every failure, or one that skips the check of the fixed point, fails here.
+    for (x, plain) in [
+        // No quotes, or the same quotes in the same order.
+        ("a - b", "a - b"),
+        ("\"a\" b", "\"a\" b"),
+        ("'a' b's", "'a' b's"),
+        // A prime that `to_plain` keeps reads as its straight quote.
+        ("5' 3\"", "5′ 3″"),
+        ("it's", "it’s"),
+        // Quotes of another number are no misreading, whatever the glyphs.
+        ("\"a\" b", "\"a b"),
+        ("'a' b", "'a' b\""),
+        ("'a'", "\"a"),
+        ("\"a\"", "'a' 'b'"),
+    ] {
+        assert_eq!(p2_misread(x, plain), None, "{x:?} {plain:?}");
+    }
+    for (x, plain) in [("\"a\"", "'a'"), ("'a'", "\"a\""), ("’a\"", "\"a'")] {
+        assert_eq!(p2_misread(x, plain), Some(NO_READING), "{x:?} {plain:?}");
+    }
+    // A failure that the reading of the quotes does not explain: `y` is the output of a row of
+    // `the_p2_filters_name_their_limits`, and `x` differs from its source by more than the quotes.
+    let t = GrammarConfig {
+        lang: 1,
+        set: RuleSet::PROSE,
+        dash: None,
+        single: SingleQuotes::NestedOnly,
+        percent: PercentSpacing::AsWritten,
+    }
+    .typographer();
+    let source = "\"'S '5' 3'\"";
+    let y = t.typeset(source, Output::Unicode);
+    assert_eq!(grammar_known_p2_failure(&t, source, &y), Some(NO_READING));
+    for x in ["\"'S '5' 3'\" ...", "\"'S '5' 3'\" - x", "\"'S '5' 4'\""] {
+        assert_eq!(p2_misread(x, &t.to_plain(&y)), Some(NO_READING), "{x:?}");
+        assert_eq!(grammar_known_p2_failure(&t, x, &y), None, "{x:?}");
+    }
+    for (x, plain, reread) in [
+        (
+            "\"a 'b' c\" - d",
+            "\"a \"b\" c\" - d",
+            Some("\"a \"b\" c\" - d"),
+        ),
+        ("x '5' y", "x ’5′ y", Some("x ’5′ y")),
+        ("\"a\"", "\"a", None),
+        ("\"a", "\"a\"", None),
+    ] {
+        assert_eq!(
+            with_quotes_of(x, plain).as_deref(),
+            reread,
+            "{x:?} {plain:?}"
+        );
+    }
+    for lang in 0..GRAMMAR_LANGUAGES {
+        let t = GrammarConfig {
+            lang,
+            set: RuleSet::PROSE,
+            dash: None,
+            single: SingleQuotes::NestedOnly,
+            percent: PercentSpacing::AsWritten,
+        }
+        .typographer();
+        // A typeset text that is no fixed point falls under no limit, even where its quotes
+        // would read as misread: the `...` typesets again.
+        for (x, y) in [
+            ("'a'...", "\"a\"..."),
+            ("\"a\"...", "\"a\"..."),
+            ("\"a b\"", "\"a\"... b"),
+        ] {
+            assert_ne!(t.typeset(y, Output::Unicode), y, "{lang} {y:?}");
+            assert_eq!(
+                grammar_known_p2_failure(&t, x, y),
+                None,
+                "{lang} {x:?} {y:?}"
+            );
+        }
+        // Inputs where P2 holds, with quotes and without; in Russian `to_plain` reads the nested
+        // `'b'` as `"b"`, which `p2_misread` names, and the filter does not, since nothing fails.
+        for x in [
+            "a - b",
+            "\"a\" - b",
+            "\"a 'b' c\" d",
+            "x \"\" y",
+            "it's 5' 3\"",
+            "XIX-XX % - 27",
+        ] {
+            p2(&t, x).unwrap();
+            let y = t.typeset(x, Output::Unicode);
+            assert_eq!(grammar_known_p2_failure(&t, x, &y), None, "{lang} {x:?}");
+        }
     }
 }

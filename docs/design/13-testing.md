@@ -399,9 +399,14 @@ reported. No failure of idempotence is skipped: since the quote phase settles it
 6.6, choice C59) the known limits of section 10.8 hold no window that is no fixed point. Only a
 sentence that fails P2 is measured against the known limit of `to_plain` in section 10.8, so every
 other sentence is checked in full: a failure of P2 is skipped when `grammar_known_p2_failure` names
-the limit, where the output is a fixed point and `to_plain` read a `"` of the input as `'` or the
-other way round. `the_p2_filters_name_their_limits` checks that the filter names the inputs of the
-limit and that those inputs still fail, and the filter goes with its limit;
+the limit, where the output is a fixed point, P2 fails on it, `to_plain` read a `"` of the input as
+`'` or the other way round (`p2_misread`), and that reading alone explains the failure: the input
+with the quotes of the plain form in their place (`with_quotes_of`) typesets as the plain form does.
+`the_p2_filters_name_their_limits` checks that the filter names the inputs of the limit and that
+those inputs still fail, and the filter goes with its limit; `the_p2_filters_name_nothing_else`
+holds the rows the filter must not name (no misreading, quotes of another number, an output that is
+no fixed point, an input where P2 holds, a failure that the reading of the quotes does not explain),
+so a filter that names more than its limit fails;
 `the_grammar_rows_of_the_settled_windows_are_fixed_points` keeps the sentences that failed
 idempotence before the settling as fixed points.
 

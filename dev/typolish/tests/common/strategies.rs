@@ -1079,27 +1079,61 @@ pub fn run_grammar_long(cases: u32, seed: u64, check: impl GrammarCheck) {
 pub const NO_READING: &str = "`to_plain` finds no reading that brings the quotes back";
 
 /// The known limit of design section 10.8 that a failure of P2 on the plain text `x` falls under,
-/// by its name, or `None`; `y` is the typeset text. A `y` that is no fixed point falls under none.
-/// Otherwise P2 fails where `to_plain` reads the quotes of a window in another way than `x` had
-/// them, so that the window does not typeset back, or typesets back with its quotes but not with
-/// a rule that reads them (`todo/plain-quotes-no-reading.md`): the quotes of its plain form, `"`,
-/// `'` and `’` in order (a prime `′` or `″` that it keeps read as `'` or `"`), hold a `"` where
-/// those of `x` hold `'` or `’`, or the other way round.
+/// by its name, or `None`; `y` is the typeset text of `x`. None falls under a limit where `y` is no
+/// fixed point or where P2 holds. Otherwise P2 fails where `to_plain` reads the quotes of a window
+/// in another way than `x` had them (`p2_misread`), so that the window does not typeset back, or
+/// typesets back with its quotes but not with a rule that reads them
+/// (`todo/plain-quotes-no-reading.md`), and that reading alone explains the failure: `x` with the
+/// quotes of the plain form in their place (`with_quotes_of`) typesets as the plain form does.
 pub fn grammar_known_p2_failure(t: &Typographer, x: &str, y: &str) -> Option<&'static str> {
     let second = t.report(y, Output::Unicode);
     if second.result() != y || !second.changes().is_empty() {
         return None;
     }
     let plain = t.to_plain(y);
+    let again = t.typeset(&plain, Output::Unicode);
+    if again == y {
+        return None;
+    }
+    let limit = p2_misread(x, &plain)?;
+    let reread = with_quotes_of(x, &plain)?;
+    (t.typeset(&reread, Output::Unicode) == again).then_some(limit)
+}
+
+/// Whether `c` is a quote that `p2_misread` reads: `"`, `'`, `’`, or a prime `′` or `″`.
+fn is_plain_quote(c: char) -> bool {
+    matches!(c, '"' | '″' | '\'' | '’' | '′')
+}
+
+/// `NO_READING` where `to_plain` read the quotes of a window in another way than the plain text
+/// `x` had them, or `None`: the quotes of `plain`, `"`, `'` and `’` in order (a prime `′` or `″`
+/// that it keeps read as `'` or `"`), are as many as those of `x`, and hold a `"` where those of
+/// `x` hold `'` or `’`, or the other way round. Quotes of another number, or the same quotes, are
+/// no misreading.
+pub fn p2_misread(x: &str, plain: &str) -> Option<&'static str> {
     let straight = |s: &str| -> Vec<char> {
         s.chars()
-            .filter_map(|c| match c {
-                '"' | '″' => Some('"'),
-                '\'' | '’' | '′' => Some('\''),
-                _ => None,
-            })
+            .filter(|&c| is_plain_quote(c))
+            .map(|c| if matches!(c, '"' | '″') { '"' } else { '\'' })
             .collect()
     };
-    let (a, b) = (straight(x), straight(&plain));
+    let (a, b) = (straight(x), straight(plain));
     (a.len() == b.len() && a != b).then_some(NO_READING)
+}
+
+/// `x` with its quotes (`is_plain_quote`) replaced, in order, by those of `plain`, or `None` where
+/// the two do not hold as many.
+pub fn with_quotes_of(x: &str, plain: &str) -> Option<String> {
+    let mut quotes = plain.chars().filter(|&c| is_plain_quote(c));
+    let out: String = x
+        .chars()
+        .map(|c| {
+            if is_plain_quote(c) {
+                quotes.next()
+            } else {
+                Some(c)
+            }
+        })
+        .collect::<Option<String>>()?;
+    quotes.next().is_none().then_some(out)
 }
