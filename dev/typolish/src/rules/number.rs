@@ -74,7 +74,7 @@ pub(crate) fn minus(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
     Some(Match::with(
         0,
-        Edits::NONE.with(Edit::Replace {
+        Edits::one(Edit::Replace {
             at: 0,
             repl: Repl::Char(sign),
         }),
@@ -129,7 +129,7 @@ pub(crate) fn times(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
     Some(Match::with(
         0,
-        Edits::NONE.with(Edit::Replace {
+        Edits::one(Edit::Replace {
             at: 0,
             repl: Repl::Char(TIMES_SIGN),
         }),

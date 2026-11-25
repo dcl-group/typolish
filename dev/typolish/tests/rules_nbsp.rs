@@ -431,6 +431,110 @@ fn abbreviations_are_off_when_disabled() {
     }
 }
 
+/// A declared language whose only abbreviation is `parts` with `bind`.
+fn declared_abbreviation(parts: &[String], bind: typolish::Bind) -> Language {
+    typolish::LanguageBuilder::new("xx")
+        .abbreviations([(parts.to_vec(), bind)])
+        .build()
+        .unwrap()
+}
+
+#[test]
+fn abbreviations_of_many_parts_glue_whole_or_not_at_all() {
+    use typolish::Bind;
+    // A match holds at most six edits (design section 8.7). An entry that a language declares with
+    // more parts takes its tokens and changes nothing, so the output is a fixed point: glueing six
+    // spaces of it would leave one that a second pass glues.
+    let letters = |n: usize, dot: &str| -> Vec<String> {
+        "abcdefghijkl"
+            .chars()
+            .take(n)
+            .map(|c| format!("{c}{dot}"))
+            .collect()
+    };
+    let words = |n: usize| -> Vec<String> {
+        let mut parts = letters(n - 1, "");
+        parts.push("word".to_owned());
+        parts
+    };
+    let rows: &[(Vec<String>, Bind, &str, &str)] = &[
+        // Six edits: glued in full.
+        (words(6), Bind::Next, "a b c d e word x", "a⍽b⍽c⍽d⍽e⍽word⍽x"),
+        (
+            letters(7, ""),
+            Bind::Inner,
+            "a b c d e f g",
+            "a⍽b⍽c⍽d⍽e⍽f⍽g",
+        ),
+        // Seven edits: nothing changes.
+        (
+            words(7),
+            Bind::Next,
+            "a b c d e f word x",
+            "a b c d e f word x",
+        ),
+        (
+            words(8),
+            Bind::Next,
+            "a b c d e f g word x",
+            "a b c d e f g word x",
+        ),
+        (
+            letters(8, "."),
+            Bind::Inner,
+            "a. b. c. d. e. f. g. h.",
+            "a. b. c. d. e. f. g. h.",
+        ),
+        (
+            letters(8, "."),
+            Bind::Inner,
+            "a.b.c.d.e.f.g.h.",
+            "a.b.c.d.e.f.g.h.",
+        ),
+        (
+            letters(7, "."),
+            Bind::NextCapitalized,
+            "a. b. c. d. e. f. g. Word",
+            "a. b. c. d. e. f. g. Word",
+        ),
+        // A space the author glued needs no edit, so the rest fits.
+        (
+            words(7),
+            Bind::Next,
+            "a⍽b c d e f word x",
+            "a⍽b⍽c⍽d⍽e⍽f⍽word⍽x",
+        ),
+    ];
+    for (parts, bind, input, expected) in rows {
+        let language = declared_abbreviation(parts, *bind);
+        for t in [
+            alone(language.clone(), ABBR),
+            set(language.clone(), RuleSet::PROSE),
+        ] {
+            check_in("declared", &t, (input, expected));
+            check_in("declared, second pass", &t, (expected, expected));
+        }
+    }
+    // Any number of parts, bind and form: the output is a fixed point.
+    for n in 1..=12 {
+        for bind in [Bind::Inner, Bind::Next, Bind::NextCapitalized] {
+            for (parts, text) in [
+                (letters(n, ""), letters(n, "").join(" ")),
+                (letters(n, "."), letters(n, ".").join(" ")),
+                (letters(n, "."), letters(n, ".").concat()),
+            ] {
+                let t = set(declared_abbreviation(&parts, bind), RuleSet::PROSE);
+                for tail in ["", " x", " Word"] {
+                    let input = format!("{text}{tail}");
+                    let once = t.typeset(&input, Output::Unicode).into_owned();
+                    let twice = t.typeset(&once, Output::Unicode).into_owned();
+                    assert_eq!(once, twice, "{n} {bind:?} {}", show(&input));
+                }
+            }
+        }
+    }
+}
+
 #[test]
 fn abbreviations_with_narrow_glue() {
     let t = with(ru(), &[ABBR], |b| b.narrow_glue(NarrowGlue::ABBREVIATIONS));

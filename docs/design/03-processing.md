@@ -556,9 +556,11 @@ This is a sketch: real code has no panicking indexing. Properties of a phase:
    ranges is the same on a second pass, except on fragments that a removed space merged or an
    inserted space split (section 4.3, I2; section 4.4).
 4. **Bounded context.** A rule looks no further than a fixed number of tokens around its anchor (the
-   longest is `nbsp.phone`, at most 24 tokens for its 10 to 15 digits in at most six fragments;
-   abbreviations and units take up to eight). The exception is the quote phase: it has a linear
-   preliminary pass over the window (section 6), after which its rules only read decisions.
+   longest is `nbsp.phone`, at most 24 tokens for its 10 to 15 digits in at most six fragments; an
+   abbreviation or a unit takes the tokens of its entry, a bound that the language data sets). A
+   match holds at most six edits (`MAX_EDITS`); a rule whose pattern would need more makes none
+   (section 8.7, C61). The exception is the quote phase: it has a linear preliminary pass over the
+   window (section 6), after which its rules only read decisions.
 
 `Cx` gives rules read-only access: the text of a token (resolved from the call's inputs and its
 replacement), neighbors with `Format` and `Markup` tokens skipped, the fragment with its kind and

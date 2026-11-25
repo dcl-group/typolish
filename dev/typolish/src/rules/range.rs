@@ -30,7 +30,7 @@ fn dash_edit(cx: &Cx<'_>, i: usize) -> Option<Match> {
     cx.is(i, "-").then(|| {
         Match::with(
             0,
-            Edits::NONE.with(Edit::Replace {
+            Edits::one(Edit::Replace {
                 at: 0,
                 repl: Repl::Char(dash),
             }),

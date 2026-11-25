@@ -22,7 +22,7 @@ fn replace(cx: &Cx<'_>, i: usize, sign: char) -> Match {
     }
     Match::with(
         0,
-        Edits::NONE.with(Edit::Replace {
+        Edits::one(Edit::Replace {
             at: 0,
             repl: Repl::Char(sign),
         }),

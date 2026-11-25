@@ -48,6 +48,18 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
 
 ### Fixed
 
+- `nbsp.abbreviations` glues an entry of a declared language in full or not at all (design section
+  8.7): a match holds at most six edits, and an entry that needed more had its first six spaces
+  glued and the rest left for a second pass. Such an entry is now matched and left as it is, so the
+  output is a fixed point; a space the author glued needs no edit, so the rest may still fit. The
+  built-in languages have no such entry, and `LanguageBuilder::build` and `Language::from_data`
+  accept the same data as before. A declared language, Prose (and the rule alone): `Next` entry
+  `a b c d e f word`, `a b c d e f word x`: `a⍽b⍽c⍽d⍽e⍽f⍽word x` (then `a⍽b⍽c⍽d⍽e⍽f⍽word⍽x`) →
+  `a b c d e f word x`; `Inner` entry `a. b. c. d. e. f. g. h.`, `a. b. c. d. e. f. g. h.`:
+  `a.⍽b.⍽c.⍽d.⍽e.⍽f.⍽g. h.` → `a. b. c. d. e. f. g. h.`, and `a.b.c.d.e.f.g.h.`:
+  `a.⍽b.⍽c.⍽d.⍽e.⍽f.⍽g.h.` → `a.b.c.d.e.f.g.h.`; `NextCapitalized` entry of seven parts `a. … g.`,
+  `a. b. c. d. e. f. g. Word`: `a.⍽b.⍽c.⍽d.⍽e.⍽f.⍽g. Word` → `a. b. c. d. e. f. g. Word`. Found by
+  review.
 - The dash rules read a range with its percent sign attached as a percentage range, as they read the
   range with the sign after spaces, whatever its sides and its joint (design sections 3.6 and 8.2):
   a side may be a Roman numeral (`XIX-XX %` and `XIX–10 %` are ranges by check 17) or a decimal

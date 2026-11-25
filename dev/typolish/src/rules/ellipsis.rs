@@ -79,10 +79,7 @@ pub(crate) fn dots(cx: &Cx<'_>, i: usize) -> Option<Match> {
         Some(f) => Repl::Ellipsis(f),
         None => Repl::Char('…'),
     };
-    Some(Match::with(
-        0,
-        Edits::NONE.with(Edit::Replace { at: 0, repl }),
-    ))
+    Some(Match::with(0, Edits::one(Edit::Replace { at: 0, repl })))
 }
 
 /// `ellipsis.inner` (Prose): `...` at the start of a word after a space or a line start, or
@@ -117,7 +114,7 @@ pub(crate) fn inner(cx: &Cx<'_>, i: usize) -> Option<Match> {
     }
     Some(Match::with(
         0,
-        Edits::NONE.with(Edit::Replace {
+        Edits::one(Edit::Replace {
             at: 0,
             repl: Repl::Char('…'),
         }),

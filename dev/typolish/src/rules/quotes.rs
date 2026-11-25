@@ -68,7 +68,7 @@ pub(crate) fn primes(cx: &Cx<'_>, i: usize) -> Option<Match> {
 fn replace(c: char) -> Match {
     Match::with(
         0,
-        Edits::NONE.with(Edit::Replace {
+        Edits::one(Edit::Replace {
             at: 0,
             repl: Repl::Char(c),
         }),

@@ -89,18 +89,18 @@ pub(crate) fn dialogue(cx: &Cx<'_>, i: usize) -> Option<Match> {
     let at = offset(i, s)?;
     let mut edits = Edits::NONE;
     if plain {
-        edits = edits.with(Edit::Replace {
+        edits = edits.try_with(Edit::Replace {
             at: 0,
             repl: Repl::Char(EM_DASH),
-        });
+        })?;
     }
     // No glue sticks to an `Other` slot or a fragment that holds one (design sections 2.6 and 8.2):
     // the dash is set, the space stays.
     if cx.plain_space(s) && !holds_other(cx, r) {
-        edits = edits.with(Edit::Glue {
+        edits = edits.try_with(Edit::Glue {
             at,
             glue: Glue::NoBreak,
-        });
+        })?;
     }
     Some(Match::with(at, edits))
 }
@@ -245,12 +245,11 @@ fn between(cx: &Cx<'_>, i: usize, double: bool) -> Option<Match> {
         && plain_word(cx, fl)
         && plain_word(cx, fr);
     let edits = if closed {
-        Edits::NONE
-            .with(Edit::Remove { at: 0 })
-            .with(dash)
-            .with(Edit::Remove { at: os2 })
+        Edits::one(Edit::Remove { at: 0 })
+            .try_with(dash)?
+            .try_with(Edit::Remove { at: os2 })?
     } else {
-        Edits::NONE.with(dash)
+        Edits::one(dash)
     };
     Some(Match::with(os2, edits))
 }

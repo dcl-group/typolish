@@ -14,7 +14,8 @@ use crate::rule::{ORDER, Phase};
 use crate::rules::{ANCHORS, RULES};
 use crate::{DiagnosticKind, Rule, Severity, SingleQuotes, Typographer};
 
-/// The most edits one proposal holds; `nbsp.phone` glues up to five spaces.
+/// The most edits one proposal holds; `nbsp.phone` glues up to five spaces, and an entry of
+/// `nbsp.abbreviations` that needs more makes no edit (design section 8.7).
 pub(crate) const MAX_EDITS: usize = 6;
 
 /// A proposal of a rule at an anchor token.
@@ -86,13 +87,22 @@ impl Edits {
         items: [Edit::Remove { at: 0 }; MAX_EDITS],
     };
 
-    /// The edits with one more; a seventh edit is dropped, which a rule never proposes.
-    pub(crate) fn with(mut self, edit: Edit) -> Edits {
-        if let Some(slot) = self.items.get_mut(self.len as usize) {
-            *slot = edit;
-            self.len += 1;
-        }
-        self
+    /// One edit.
+    pub(crate) const fn one(edit: Edit) -> Edits {
+        let mut items = Edits::NONE.items;
+        let [first, ..] = &mut items;
+        *first = edit;
+        Edits { len: 1, items }
+    }
+
+    /// The edits with one more, or `None` when they already hold `MAX_EDITS`: a rule whose
+    /// proposal would need more then proposes none of its edits, so it never applies part of a
+    /// pattern that a second pass would complete (design section 4.4).
+    pub(crate) fn try_with(mut self, edit: Edit) -> Option<Edits> {
+        let slot = self.items.get_mut(self.len as usize)?;
+        *slot = edit;
+        self.len += 1;
+        Some(self)
     }
 
     /// The edits in order.
@@ -844,7 +854,25 @@ mod tests {
     }
 
     fn one(edit: Edit, consume: u8) -> Match {
-        Match::with(consume, Edits::NONE.with(edit))
+        Match::with(consume, Edits::one(edit))
+    }
+
+    #[test]
+    fn a_proposal_holds_at_most_max_edits() {
+        let edit = |at| Edit::Glue {
+            at,
+            glue: Glue::NoBreak,
+        };
+        let mut edits = Edits::NONE;
+        for at in 0..MAX_EDITS {
+            edits = edits.try_with(edit(u8::try_from(at).unwrap())).unwrap();
+        }
+        assert_eq!(edits.iter().count(), MAX_EDITS);
+        assert_eq!(edits.try_with(edit(9)), None);
+        assert_eq!(
+            Edits::one(edit(3)).iter().copied().collect::<Vec<_>>(),
+            [edit(3)]
+        );
     }
 
     #[test]
@@ -923,12 +951,12 @@ mod tests {
         // A whole proposal is dropped when one of its edits is refused.
         let both = Match::with(
             2,
-            Edits::NONE
-                .with(Edit::Glue {
-                    at: 1,
-                    glue: Glue::NoBreak,
-                })
-                .with(Edit::Remove { at: 2 }),
+            Edits::one(Edit::Glue {
+                at: 1,
+                glue: Glue::NoBreak,
+            })
+            .try_with(Edit::Remove { at: 2 })
+            .unwrap(),
         );
         assert!(!edits_allowed(&t, 0, &both));
     }
@@ -977,6 +1005,6 @@ mod tests {
                 1
             )
         ));
-        assert_eq!(Edits::NONE.with(Edit::Remove { at: 0 }).iter().count(), 1);
+        assert_eq!(Edits::one(Edit::Remove { at: 0 }).iter().count(), 1);
     }
 }

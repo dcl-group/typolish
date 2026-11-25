@@ -384,7 +384,14 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   abbreviations, `Narrow` goes only to the spaces between the parts of an entry (`т.⎵д.`); the space
   after a leading word (`и⍽т.`) and the forward glue of `Next` entries are always `NoBreak`. The
   last part of an entry may start a compact abbreviation (`т. н.э.` → `т.⍽н.э.`), and an entry may
-  start at a part of a `Joined` core (`а—г. Пушкин` → `а—г.⍽Пушкин`; section 4.3, I4).
+  start at a part of a `Joined` core (`а—г. Пушкин` → `а—г.⍽Пушкин`; section 4.3, I4). A match makes
+  at most six edits (`MAX_EDITS`), one per space it glues or inserts, the forward glue included. An
+  entry that would need more, which only a declared language can have (the built-in entries have at
+  most three parts), is matched and changes nothing: an `Inner` entry of eight parts written with
+  plain spaces, or a `Next` entry of seven before a word it glues to (`a b c d e f word x` stays as
+  written). Glueing six of its spaces would leave one plain space that a second pass glues (section
+  4.4); a space the author glued needs no edit, so `a⍽b c d e f word x` gives `a⍽b⍽c⍽d⍽e⍽f⍽word⍽x`
+  (C61).
 - **`nbsp.initials`.** `И. О. Фамилия`, `И. Фамилия`, `Фамилия И. О.`, `Фамилия И.`: an initial is
   one capital letter of the language's script with a full stop (up to three); a run of four or more
   initials is not a match anywhere in the run, and the rule glues none of its spaces (no partial

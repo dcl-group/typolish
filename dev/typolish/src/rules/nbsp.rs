@@ -57,6 +57,8 @@ struct Glues {
     anchor: usize,
     last: usize,
     edits: Edits,
+    /// The pattern needs more than `MAX_EDITS` edits.
+    full: bool,
 }
 
 impl Glues {
@@ -65,6 +67,7 @@ impl Glues {
             anchor,
             last: anchor,
             edits: Edits::NONE,
+            full: false,
         }
     }
 
@@ -73,12 +76,20 @@ impl Glues {
         self.last = self.last.max(j);
     }
 
+    /// Adds an edit, or notes that the pattern needs more than `MAX_EDITS`.
+    fn add(&mut self, edit: Edit) {
+        match self.edits.try_with(edit) {
+            Some(edits) => self.edits = edits,
+            None => self.full = true,
+        }
+    }
+
     /// Glues the pattern space `s`: an edit for a single U+0020, nothing for a space that is
     /// already glued (design section 4.3, I3).
     fn glue(&mut self, cx: &Cx<'_>, s: usize, glue: Glue) -> Option<()> {
         let at = offset(self.anchor, s)?;
         if cx.plain_space(s) {
-            self.edits = self.edits.with(Edit::Glue { at, glue });
+            self.add(Edit::Glue { at, glue });
         }
         self.reach(s);
         Some(())
@@ -87,13 +98,21 @@ impl Glues {
     /// Inserts a glued space before token `before`.
     fn insert(&mut self, before: usize, glue: Glue) -> Option<()> {
         let at = offset(self.anchor, before)?;
-        self.edits = self.edits.with(Edit::Insert { before: at, glue });
+        self.add(Edit::Insert { before: at, glue });
         self.reach(before);
         Some(())
     }
 
+    /// The match. A pattern that needs more than `MAX_EDITS` edits (an entry of many parts that a
+    /// language declares) still takes its tokens but makes no edit: applying some of them would
+    /// leave spaces that a second pass glues (design sections 4.4 and 8.7).
     fn done(self) -> Option<Match> {
-        Some(Match::with(offset(self.anchor, self.last)?, self.edits))
+        let consume = offset(self.anchor, self.last)?;
+        Some(if self.full {
+            Match::done(consume)
+        } else {
+            Match::with(consume, self.edits)
+        })
     }
 }
 
@@ -902,7 +921,7 @@ fn units_at_space(cx: &Cx<'_>, s: usize) -> Option<Match> {
         return match percent_spaced(cx) {
             None | Some(true) => glue_one(cx, s, Glue::NoBreak),
             Some(false) if cx.plain_space(s) => {
-                Some(Match::with(0, Edits::NONE.with(Edit::Remove { at: 0 })))
+                Some(Match::with(0, Edits::one(Edit::Remove { at: 0 })))
             }
             // A U+00A0 or U+202F typed by the author stays (design section 5.3).
             Some(false) => Some(Match::done(0)),

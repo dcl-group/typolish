@@ -378,6 +378,11 @@ pub struct Abbreviation {
 impl Abbreviation {
     /// An abbreviation from its parts and its binding.
     ///
+    /// A match of the rule makes at most six edits, one per space it glues or inserts, the glue
+    /// to the next word included: where an entry would need more (an `Inner` entry of eight parts
+    /// with plain spaces, a `Next` entry of seven before a word), it is matched and left as it is,
+    /// so the output stays a fixed point (design section 8.7).
+    ///
     /// ```
     /// use typolish::{
     ///     Abbreviation, Bind, Language, LanguageData, Output, Rule, RuleSet, Typographer,
@@ -1084,6 +1089,11 @@ impl LanguageData {
     }
 
     /// Sets the abbreviations: sorted by their parts, as printed.
+    ///
+    /// A match of the rule makes at most six edits, one per space it glues or inserts, the glue
+    /// to the next word included: where an entry would need more (an `Inner` entry of eight parts
+    /// with plain spaces, a `Next` entry of seven before a word), it is matched and left as it is,
+    /// so the output stays a fixed point (design section 8.7).
     ///
     /// ```
     /// use typolish::{
