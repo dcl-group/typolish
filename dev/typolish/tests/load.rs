@@ -7,8 +7,9 @@
 //! on long runs of quote characters in one paragraph (design section 12.1). `generators_keep_their_size`
 //! checks the sizes of the generated inputs in every run.
 //!
-//! The time per byte for 16 MiB is at most twice that for 64 KiB, separately for each input. There
-//! are no absolute thresholds: the machine is shared.
+//! `load_is_linear` compares the median of five runs at 16 MiB with that at 1 MiB, both past the
+//! caches: the time per byte grows by at most `RATIO`, separately for each input, after a guard of
+//! `GUARD` between 64 KiB and 1 MiB. There are no absolute thresholds: the machine is shared.
 
 #![allow(
     clippy::unwrap_used,
@@ -60,6 +61,14 @@ fn generators_keep_their_size() {
     }
 }
 
+/// The runs of `load_is_linear` at 1 MiB and at 16 MiB, whose median it compares.
+const RUNS: usize = 5;
+/// The largest ratio of the time per byte at 16 MiB to that at 1 MiB: a quadratic input gives 16.
+const RATIO: f64 = 2.5;
+/// The largest ratio at 1 MiB to 64 KiB, a cheap guard before the large input: the step out of the
+/// caches is most of the ratio here (design section 13.8), a quadratic input gives 16.
+const GUARD: f64 = 8.0;
+
 #[test]
 #[ignore = "needs a release build and time; run with cargo test --release --test load -- --ignored"]
 fn load_is_linear() {
@@ -76,8 +85,8 @@ fn load_is_linear() {
             let small = per_byte(&t, &mut scratch, &small_text, 15);
             // A cheap guard first: a quadratic input would not finish at 16 MiB.
             let middle_text = make(MIDDLE);
-            let middle = per_byte(&t, &mut scratch, &middle_text, 1);
-            if middle > small * 8.0 {
+            let middle = per_byte(&t, &mut scratch, &middle_text, RUNS);
+            if middle > small * GUARD {
                 println!(
                     "{config} / {name}: 64 KiB {:.1} ns/B, 1 MiB {:.1} ns/B",
                     small * 1e9,
@@ -88,16 +97,18 @@ fn load_is_linear() {
             }
             drop(middle_text);
             let large_text = make(LARGE);
-            let large = per_byte(&t, &mut scratch, &large_text, 1);
-            let ratio = large / small;
+            let large = per_byte(&t, &mut scratch, &large_text, RUNS);
+            // Both sizes are past the caches, so the ratio does not hold the step out of them.
+            let ratio = large / middle;
             println!(
-                "{config} / {name}: 64 KiB {:.1} ns/B, 1 MiB {:.1} ns/B, 16 MiB {:.1} ns/B, ratio {ratio:.2}",
+                "{config} / {name}: 64 KiB {:.1} ns/B, 1 MiB {:.1} ns/B, 16 MiB {:.1} ns/B, \
+                 16 MiB to 1 MiB {ratio:.2}",
                 small * 1e9,
                 middle * 1e9,
                 large * 1e9
             );
-            if ratio > 2.0 {
-                failures.push(format!("{config} / {name}: ratio {ratio:.2} > 2"));
+            if ratio > RATIO {
+                failures.push(format!("{config} / {name}: ratio {ratio:.2} > {RATIO}"));
             }
         }
     }

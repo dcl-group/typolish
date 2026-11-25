@@ -590,38 +590,44 @@ U+00A0 and must not be normalized.
   of joined corpus and for one 1 MiB paragraph; and the pathological inputs of section 3.12, with
   the peak memory for one paragraph of 10^5 ZWJ emoji clusters (section 3.12) and whether its result
   is borrowed.
-- `#[ignore]` test `load_is_linear`: time per byte for 16 MiB is at most twice that for 64 KiB,
-  separately for each pathological input. No absolute thresholds: the machine is shared. Indicative
-  targets, measured in stage 5 and not promised: at least 20 MB/s on the corpus in Unicode output, a
-  median below 10 µs for one interface string. Measured on 2026-11-23 (release, one shared machine,
-  Rust 1.100), first at the end of stage 5: the corpus ran at 1.8 to 3.6 MB/s in every output kind
-  (about 280 to 550 ns per byte), the interface strings of the bench took 13 to 15 µs at the median
-  for 42 to 44 bytes of en-US and 31 to 33 µs for 71 to 83 bytes of ru-RU, and one paragraph of 10^5
-  ZWJ emoji clusters raised the peak memory by about 13 MB. The time went to linear scans of word
-  lists for every word (check 0 and `nbsp.abbreviations`), to Unicode tables for Cyrillic text (the
-  segmenter, `char::is_alphabetic`, `char::to_lowercase`), to every rule being called at every token
-  and every phase copying every token, and to the per-call setup; sections 3.5, 3.6, 3.8 and 3.12
-  describe what replaced them, without a change of any output. Measured again after that work: the
-  corpus runs at 6.8 to 14.6 MB/s in Unicode output (about 70 to 150 ns per byte; ru-RU 10.6 to
-  14.6, en-US 6.8 to 11.0, the templates of `ui.tmpl` the slowest) and at 4.5 to 11.3 MB/s in the
-  other output kinds; time per byte of joined corpus is 65 to 100 ns from 1 KiB to 16 MiB; the
-  interface strings take 3.2 to 5.6 µs at the median and 6.4 to 12.4 µs at p99 for en-US, 3.1 to 6.3
-  µs at the median and 5.9 to 14.3 µs at p99 for ru-RU; a one-word string that the prefilter rejects
-  takes 28 to 47 ns (each call is timed on its own, so the figure includes two clock reads, about 17
-  ns on that machine; timed in batches the call takes about 12 to 31 ns). One paragraph of 10^5 ZWJ
-  emoji clusters raises the peak memory by about 7 MB (about 70 bytes per cluster, 68 to 113 bytes
-  from 10^4 to 10^6 clusters, so linear); the result is borrowed, so this is engine memory only
-  (section 3.12). The latency target is met; the throughput target is missed by a factor of 1.4 to
-  3, which the maintainer accepted for version 0.1 (section 15.2, item 27). What remains is spread
-  over the passes the design prescribes rather than concentrated in one place: per fragment the
-  classifier reads the wrapper, the units, the signature of check 0, the table and the labels (about
-  150 to 250 ns per fragment); per space every active no-break rule re-reads its context and its
-  lists (the no-break phase is about 35 to 40 ns per byte); and the lexer classes every character.
-  The cost is linear: in `load_is_linear` the 16 MiB to 64 KiB ratio of every pathological input is
-  between 1.0 and 1.8 (up to 1.9 in the bench, which starts each input with a new scratch); the step
-  between 64 KiB and 1 MiB, where the token buffers of one window leave the caches, is most of it.
-  The faster the passes, the larger that memory-bound share, so the margin to the bound of 2 is
-  smaller than it was.
+- `#[ignore]` test `load_is_linear`: the median time per byte of five runs for 16 MiB is at most 2.5
+  times that for 1 MiB, separately for each pathological input; both sizes are past the caches, so
+  the ratio holds no step out of them, and a quadratic input gives 16. A guard first stops an input
+  whose time per byte for 1 MiB is more than 8 times that for 64 KiB (median of 15 runs), before the
+  large input is built. No absolute thresholds: the machine is shared, and the medians keep the test
+  stable under load. Indicative targets, measured in stage 5 and not promised: at least 20 MB/s on
+  the corpus in Unicode output, a median below 10 µs for one interface string. Measured on
+  2026-11-23 (release, one shared machine, Rust 1.100), first at the end of stage 5: the corpus ran
+  at 1.8 to 3.6 MB/s in every output kind (about 280 to 550 ns per byte), the interface strings of
+  the bench took 13 to 15 µs at the median for 42 to 44 bytes of en-US and 31 to 33 µs for 71 to 83
+  bytes of ru-RU, and one paragraph of 10^5 ZWJ emoji clusters raised the peak memory by about 13
+  MB. The time went to linear scans of word lists for every word (check 0 and `nbsp.abbreviations`),
+  to Unicode tables for Cyrillic text (the segmenter, `char::is_alphabetic`, `char::to_lowercase`),
+  to every rule being called at every token and every phase copying every token, and to the per-call
+  setup; sections 3.5, 3.6, 3.8 and 3.12 describe what replaced them, without a change of any
+  output. Measured again after that work: the corpus runs at 6.8 to 14.6 MB/s in Unicode output
+  (about 70 to 150 ns per byte; ru-RU 10.6 to 14.6, en-US 6.8 to 11.0, the templates of `ui.tmpl`
+  the slowest) and at 4.5 to 11.3 MB/s in the other output kinds; time per byte of joined corpus is
+  65 to 100 ns from 1 KiB to 16 MiB; the interface strings take 3.2 to 5.6 µs at the median and 6.4
+  to 12.4 µs at p99 for en-US, 3.1 to 6.3 µs at the median and 5.9 to 14.3 µs at p99 for ru-RU; a
+  one-word string that the prefilter rejects takes 28 to 47 ns (each call is timed on its own, so
+  the figure includes two clock reads, about 17 ns on that machine; timed in batches the call takes
+  about 12 to 31 ns). One paragraph of 10^5 ZWJ emoji clusters raises the peak memory by about 7 MB
+  (about 70 bytes per cluster, 68 to 113 bytes from 10^4 to 10^6 clusters, so linear); the result is
+  borrowed, so this is engine memory only (section 3.12). The latency target is met; the throughput
+  target is missed by a factor of 1.4 to 3, which the maintainer accepted for version 0.1 (section
+  15.2, item 27). What remains is spread over the passes the design prescribes rather than
+  concentrated in one place: per fragment the classifier reads the wrapper, the units, the signature
+  of check 0, the table and the labels (about 150 to 250 ns per fragment); per space every active
+  no-break rule re-reads its context and its lists (the no-break phase is about 35 to 40 ns per
+  byte); and the lexer classes every character. The cost is linear: the step between 64 KiB and 1
+  MiB, where the token buffers of one window leave the caches, is most of the growth of the time per
+  byte, and its size depends on the machine and its load (the faster the passes, the larger that
+  memory-bound share). So `load_is_linear` compares 16 MiB with 1 MiB, past that step; on
+  2026-11-25, at a load average of about 10, that ratio was at most 1.33 over every pathological
+  input and the 1 MiB to 64 KiB ratio at most 1.6. The earlier form, a single run of each size
+  compared with 64 KiB against a bound of 2, failed two runs of three in a review at a load average
+  of 6 to 8.
 - `#[ignore]` test `to_plain_is_linear_on_prose`: time per byte of `to_plain` for 512 KiB of
   ordinary en-US prose with spaced dashes, one line and in paragraphs, is at most twice that for 64
   KiB (section 12.1; `lint` runs the same check).
