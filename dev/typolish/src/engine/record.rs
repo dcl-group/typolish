@@ -255,3 +255,30 @@ impl<R: Recorder> Sink<'_, R> {
             .diagnostic(Diagnostic::new(kind, severity, rule, piece, range));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_protected_piece_keeps_a_length_past_u32_max() {
+        // A `Protected` piece is no part of the call's text, so its length is not bounded by the
+        // `u32` limit of design section 3.4; its span covers all of it (design section 3.11).
+        let len = usize::try_from(u64::from(u32::MAX) + 7).unwrap_or(usize::MAX);
+        let mut rec = Journal::default();
+        let mut sink = Sink {
+            rec: &mut rec,
+            pieces: &[],
+            lens: &[3, len],
+        };
+        sink.protected(Loc::Piece(1), ProtectedKind::ProtectedPiece);
+        sink.protected(Loc::Piece(0), ProtectedKind::Slot);
+        let records = rec.finish();
+        let spans: Vec<(usize, Range<usize>)> = records
+            .protected
+            .iter()
+            .map(|s| (s.piece(), s.range()))
+            .collect();
+        assert_eq!(spans, [(0, 0..0), (1, 0..len)]);
+    }
+}
