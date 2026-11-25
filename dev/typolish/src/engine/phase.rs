@@ -595,6 +595,11 @@ pub(crate) fn run_phase<R: Recorder>(
                 }
             }
         }
+        #[cfg(test)]
+        if let Some((rule, m)) = found {
+            // A rule takes only tokens that exist.
+            assert!(i + (m.consume as usize) < input.len(), "{rule:?} at {i}");
+        }
         match found {
             Some((rule, m)) if edits_allowed(input, i, &m) => {
                 if R::TRACE {
@@ -618,7 +623,7 @@ pub(crate) fn run_phase<R: Recorder>(
                 if m.edits.iter().next().is_none() {
                     // A match without edits leaves its tokens as they are.
                     if outcome.written {
-                        out.extend_from_slice(input.get(i..next).unwrap_or_default());
+                        out.extend_from_slice(taken(input, i, next));
                     }
                 } else {
                     if !outcome.written {
@@ -638,6 +643,12 @@ pub(crate) fn run_phase<R: Recorder>(
         }
     }
     outcome
+}
+
+/// The input tokens from `i` up to `next` that a match without edits copies, cut at the end of the
+/// input: a match that took tokens past the end loses none of those it took.
+fn taken(input: &[Tok], i: usize, next: usize) -> &[Tok] {
+    input.get(i..next.min(input.len())).unwrap_or_default()
 }
 
 /// Where a token lies, for a record.
@@ -858,6 +869,14 @@ mod tests {
 
     fn one(edit: Edit, consume: u8) -> Match {
         Match::with(consume, Edits::one(edit))
+    }
+
+    #[test]
+    fn a_match_past_the_end_copies_the_tokens_it_took() {
+        let t = tokens("a b c", &[]);
+        assert_eq!(taken(&t, 1, 3), &t[1..3]);
+        assert_eq!(taken(&t, 1, 9), &t[1..]);
+        assert!(taken(&t, 9, 12).is_empty());
     }
 
     #[test]
