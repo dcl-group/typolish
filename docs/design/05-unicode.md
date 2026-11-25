@@ -161,7 +161,7 @@ and a dropped symbol, in both orders, joined by a ZWJ, in ten frames (dash, quot
 apostrophe, numbers) and with five typographers, finds output changes only for the six letters
 above; 1.10.1 and 1.12.0 give the same output on all of them. So a newer dependency can change the
 output for old characters as well; section 15.1 says how the output stability policy treats such an
-update (choice C56).
+update (choice C56, settled in section 15.5, item 13).
 
 ### 5.7 Mixed languages
 

@@ -9,25 +9,25 @@ chosen, and the rest of the design follows it. The other decisions of the mainta
 2026-11-21 and of 2026-11-22, are listed in section 15.2. Numbers never change; settled points keep
 their number and record the date of the decision.
 
-| Item | Subject                                     | Status             | Decision                                                            |
-| ---- | ------------------------------------------- | ------------------ | ------------------------------------------------------------------- |
-| 1    | Language of `docs/design/`                  | Settled 2026-11-22 | American English, as in zonewright                                  |
-| 2    | Repository URL                              | Settled 2026-11-22 | `https://github.com/dcl-group/typolish`                             |
-| 3    | Checking the name on crates.io              | Settled 2026-11-22 | one query to the crates.io API in stage 5, none before              |
-| 4    | Grouping threshold for ru                   | Settled 2026-11-22 | 1, as in CLDR 49: from 4 digits                                     |
-| 5    | Group separator for ru                      | Settled 2026-11-22 | U+00A0                                                              |
-| 6    | Em dash style for en-US                     | Settled 2026-11-22 | closed, `word—word`                                                 |
-| 7    | Literal numeric ranges in Prose             | Settled 2026-11-22 | shape and context rules in Prose, none in Interface                 |
-| 8    | Scope of an unpaired quote                  | Settled 2026-11-22 | all or nothing per paragraph                                        |
-| 9    | Single quotes at the top level              | Settled 2026-11-22 | `NestedOnly`                                                        |
-| 10   | Narrow no-break space                       | Settled 2026-11-22 | U+00A0 everywhere, U+202F by setting                                |
-| 11   | Default spacing before `%`                  | Settled 2026-11-22 | `AsWritten`                                                         |
-| 12   | Dialogue dash in Prose                      | Settled 2026-11-22 | in Prose for Russian                                                |
-| 13   | Output stability policy                     | Settled 2026-11-22 | output of the sets changes only in breaking releases; `ALL` outside |
-| 14   | Public language data in version 1           | Settled 2026-11-22 | public `LanguageData` and `LanguageBuilder`                         |
-| 15   | `nbsp.phone` in Interface                   | Settled 2026-11-22 | Prose only                                                          |
-| 16   | Word lists and norms from secondary sources | Settled 2026-11-22 | lists as in section 7; unit lists extended 2026-11-24               |
-| 17   | Digit grouping in text                      | Settled 2026-11-22 | no text rule; `format_number` groups values                         |
+| Item | Subject                                     | Status             | Decision                                                                                                                  |
+| ---- | ------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Language of `docs/design/`                  | Settled 2026-11-22 | American English, as in zonewright                                                                                        |
+| 2    | Repository URL                              | Settled 2026-11-22 | `https://github.com/dcl-group/typolish`                                                                                   |
+| 3    | Checking the name on crates.io              | Settled 2026-11-22 | one query to the crates.io API in stage 5, none before                                                                    |
+| 4    | Grouping threshold for ru                   | Settled 2026-11-22 | 1, as in CLDR 49: from 4 digits                                                                                           |
+| 5    | Group separator for ru                      | Settled 2026-11-22 | U+00A0                                                                                                                    |
+| 6    | Em dash style for en-US                     | Settled 2026-11-22 | closed, `word—word`                                                                                                       |
+| 7    | Literal numeric ranges in Prose             | Settled 2026-11-22 | shape and context rules in Prose, none in Interface                                                                       |
+| 8    | Scope of an unpaired quote                  | Settled 2026-11-22 | all or nothing per paragraph                                                                                              |
+| 9    | Single quotes at the top level              | Settled 2026-11-22 | `NestedOnly`                                                                                                              |
+| 10   | Narrow no-break space                       | Settled 2026-11-22 | U+00A0 everywhere, U+202F by setting                                                                                      |
+| 11   | Default spacing before `%`                  | Settled 2026-11-22 | `AsWritten`                                                                                                               |
+| 12   | Dialogue dash in Prose                      | Settled 2026-11-22 | in Prose for Russian                                                                                                      |
+| 13   | Output stability policy                     | Settled 2026-11-22 | output of the sets changes only in breaking releases; `ALL` outside; Unicode tables of the dependency excepted 2026-11-26 |
+| 14   | Public language data in version 1           | Settled 2026-11-22 | public `LanguageData` and `LanguageBuilder`                                                                               |
+| 15   | `nbsp.phone` in Interface                   | Settled 2026-11-22 | Prose only                                                                                                                |
+| 16   | Word lists and norms from secondary sources | Settled 2026-11-22 | lists as in section 7; unit lists extended 2026-11-24                                                                     |
+| 17   | Digit grouping in text                      | Settled 2026-11-22 | no text rule; `format_number` groups values                                                                               |
 
 #### Settled on 2026-11-22
 
@@ -109,8 +109,12 @@ generators and snapshot tests of callers do not break on `cargo update`. For `Ru
 base `all`: (i) they mean every rule of the running version and stay outside the policy, with
 rustdoc saying so, because a frozen `ALL` that lacks rules would mislead, and callers who want
 stable output already have the two sets and explicit lists. New built-in languages and raises of the
-MSRV also wait for a release that raises the breaking number (section 15.1). Rejected: (b) output
-improvements in any release; (ii) `ALL` frozen at the rules of 0.1.
+MSRV also wait for a release that raises the breaking number (section 15.1). Decided by the
+maintainer on 2026-11-26: the one exception that does not come from a release of typolish is output
+that changes only because a later 1.x of `unicode-segmentation` brings newer Unicode tables
+(sections 5.6, 15.1, C56); callers avoid it with their lock file, and the dependency is not pinned.
+Rejected: (b) output improvements in any release; (ii) `ALL` frozen at the rules of 0.1; pinning
+`unicode-segmentation = "=1.13.3"` without the exception.
 
 **14.** **Public language data in version 1.** Settled 2026-11-22: (a) `LanguageData` is public with
 private fields and `const fn` setters, `Language::from_data` (validated) and `Language::from_static`
