@@ -959,6 +959,31 @@ fn limits() -> Vec<Limit> {
             "s Paul \"(’ -- St.)\"",
         ),
         limit_in(en_gb(), Both, EVERY_MODE, "‘ \"dogs'’\" x", "‘ ‘dogs’’’ x"),
+        // After a dash, a straight `'` whose opening role the placed quotes would drop keeps the
+        // window straight, since the dash rule read that role (design sections 4.3, I4, 6.6 and
+        // 10.8).
+        limit_in(
+            RU,
+            ProseOnly,
+            &[SingleQuotes::Everywhere],
+            "- ''.-'",
+            "—⍽''.-'",
+        ),
+        limit_in(EN, Both, &[SingleQuotes::Everywhere], "- ''.-'", "- ''.-'"),
+        limit_in(
+            EN,
+            Both,
+            &[SingleQuotes::Everywhere],
+            "word - ''.-'",
+            "word — ''.-'",
+        ),
+        limit_in(
+            RU,
+            Both,
+            &[SingleQuotes::Everywhere],
+            "word - '.-''",
+            "word⍽— '.-''",
+        ),
         limit_in(
             en_gb(),
             Both,

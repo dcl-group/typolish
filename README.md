@@ -321,9 +321,11 @@ The rules read the shape of the text, not its meaning. These cases are known and
   `UnmatchedQuote` warning; `key=""` stays as written.
 - A paragraph whose quotes a second pass would read in another way, and which the quote rules do not
   settle within three runs, keeps its straight quotes with a `CrossingQuotes` warning; so does one
-  where a quote would gain a role that another rule acts on. In English `"a '-’ - x' c"` gives
-  `"a⍽'-’ - x' c"`: on a second pass the `’` after `‘-` would close a sign-only pair and the dash
-  rule would set a dash after it. Version 0.1.1 gave `“a⍽‘-’ - x’ c”`.
+  where a rule that reads a quote would read it in another way, including after a dash: with
+  `SingleQuotes::Everywhere`, Russian Prose `- ''.-'` gives `—⍽''.-'` and English `- ''.-'` stays,
+  where 0.1.1 gave `—⍽'«.-»` and `- '“.-”`. In English `"a '-’ - x' c"` gives `"a⍽'-’ - x' c"`: on a
+  second pass the `’` after `‘-` would close a sign-only pair and the dash rule would set a dash
+  after it. Version 0.1.1 gave `“a⍽‘-’ - x’ c”`.
 - `to_plain` does not always give back a text that typesets to the same result when the quotes are
   tangled: in Russian `"a '(" x' "y'" b"` gives `«a „(" x“ „y'“ b»`, whose plain form
   `"a "(" x" "y'" b"` keeps every quote straight; in English `"'S '5' 3'"` gives `“‘S “5” 3’”`,

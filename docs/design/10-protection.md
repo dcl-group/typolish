@@ -255,12 +255,19 @@ expectation):
   (warning, section 6.1), while `key=""` stays as written.
 - A window whose result a second pass would read in another way, and which three runs of the quote
   phase do not settle, keeps its straight quotes with `CrossingQuotes` (section 6.6, choice C59); so
-  does a window where a quote that keeps its text would gain a role that a rule acts on. In English,
-  Prose and Interface, `NestedOnly` and `Everywhere`, `"a '-’ - x' c"` gives `"a⍽'-’ - x' c"`, where
-  version 0.1.1 gave `“a⍽‘-’ - x’ c”`: on a second pass the `’` after `‘-` closes a sign-only pair
-  (choice C55) and the dash rule reads it as a closing quote; in en-GB `"-’ - x"` and
-  `s Paul "(’ -- St.)"` stay as written for the same reason, in every `SingleQuotes` mode, where
-  0.1.1 gave `‘-’ - x’` and `s Paul ‘(’ -- St.)’`.
+  does a window where a quote that keeps its text would have a role that a rule reads otherwise,
+  including an opening role that a dash rule read after its dash and that the placed quotes drop. So
+  with `SingleQuotes::Everywhere`, Prose, `- ''.-'` gives `—⍽''.-'` in Russian and `- ''.-'` in
+  English, and `word - ''.-'` gives `word — ''.-'` in English, where 0.1.1 gave the fixed points
+  `—⍽'«.-»`, `- '“.-”` and `word — '“.-”`: a dash rule reads the opening role of the first `'` after
+  its dash, which the second pass, reading `'` before `«` or `“`, would not give it, so a match of
+  the first pass would not recur (section 4.3, I4). The quote phase does not know whether the dash
+  rule matched, so the window stays straight after any dash, also where no dash was written. In
+  English, Prose and Interface, `NestedOnly` and `Everywhere`, `"a '-’ - x' c"` gives
+  `"a⍽'-’ - x' c"`, where version 0.1.1 gave `“a⍽‘-’ - x’ c”`: on a second pass the `’` after `‘-`
+  closes a sign-only pair (choice C55) and the dash rule reads it as a closing quote; in en-GB
+  `"-’ - x"` and `s Paul "(’ -- St.)"` stay as written for the same reason, in every `SingleQuotes`
+  mode, where 0.1.1 gave `‘-’ - x’` and `s Paul ‘(’ -- St.)’`.
 - `to_plain` reads the glyphs of a pair as `"`, or as `'` where that does not pair again (section
   12.1); in a window where no reading it tries brings the quotes back, P2 fails (section 12.2),
   although the typeset text is a fixed point. A straight `"` without a role inside a pair turns into

@@ -499,8 +499,10 @@ fn a_window_that_a_later_pass_reads_otherwise_is_settled() {
 fn a_role_that_the_result_drops_keeps_the_placement() {
     // Design section 6.6: a quote that keeps its text and has no opening role in the result where
     // the input gave it one (`'` before `“` in place of `'` before `'`) changes no edit of a second
-    // pass, so the window is a fixed point and its quotes are placed, as in 0.1.1. Before, every
-    // change of such a role kept the whole window straight with `CrossingQuotes`.
+    // pass after a word or a sign, so the window is a fixed point and its quotes are placed, as in
+    // 0.1.1. Before, every change of such a role kept the whole window straight with
+    // `CrossingQuotes`. After a dash the window stays straight: the dash rule matched by that role
+    // on the first pass and would not match again (design sections 4.3, I4, and 10.8).
     let gb = typolish::LanguageBuilder::from_language(&Language::EN_US, "en-GB")
         .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
         .build()
@@ -511,7 +513,7 @@ fn a_role_that_the_result_drops_keeps_the_placement() {
             [
                 ("a ''.-'", "a '«.-»", "a '«.-»"),
                 ("a '.-''", "a '.-«»", "a '.-«»"),
-                ("- ''.-'", "—⍽'«.-»", "- '«.-»"),
+                (". ''.-'", ". '«.-»", ". '«.-»"),
             ],
         ),
         (
@@ -519,7 +521,7 @@ fn a_role_that_the_result_drops_keeps_the_placement() {
             [
                 ("a ''.-'", "a '“.-”", "a '“.-”"),
                 ("a '.-''", "a '.-“”", "a '.-“”"),
-                ("- ''.-'", "- '“.-”", "- '“.-”"),
+                (". ''.-'", ". '“.-”", ". '“.-”"),
             ],
         ),
         (
@@ -527,7 +529,7 @@ fn a_role_that_the_result_drops_keeps_the_placement() {
             [
                 ("a ''.-'", "a '‘.-’", "a '‘.-’"),
                 ("a '.-''", "a '.-‘’", "a '.-‘’"),
-                ("- ''.-'", "- '‘.-’", "- '‘.-’"),
+                (". ''.-'", ". '‘.-’", ". '‘.-’"),
             ],
         ),
     ] {
@@ -552,6 +554,26 @@ fn a_role_that_the_result_drops_keeps_the_placement() {
                 "{language} {x}: {crossing:?}"
             );
         }
+    }
+    for (language, prose, interface) in [
+        (Language::RU_RU, "—⍽''.-'", "- ''.-'"),
+        (Language::EN_US, "- ''.-'", "- ''.-'"),
+    ] {
+        let p = set_with(language.clone(), RuleSet::PROSE, SingleQuotes::Everywhere);
+        let i = set_with(
+            language.clone(),
+            RuleSet::INTERFACE,
+            SingleQuotes::Everywhere,
+        );
+        check_exact(&format!("{language} Prose"), &p, ("- ''.-'", prose));
+        check_exact(&format!("{language} Interface"), &i, ("- ''.-'", interface));
+        let crossing = diagnostics_of(&p, "- ''.-'");
+        assert!(
+            crossing
+                .iter()
+                .any(|d| d.0 == DiagnosticKind::CrossingQuotes),
+            "{language}: {crossing:?}"
+        );
     }
 }
 

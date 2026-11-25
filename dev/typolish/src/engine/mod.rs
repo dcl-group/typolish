@@ -953,8 +953,8 @@ mod tests {
     #[test]
     fn i2_and_i4_hold_on_the_rows_of_the_grammar() {
         // Sentences of the grammar that broke `i2_and_i4` (design section 4.3): an elision or a
-        // word after a straight `'` that pairs, and a dash match next to a straight `'` before a
-        // number that becomes `’`. Every `SingleQuotes` mode, Prose, Interface and all rules.
+        // word after a straight `'` that pairs, a dash match next to a straight `'` before a
+        // number that becomes `’`, and one next to a straight `'` that keeps its text. Every `SingleQuotes` mode, Prose, Interface and all rules.
         use strategies::GrammarConfig;
         for (lang, dash, text) in [
             (3, None, "! s: S -- 'tis'"),
@@ -975,6 +975,11 @@ mod tests {
                 None,
                 "?-( - rock'n'roll) 1941-1945 km file — '27 % host:8080’",
             ),
+            // A straight `'` after a dash whose opening role the placed quotes would drop: the
+            // window stays straight, so the dash match recurs (design section 6.6).
+            (0, None, "- ''.-'"),
+            (1, None, "word - ''.-'"),
+            (3, Some(DashStyle::Spaced), "word — '...-'' \" - \"'"),
         ] {
             for single in strategies::GRAMMAR_SINGLE_QUOTES {
                 for set in [RuleSet::PROSE, RuleSet::INTERFACE, RuleSet::ALL] {

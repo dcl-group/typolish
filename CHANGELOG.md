@@ -247,15 +247,21 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   of `‘-’` and sets the dash after it, so the paragraph keeps its straight quotes. English, Prose
   and Interface, `NestedOnly` and `Everywhere`: `"a '-’ - x' c"`: `“a⍽‘-’ - x’ c”` →
   `"a⍽'-’ - x' c"`; en-GB, every set and `SingleQuotes` mode: `"-’ - x"`: `‘-’ - x’` → `"-’ - x"`,
-  `s Paul "(’ -- St.)"`: `s Paul ‘(’ -- St.)’` → `s Paul "(’ -- St.)"` (design section 10.8). Only a
-  role that the result gains counts: a role it drops changes no edit of a second pass, so the
-  windows where the input gave a straight `'` the opening role and the result gives it none keep the
-  placed quotes of 0.1.1, which are fixed points. Russian, English and en-GB, Prose and Interface,
-  `Everywhere`: `a ''.-'` gives `a '«.-»`, `a '“.-”` and `a '‘.-’`, `a '.-''` gives `a '.-«»`,
-  `a '.-“”` and `a '.-‘’`, and `- ''.-'` gives `—⍽'«.-»` in Russian Prose, unchanged from 0.1.1. The
-  settling runs the phase again on a paragraph whose quotes it changes; measured in a release build,
-  English, `SingleQuotes::Everywhere`, one paragraph of a unit repeated to 1 MiB, median of three
-  runs, nanoseconds per byte in 0.1.1 → now: `"a" `, Interface 213 → 271 and Prose 224 → 278; the
+  `s Paul "(’ -- St.)"`: `s Paul ‘(’ -- St.)’` → `s Paul "(’ -- St.)"` (design section 10.8). An
+  opening role that the result drops after a space that follows anything but a dash does not count:
+  a glue that the first pass set stays, so these windows keep the placed quotes of 0.1.1, which are
+  fixed points. Russian, English and en-GB, Prose and Interface, `Everywhere`: `a ''.-'` gives
+  `a '«.-»`, `a '“.-”` and `a '‘.-’`, `a '.-''` gives `a '.-«»`, `a '.-“”` and `a '.-‘’`, and
+  `. ''.-'` gives `. '«.-»`, `. '“.-”` and `. '‘.-’`, unchanged from 0.1.1. After a dash, which the
+  dash rule matched by that role and would not match again on a second pass (design section 4.3,
+  I4), the window keeps its straight quotes (design section 10.8). The same sets: `- ''.-'`:
+  `—⍽'«.-»` → `—⍽''.-'` (Russian Prose), `- '«.-»` → `- ''.-'` (Russian Interface), `- '“.-”` →
+  `- ''.-'` (English), `- '‘.-’` → `- ''.-'` (en-GB); `- '.-''`: `—⍽'.-«»` → `—⍽'.-''` (Russian
+  Prose), `- '.-“”` → `- '.-''` (English); `word - ''.-'`: `word — '“.-”` → `word — ''.-'`
+  (English), `word — '«.-»` → `word⍽— ''.-'` (Russian). The settling runs the phase again on a
+  paragraph whose quotes it changes; measured in a release build, English,
+  `SingleQuotes::Everywhere`, one paragraph of a unit repeated to 1 MiB, median of three runs,
+  nanoseconds per byte in 0.1.1 → now: `"a" `, Interface 213 → 271 and Prose 224 → 278; the
   quote-dense worst case, a chain of sign-only pairs that the phase runs again over, `''-'' `,
   Interface 239 → 413 and Prose 251 → 425, and `"x ''-'' y" `, Prose 239 → 392. The cost stays
   linear in the length of the paragraph.
