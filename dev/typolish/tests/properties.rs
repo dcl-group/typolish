@@ -312,6 +312,9 @@ const SEEDS: &[&str] = &[
     // A surname of two scripts next to initials (design sections 8.2 and 8.7).
     "А. Пушкин-Smith - Пушкин-Smith А. С.",
     "J. Smith-Петров - Петров-Smith J.",
+    "Писал Иванов И. И. IT-отдел - Сидоров П. П. SMS-рассылка",
+    "Пушкин А.С. IT-отдел - дом XIX-XXм А. С. дом - IT-отдел Т. е. дом",
+    "Smith J. HR-отдел - J. Smith-jones-Петров - А. IT-Отдел",
     // A `Joined` core before a context range or a day reads as its last word (design section 4.3,
     // I4).
     "поле - с. 1941-45",

@@ -636,7 +636,9 @@ fn first_visible(cx: &Cx<'_>, f: &Frag) -> Option<usize> {
 }
 
 /// A surname: a capitalized word of the language's script of at least two letters. A compound word
-/// with words of two scripts (`Пушкин-Smith`) is a word of each of them (design section 8.2).
+/// with words of two scripts (`Пушкин-Smith`) is a word of each of them (design section 8.2) and a
+/// surname where every word of it is capitalized and one is a surname of the language's script on
+/// its own; `IT-отдел` and `XIX-XXм` are not (design section 8.7, C62).
 fn surname(cx: &Cx<'_>, f: &Frag) -> bool {
     if !is_word(cx, f)
         || cx
@@ -646,9 +648,56 @@ fn surname(cx: &Cx<'_>, f: &Frag) -> bool {
         return false;
     }
     let (mask, n) = letters(cx, f);
-    n >= 2
-        && mask & language_bit(cx) != 0
-        && cx.core_chars(f).next().is_some_and(char::is_uppercase)
+    if n < 2 || !cx.core_chars(f).next().is_some_and(char::is_uppercase) {
+        return false;
+    }
+    mask == language_bit(cx) || (mask & language_bit(cx) != 0 && compound_surname(cx, f))
+}
+
+/// The letters of one word of a compound: their scripts, their number and whether the first is
+/// uppercase.
+#[derive(Clone, Copy, Default)]
+struct Part {
+    mask: u8,
+    n: usize,
+    capital: bool,
+}
+
+impl Part {
+    fn push(&mut self, c: char) {
+        if self.n == 0 {
+            self.capital = c.is_uppercase();
+        }
+        self.mask |= script_bit(c);
+        self.n += 1;
+    }
+
+    /// A surname of the script `bit` on its own: capitalized, at least two letters, all of `bit`.
+    fn own(self, bit: u8) -> bool {
+        self.capital && self.n >= 2 && self.mask == bit
+    }
+}
+
+/// Whether every word of a compound core is capitalized and one of them is a surname of the
+/// language's script on its own (`Пушкин-Smith`, `Smith-Петров`).
+fn compound_surname(cx: &Cx<'_>, f: &Frag) -> bool {
+    let bit = language_bit(cx);
+    let mut own = false;
+    let mut part = Part::default();
+    for j in cx.core(f) {
+        if cx.kind(j) == Some(Kind::Dash) {
+            if !part.capital {
+                return false;
+            }
+            own |= part.own(bit);
+            part = Part::default();
+        } else {
+            cx.visible(j, j)
+                .filter(|&c| is_alphabetic(c))
+                .for_each(|c| part.push(c));
+        }
+    }
+    part.capital && (own || part.own(bit))
 }
 
 /// The space after a fragment and the token after that space, when the space is a pattern space.

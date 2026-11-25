@@ -626,6 +626,15 @@ const RU_INITIALS: &[(&str, &str)] = &[
     ("Пушкин-Smith А. С.", "Пушкин-Smith⍽А.⍽С."),
     ("А. Smith-Пушкин", "А.⍽Smith-Пушкин"),
     ("А. Smith-Jones", "А. Smith-Jones"),
+    // Only where every word of it is capitalized and one is a surname of the language's script:
+    // a Latin acronym before a lowercase Russian noun, or a Roman range with a unit, is no surname,
+    // and the initials stay with the surname before them (design section 8.7, C62).
+    ("Иванов И. И. IT-отдел", "Иванов⍽И.⍽И. IT-отдел"),
+    ("Сидоров П. П. SMS-рассылка", "Сидоров⍽П.⍽П. SMS-рассылка"),
+    ("Пушкин А.С. IT-отдел", "Пушкин⍽А.С. IT-отдел"),
+    ("дом XIX-XXм А. С. дом", "дом XIX-XXм А. С. дом"),
+    ("А. IT-отдел", "А. IT-отдел"),
+    ("А. IT-Отдел", "А.⍽IT-Отдел"),
     // Spaces other than a single U+0020 are not glued.
     ("А.\tПетров", "А.\tПетров"),
     ("А.\nПетров", "А.\nПетров"),
@@ -665,6 +674,8 @@ const EN_INITIALS: &[(&str, &str)] = &[
     ("J. Smith-Петров", "J.⍽Smith-Петров"),
     ("Петров-Smith J.", "Петров-Smith⍽J."),
     ("J. Петров-Сидоров", "J. Петров-Сидоров"),
+    ("Smith J. HR-отдел", "Smith⍽J. HR-отдел"),
+    ("J. Smith-jones-Петров", "J. Smith-jones-Петров"),
 ];
 
 #[test]
@@ -715,6 +726,17 @@ fn initials_inside_both_sets() {
                 "I chose plan P.⍽Then I left.",
             ),
             ("J. R. R. R. Tolkien", "J. R. R. R. Tolkien"),
+        ],
+    );
+    // A word of two scripts that is no surname takes no initials (design section 8.7, C62).
+    both_sets(
+        ru(),
+        &[
+            ("Писал Иванов И. И. IT-отдел", "Писал Иванов⍽И.⍽И. IT-отдел"),
+            ("Сидоров П. П. SMS-рассылка", "Сидоров⍽П.⍽П. SMS-рассылка"),
+            ("Пушкин А.С. IT-отдел", "Пушкин⍽А.С. IT-отдел"),
+            ("дом XIX-XXм А. С. дом", "дом XIX-XXм А. С. дом"),
+            ("IT-отдел Т. е. дом", "IT-отдел Т.⍽е. дом"),
         ],
     );
     // `nbsp.abbreviations` alone does not take the one-letter forms.

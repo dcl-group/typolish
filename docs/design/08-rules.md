@@ -401,19 +401,21 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   initials is not a match anywhere in the run, and the rule glues none of its spaces (no partial
   match, no single-initial match inside it); a surname is a capitalized word of the language's
   script of at least two letters; a compound word with words of two scripts is a word of each
-  (section 8.2), so `А. Пушкин-Smith` → `А.⍽Пушкин-Smith` and `J. Smith-Петров` → `J.⍽Smith-Петров`
-  (C62). The spaces inside the pattern are glued: `А. С. Пушкин` → `А.⍽С.⍽Пушкин`,
-  `J. R. R. Tolkien` → `J.⍽R.⍽R.⍽Tolkien`. A compact `А.С.` gets no inserted space; only the space
-  before the surname is glued. Two or more initials, the reversed form and a single initial before a
-  surname are glued wherever they stand (`от⍽И.⍽Петрова`, `Автор: А.⍽Пушкин`, `сказал А.⍽Петров`). A
-  capital letter with a full stop that ends a sentence (a one-letter label, en `I`) before a
-  capitalized word gets the same glue (`вариант А.⍽После`): the rule does not look for sentence ends
-  (section 15.2, item 11), and the glue only forbids a line break there (section 10.8). Where
-  initials stand between two capitalized words, the forward form takes them and the word before
-  stays apart (`Иван А.⍽Петров`, `Пушкин А.⍽С.⍽Иванов`; section 15.2, item 22). A label numeral is
-  not an initial (`§V.`); a surname at the end of a `Joined` core is read as the word it was
-  (section 4.3, I4). A compact abbreviation after a surname is read as its first part, the fragment
-  that `nbsp.abbreviations` splits off (section 4.3, I2), so `Москва Т.е.` gets the glue of
+  (section 8.2) and a surname where every word of it is capitalized and one of them is a surname of
+  the language's script on its own, so `А. Пушкин-Smith` → `А.⍽Пушкин-Smith` and `J. Smith-Петров` →
+  `J.⍽Smith-Петров`, while `IT-отдел`, `SMS-рассылка` and `XIX-XXм` are no surnames and take no
+  initials (`Иванов⍽И.⍽И. IT-отдел`; C62). The spaces inside the pattern are glued: `А. С. Пушкин` →
+  `А.⍽С.⍽Пушкин`, `J. R. R. Tolkien` → `J.⍽R.⍽R.⍽Tolkien`. A compact `А.С.` gets no inserted space;
+  only the space before the surname is glued. Two or more initials, the reversed form and a single
+  initial before a surname are glued wherever they stand (`от⍽И.⍽Петрова`, `Автор: А.⍽Пушкин`,
+  `сказал А.⍽Петров`). A capital letter with a full stop that ends a sentence (a one-letter label,
+  en `I`) before a capitalized word gets the same glue (`вариант А.⍽После`): the rule does not look
+  for sentence ends (section 15.2, item 11), and the glue only forbids a line break there (section
+  10.8). Where initials stand between two capitalized words, the forward form takes them and the
+  word before stays apart (`Иван А.⍽Петров`, `Пушкин А.⍽С.⍽Иванов`; section 15.2, item 22). A label
+  numeral is not an initial (`§V.`); a surname at the end of a `Joined` core is read as the word it
+  was (section 4.3, I4). A compact abbreviation after a surname is read as its first part, the
+  fragment that `nbsp.abbreviations` splits off (section 4.3, I2), so `Москва Т.е.` gets the glue of
   `Москва Т. е.` in one pass: `Москва⍽Т.⍽е.`.
 - **`nbsp.dates`.** By `month_position`: `AfterDay` (ru) glues a day number 1 to 31 (or a `Number`
   slot) before a month form (`21⍽ноября`); `BeforeDay` glues a month form before a day number;
