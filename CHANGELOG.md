@@ -88,6 +88,14 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
 - `report_template` gives a `Protected` piece longer than `u32::MAX` bytes its whole length in its
   protected span; the range was cut to `u32::MAX` (design section 3.11). Such a piece is no part of
   the call's text, so the limit of design section 3.4 does not apply to it. Found by review.
+- English (en-US) glues the area and volume units of the metre that Russian glues (design section
+  7.3, C63, under the maintainer's extension of the unit lists): `km²`, `cm²`, `m³`, `cm³` (CLDR 49)
+  and `mm²`, `m2`, `m3`, `km2`, `cm2`, `cm3`, `mm2`. English, Prose and Interface:
+  `5 km² 5 cm² 5 mm² 5 m³ 5 cm³`: unchanged → `5⍽km² 5⍽cm² 5⍽mm² 5⍽m³ 5⍽cm³`;
+  `5 m2 5 m3 5 km2 5 cm2 5 cm3 5 mm2`: unchanged → `5⍽m2 5⍽m3 5⍽km2 5⍽cm2 5⍽cm3 5⍽mm2`; `5-10 m³`:
+  `5–10 m³` → `5–10⍽m³` (Prose), `5-10 m³` → `5-10⍽m³` (Interface). A unit is context for
+  `range.context` too, Prose: `1.5-2.5 m³`: `1.5-2.5 m³` → `1.5–2.5⍽m³`. `5 km³`, `5 mm³` and
+  `5 ft²` stay. Found by review.
 - The `Display` of a report writes the trailing spaces of a protected text; it trimmed every
   trailing U+0020 of the line, the text's own included (design section 12.5). `report_template` of
   `Text("a ")`, `Protected("foo  ")`, `Text("b")` printed `protected  ProtectedPiece  1:0..5  foo`

@@ -239,11 +239,12 @@ const EN_SHORT_WORDS: &[&str] = &[
 const EN_ATOM_EXCEPTIONS: &[&str] = &["a.m.", "cf.", "e.g.", "etc.", "i.e.", "p.m.", "vs."];
 const EN_UNITS: &[&str] = &[
     "A", "B", "GB", "GB/s", "GHz", "GW", "Gbit", "Gbps", "GiB", "Hz", "K", "KB", "KiB", "L", "MB",
-    "MB/s", "MHz", "MW", "Mbit", "Mbps", "MiB", "TB", "TiB", "V", "W", "a.m.", "bit", "cm", "dpi",
-    "ft", "g", "h", "hPa", "ha", "hr", "in", "kB", "kHz", "kJ", "kPa", "kW", "kWh", "kbit", "kbps",
-    "kg", "km", "km/h", "lb", "m", "m/s", "mA", "mL", "mW", "mg", "mi", "min", "mm", "mph", "ms",
-    "m²", "nm", "ns", "oz", "p.m.", "ppi", "pt", "px", "rpm", "s", "sec", "t", "yd", "°", "°C",
-    "°F", "µm", "µs", "μm", "μs",
+    "MB/s", "MHz", "MW", "Mbit", "Mbps", "MiB", "TB", "TiB", "V", "W", "a.m.", "bit", "cm", "cm2",
+    "cm3", "cm²", "cm³", "dpi", "ft", "g", "h", "hPa", "ha", "hr", "in", "kB", "kHz", "kJ", "kPa",
+    "kW", "kWh", "kbit", "kbps", "kg", "km", "km/h", "km2", "km²", "lb", "m", "m/s", "m2", "m3",
+    "mA", "mL", "mW", "mg", "mi", "min", "mm", "mm2", "mm²", "mph", "ms", "m²", "m³", "nm", "ns",
+    "oz", "p.m.", "ppi", "pt", "px", "rpm", "s", "sec", "t", "yd", "°", "°C", "°F", "µm", "µs",
+    "μm", "μs",
 ];
 const EN_AMBIGUOUS_UNITS: &[&str] = &["in"];
 const EN_MONTHS: &[&str] = &[
@@ -936,7 +937,7 @@ const RU_PROJECT_UNITS: &[&str] = &[
 const EN_PROJECT_UNITS: &[&str] = &[
     "KB", "KiB", "MiB", "GiB", "TiB", "bit", "kbit", "Mbit", "Gbit", "kbps", "Mbps", "Gbps",
     "MB/s", "GB/s", "µs", "µm", "mph", "rpm", "ppi", "pt", "°", "mW", "GW", "kJ", "kPa", "a.m.",
-    "p.m.",
+    "p.m.", "mm²", "m2", "m3", "km2", "cm2", "cm3", "mm2",
 ];
 
 fn sorted(mut items: Vec<String>) -> Vec<String> {
@@ -972,9 +973,9 @@ fn units_marked_cldr_are_the_short_symbols_of_the_extract() {
         );
         assert_eq!(stored, expected, "{}", data.tag());
     }
-    // The counts of the design tables: ru 53 CLDR symbols, en 49 short and 3 narrow.
+    // The counts of the design tables: ru 53 CLDR symbols, en 53 short and 3 narrow.
     assert_eq!(cldr49::RU.units_short.len(), 53);
-    assert_eq!(cldr49::EN.units_short.len(), 49);
+    assert_eq!(cldr49::EN.units_short.len(), 53);
     assert_eq!(cldr49::EN.units_narrow.len(), 3);
 }
 
@@ -1000,7 +1001,7 @@ fn every_unit_typed_without_a_superscript_has_its_superscript_form() {
             );
             checked += 1;
         }
-        let expected = if data.tag() == "ru-RU" { 6 } else { 0 };
+        let expected = 6;
         assert_eq!(checked, expected, "{}", data.tag());
     }
 }

@@ -1082,6 +1082,22 @@ const EN_UNITS: &[(&str, &str)] = &[
     ("5 GW", "5⍽GW"),
     ("5 kJ", "5⍽kJ"),
     ("5 kPa", "5⍽kPa"),
+    // The area and volume families of the metre (design section 7.3), with the forms typed
+    // without a superscript, whose digit never changes.
+    ("5 km²", "5⍽km²"),
+    ("5 cm²", "5⍽cm²"),
+    ("5 mm²", "5⍽mm²"),
+    ("5 m³", "5⍽m³"),
+    ("5 cm³", "5⍽cm³"),
+    ("5 m2", "5⍽m2"),
+    ("5 m3", "5⍽m3"),
+    ("5 km2", "5⍽km2"),
+    ("5 cm2", "5⍽cm2"),
+    ("5 cm3", "5⍽cm3"),
+    ("5 mm2", "5⍽mm2"),
+    ("5–10 m³", "5–10⍽m³"),
+    ("5 m2s", "5 m2s"),
+    ("5 M2", "5 M2"),
     // `a.m.` and `p.m.` are units as well as atom exceptions (design section 7.3); the time `5:30`
     // is not a number for `nbsp.units`, and the list is case-sensitive.
     ("5 a.m.", "5⍽a.m."),
@@ -1103,6 +1119,9 @@ const EN_UNITS: &[(&str, &str)] = &[
     // Members of the families that the list leaves out (design section 7.3).
     ("5 J", "5 J"),
     ("5 MPa", "5 MPa"),
+    ("5 km³", "5 km³"),
+    ("5 mm³", "5 mm³"),
+    ("5 ft²", "5 ft²"),
 ];
 
 #[test]
