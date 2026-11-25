@@ -125,27 +125,31 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `I-5% - x`: `I-5% — x` → `I-5% - x`; `x - V-X%`: `x — V-X%` → `x - V-X%`; `I–V% - x`: `I–V% — x` →
   `I–V% - x`; `1.5–2.5% - x`: `1.5–2.5% — x` → `1.5–2.5% - x`; `XIX–XX% -- x` (Prose): `XIX–XX% — x`
   → `XIX–XX% -- x`. A setting that spaces the sign spaces it in such a core with a Roman side too:
-  Russian, Prose, `PercentSpacing::Spaced`, `5 - I–10%`: `5 - I–10%` → `5 - I–10⍽%`. A range written
-  with `–` and a Roman first side keeps its output (`x - XIX–10%` and `- XIX–10%` stay as written,
-  as in 0.1.1). Next to a word outside the language's script or a technical fragment such a core is
-  neither, as the `Range` core of the spaced form is not (design section 8.4), so it gets the dash
-  that the spaced form gets, also with a hyphen joint (older than 0.1.2). Russian, Prose and
-  Interface: `XIX-XX% - word`: `XIX-XX% - word` → `XIX-XX%⍽— word`, as `XIX-XX % - word` gives
-  `XIX-XX⍽%⍽— word`; `XIX–XX% - word`: `XIX–XX% - word` → `XIX–XX%⍽— word`; `word - 1,5–2,5%`:
-  `word - 1,5–2,5%` → `word⍽— 1,5–2,5%`; `word - V–X%`: `word - V–X%` → `word⍽— V–X%`;
-  `word - 5-10%`: `word - 5-10%` → `word⍽— 5-10%`, as `word - 5-10 %` gives `word⍽— 5–10⍽%` (Prose).
-  English, Prose and Interface: `/usr/bin - 5-10%`: `/usr/bin - 5-10%` → `/usr/bin — 5-10%`;
-  `host:8080 - 1.5–2.5%`: `host:8080 - 1.5–2.5%` → `host:8080 — 1.5–2.5%`. Found by the grammar
-  generator of design section 13.5 and by review.
+  Russian, Prose, `PercentSpacing::Spaced`, `5 - I–10%`: `5 - I–10%` → `5 - I–10⍽%`. The dash before
+  such a core follows the same rule for any Roman first side as for a decimal one. Russian, Prose
+  and Interface: `слово - XIX–10%`: `слово - XIX–10%` → `слово⍽— XIX–10%`; `word - V–10%`:
+  `word - V–10%` → `word⍽— V–10%`; English, the same sets: `word - XIX–10%`: `word - XIX–10%` →
+  `word — XIX–10%`. `x - XIX–10%` and `- XIX–10%` stay as written, as in 0.1.1, because a single
+  letter on the left and the start of the line get no dash. Next to a word outside the language's
+  script or a technical fragment such a core is neither, as the `Range` core of the spaced form is
+  not (design section 8.4), so it gets the dash that the spaced form gets, also with a hyphen joint
+  (older than 0.1.2). Russian, Prose and Interface: `XIX-XX% - word`: `XIX-XX% - word` →
+  `XIX-XX%⍽— word`, as `XIX-XX % - word` gives `XIX-XX⍽%⍽— word`; `XIX–XX% - word`: `XIX–XX% - word`
+  → `XIX–XX%⍽— word`; `word - 1,5–2,5%`: `word - 1,5–2,5%` → `word⍽— 1,5–2,5%`; `word - V–X%`:
+  `word - V–X%` → `word⍽— V–X%`; `word - 5-10%`: `word - 5-10%` → `word⍽— 5-10%`, as `word - 5-10 %`
+  gives `word⍽— 5–10⍽%` (Prose). English, Prose and Interface: `/usr/bin - 5-10%`:
+  `/usr/bin - 5-10%` → `/usr/bin — 5-10%`; `host:8080 - 1.5–2.5%`: `host:8080 - 1.5–2.5%` →
+  `host:8080 — 1.5–2.5%`. Found by the grammar generator of design section 13.5 and by review.
 - A trailing possessive inside a pair that `’` closes stays straight where a second pass or
   `to_plain` would read it as the closer of the pair and change what stands between them (design
   section 6.6): a straight `'` opener that stayed unpaired stands after it, and a straight `'` or a
   prime that could close that opener follows; or the closer follows `s` or `S` and such an opener or
   a quote of a pair stands between them. So the first pass is a fixed point and P2 holds on these
-  inputs. English, Prose, Interface and `ALL`: `""s' 'x."'"`: `“‘s’ 'x.’'”` (then `“‘s’ ‘x.’’”` on a
-  second pass) → `“‘s' 'x.’'”`; `“"s' '."'”`: `“‘s’ '.’'”` → `“‘s' '.’'”`; `"a "dogs' 's" b"`:
-  `“a⍽‘dogs’ 's’ b”` → `“a⍽‘dogs' 's’ b”`; `"a "DOGS' 'S" b"`: `“a⍽‘DOGS’ 'S’ b”` →
-  `“a⍽‘DOGS' 'S’ b”`; `"a "dogs' 'x' bowls" b"`: `“a⍽‘dogs’ “x” bowls’ b”` →
+  inputs. English, Prose, Interface and `ALL`, `NestedOnly` and `Everywhere` (with
+  `SingleQuotes::Never` these rows keep the output of 0.1.1): `""s' 'x."'"`: `“‘s’ 'x.’'”` (then
+  `“‘s’ ‘x.’’”` on a second pass) → `“‘s' 'x.’'”`; `“"s' '."'”`: `“‘s’ '.’'”` → `“‘s' '.’'”`;
+  `"a "dogs' 's" b"`: `“a⍽‘dogs’ 's’ b”` → `“a⍽‘dogs' 's’ b”`; `"a "DOGS' 'S" b"`:
+  `“a⍽‘DOGS’ 'S’ b”` → `“a⍽‘DOGS' 'S’ b”`; `"a "dogs' 'x' bowls" b"`: `“a⍽‘dogs’ “x” bowls’ b”` →
   `“a⍽‘dogs' “x” bowls’ b”`. A declared language whose primary pair is `‘’` (en-GB), Prose,
   Interface and `ALL`, `SingleQuotes::NestedOnly` and `Everywhere` (with `SingleQuotes::Never` these
   rows keep the output of 0.1.1): `"S' 's"`: `‘S’ 's’` → `‘S' 's’`; `"the dogs' 'x' bowls"`:
@@ -153,20 +157,22 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `‘the⍽dogs’ 'bowls’ today` → `‘the⍽dogs' 'bowls’ today`; `"S'. a(\n'3,".'`: `‘S’. a(\n'3,’.'` →
   `‘S'. a(\n'3,’.'`; `it) - 'cause' - 'cause -- "'cause) DOGS' - 'house' - it, - oz.) '90s" a`:
   `… ‘’cause) DOGS’ — “house” — …` → `… ‘’cause) DOGS' — “house” — …`. Typed text, English and
-  en-GB, the same sets: `‘bowls' 'x S’ a`: `‘bowls’ 'x S’ a` → `‘bowls' 'x S’ a`; `to_plain` reads
-  such a `’` back as itself, and `lint` no longer reports it (en-GB: `“S’ 'dogs" -the` gave
-  `"S' 'dogs" -the` and `TypographicChar`, now `"S’ 'dogs" -the` and no report). Where nothing could
-  pair with the opener, the possessive is placed as before (`"a "dogs' 'x" b"` gives
-  `“a⍽‘dogs’ 'x’ b”`, en-GB `"s' 'x"` gives `‘s’ 'x’`), and with only text between the possessive
-  and the closer nothing changes (`“He said ‘the⍽dogs’ bowls’”`). In en-GB, where `’` closes the
-  primary pair, a typed `’` inside a straight pair keeps the possessive before the pair straight
-  too, for `to_plain`; Prose, Interface and `ALL`: `‘S' "x’" s’`: `‘S’ “x’” s’` → `‘S' “x’” s’`
-  (every `SingleQuotes` mode); `‘"s'" s' 's’`: `‘“s’” s’ 's’` → `‘“s’” s' 's’` (`NestedOnly` and
-  `Everywhere`). Where a possessive placed inside the same pair, or a typed `’` that a straight pair
-  covers on the first pass, would close the pair early on a second pass and move its closer, the
-  quote phase settles the window (below) and gives the output of 0.1.1, which is a fixed point:
-  English `‘S' ‘s'’ s’` gives `‘S’ ‘s’’ s’`, `‘S' "x’" s’` gives `‘S’ ‘x’’ s’`, and en-GB
-  `"a’ s' 's"` gives `‘a’ s’ 's’`, as in 0.1.1.
+  en-GB, the same sets, `NestedOnly` and `Everywhere`: `‘bowls' 'x S’ a`: `‘bowls’ 'x S’ a` →
+  `‘bowls' 'x S’ a`; `to_plain` reads such a `’` back as itself, and `lint` no longer reports it
+  (en-GB, `NestedOnly` and `Everywhere`: `“S’ 'dogs" -the` gave `"S' 'dogs" -the` and a
+  `TypographicChar` for each of `“` and `’`, now `"S’ 'dogs" -the` and one for the `“` only;
+  `"S’ 'dogs" -the` gave `TypographicChar` and now has no report). Where nothing could pair with the
+  opener, the possessive is placed as before (`"a "dogs' 'x" b"` gives `“a⍽‘dogs’ 'x’ b”`, en-GB
+  `"s' 'x"` gives `‘s’ 'x’`), and with only text between the possessive and the closer nothing
+  changes (`“He said ‘the⍽dogs’ bowls’”`). In en-GB, where `’` closes the primary pair, a typed `’`
+  inside a straight pair keeps the possessive before the pair straight too, for `to_plain`; Prose,
+  Interface and `ALL`: `‘S' "x’" s’`: `‘S’ “x’” s’` → `‘S' “x’” s’` (every `SingleQuotes` mode);
+  `‘"s'" s' 's’`: `‘“s’” s’ 's’` → `‘“s’” s' 's’` (`NestedOnly` and `Everywhere`). Where a
+  possessive placed inside the same pair, or a typed `’` that a straight pair covers on the first
+  pass, would close the pair early on a second pass and move its closer, the quote phase settles the
+  window (below) and gives the output of 0.1.1, which is a fixed point: English `‘S' ‘s'’ s’` gives
+  `‘S’ ‘s’’ s’`, `‘S' "x’" s’` gives `‘S’ ‘x’’ s’`, and en-GB `"a’ s' 's"` gives `‘a’ s’ 's’`, as in
+  0.1.1.
 - A typed `’` closes the `‘` of its pair when only signs, or nothing, stand between them and the
   neighbors allow the sign-only pair (design section 6.3), as the plain `""` that a first pass
   typesets as `‘’` does; other rules read the same closing role. In a declared language whose
@@ -176,20 +182,22 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   now pairs: `'a⍽‘’-3′` (Prose, `ALL`) and `'a⍽‘’-3'` (Interface) → `“a⍽‘’-3”`. English, both sets:
   `"a ‘’ b"`: `"a⍽‘’ b"` → `“a⍽‘’ b”`; `"a ‘-’ b"`: `"a⍽‘-’ b"` → `“a⍽‘-’ b”`; `"a ‘’, b"`:
   `"a⍽‘’, b"` → `“a⍽‘’, b”`. The closed `‘` no longer counts as a neutral opener, so a trailing
-  possessive after it is placed (English and en-GB, Prose, Interface and `ALL`: `‘’\n”bowls'`:
-  `‘’\n”bowls'` → `‘’\n”bowls’`), and the rules that read the role of a quote read it too (English
+  possessive after it is placed (en-GB, Prose, Interface and `ALL`: `‘’\n”bowls'`: `‘’\n”bowls'` →
+  `‘’\n”bowls’`; English gives `‘’\n”bowls'` as in 0.1.1: a typed `‘’` is no sign-only pair of the
+  first level there, see below), and the rules that read the role of a quote read it too (English
   and en-GB, the same sets: `)(\n ‘’ - ')“` gives `‘’ —` where it gave `‘’ -`). In a declared
   language with Russian data whose primary pair is `‘’`, the dash after a sign-only pair that the
   first pass writes as `‘’` is glued, as after `«»` in Russian: Prose, Interface and `ALL`, every
   `SingleQuotes` mode, `Он сказал "" - и ушёл`: `Он⍽сказал ‘’ — и⍽ушёл` → `Он⍽сказал ‘’⍽— и⍽ушёл`
   (Interface: `Он сказал ‘’⍽— и⍽ушёл`); `"" - ""`: `‘’ — ‘’` → `‘’⍽— ‘’`; `Он сказал "-" - и ушёл`:
-  `‘-’ —` → `‘-’⍽—`. Such a pair is no longer reported: `x ‘’ y` gave `UnmatchedQuote` (info),
-  `"a ‘’ b"` `CrossingQuotes` (warning). The quote phase reads such a pair only where it stands at a
-  level whose opening glyph is its `‘`, the level at which a first pass writes a plain sign-only
-  pair as `‘’` (design section 6.3); elsewhere the window is decided as in 0.1.1, since a typed `‘’`
-  at the level of `“”` is no output of plain text and its plain form would not typeset back. So the
-  typed `'a ‘’-3'` and `'a ‘’ 3'` keep the output of 0.1.1 in English with `NestedOnly` (`'a⍽‘’-3′`)
-  and in en-GB with `Everywhere` (`'a⍽‘’-3′` in Prose and `ALL`, `'a⍽‘’-3'` in Interface).
+  `‘-’ —` → `‘-’⍽—`. Such a pair is no longer reported: en-GB `x ‘’ y` gave `UnmatchedQuote` (info),
+  English `"a ‘’ b"` gave `CrossingQuotes` (warning). The quote phase reads such a pair only where
+  it stands at a level whose opening glyph is its `‘`, the level at which a first pass writes a
+  plain sign-only pair as `‘’` (design section 6.3); elsewhere the window is decided as in 0.1.1,
+  since a typed `‘’` at the level of `“”` is no output of plain text and its plain form would not
+  typeset back. So the typed `'a ‘’-3'` and `'a ‘’ 3'` keep the output of 0.1.1 in English with
+  `NestedOnly` (`'a⍽‘’-3′`) and in en-GB with `Everywhere` (`'a⍽‘’-3′` in Prose and `ALL`,
+  `'a⍽‘’-3'` in Interface).
 - The quote phase settles its result (design section 6.6): it runs again over the paragraph with its
   decisions applied, as a second call would read it, and takes what that run adds, at most three
   runs; a paragraph that the third run still changes, or where a quote that keeps its text would get
@@ -220,7 +228,7 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `"a⍽'-’ - x' c"`; en-GB, every set and `SingleQuotes` mode: `"-’ - x"`: `‘-’ - x’` → `"-’ - x"`,
   `s Paul "(’ -- St.)"`: `s Paul ‘(’ -- St.)’` → `s Paul "(’ -- St.)"` (design section 10.8). The
   settling runs the phase again on a paragraph whose quotes it changes; measured in a release build,
-  English Interface, `"a" ` repeated to 1 MiB: 227 ns per byte before it, 277 after.
+  English Interface, `"a" ` repeated to 1 MiB: 205 ns per byte in 0.1.1, 261 now.
 - `to_plain`, `to_plain_template`, `lint` and `lint_template` are linear in the length of the text
   on long runs of quote characters in one paragraph as well (design section 12.1): the neighbors of
   a series of quotes, the open pairs and the later closer of a `’` after `s` were searched again for
