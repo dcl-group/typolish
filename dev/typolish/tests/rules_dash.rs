@@ -793,6 +793,43 @@ fn spaced_hyphen_follows_the_dash_style_setting() {
 }
 
 #[test]
+fn a_glued_dash_follows_a_sign_only_pair_written_as_the_nested_pair() {
+    // `DashStyle::SpacedGlued` glues the dash after a closing quote, and the `’` of a sign-only pair
+    // that the first pass writes as `‘’` is a closing quote (design sections 6.3 and 8.1): en-GB,
+    // whose primary pair is `‘’`, and English at the nested level, as after `“”`.
+    let gb = LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+        .quotes(Some(typolish::QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    for (language, rows, sets) in [
+        (
+            gb,
+            &[
+                ("\"\" - x", "‘’⍽— x"),
+                ("а \"\" - б", "а ‘’⍽— б"),
+                ("\"\" - \"\"", "‘’⍽— ‘’"),
+            ][..],
+            &[RuleSet::PROSE, RuleSet::INTERFACE, RuleSet::ALL][..],
+        ),
+        (
+            Language::EN_US,
+            &[("\"\" - x", "“”⍽— x"), ("\"5 '' -- 100\"", "“5 ‘’⍽— 100”")][..],
+            &[RuleSet::PROSE, RuleSet::ALL][..],
+        ),
+    ] {
+        for &set in sets {
+            let t = Typographer::builder(language.clone(), set)
+                .dash_style(DashStyle::SpacedGlued)
+                .build()
+                .unwrap();
+            for &row in rows {
+                check_exact("SpacedGlued after a sign-only pair", &t, row);
+            }
+        }
+    }
+}
+
+#[test]
 fn the_rule_disabled() {
     for (language, text) in [
         (Language::RU_RU, "Москва - столица"),

@@ -315,6 +315,8 @@ const SEEDS: &[&str] = &[
     "Писал Иванов И. И. IT-отдел - Сидоров П. П. SMS-рассылка",
     "Пушкин А.С. IT-отдел - дом XIX-XXм А. С. дом - IT-отдел Т. е. дом",
     "Smith J. HR-отдел - J. Smith-jones-Петров - А. IT-Отдел",
+    // A glued dash after a sign-only pair written as `‘’` (design sections 6.3 and 8.1).
+    "\"\" - x - а \"\" - б - \"5 '' -- 100\"",
     // A `Joined` core before a context range or a day reads as its last word (design section 4.3,
     // I4).
     "поле - с. 1941-45",

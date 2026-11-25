@@ -191,19 +191,23 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   possessive after it is placed (en-GB, Prose, Interface and `ALL`: `‘’\n”bowls'`: `‘’\n”bowls'` →
   `‘’\n”bowls’`; English gives `‘’\n”bowls'` as in 0.1.1: a typed `‘’` is no sign-only pair of the
   first level there, see below), and the rules that read the role of a quote read it too (English
-  and en-GB, the same sets: `)(\n ‘’ - ')“` gives `‘’ —` where it gave `‘’ -`). In a declared
-  language with Russian data whose primary pair is `‘’`, the dash after a sign-only pair that the
-  first pass writes as `‘’` is glued, as after `«»` in Russian: Prose, Interface and `ALL`, every
-  `SingleQuotes` mode, `Он сказал "" - и ушёл`: `Он⍽сказал ‘’ — и⍽ушёл` → `Он⍽сказал ‘’⍽— и⍽ушёл`
-  (Interface: `Он сказал ‘’⍽— и⍽ушёл`); `"" - ""`: `‘’ — ‘’` → `‘’⍽— ‘’`; `Он сказал "-" - и ушёл`:
-  `‘-’ —` → `‘-’⍽—`. Such a pair is no longer reported: en-GB `x ‘’ y` gave `UnmatchedQuote` (info),
-  English `"a ‘’ b"` gave `CrossingQuotes` (warning). The quote phase reads such a pair only where
-  it stands at a level whose opening glyph is its `‘`, the level at which a first pass writes a
-  plain sign-only pair as `‘’` (design section 6.3); elsewhere the window is decided as in 0.1.1,
-  since a typed `‘’` at the level of `“”` is no output of plain text and its plain form would not
-  typeset back. So the typed `'a ‘’-3'` and `'a ‘’ 3'` keep the output of 0.1.1 in English with
-  `NestedOnly` (`'a⍽‘’-3′`) and in en-GB with `Everywhere` (`'a⍽‘’-3′` in Prose and `ALL`,
-  `'a⍽‘’-3'` in Interface).
+  and en-GB, the same sets: `)(\n ‘’ - ')“` gives `‘’ —` where it gave `‘’ -`). Wherever the dash
+  style glues the space before a dash (`DashStyle::SpacedGlued`, the style of Russian data), the
+  dash after a sign-only pair that the first pass writes as `‘’` is glued, as after `«»` or `“”`. In
+  a declared language with Russian data whose primary pair is `‘’`: Prose, Interface and `ALL`,
+  every `SingleQuotes` mode, `Он сказал "" - и ушёл`: `Он⍽сказал ‘’ — и⍽ушёл` →
+  `Он⍽сказал ‘’⍽— и⍽ушёл` (Interface: `Он сказал ‘’⍽— и⍽ушёл`); `"" - ""`: `‘’ — ‘’` → `‘’⍽— ‘’`;
+  `Он сказал "-" - и ушёл`: `‘-’ —` → `‘-’⍽—`. en-GB with `DashStyle::SpacedGlued`, the same sets
+  and modes: `"" - x`: `‘’ — x` → `‘’⍽— x`; `а "" - б`: `а ‘’ — б` → `а ‘’⍽— б`; `"" - ""`:
+  `‘’ — ‘’` → `‘’⍽— ‘’`. English with `DashStyle::SpacedGlued`, Prose and `ALL`, `NestedOnly` and
+  `Everywhere`: `"5 '' -- 100"`: `“5 ‘’ — 100”` → `“5 ‘’⍽— 100”`. Such a pair is no longer reported:
+  en-GB `x ‘’ y` gave `UnmatchedQuote` (info), English `"a ‘’ b"` gave `CrossingQuotes` (warning).
+  The quote phase reads such a pair only where it stands at a level whose opening glyph is its `‘`,
+  the level at which a first pass writes a plain sign-only pair as `‘’` (design section 6.3);
+  elsewhere the window is decided as in 0.1.1, since a typed `‘’` at the level of `“”` is no output
+  of plain text and its plain form would not typeset back. So the typed `'a ‘’-3'` and `'a ‘’ 3'`
+  keep the output of 0.1.1 in English with `NestedOnly` (`'a⍽‘’-3′`) and in en-GB with `Everywhere`
+  (`'a⍽‘’-3′` in Prose and `ALL`, `'a⍽‘’-3'` in Interface).
 - The quote phase settles its result (design section 6.6): it runs again over the paragraph with its
   decisions applied, as a second call would read it, and takes what that run adds, at most three
   runs; a paragraph that the third run still changes, or where a quote that keeps its text would get
