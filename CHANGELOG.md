@@ -238,7 +238,11 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `"a⍽'-’ - x' c"`; en-GB, every set and `SingleQuotes` mode: `"-’ - x"`: `‘-’ - x’` → `"-’ - x"`,
   `s Paul "(’ -- St.)"`: `s Paul ‘(’ -- St.)’` → `s Paul "(’ -- St.)"` (design section 10.8). The
   settling runs the phase again on a paragraph whose quotes it changes; measured in a release build,
-  English Interface, `"a" ` repeated to 1 MiB: 205 ns per byte in 0.1.1, 261 now.
+  English, `SingleQuotes::Everywhere`, one paragraph of a unit repeated to 1 MiB, median of three
+  runs, nanoseconds per byte in 0.1.1 → now: `"a" `, Interface 213 → 271 and Prose 224 → 278; the
+  quote-dense worst case, a chain of sign-only pairs that the phase runs again over, `''-'' `,
+  Interface 239 → 413 and Prose 251 → 425, and `"x ''-'' y" `, Prose 239 → 392. The cost stays
+  linear in the length of the paragraph.
 - `to_plain`, `to_plain_template`, `lint` and `lint_template` are linear in the length of the text
   on long runs of quote characters in one paragraph as well (design section 12.1): the neighbors of
   a series of quotes, the open pairs and the later closer of a `’` after `s` were searched again for
