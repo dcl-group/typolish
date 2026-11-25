@@ -168,11 +168,17 @@ pub(crate) fn is_number(f: &Frag) -> bool {
 }
 
 /// A range: a `Range` or `YearMonth` core, or a percentage range (`5–10%`, `10-20%`, design
-/// section 8.2).
+/// section 8.2). With either joint the dash rules read the core by its shape, whatever check of
+/// design section 3.6 classified it (`1,5–2,5%` is a `List` core, `XIX–XX%` an `Unclassified`
+/// one), as they read the same range with the sign after spaces.
 pub(crate) fn is_range(cx: &Cx<'_>, f: &Frag) -> bool {
-    matches!(f.kind, FragKind::Range | FragKind::YearMonth)
-        || percent_range(cx, f)
-        || percent_shape(cx, f, "-")
+    matches!(f.kind, FragKind::Range | FragKind::YearMonth) || percent_core(cx, f)
+}
+
+/// A core of the shape of a percentage range with either joint (`5–10%`, `10-20%`, `XIX–10%`):
+/// it reads as the range it is, never as one of its parts (design section 8.2).
+fn percent_core(cx: &Cx<'_>, f: &Frag) -> bool {
+    percent_shape(cx, f, "\u{2013}") || percent_shape(cx, f, "-")
 }
 
 /// A percentage range (design section 8.2): a `Joined` core made of the two sides of a range of
@@ -364,11 +370,16 @@ pub(crate) fn single_letter(cx: &Cx<'_>, f: &Frag, left: bool) -> bool {
 ///   8.4), and `a` was a fragment of its own before the merge.
 /// - A label (`№5`, `§V`) reads as its numeral on the left and as its sign on the right: the
 ///   parts that `nbsp.signs` splits it into (`№⍽5`).
+/// - A percentage range (`XIX–10%`) reads as itself, the range that the same text with the sign
+///   after spaces is (design section 8.2).
 ///
 /// Any other fragment reads as itself. So the merge or the split of the first pass changes
 /// nothing for a rule that reads the part next to it (invariant I2).
 pub(crate) fn plain_side(cx: &Cx<'_>, f: &Frag, left: bool) -> Frag {
     let part = match f.kind {
+        // A percentage range is one range, also where its first side is a Roman numeral that
+        // reads as a word (`XIX–10%`, as `XIX–10 %` is a `Range` core, design section 8.2).
+        FragKind::Joined if percent_core(cx, f) => None,
         FragKind::Joined => joined_side(cx, f, left),
         FragKind::Word if f.label => label_side(cx, f, left),
         _ => None,

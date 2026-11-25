@@ -470,6 +470,12 @@ const RU_WORDS: Words = Words {
         "100",
         "10 000",
         "1,5-2,5",
+        // Ranges with a Roman or a decimal side, which a `%` after them makes a percentage range
+        // (design section 8.2) that no check of design section 3.6 reads as one when the sign is
+        // attached.
+        "XIX-XX",
+        "XIX–10",
+        "1,5–2,5",
     ],
     labels: &["№5", "№ 5", "§V", "§ 12", "№V", "¶IV", "§5", "№10"],
 };
@@ -524,6 +530,9 @@ const EN_WORDS: Words = Words {
         "9-11",
         "1.5-2.5",
         "5'10\"",
+        "I–V",
+        "XIX-XX",
+        "1.5–2.5",
     ],
     labels: &["№5", "§V", "§ 12", "§5", "¶IV", "№V"],
 };

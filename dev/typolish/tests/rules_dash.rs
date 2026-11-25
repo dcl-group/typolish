@@ -99,6 +99,13 @@ const RU_SPACED: &[(&str, &str)] = &[
     // A side of check 17 may be a Roman numeral, with the sign attached too (`XIX-XX %` is a range).
     ("XIX-XX% - 27", "XIX-XX% - 27"),
     ("5 - XIX-XX%", "5 - XIX-XX%"),
+    // With `–` and the sign attached the core reads as the range it is, whatever check classified
+    // it, and never as its first side (`XIX–10 %` is a `Range` core, design section 8.2).
+    ("27 - XIX–10%", "27 - XIX–10%"),
+    ("XIX–XX% - 27", "XIX–XX% - 27"),
+    ("10–1,5% - 27", "10–1,5% - 27"),
+    ("1,5–2,5% - и", "1,5–2,5% - и"),
+    ("5 - 1,5–2,5%", "5 - 1,5–2,5%"),
     ("Use - --force", "Use - --force"),
     ("tar -cf - -C dir", "tar -cf - -C dir"),
     // Not a pattern: no single space on each side, or a `--` run (design section 8.2).
@@ -191,6 +198,9 @@ const EN_SPACED: &[(&str, &str)] = &[
     ("10-20% - 5", "10-20% - 5"),
     ("V-X% - 5", "V-X% - 5"),
     ("x - V-X%", "x - V-X%"),
+    ("x - XIX–10%", "x - XIX–10%"),
+    ("I–V% - x", "I–V% - x"),
+    ("1.5–2.5% - x", "1.5–2.5% - x"),
     ("123-45-67 - 123-45-68", "123-45-67 - 123-45-68"),
     ("diff -u - file.txt", "diff -u - file.txt"),
     ("tar -cf - -C dir", "tar -cf - -C dir"),
@@ -895,6 +905,10 @@ fn dialogue_in_russian() {
         ("- §5 текст", "—⍽§⍽5 текст"),
         ("- ¶IV дом", "—⍽¶⍽IV дом"),
         ("—⍽№⍽5 дом", "—⍽№⍽5 дом"),
+        // A percentage range is no word after the dash, with the sign attached or after spaces
+        // (design section 8.2): it reads as the range it is, not as its first side `XIX`.
+        ("- XIX–10%", "- XIX–10%"),
+        ("- XIX–10 %", "- XIX–10⍽%"),
     ] {
         check_in("Prose", &prose(Language::RU_RU), row);
     }

@@ -189,6 +189,15 @@ const SEEDS: &[&str] = &[
     // attaches (design section 8.2).
     "XIX-XX % - 27",
     "I-5 % - x",
+    // The same with `–`, or with a decimal side, which the percent setting attaches into a core
+    // that no check reads as a range; and after a dialogue dash (design section 8.2).
+    "x - XIX–10 %",
+    "XIX–XX % - 27",
+    "10–1,5 % - 27",
+    "I–V % - x",
+    "- XIX–10 % - 27",
+    "стр. 1,5-2,5 % - и",
+    "p. 1.5-2.5 % - x",
     // A label number owns its percent sign after spaces too (design section 8.2).
     "№5 % — т.е.",
     "№10 % — -5% +",

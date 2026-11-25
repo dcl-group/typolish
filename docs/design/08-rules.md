@@ -67,7 +67,13 @@ and `0.2.27` is not. Two kinds of number name or measure something other than a 
   percentage range, as they read `10-20 %`: so `5 - 10-20%` and `5 - 10-20 %` both keep the hyphen,
   and the space that the percent setting removes changes nothing for them (invariant I2). A side is
   what check 17 takes, a Roman numeral among them: `XIX-XX%` reads as `XIX-XX %` does, so
-  `XIX-XX % - 27` and `XIX-XX% - 27` both keep the hyphen with every percent setting.
+  `XIX-XX % - 27` and `XIX-XX% - 27` both keep the hyphen with every percent setting. With `–` the
+  dash rules read the shape too, whatever check classified the core: `1,5–2,5%` is a `List` core
+  (check 19) and `XIX–XX%` no `Joined` core, and both read as the ranges `1,5–2,5 %` and `XIX–XX %`
+  do (`1,5–2,5% - и` and `стр. 1,5-2,5 % - и` with `PercentSpacing::Attached` keep the hyphen). A
+  percentage range always reads as one range, never as its first side, also where that side is a
+  Roman numeral that reads as a word (`XIX–10%`): `x - XIX–10%` and `- XIX–10%` keep the hyphen, as
+  `x - XIX–10 %` and `- XIX–10 %` do.
 
 Both count as numbers everywhere (operands, the "numbers on both sides" refusal of the dash rules; a
 percent sign after spaces is read there with its number, label number or range, so `100 % - норма`
@@ -253,10 +259,11 @@ so does a protected span (section 2.6), and a dictionary sign read as a word or 
 does not. A `Joined` core after the space reads as its first word (section 4.3, I4), so the form
 that the closed style gives a dialogue line is a dialogue line too: `- река—ООО` → `—⍽река—ООО`, as
 `- река - ООО` gives with `DashStyle::Closed`. Only a `Joined` core reads so: a label reads as the
-word it is, not as its sign (`- №5 дом` → `—⍽№⍽5 дом`, with the split of `nbsp.signs`). Before an
-`Other` slot the dash is set and the space stays, since no glue sticks to an `Other` slot (section
-8.2): `- {o} пришёл` → `— {o} пришёл`, `- {w} пришёл` → `—⍽{w} пришёл`. Not in Interface: a line
-starting with `- ` in UI text is a list item. Settled in section 15.5, item 12.
+word it is, not as its sign (`- №5 дом` → `—⍽№⍽5 дом`, with the split of `nbsp.signs`), and a
+percentage range reads as the range it is, no word (`- XIX–10%` stays, as `- XIX–10 %` does; section
+8.2). Before an `Other` slot the dash is set and the space stays, since no glue sticks to an `Other`
+slot (section 8.2): `- {o} пришёл` → `— {o} пришёл`, `- {w} пришёл` → `—⍽{w} пришёл`. Not in
+Interface: a line starting with `- ` in UI text is a list item. Settled in section 15.5, item 12.
 
 Outputs show the rules named in the last column (with `quotes.pairs` where quotes appear); in the
 full sets other no-break rules add glue too (`Moscow—the⍽capital`, `“a⍽cat”`). The glue after `the`

@@ -48,15 +48,28 @@ stands for U+00A0).
 
 ### Fixed
 
-- The dash rules read a range of Roman numerals with its percent sign attached (`XIX-XX%`, `I-5%`)
-  as a percentage range, as they read the range with the sign after spaces (`XIX-XX %` is a range by
-  check 17, design sections 3.6 and 8.2). Before, the percent setting that attaches the sign made a
-  technical fragment of it, and a second pass set the dash after it: Russian, Prose,
-  `PercentSpacing::Attached`, `XIX-XX % - 27` gave `XIX-XX% - 27`, then `XIX-XX%⍽— 27`. The output
-  of the first pass on such input is unchanged; on input with the sign attached it is now the same
-  as with the sign after spaces. Russian, Prose: `XIX-XX% - 27`: `XIX-XX%⍽— 27` → `XIX-XX% - 27`;
-  `5 - XIX-XX%`: `5⍽— XIX-XX%` → `5 - XIX-XX%`. English, Prose: `I-5% - x`: `I-5% — x` → `I-5% - x`;
-  `x - V-X%`: `x — V-X%` → `x - V-X%`. Found by the grammar generator of design section 13.5.
+- The dash rules read a range with its percent sign attached as a percentage range, as they read the
+  range with the sign after spaces, whatever its sides and its joint (design sections 3.6 and 8.2):
+  a side may be a Roman numeral (`XIX-XX %` and `XIX–10 %` are ranges by check 17) or a decimal
+  number, and with `–` the core may be one that no check reads as a range (`1,5–2,5%` is a `List`
+  core). Such a core reads as one range, never as its first side, also after a dialogue dash.
+  Before, the percent setting that attaches the sign made a core that the dash rules read otherwise,
+  and a second pass set the dash after it: Russian, Prose, `PercentSpacing::Attached`,
+  `XIX-XX % - 27` gave `XIX-XX% - 27`, then `XIX-XX%⍽— 27`; `стр. 1,5-2,5 % - и` gave
+  `стр.⍽1,5–2,5% - и`, then `стр.⍽1,5–2,5%⍽— и`; English, `PercentSpacing::Language`:
+  `p. 1.5-2.5 % - x` gave `p.⍽1.5–2.5% - x`, then `p.⍽1.5–2.5% — x`. The output of the first pass on
+  such input is unchanged; on input with the sign attached it is now the same as with the sign after
+  spaces. Russian, Prose (and Interface where the rule is in it): `XIX-XX% - 27`: `XIX-XX%⍽— 27` →
+  `XIX-XX% - 27`; `5 - XIX-XX%`: `5⍽— XIX-XX%` → `5 - XIX-XX%`; `XIX–XX% - 27`: `XIX–XX%⍽— 27` →
+  `XIX–XX% - 27`; `1,5–2,5% - и`: `1,5–2,5%⍽— и` → `1,5–2,5% - и`; `5 - 1,5–2,5%`: `5⍽— 1,5–2,5%` →
+  `5 - 1,5–2,5%`; `10–1,5% - 27`: `10–1,5%⍽— 27` → `10–1,5% - 27`; `word - I–10%`: `word - I–10%` →
+  `word⍽— I–10%`, as `word - I–10 %` gives `word⍽— I–10⍽%`. English, Prose and Interface:
+  `I-5% - x`: `I-5% — x` → `I-5% - x`; `x - V-X%`: `x — V-X%` → `x - V-X%`; `I–V% - x`: `I–V% — x` →
+  `I–V% - x`; `1.5–2.5% - x`: `1.5–2.5% — x` → `1.5–2.5% - x`; `XIX–XX% -- x` (Prose): `XIX–XX% — x`
+  → `XIX–XX% -- x`. A setting that spaces the sign spaces it in such a core with a Roman side too:
+  Russian, Prose, `PercentSpacing::Spaced`, `5 - I–10%`: `5 - I–10%` → `5 - I–10⍽%`. A range written
+  with `–` and a Roman first side keeps its output (`x - XIX–10%` and `- XIX–10%` stay as written,
+  as in 0.1.1). Found by the grammar generator of design section 13.5 and by review.
 - A trailing possessive inside a pair that `’` closes stays straight where a second pass or
   `to_plain` would read it as the closer of the pair and change what stands between them (design
   section 6.6): a straight `'` opener that stayed unpaired stands after it, and a straight `'` or a

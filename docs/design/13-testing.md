@@ -372,39 +372,41 @@ the no-panic test.
 A structured grammar (`grammar` in `tests/common/strategies.rs`) builds sentences instead of joining
 fragments: words of the language (compound words and words with an apostrophe among them), short
 words and particles, abbreviations compact and with spaces (`т. е.`, `и т.д.`, `St.`, `p.m.`),
-numbers with units after them, with a space or attached, labels (`№5`, `§V`), technical fragments,
-dashes in every form (a spaced `-`, a spaced `--`, an attached `-`, a spaced `–`, an attached `—`, a
-spaced `—`, and a dialogue dash at a line start), parentheses, ellipses, sentence ends, line breaks,
-stray quotes, and quotes of every glyph, straight, typed and mixed, nested with the parentheses up
-to a depth of four. Its configuration (`grammar_config`) varies the rule set (Prose, Interface,
-`ALL`), the dash style (the language's own, `Spaced`, `SpacedGlued`, `Closed`), the `SingleQuotes`
-mode and the percent setting, in five languages (`grammar_language`): `ru-RU`, `en-US`, `COMMON`
-with the words of both, and two languages declared with `LanguageBuilder`, `en-GB` (primary pair
-`‘’`, nested `“”`) and `xx` (Russian data, `«»` with `‹›` nested, the closed style, the ellipsis
-forms `?…`, `!…`, `?!…`). Each sentence is written twice from the same steps (`Sentence`): with its
-typed glyphs, and plain (`write_plain_grammar`), where every step picks only from the entries
-without a dash, an ellipsis or a typed quote. The runs are deterministic: fixed seeds, no clock and
-no file of failures (`run_grammar`). Properties 1 to 3 (`grammar_properties_hold` in
-`tests/properties.rs`: idempotence, the second pass without a change, and I1 to I5 as the public API
-shows them, on the sentence with its typed glyphs) and P2 (`p2_over_the_grammar` in
-`tests/roundtrip.rs`, on the plain sentence and on `to_plain` of the typed one where that holds no
-typographic character, with P1 on the plain form of the output) run 512 sentences per language in a
-normal run. The `#[ignore]` tests `grammar_properties_hold_long` and `p2_over_the_grammar_long` run
-100 000 sentences for each configuration of `grammar_long_configurations`: each of the five
-languages with each dash style and each `SingleQuotes` mode, 60 configurations and 6 000 000
-sentences, the rule set and the percent setting drawn per sentence, on all available threads
-(`run_grammar_long`); every failing configuration is reported. Only a sentence that fails is
-measured against the known limits of section 10.8, so every other sentence is checked in full: a
-failure of idempotence is skipped when `grammar_known_failure` names its limit, by the shape of the
-input and the edits of the second pass together (sign-only pairs that share a quote, where the
-second pass changes straight quotes only; in `en-US` and `en-GB`, a first pass with a `‘` before a
-straight `'` whose second pass changes straight `'` only; a straight quote before signs, or nothing,
-and a typed `’` whose second pass changes straight `'` and dashes only), and a failure of P2 when
-`grammar_known_p2_failure` names its limit (where the output is no fixed point, as for idempotence;
-otherwise where `to_plain` read a `"` of the input as `'` or the other way round, the limit of
-`to_plain`, or a sign-only chain). `the_grammar_filters_name_their_limits` and
-`the_p2_filters_name_their_limits` check that every filter names the inputs of its limit and that
-those inputs still fail, and each filter goes with its limit.
+numbers (ranges with a Roman or a decimal side among them, which a `%` after them makes a percentage
+range, section 8.2) with units after them, with a space or attached, labels (`№5`, `§V`), technical
+fragments, dashes in every form (a spaced `-`, a spaced `--`, an attached `-`, a spaced `–`, an
+attached `—`, a spaced `—`, and a dialogue dash at a line start), parentheses, ellipses, sentence
+ends, line breaks, stray quotes, and quotes of every glyph, straight, typed and mixed, nested with
+the parentheses up to a depth of four. Its configuration (`grammar_config`) varies the rule set
+(Prose, Interface, `ALL`), the dash style (the language's own, `Spaced`, `SpacedGlued`, `Closed`),
+the `SingleQuotes` mode and the percent setting, in five languages (`grammar_language`): `ru-RU`,
+`en-US`, `COMMON` with the words of both, and two languages declared with `LanguageBuilder`, `en-GB`
+(primary pair `‘’`, nested `“”`) and `xx` (Russian data, `«»` with `‹›` nested, the closed style,
+the ellipsis forms `?…`, `!…`, `?!…`). Each sentence is written twice from the same steps
+(`Sentence`): with its typed glyphs, and plain (`write_plain_grammar`), where every step picks only
+from the entries without a dash, an ellipsis or a typed quote. The runs are deterministic: fixed
+seeds, no clock and no file of failures (`run_grammar`). Properties 1 to 3
+(`grammar_properties_hold` in `tests/properties.rs`: idempotence, the second pass without a change,
+and I1 to I5 as the public API shows them, on the sentence with its typed glyphs) and P2
+(`p2_over_the_grammar` in `tests/roundtrip.rs`, on the plain sentence and on `to_plain` of the typed
+one where that holds no typographic character, with P1 on the plain form of the output) run 512
+sentences per language in a normal run. The `#[ignore]` tests `grammar_properties_hold_long` and
+`p2_over_the_grammar_long` run 100 000 sentences for each configuration of
+`grammar_long_configurations`: each of the five languages with each dash style and each
+`SingleQuotes` mode, 60 configurations and 6 000 000 sentences, the rule set and the percent setting
+drawn per sentence, on all available threads (`run_grammar_long`); every failing configuration is
+reported. Only a sentence that fails is measured against the known limits of section 10.8, so every
+other sentence is checked in full: a failure of idempotence is skipped when `grammar_known_failure`
+names its limit, by the shape of the input and the edits of the second pass together (sign-only
+pairs that share a quote, where the second pass changes straight quotes only; in `en-US` and
+`en-GB`, a first pass with a `‘` before a straight `'` whose second pass changes straight `'` only;
+a straight quote before signs, or nothing, and a typed `’` whose second pass changes straight `'`
+and dashes only), and a failure of P2 when `grammar_known_p2_failure` names its limit (where the
+output is no fixed point, as for idempotence; otherwise where `to_plain` read a `"` of the input as
+`'` or the other way round, the limit of `to_plain`, or a sign-only chain).
+`the_grammar_filters_name_their_limits` and `the_p2_filters_name_their_limits` check that every
+filter names the inputs of its limit and that those inputs still fail, and each filter goes with its
+limit.
 
 1. **Idempotence**: `f(f(x)) == f(x)` for {ru, en, COMMON} × {Prose, Interface, all, random subsets}
    × the three `SingleQuotes` modes, and over the structured grammar for its five languages, two of

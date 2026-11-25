@@ -1247,6 +1247,12 @@ fn percent_spacing_and_the_dash_rules() {
         // design section 3.6): the sign that the setting attaches changes nothing.
         (Attached, "XIX-XX % - 27", "XIX-XX% - 27"),
         (AsWritten, "XIX-XX% - 27", "XIX-XX% - 27"),
+        // With `–` too, and a decimal side; the dialogue dash reads the range, not its first side.
+        (Attached, "27 - XIX–10 %", "27 - XIX–10%"),
+        (Attached, "XIX–XX % - 27", "XIX–XX% - 27"),
+        (Attached, "стр. 1,5-2,5 % - и", "стр.⍽1,5–2,5% - и"),
+        (Attached, "- XIX–10 % - 27", "- XIX–10% - 27"),
+        (AsWritten, "1,5–2,5% - и", "1,5–2,5% - и"),
     ];
     for (spacing, input, expected) in rows {
         let t = Typographer::builder(ru(), RuleSet::PROSE)
