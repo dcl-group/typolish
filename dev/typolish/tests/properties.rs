@@ -351,6 +351,10 @@ const SEEDS: &[&str] = &[
     "‘\"0\" S'’",
     "x ‘a 'b' \"2\"’ y",
     "\"a '-’ - x' c\"",
+    // A quote whose opening role the result drops: the window is a fixed point (design section
+    // 6.6).
+    "a ''.-' - a '.-'' - ''.-'",
+    "- ''.-'\n. '.-''\n'a ''.-'",
     "‘'—’ l' s'",
     "‘S' ‘s'’ s’",
     "‘\"s'\" s' 's’",

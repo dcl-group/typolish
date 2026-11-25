@@ -371,33 +371,39 @@ fn applied(cx: &Cx<'_>, mark: Mark) -> Option<char> {
     }
 }
 
-/// Whether another rule may read the role of the quote at `i` (design section 8.2): the token
-/// after a space that follows anything but a quote (`dash.*`, `nbsp.dash` and the glue of design
-/// section 8.2 read whether it opens), the token before a space and a dash (`dash.*` and
-/// `nbsp.dash` read whether it closes), and the token after an ellipsis (`ellipsis.*`).
-fn role_read(cx: &Cx<'_>, i: usize) -> bool {
+/// Whether another rule reads, in the result of the phase (`cx2`), a role of the quote at `i` that
+/// it acts on and that the input (`cx`) does not give it (design sections 6.6 and 8.2): the
+/// opening role of the token after a space that follows anything but a quote (`dash.*`,
+/// `nbsp.dash` and the glue of design section 8.2 act where it opens), the closing role of the
+/// token before a space and a dash (`dash.*` and `nbsp.dash` act where it closes) and of the token
+/// after an ellipsis (`ellipsis.*`). A second pass makes such an edit where the first did not. A
+/// role lost in the result is no such change: the edit the first pass made where the quote had the
+/// role stays in the text, and no rule undoes it.
+fn role_gained(cx: &Cx<'_>, cx2: &Cx<'_>, i: usize) -> bool {
     let space = |j: Option<usize>| {
         matches!(
             j.and_then(|j| cx.kind(j)),
             Some(Kind::Space | Kind::Newline)
         )
     };
+    let gained = |role| local_role(cx2, i) == Some(role) && local_role(cx, i) != Some(role);
     let prev = cx.prev(i);
     let next = cx.next(i);
     let before_space = prev.and_then(|p| cx.prev(p));
-    (space(prev) && before_space.is_some_and(|b| !is_quote(cx, b)))
-        || prev.and_then(|p| cx.kind(p)) == Some(Kind::Dots)
-        || (space(next)
-            && next.and_then(|n| cx.next(n)).and_then(|d| cx.kind(d)) == Some(Kind::Dash))
+    let after_space = space(prev) && before_space.is_some_and(|b| !is_quote(cx, b));
+    let after_dots = prev.and_then(|p| cx.kind(p)) == Some(Kind::Dots);
+    let before_dash =
+        space(next) && next.and_then(|n| cx.next(n)).and_then(|d| cx.kind(d)) == Some(Kind::Dash);
+    (after_space && gained(Role::Open)) || ((after_dots || before_dash) && gained(Role::Close))
 }
 
 /// Settles the result of the first pass in `marks` (design sections 6.6 and 6.11): runs the phase
 /// again over the window with the decisions applied and takes what it adds, until a run changes
 /// nothing, at most `ROUNDS` runs. A token changes at most once, since only straight quotes get
-/// decisions. When the last run would still change a quote, or a quote that keeps its text has
-/// another role for the other rules (`local_role`, design section 8.2) in the result than in the
-/// input, the window does not converge: no straight quote changes, step 1 stays, and the first
-/// such quote is returned.
+/// decisions. When the last run would still change a quote, or a quote that keeps its text gains a
+/// role in the result that another rule acts on (`role_gained`, design section 8.2), the window
+/// does not converge: no straight quote changes, step 1 stays, and the first such quote is
+/// returned.
 fn settle(cx: &Cx<'_>, work: &mut Work, marks: &mut Vec<Mark>) -> Option<usize> {
     let Work {
         qs,
@@ -467,10 +473,7 @@ fn settle(cx: &Cx<'_>, work: &mut Work, marks: &mut Vec<Mark>) -> Option<usize> 
         };
         result = saved.iter().find_map(|q| {
             let i = q.tok as usize;
-            (applied(cx, q.mark).is_none()
-                && role_read(cx, i)
-                && local_role(cx, i) != local_role(&cx2, i))
-            .then_some(i)
+            (applied(cx, q.mark).is_none() && role_gained(cx, &cx2, i)).then_some(i)
         });
     }
     marks.clear();

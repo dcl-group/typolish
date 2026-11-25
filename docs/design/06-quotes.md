@@ -247,16 +247,21 @@ closer of a sign-only pair. So the phase checks its result. It runs again over t
 second call would read it, the decisions applied to the quotes (only where their rules are enabled),
 and takes the decisions that the run adds; a quote changes at most once, because only straight
 quotes get decisions. When a run adds nothing, the result is a fixed point. After three runs that
-still add something, or when a quote that keeps its text has another role in the result than in the
-input (`local_role`, section 8.2) where another rule reads it (after a space that does not follow a
-quote, before a space and a dash, after an ellipsis), the window does not converge: `CrossingQuotes`
-(warning) at that quote, and no straight quote changes. Examples, English, Prose: `"x ''-'' y"`
-gives `“x ‘’-‘’ y”` (the second run pairs the first two quotes, which the chain of sign-only pairs
-left unpaired), `He said ‘the dogs' "5"’` gives `He said ‘the⍽dogs’ “5”’`, `‘S' ‘s'’ s’` gives
-`‘S’ ‘s’’ s’`, and `"a '-’ - x' c"` keeps its straight quotes (`"a⍽'-’ - x' c"`), because the dash
-rule would read the `’` after `‘-` as the closer of a sign-only pair on a second pass and set the
-dash. A window that does not converge after the runs keeps the input of the phase as it is, so a
-second call decides it the same way.
+still add something, or when a quote that keeps its text gains in the result a role that another
+rule acts on and that the input did not give it (`local_role`, section 8.2): the opening role after
+a space that does not follow a quote (the dash rules, `nbsp.dash` and the glue of section 8.2), the
+closing role before a space and a dash (the dash rules, `nbsp.dash`) or after an ellipsis
+(`ellipsis.*`), the window does not converge: `CrossingQuotes` (warning) at that quote, and no
+straight quote changes. Examples, English, Prose: `"x ''-'' y"` gives `“x ‘’-‘’ y”` (the second run
+pairs the first two quotes, which the chain of sign-only pairs left unpaired),
+`He said ‘the dogs' "5"’` gives `He said ‘the⍽dogs’ “5”’`, `‘S' ‘s'’ s’` gives `‘S’ ‘s’’ s’`, and
+`"a '-’ - x' c"` keeps its straight quotes (`"a⍽'-’ - x' c"`), because the dash rule would read the
+`’` after `‘-` as the closer of a sign-only pair on a second pass and set the dash. A role that the
+result drops is no such change: the edit that the first pass made where the quote had the role stays
+in the text, and a second pass makes none where it lacks it. So with `SingleQuotes::Everywhere`
+`a ''.-'` gives `a '«.-»` in Russian and `a '“.-”` in English, as in 0.1.1: the `'` before `'` opens
+on the first pass and has no role before `«` or `“`. A window that does not converge after the runs
+keeps the input of the phase as it is, so a second call decides it the same way.
 
 If the window does **not** converge, no straight quote of the window changes; the edits of step 1
 (section 6.2) are kept. The caller gets a diagnostic at the position of the first cause.

@@ -495,6 +495,66 @@ fn a_window_that_a_later_pass_reads_otherwise_is_settled() {
     );
 }
 
+#[test]
+fn a_role_that_the_result_drops_keeps_the_placement() {
+    // Design section 6.6: a quote that keeps its text and has no opening role in the result where
+    // the input gave it one (`'` before `“` in place of `'` before `'`) changes no edit of a second
+    // pass, so the window is a fixed point and its quotes are placed, as in 0.1.1. Before, every
+    // change of such a role kept the whole window straight with `CrossingQuotes`.
+    let gb = typolish::LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    for (language, rows) in [
+        (
+            Language::RU_RU,
+            [
+                ("a ''.-'", "a '«.-»", "a '«.-»"),
+                ("a '.-''", "a '.-«»", "a '.-«»"),
+                ("- ''.-'", "—⍽'«.-»", "- '«.-»"),
+            ],
+        ),
+        (
+            Language::EN_US,
+            [
+                ("a ''.-'", "a '“.-”", "a '“.-”"),
+                ("a '.-''", "a '.-“”", "a '.-“”"),
+                ("- ''.-'", "- '“.-”", "- '“.-”"),
+            ],
+        ),
+        (
+            gb,
+            [
+                ("a ''.-'", "a '‘.-’", "a '‘.-’"),
+                ("a '.-''", "a '.-‘’", "a '.-‘’"),
+                ("- ''.-'", "- '‘.-’", "- '‘.-’"),
+            ],
+        ),
+    ] {
+        let p = set_with(language.clone(), RuleSet::PROSE, SingleQuotes::Everywhere);
+        let i = set_with(
+            language.clone(),
+            RuleSet::INTERFACE,
+            SingleQuotes::Everywhere,
+        );
+        for (x, prose, interface) in rows {
+            check_exact(&format!("{language} Prose, Everywhere"), &p, (x, prose));
+            check_exact(
+                &format!("{language} Interface, Everywhere"),
+                &i,
+                (x, interface),
+            );
+            let crossing = diagnostics_of(&p, x);
+            assert!(
+                !crossing
+                    .iter()
+                    .any(|d| d.0 == DiagnosticKind::CrossingQuotes),
+                "{language} {x}: {crossing:?}"
+            );
+        }
+    }
+}
+
 // The rows of design section 6.12 that need `quotes.primes`: Prose (design section 6.5), and what
 // Interface does.
 #[test]
