@@ -19,7 +19,7 @@ use std::borrow::Cow;
 
 use super::Input;
 use super::ingest::{Atom, TextPiece};
-use super::lex::{EllipsisForm, Flags, Kind, NO_PIECE, Repl, Tok};
+use super::lex::{EllipsisForm, Flags, Kind, Repl, Tok};
 use super::phase::{ellipsis_tail, glue_char};
 use super::record::Recorder;
 use crate::lang::data::Table;
@@ -51,17 +51,15 @@ pub(crate) struct REdit {
 /// Appends the edits of one changed window, in position order.
 pub(crate) fn collect(tokens: &[Tok], removed: &[(u32, u32)], out: &mut Vec<REdit>) {
     let base = out.len();
-    let mut prev_text = false;
-    for (i, tok) in tokens.iter().enumerate() {
+    for tok in tokens {
         if tok.flags.contains(Flags::INSERTED) {
-            // An insertion belongs to the text on its left when a text token precedes it or no
-            // text token follows it (design section 3.11).
-            let next_text = tokens.get(i + 1).is_some_and(|t| t.piece == NO_PIECE);
+            // The phase that inserted it decided which piece owns it, and recorded that (design
+            // section 3.11).
             out.push(REdit {
                 start: tok.src.start,
                 end: tok.src.start,
                 text: RText::Char(glue_char(tok.glue)),
-                left: prev_text || !next_text,
+                left: tok.flags.contains(Flags::LEFT),
             });
         } else if tok.flags.contains(Flags::CHANGED) {
             let text = match tok.repl {
@@ -77,7 +75,6 @@ pub(crate) fn collect(tokens: &[Tok], removed: &[(u32, u32)], out: &mut Vec<REdi
                 left: true,
             });
         }
-        prev_text = tok.piece == NO_PIECE;
     }
     out.extend(removed.iter().map(|&(start, end)| REdit {
         start,
@@ -808,6 +805,31 @@ fn report_fallbacks<R: Recorder>(v: &View<'_, '_>, rec: &mut R) {
         items = ahead;
         for _ in 0..len {
             let _ = items.next();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::lex::Glue;
+    use super::*;
+
+    #[test]
+    fn an_insertion_belongs_to_the_piece_its_phase_chose() {
+        // Design section 3.11: the phase that inserts a space decides which piece owns it, and the
+        // renderer takes that answer instead of computing it again over the final tokens.
+        for left in [false, true] {
+            let mut out = Vec::new();
+            collect(&[Tok::inserted(3, Glue::NoBreak, left)], &[], &mut out);
+            assert_eq!(
+                out,
+                [REdit {
+                    start: 3,
+                    end: 3,
+                    text: RText::Char('\u{a0}'),
+                    left,
+                }]
+            );
         }
     }
 }

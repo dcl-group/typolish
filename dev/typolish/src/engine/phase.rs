@@ -696,15 +696,16 @@ fn emit<R: Recorder>(
                 .map(|t| t.src.start)
                 .or_else(|| out.last().map(|t| t.src.end))
                 .unwrap_or(0);
-            // The text on the left owns the insertion when no text token follows it (design
-            // section 3.11), as in `collect` of the renderer.
+            // The text on the left owns the insertion when a text token precedes it or no text
+            // token follows it (design section 3.11). The token carries the answer, so the record
+            // and the renderer (`collect`) cannot disagree.
             let next_text = input
                 .get(anchor + b as usize)
                 .is_some_and(|t| t.piece == NO_PIECE);
             let left = out.last().is_some_and(|t| t.piece == NO_PIECE) || !next_text;
             let mut text = [0u8; 4];
             sink.change(rule, at, at, left, glue_char(glue).encode_utf8(&mut text));
-            out.push(Tok::inserted(at, glue));
+            out.push(Tok::inserted(at, glue, left));
             outcome.changed = true;
             outcome.moved = true;
         }

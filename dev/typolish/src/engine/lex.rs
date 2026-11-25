@@ -46,11 +46,16 @@ impl Tok {
         }
     }
 
-    /// An inserted `Space` token carrying glue, with an empty range at `at` (design section 3.5).
-    pub(crate) fn inserted(at: u32, glue: Glue) -> Tok {
+    /// An inserted `Space` token carrying glue, with an empty range at `at` (design section 3.5);
+    /// `left` when it belongs to the text piece on its left (design section 3.11).
+    pub(crate) fn inserted(at: u32, glue: Glue, left: bool) -> Tok {
         let mut tok = Tok::text(Kind::Space, at, at);
         tok.glue = glue;
-        tok.flags = Flags::INSERTED;
+        tok.flags = if left {
+            Flags::INSERTED.with(Flags::LEFT)
+        } else {
+            Flags::INSERTED
+        };
         tok
     }
 
@@ -107,6 +112,8 @@ impl Flags {
     pub(crate) const CHANGED: Flags = Flags(1 << 2);
     pub(crate) const INSERTED: Flags = Flags(1 << 3);
     pub(crate) const CORE: Flags = Flags(1 << 4);
+    /// An inserted `Space` token belongs to the text piece on its left (design section 3.11).
+    pub(crate) const LEFT: Flags = Flags(1 << 5);
 
     pub(crate) const fn contains(self, other: Flags) -> bool {
         self.0 & other.0 == other.0
