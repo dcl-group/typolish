@@ -6,10 +6,10 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 
 ### 15.1 Versioning and output stability
 
-- The first release is `0.1.2`; the prepared `0.1.0` and `0.1.1` are never published (decided by the
-  maintainer on 2026-11-24 and 2026-11-25). SemVer as Cargo applies it: before 1.0 the second number
-  is the breaking one. "A release that raises the breaking number" below means `0.1.x` → `0.2.0`
-  before 1.0 and `1.x.y` → `2.0.0` after it.
+- The first release is `0.1.2`; the prepared `0.1.0` (decided by the maintainer on 2026-11-24) and
+  `0.1.1` are never published. SemVer as Cargo applies it: before 1.0 the second number is the
+  breaking one. "A release that raises the breaking number" below means `0.1.x` → `0.2.0` before 1.0
+  and `1.x.y` → `2.0.0` after it.
 - API changes follow SemVer; the commitments of section 2.13 keep extensions additive.
 - **Output changes.** The output of `PROSE` and `INTERFACE` for built-in languages changes only in a
   release that raises the breaking number (new rules in a set, changed lists, changed language
