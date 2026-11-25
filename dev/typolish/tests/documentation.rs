@@ -727,7 +727,7 @@ fn design_references_say_design() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// CHANGELOG (design sections 15.2 and 15.4: a prepared entry of the version of `Cargo.toml` first,
+// CHANGELOG (design sections 15.2 and 15.4: a dated entry of the version of `Cargo.toml` first,
 // and the 0.1.1 entry, the first one, naming every rule).
 
 fn changelog_entry(text: &str, version: &str) -> String {
@@ -751,7 +751,7 @@ fn changelog_entry(text: &str, version: &str) -> String {
 }
 
 #[test]
-fn changelog_has_the_prepared_entry() {
+fn changelog_has_the_dated_entry() {
     let Some(text) = changelog() else {
         return;
     };
@@ -761,10 +761,21 @@ fn changelog_has_the_prepared_entry() {
     let headings: Vec<&str> = text.lines().filter(|l| l.starts_with("## ")).collect();
     let version = env!("CARGO_PKG_VERSION");
     assert_eq!(version, "0.1.2");
-    assert_eq!(
-        headings.first().copied(),
-        Some(format!("## {version} - unreleased").as_str()),
-        "the first entry is the version of Cargo.toml, prepared and not released"
+    let first = headings.first().copied().unwrap_or_default();
+    let date = first.strip_prefix(format!("## {version} - ").as_str());
+    assert!(
+        date.is_some_and(|d| {
+            let b = d.as_bytes();
+            b.len() == 10
+                && b.iter().enumerate().all(|(i, c)| {
+                    if i == 4 || i == 7 {
+                        *c == b'-'
+                    } else {
+                        c.is_ascii_digit()
+                    }
+                })
+        }),
+        "the first entry is the version of Cargo.toml with the date of its tag: {first}"
     );
     assert_eq!(
         headings.get(1).copied(),
@@ -781,7 +792,7 @@ fn changelog_has_the_prepared_entry() {
         );
         assert!(
             entry.contains("not published"),
-            "a prepared entry says that nothing is published yet"
+            "an entry says that nothing is published yet"
         );
     }
 }

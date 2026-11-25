@@ -737,8 +737,8 @@ known limits are those of section 10.8 and are what the crate does (`known_limit
 with its exact output and a second pass, in Prose and, where the row says so, Interface, in its
 `SingleQuotes` modes, also in en-GB, the declared language of section 13.5 whose primary pair is
 `‘’`, for the windows of sections 6.6 and 10.8 that exist only there), that the CHANGELOG has the
-prepared entry of the version of `Cargo.toml` first and the `0.1.1` entry naming every rule, and
-that every comment of the crate's Rust files that refers to this design says "design section N.M",
-never a bare "section N.M" (section 15.2, item 33). It reads the README through the crate's
-`README.md`, which the package holds; the checks that need the CHANGELOG, the design or the targets
-of links skip outside the repository, as in `tests/package.rs` (section 13.9).
+dated entry of the version of `Cargo.toml` first and the `0.1.1` entry naming every rule, and that
+every comment of the crate's Rust files that refers to this design says "design section N.M", never
+a bare "section N.M" (section 15.2, item 33). It reads the README through the crate's `README.md`,
+which the package holds; the checks that need the CHANGELOG, the design or the targets of links skip
+outside the repository, as in `tests/package.rs` (section 13.9).
