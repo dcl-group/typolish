@@ -38,8 +38,11 @@ pair is `‘’` (en-GB), Prose and Interface, `SingleQuotes::Never`:
 
 `to_plain` reads the first `’` after `s` as the closer, since the closer follows `s` too (design
 section 12.1); the quotes come back, and the dash between them is placed. P2 over the grammar skips
-a failure whose plain form differs from the input only in which straight quotes it holds
-(`quotes_read_differently` in `tests/roundtrip.rs`); that filter goes with this task.
+a failure where `to_plain` read a `"` of the input as `'` or the other way round
+(`grammar_known_p2_failure` in `tests/common/strategies.rs`, named `NO_READING`); that filter goes
+with this task. The plain writing of the grammar finds the class with labels and kept apostrophes
+too: en-GB, Prose, `""dogs'" word '1920x1080'"` gives `‘“dogs’” word “1920×1080”’`, whose plain form
+`""dogs’" word "1920x1080""` gives `""dogs’" word "1920×1080""`.
 
 ## Analysis so far
 
@@ -57,5 +60,6 @@ P2 holds on these inputs, with `to_plain` linear in the length of the text, and 
 
 - The rows above run as P2 tests in `tests/roundtrip.rs`.
 - The limit is removed from design section 10.8, the README, `limits()` of `tests/documentation.rs`
-  and the exception of P2 in design section 12.2, and the filter `quotes_read_differently` from
-  `p2_over_the_grammar` in `tests/roundtrip.rs`.
+  and the exception of P2 in design section 12.2, and the filter `NO_READING` from
+  `grammar_known_p2_failure` in `tests/common/strategies.rs` (with its rows in
+  `the_p2_filters_name_their_limits` of `tests/roundtrip.rs`).

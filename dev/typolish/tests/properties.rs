@@ -23,8 +23,9 @@ use std::borrow::Cow;
 use common::decode::{TYPOGRAPHIC, all_outputs, check_safe_alphabet, decode};
 use common::show;
 use common::strategies::{
-    GRAMMAR_LANGUAGES, GenPiece, GrammarConfig, any_text, borrow, grammar_known_limit, pieces,
-    risky_text, rule_set, run_grammar,
+    GRAMMAR_LANGUAGES, GenPiece, GrammarConfig, NEW_SIGN_ONLY_PAIR, OPENER_REPAIRED,
+    SIGN_ONLY_CHAIN, Sentence, any_text, borrow, grammar_known_failure, pieces, risky_text,
+    rule_set, run_grammar, run_grammar_long,
 };
 use proptest::prelude::*;
 use typolish::{
@@ -2127,23 +2128,32 @@ fn structural(report: &Report<'_>, change: &Change) -> bool {
 /// replaces no letter and no digit (I1); the kinds of the protected spans of both passes are equal
 /// where no change inserted or removed a space (I2); every change starts from a plain form (I3);
 /// the report of the second pass holds no change (I4); and a window without a line break that does
-/// not converge changes no straight `"` and a straight `'` only into `’` or `′` (I5). A sentence of
-/// a known limit is skipped (`grammar_known_limit`).
-fn grammar_properties(config: &GrammarConfig, text: &str) -> Result<(), TestCaseError> {
-    if grammar_known_limit(config.lang, text).is_some() {
-        return Ok(());
-    }
+/// not converge changes no straight `"` and a straight `'` only into `’` or `′` (I5). A sentence whose
+/// second pass fails in the way of a known limit is skipped (`grammar_known_failure`); every other
+/// sentence is checked in full.
+fn grammar_properties(config: &GrammarConfig, sentence: &Sentence) -> Result<(), TestCaseError> {
+    let text = sentence.text.as_str();
     let t = config.typographer();
     let report = t.report(text, Output::Unicode);
     let once = report.result().to_string();
     let second = t.report(&once, Output::Unicode);
-    prop_assert!(
-        second.result() == &once && second.changes().is_empty(),
-        "idempotence and I4: {:?}\nfirst pass:\n{}\nsecond pass:\n{}",
-        text,
-        report,
-        second
-    );
+    if second.result() != &once || !second.changes().is_empty() {
+        let changes: Vec<(&str, &str)> = second
+            .changes()
+            .iter()
+            .map(|c| (second.original(c), c.replacement()))
+            .collect();
+        if grammar_known_failure(config.lang, text, &once, &changes).is_some() {
+            return Ok(());
+        }
+        prop_assert!(
+            false,
+            "idempotence and I4: {:?}\nfirst pass:\n{}\nsecond pass:\n{}",
+            text,
+            report,
+            second
+        );
+    }
     let mut split = false;
     for change in report.changes() {
         let original = report.original(change);
@@ -2212,57 +2222,101 @@ fn grammar_properties_hold() {
 #[test]
 #[ignore = "long run of design section 13.5, properties 1 to 3 over the grammar"]
 fn grammar_properties_hold_long() {
-    std::thread::scope(|scope| {
-        for lang in 0..GRAMMAR_LANGUAGES {
-            scope.spawn(move || {
-                run_grammar(
-                    lang,
-                    1_000_000,
-                    GRAMMAR_SEED_LONG + lang as u64,
-                    grammar_properties,
-                );
-            });
-        }
-    });
+    // 100 000 sentences for each language, dash style and single quote mode.
+    run_grammar_long(100_000, GRAMMAR_SEED_LONG, grammar_properties);
 }
 
 #[test]
 fn the_grammar_filters_name_their_limits() {
-    // The filters of `grammar_known_limit` match the inputs of their limits (design section 10.8)
-    // and leave the neighbors of those inputs to the properties.
-    for (lang, text, limit) in [
-        (0, "''-''", true),
-        (1, "'('')'", true),
-        (0, "x ''—'' y", true),
-        (0, "\"--\"\"\"", false),
-        (0, "\"\"\"", false),
-        (0, "\"a\" - \"b\"", false),
-        (1, "‘s' \"0\"’", true),
-        (3, "‘S' ‘s'’ s’", true),
-        (0, "‘s' \"0\"’", false),
-        (1, "dogs' ‘a’", false),
-        (1, "x ‘a 'b' \"2\"’ y", true),
-        (1, "\"a '-’ - x' c\"", true),
-        (3, "\"-’ - x\"", true),
-        (1, "\"a '-” - x' c\"", false),
-        (0, "\"a '-’ - x' c\"", false),
+    // Each filter of `grammar_known_failure` names the failures of its limit (design section
+    // 10.8). Every row still fails: when one does not, its limit is fixed, and the filter goes
+    // with its entry in design section 10.8.
+    use SingleQuotes::{Everywhere, NestedOnly};
+    for (lang, single, text, limit) in [
+        (0, NestedOnly, "\"x ''-'' y\"", SIGN_ONLY_CHAIN),
+        (0, Everywhere, "''—''", SIGN_ONLY_CHAIN),
+        (1, Everywhere, "''-''", SIGN_ONLY_CHAIN),
+        (1, Everywhere, "'('')'", SIGN_ONLY_CHAIN),
+        (1, NestedOnly, "He said ‘the dogs' \"5\"’", OPENER_REPAIRED),
+        (1, NestedOnly, "‘s' \"0\"’", OPENER_REPAIRED),
+        (1, NestedOnly, "x ‘a 'b' \"2\"’ y", OPENER_REPAIRED),
+        (3, NestedOnly, "‘\"8\"’ s'", OPENER_REPAIRED),
+        (1, NestedOnly, "‘S' ‘s'’ s’", OPENER_REPAIRED),
+        (3, NestedOnly, "‘S' ‘s'’ s’", OPENER_REPAIRED),
+        // In `en-GB` the first pass writes the straight `"` as `‘`.
+        (3, NestedOnly, "\"s' y’ \"\" s\"", OPENER_REPAIRED),
+        (3, Everywhere, "\"dogs' bowl’ \"\" s\"", OPENER_REPAIRED),
+        (1, NestedOnly, "\"a '-’ - x' c\"", NEW_SIGN_ONLY_PAIR),
+        (3, NestedOnly, "\"-’ - x\"", NEW_SIGN_ONLY_PAIR),
+    ] {
+        known_failure_of(lang, single, None, text, limit);
+    }
+    // With `DashStyle::SpacedGlued` the second pass also glues the space before the dash.
+    known_failure_of(
+        3,
+        Everywhere,
+        Some(DashStyle::SpacedGlued),
+        "s Paul \"(’ -- St.)\"",
+        NEW_SIGN_ONLY_PAIR,
+    );
+    // Neither the shape of the input alone nor the edits of the second pass alone name a limit.
+    for (lang, text, once, changes) in [
+        // Russian has no limit of a `‘`.
+        (0, "‘s' \"0\"’", "‘s' «0»’", &[("'", "’")][..]),
+        // A second pass that sets a dash or adds glue is no quote limit of a `‘`.
+        (1, "‘s' x’ - y", "‘s' x’ - y", &[(" - ", " — ")][..]),
+        (1, "‘s' \"0\"’", "‘s' “0”’", &[(" ", "\u{a0}")][..]),
+        // No `‘` before a straight `'` in the first pass, no chain, no straight quote before signs
+        // and `’`.
+        (1, "dogs' ‘a’", "dogs' ‘a’", &[("'", "’")][..]),
+        (
+            1,
+            "\"a '-” - x' c\"",
+            "“a⍽‘-” - x’ c”",
+            &[(" - ", " — ")][..],
+        ),
+        (0, "\"a\" - \"b\"", "«a» - «b»", &[("\"", "«")][..]),
+        (0, "\"--\"\"\"", "«--»\"\"", &[("\"", "«")][..]),
+        // A chain whose second pass changes a dash.
+        (0, "''-''", "''-«»", &[("-", "—")][..]),
     ] {
         assert_eq!(
-            grammar_known_limit(lang, text).is_some(),
-            limit,
-            "{lang} {text:?}"
+            grammar_known_failure(lang, text, once, changes),
+            None,
+            "{text:?}"
         );
     }
-    // A known limit that the filter skips still fails (when it does not, the limit is fixed and its
-    // filter goes, with its entry in design section 10.8).
-    let gb = GrammarConfig {
-        lang: 3,
+}
+
+/// Asserts that `text` is no fixed point in Prose of the language `lang` of `grammar_language` and
+/// that `grammar_known_failure` names `limit` for it.
+#[track_caller]
+fn known_failure_of(
+    lang: usize,
+    single: SingleQuotes,
+    dash: Option<DashStyle>,
+    text: &str,
+    limit: &str,
+) {
+    let t = GrammarConfig {
+        lang,
         set: RuleSet::PROSE,
-        dash: None,
-        single: SingleQuotes::NestedOnly,
+        dash,
+        single,
         percent: PercentSpacing::AsWritten,
     }
     .typographer();
-    let once = gb.typeset("‘s' \"0\"’", Output::Unicode).into_owned();
-    assert_ne!(gb.typeset(&once, Output::Unicode), once);
+    let once = t.typeset(text, Output::Unicode).into_owned();
+    let second = t.report(&once, Output::Unicode);
+    assert!(!second.changes().is_empty(), "{text:?} is a fixed point");
+    let changes: Vec<(&str, &str)> = second
+        .changes()
+        .iter()
+        .map(|c| (second.original(c), c.replacement()))
+        .collect();
+    assert_eq!(
+        grammar_known_failure(lang, text, &once, &changes),
+        Some(limit),
+        "{text:?} -> {once:?}: {changes:?}"
+    );
 }

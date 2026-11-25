@@ -41,9 +41,10 @@ pairs; section 6.11 states that a re-pairing cannot enclose such a pair. Older t
 Prose and Interface, `NestedOnly`: `x ‘a 'b' "2"’ y` gives `x ‘a⍽'b' “2”’ y`, then
 `x ‘a⍽‘b’ “2”’ y`; en-GB: `‘ '' "2"’` gives `‘ '' ‘2’’`, then `‘ “” ‘2’’`.
 
-The properties over the grammar skip every input with a typed `‘` before a straight `'` in `en-US`
-and `en-GB` (`grammar_known_limit` in `tests/common/strategies.rs`); that filter goes with this task
-and with `todo/quotes-possessive-run.md`.
+The properties over the grammar skip a failure in `en-US` and `en-GB` whose first pass holds a `‘`
+before a straight `'` and whose second pass changes straight `'` only (`OPENER_REPAIRED` of
+`grammar_known_failure` in `tests/common/strategies.rs`); that filter goes with this task and with
+`todo/quotes-possessive-run.md`.
 
 ## Goal
 
@@ -55,5 +56,6 @@ and on the tables of `tests/` stays the same.
 - The inputs above run in an idempotence test with the declared pairs, and the English rows in
   `SEEDS` of `tests/properties.rs`.
 - The limit is removed from design section 10.8, the README and `limits()` of
-  `tests/documentation.rs`, and the filter of the typed `‘` from `grammar_known_limit` once
-  `todo/quotes-possessive-run.md` is closed as well.
+  `tests/documentation.rs`, and the filter `OPENER_REPAIRED` from `grammar_known_failure` (with its
+  rows in `the_grammar_filters_name_their_limits`) once `todo/quotes-possessive-run.md` is closed as
+  well.

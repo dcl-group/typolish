@@ -13,8 +13,8 @@ use std::sync::OnceLock;
 
 use proptest::prelude::*;
 use typolish::{
-    DashStyle, EllipsisForms, Language, LanguageBuilder, PercentSpacing, QuotePairs, Rule, RuleSet,
-    SingleQuotes, Slot, SlotKind, Typographer,
+    DashStyle, EllipsisForms, Language, LanguageBuilder, Output, PercentSpacing, QuotePairs, Rule,
+    RuleSet, SingleQuotes, Slot, SlotKind, Typographer,
 };
 
 /// Fragments that rules react to or that output kinds encode.
@@ -646,6 +646,26 @@ fn pick<'a>(list: &[&'a str], i: u16) -> &'a str {
     list[usize::from(i) % list.len()]
 }
 
+/// The characters of the typographic set (`decode.rs`, which the unit tests of the engine that
+/// include this file do not have) that the lists of the grammar hold: dashes, the ellipsis and
+/// typed quotes.
+const TYPED: &[char] = &[
+    '–', '—', '…', '«', '»', '„', '“', '”', '‘', '’', '‚', '‹', '›',
+];
+
+/// `pick` from the entries of `list` that hold no character of the typographic set when `plain`.
+fn pick_in<'a>(list: &[&'a str], i: u16, plain: bool) -> &'a str {
+    if !plain {
+        return pick(list, i);
+    }
+    let plain: Vec<&str> = list
+        .iter()
+        .copied()
+        .filter(|s| !s.contains(TYPED))
+        .collect();
+    pick(&plain, i)
+}
+
 /// The lists of a vocabulary; `Both` picks Russian or English by the number.
 fn words_of(vocabulary: Vocabulary, i: u16) -> &'static Words {
     match vocabulary {
@@ -660,6 +680,23 @@ fn words_of(vocabulary: Vocabulary, i: u16) -> &'static Words {
 /// attached or spaced as the step says, quotes and wrappers nested up to `GRAMMAR_DEPTH` and closed
 /// at the end.
 pub fn write_grammar(vocabulary: Vocabulary, ops: &[GrammarOp]) -> String {
+    write_steps(vocabulary, false, ops)
+}
+
+/// Writes the steps of the grammar as plain text, the input that P2 is stated for (design section
+/// 12.2): every step picks only from the entries that hold no character of the typographic set
+/// (`TYPED`), so quotes are straight, dashes are hyphens and ellipses are full stops.
+pub fn write_plain_grammar(vocabulary: Vocabulary, ops: &[GrammarOp]) -> String {
+    write_steps(vocabulary, true, ops)
+}
+
+fn write_steps(vocabulary: Vocabulary, plain: bool, ops: &[GrammarOp]) -> String {
+    let pick = |list: &[&'static str], i: u16| pick_in(list, i, plain);
+    let pairs: Vec<(&str, &str)> = QUOTE_PAIRS
+        .iter()
+        .copied()
+        .filter(|(o, c)| !plain || !(o.contains(TYPED) || c.contains(TYPED)))
+        .collect();
     let mut out = String::new();
     let mut open: Vec<&str> = Vec::new();
     // Whether the next item needs a space before it.
@@ -692,14 +729,18 @@ pub fn write_grammar(vocabulary: Vocabulary, ops: &[GrammarOp]) -> String {
             GrammarOp::Dash(i) => {
                 let dash = pick(DASHES, i);
                 if out.is_empty() || out.ends_with('\n') {
-                    out.push_str(if i.is_multiple_of(2) { "- " } else { "— " });
+                    out.push_str(match (i.is_multiple_of(2), plain) {
+                        (true, _) => "- ",
+                        (false, false) => "— ",
+                        (false, true) => "-- ",
+                    });
                 } else {
                     out.push_str(dash);
                 }
                 space = false;
             }
             GrammarOp::Open(i) if open.len() < GRAMMAR_DEPTH => {
-                let (opener, closer) = QUOTE_PAIRS[usize::from(i) % QUOTE_PAIRS.len()];
+                let (opener, closer) = pairs[usize::from(i) % pairs.len()];
                 if space {
                     out.push(' ');
                 }
@@ -761,6 +802,24 @@ pub fn write_grammar(vocabulary: Vocabulary, ops: &[GrammarOp]) -> String {
 /// four (design section 13.5).
 pub fn grammar(vocabulary: Vocabulary) -> impl Strategy<Value = String> {
     prop::collection::vec(grammar_op(), 1..32).prop_map(move |ops| write_grammar(vocabulary, &ops))
+}
+
+/// One sentence of the grammar written twice from the same steps: as `write_grammar` writes it,
+/// with typed glyphs, and as `write_plain_grammar` writes it.
+#[derive(Clone, Debug)]
+pub struct Sentence {
+    /// The sentence with typed glyphs.
+    pub text: String,
+    /// The same steps in plain text.
+    pub plain: String,
+}
+
+/// Sentences of the grammar in both forms (`Sentence`).
+pub fn grammar_sentence(vocabulary: Vocabulary) -> impl Strategy<Value = Sentence> {
+    prop::collection::vec(grammar_op(), 1..32).prop_map(move |ops| Sentence {
+        text: write_grammar(vocabulary, &ops),
+        plain: write_plain_grammar(vocabulary, &ops),
+    })
 }
 
 /// The number of languages of `grammar_language`.
@@ -858,23 +917,33 @@ impl GrammarConfig {
     }
 }
 
-/// A configuration for a language of `grammar_language`: Prose, Interface or all rules; the
-/// language's dash style or `Spaced`, `SpacedGlued` or `Closed`; the three single quote modes; the
-/// four percent settings.
-pub fn grammar_config(lang: usize) -> impl Strategy<Value = GrammarConfig> {
+/// The dash styles of `grammar_config`: the language's own, `Spaced`, `SpacedGlued` and `Closed`.
+pub const GRAMMAR_DASH_STYLES: [Option<DashStyle>; 4] = [
+    None,
+    Some(DashStyle::Spaced),
+    Some(DashStyle::SpacedGlued),
+    Some(DashStyle::Closed),
+];
+
+/// The single quote modes of `grammar_config`.
+pub const GRAMMAR_SINGLE_QUOTES: [SingleQuotes; 3] = [
+    SingleQuotes::NestedOnly,
+    SingleQuotes::Everywhere,
+    SingleQuotes::Never,
+];
+
+/// A configuration for a language of `grammar_language` with a dash style from `dashes` and a
+/// single quote mode from `singles`; Prose, Interface or all rules, and one of the four percent
+/// settings.
+fn config_in(
+    lang: usize,
+    dashes: Vec<Option<DashStyle>>,
+    singles: Vec<SingleQuotes>,
+) -> impl Strategy<Value = GrammarConfig> {
     (
         prop::sample::select(vec![RuleSet::PROSE, RuleSet::INTERFACE, RuleSet::ALL]),
-        prop::sample::select(vec![
-            None,
-            Some(DashStyle::Spaced),
-            Some(DashStyle::SpacedGlued),
-            Some(DashStyle::Closed),
-        ]),
-        prop::sample::select(vec![
-            SingleQuotes::NestedOnly,
-            SingleQuotes::Everywhere,
-            SingleQuotes::Never,
-        ]),
+        prop::sample::select(dashes),
+        prop::sample::select(singles),
         prop::sample::select(vec![
             PercentSpacing::AsWritten,
             PercentSpacing::Language,
@@ -891,21 +960,40 @@ pub fn grammar_config(lang: usize) -> impl Strategy<Value = GrammarConfig> {
         })
 }
 
-/// A configuration and a sentence of the grammar in its vocabulary, for one language of
-/// `grammar_language`.
-pub fn grammar_case(lang: usize) -> impl Strategy<Value = (GrammarConfig, String)> {
-    (grammar_config(lang), grammar(grammar_vocabulary(lang)))
+/// A configuration for a language of `grammar_language`: Prose, Interface or all rules; a dash
+/// style of `GRAMMAR_DASH_STYLES`; a single quote mode of `GRAMMAR_SINGLE_QUOTES`; the four percent
+/// settings.
+pub fn grammar_config(lang: usize) -> impl Strategy<Value = GrammarConfig> {
+    config_in(
+        lang,
+        GRAMMAR_DASH_STYLES.to_vec(),
+        GRAMMAR_SINGLE_QUOTES.to_vec(),
+    )
 }
 
-/// Runs `check` on `cases` sentences of the grammar with their configurations for one language of
-/// `grammar_language`, drawn from the fixed `seed`: the same cases on every run, with no clock and
-/// no file of failures. A failure is shrunk to a small input and fails the test with it.
-pub fn run_grammar(
-    lang: usize,
+/// A configuration and a sentence of the grammar in its vocabulary, for one language of
+/// `grammar_language`.
+pub fn grammar_case(lang: usize) -> impl Strategy<Value = (GrammarConfig, Sentence)> {
+    (
+        grammar_config(lang),
+        grammar_sentence(grammar_vocabulary(lang)),
+    )
+}
+
+/// What a check over the grammar takes: a configuration and a sentence in both forms.
+pub trait GrammarCheck: Fn(&GrammarConfig, &Sentence) -> Result<(), TestCaseError> + Sync {}
+
+impl<F: Fn(&GrammarConfig, &Sentence) -> Result<(), TestCaseError> + Sync> GrammarCheck for F {}
+
+/// Runs `check` on `cases` cases of `strategy` drawn from the fixed `seed`: the same cases on every
+/// run, with no clock and no file of failures. A failure is shrunk to a small input and returned
+/// with it.
+fn run_cases(
+    strategy: impl Strategy<Value = (GrammarConfig, Sentence)>,
     cases: u32,
     seed: u64,
-    check: impl Fn(&GrammarConfig, &str) -> Result<(), TestCaseError>,
-) {
+    check: &impl GrammarCheck,
+) -> Result<(), String> {
     let config = ProptestConfig {
         cases,
         rng_seed: proptest::test_runner::RngSeed::Fixed(seed),
@@ -913,47 +1001,187 @@ pub fn run_grammar(
         ..ProptestConfig::default()
     };
     let mut runner = proptest::test_runner::TestRunner::new(config);
-    if let Err(error) = runner.run(&grammar_case(lang), |(config, text)| {
-        check(&config, &text)
-            .map_err(|e| TestCaseError::fail(format!("{e}\n  setup    {}", config.describe())))
-    }) {
+    runner
+        .run(&strategy, |(config, sentence)| {
+            check(&config, &sentence)
+                .map_err(|e| TestCaseError::fail(format!("{e}\n  setup    {}", config.describe())))
+        })
+        .map_err(|error| error.to_string())
+}
+
+/// Runs `check` on `cases` sentences of the grammar with their configurations for one language of
+/// `grammar_language`, drawn from the fixed `seed` (`run_cases`).
+pub fn run_grammar(lang: usize, cases: u32, seed: u64, check: impl GrammarCheck) {
+    if let Err(error) = run_cases(grammar_case(lang), cases, seed, &check) {
         panic!("{error}");
     }
 }
 
-/// The known limit of design section 10.8 that a sentence of the grammar falls under, by its name,
-/// or `None`. The properties over the grammar skip such a sentence and test every other one; each
-/// filter below matches the shape of the inputs of one limit, and goes when its limit is fixed.
+/// The configurations of the long run: every language of `grammar_language` with every dash style
+/// of `GRAMMAR_DASH_STYLES` and every single quote mode of `GRAMMAR_SINGLE_QUOTES`, 60 in all.
+pub fn grammar_long_configurations() -> Vec<(usize, Option<DashStyle>, SingleQuotes)> {
+    let mut all = Vec::new();
+    for lang in 0..GRAMMAR_LANGUAGES {
+        for dash in GRAMMAR_DASH_STYLES {
+            for single in GRAMMAR_SINGLE_QUOTES {
+                all.push((lang, dash, single));
+            }
+        }
+    }
+    all
+}
+
+/// The long run of design section 13.5: `cases` sentences for each configuration of
+/// `grammar_long_configurations`, the rule set and the percent setting drawn per sentence, with the
+/// seed `seed` plus the index of the configuration. The configurations run on all available
+/// threads; every failing configuration is reported, each with its shrunk input.
+pub fn run_grammar_long(cases: u32, seed: u64, check: impl GrammarCheck) {
+    let configurations = grammar_long_configurations();
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let failures = std::sync::Mutex::new(Vec::new());
+    let threads = std::thread::available_parallelism().map_or(4, std::num::NonZero::get);
+    std::thread::scope(|scope| {
+        for _ in 0..threads {
+            scope.spawn(|| {
+                loop {
+                    let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let Some(&(lang, dash, single)) = configurations.get(k) else {
+                        break;
+                    };
+                    let strategy = (
+                        config_in(lang, vec![dash], vec![single]),
+                        grammar_sentence(grammar_vocabulary(lang)),
+                    );
+                    if let Err(error) = run_cases(strategy, cases, seed + k as u64, &check) {
+                        failures.lock().unwrap().push(format!(
+                            "{} dash {dash:?} {single:?}:\n{error}",
+                            grammar_language(lang)
+                        ));
+                    }
+                }
+            });
+        }
+    });
+    let failures = failures.into_inner().unwrap();
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
+/// The name of the sign-only chain limit (`todo/quotes-sign-only-chain.md`).
+pub const SIGN_ONLY_CHAIN: &str = "sign-only pairs that share a quote";
+/// The name of the limits of a `‘` that a second pass pairs or closes in another place
+/// (`todo/quotes-neutral-opener-repaired.md` and `todo/quotes-possessive-run.md`).
+pub const OPENER_REPAIRED: &str = "a `‘` that a second pass pairs or closes in another place";
+/// The name of the limit of a new sign-only pair (`todo/quotes-new-sign-only-pair.md`).
+pub const NEW_SIGN_ONLY_PAIR: &str = "a new `‘` that a second pass reads as a sign-only pair";
+/// The name of the limit of `to_plain` (`todo/plain-quotes-no-reading.md`).
+pub const NO_READING: &str = "`to_plain` finds no reading that brings the quotes back";
+
+/// The known limit of design section 10.8 that a failure of idempotence or I4 on a sentence of the
+/// grammar falls under, by its name, or `None`. `text` is the input, `once` the first pass and
+/// `second` the changes of the second pass as `(original, replacement)`. The properties over the
+/// grammar skip only a failing sentence that a filter names, so every sentence that does not fail
+/// is checked in full; each filter needs both the shape of the inputs of its limit and the edits
+/// its second pass makes, and goes when its limit is fixed.
 ///
-/// - Sign-only pairs that share a quote (`todo/quotes-sign-only-chain.md`): three straight quotes
-///   in a run of characters that are no letter, digit or space, each next to the one before it or
-///   with signs between them, at least one sign in all, in series of one or two quotes (a series of
-///   three or more has no sign-only pair): `''-''`, `'('')'`.
-/// - In the English languages, `en-US` and `en-GB`, a typed `‘` that the first pass leaves neutral
-///   and a second pass pairs (`todo/quotes-neutral-opener-repaired.md`), which then places a
-///   trailing possessive (`‘s' "0"’`) or pairs a straight `'` pair that the first pass cancelled
-///   at the top level (`x ‘a 'b' "2"’ y`); and a typed pair that a placed possessive closes early on
-///   a second pass around a possessive kept straight (`todo/quotes-possessive-run.md`,
-///   `‘S' ‘s'’ s’`). The filter matches a `‘` anywhere before a straight `'`.
+/// - Sign-only pairs that share a quote (`todo/quotes-sign-only-chain.md`): the input holds three
+///   straight quotes in a run of characters that are no letter, digit or space, each next to the
+///   one before it or with signs between them, at least one sign in all, in series of one or two
+///   quotes (a series of three or more has no sign-only pair): `''-''`, `'('')'`; and the second
+///   pass changes straight quotes only.
+/// - In the English languages, `en-US` and `en-GB`, a `‘` that the first pass leaves neutral and a
+///   second pass pairs (`todo/quotes-neutral-opener-repaired.md`), which then places a trailing
+///   possessive (`‘s' "0"’`) or pairs a straight `'` pair that the first pass cancelled at the top
+///   level (`x ‘a 'b' "2"’ y`); and a typed pair that a placed possessive closes early on a second
+///   pass around a possessive kept straight (`todo/quotes-possessive-run.md`, `‘S' ‘s'’ s’`, and
+///   in `en-GB`, where the first pass writes `"` as `‘`, `"s' y’ "" s"`): the first pass holds a
+///   `‘` before a straight `'`, and the second pass changes straight `'` only.
 /// - In `en-US` and `en-GB`, a straight quote that the first pass writes as `‘` before signs, or
 ///   nothing, and a typed `’`, which the second pass reads as a sign-only pair
-///   (`todo/quotes-new-sign-only-pair.md`, `"a '-’ - x' c"`). The filter matches a straight quote,
-///   then characters that are no letter, digit, space or quote, then `’`.
-pub fn grammar_known_limit(lang: usize, text: &str) -> Option<&'static str> {
-    if sign_only_chain(text) {
-        return Some("sign-only pairs that share a quote");
+///   (`todo/quotes-new-sign-only-pair.md`, `"a '-’ - x' c"`): the input holds a straight quote,
+///   then characters that are no letter, digit, space or quote, then `’`; and the second pass
+///   changes straight `'`, dashes and the space that glues a dash only, and not the space alone
+///   (the quote before a dash reads as a closer then).
+pub fn grammar_known_failure(
+    lang: usize,
+    text: &str,
+    once: &str,
+    second: &[(&str, &str)],
+) -> Option<&'static str> {
+    fn dash(o: &str) -> bool {
+        o.contains(['-', '–', '—']) && o.chars().all(|c| matches!(c, ' ' | '-' | '–' | '—'))
     }
+    let changes = |allowed: fn(&str) -> bool| second.iter().all(|&(original, _)| allowed(original));
     let english = matches!(lang % GRAMMAR_LANGUAGES, 1 | 3);
-    if english && typed_opener_before_straight(text) {
-        return Some("a typed `‘` that a second pass pairs");
+    if changes(|o| matches!(o, "'" | "\"")) && sign_only_chain(text) {
+        return Some(SIGN_ONLY_CHAIN);
     }
-    if english && straight_before_signs_and_closer(text) {
-        return Some("a new `‘` that a second pass reads as a sign-only pair");
+    if english && changes(|o| o == "'") && typed_opener_before_straight(once) {
+        return Some(OPENER_REPAIRED);
+    }
+    if english
+        && changes(|o| o == "'" || o == " " || dash(o))
+        && second.iter().any(|&(original, _)| original != " ")
+        && straight_before_signs_and_closer(text)
+    {
+        return Some(NEW_SIGN_ONLY_PAIR);
     }
     None
 }
 
-/// Whether the text holds a chain of sign-only pairs that share a quote (`grammar_known_limit`).
+/// The known limit of design section 10.8 that a failure of P2 on the plain text `x` falls under,
+/// by its name, or `None`; `y` is the typeset text. Where `y` is no fixed point, the failure is
+/// one of idempotence and `grammar_known_failure` names it. Otherwise P2 fails where `to_plain`
+/// reads the quotes of a window in another way than `x` had them, so that the window does not
+/// typeset back, or typesets back with its quotes but not with a rule that reads them
+/// (`todo/plain-quotes-no-reading.md`, and the sign-only chains of
+/// `todo/quotes-sign-only-chain.md`): the quotes of its plain form, `"`, `'` and `’` in order
+/// (a prime `′` or `″` that it keeps read as `'` or `"`), hold a `"` where those of `x` hold `'` or
+/// `’`, or the other way round.
+pub fn grammar_known_p2_failure(
+    t: &Typographer,
+    lang: usize,
+    x: &str,
+    y: &str,
+) -> Option<&'static str> {
+    let second = t.report(y, Output::Unicode);
+    if second.result() != y || !second.changes().is_empty() {
+        let changes: Vec<(&str, &str)> = second
+            .changes()
+            .iter()
+            .map(|c| (second.original(c), c.replacement()))
+            .collect();
+        return grammar_known_failure(lang, x, y, &changes);
+    }
+    let plain = t.to_plain(y);
+    let straight = |s: &str| -> Vec<char> {
+        s.chars()
+            .filter_map(|c| match c {
+                '"' | '″' => Some('"'),
+                '\'' | '’' | '′' => Some('\''),
+                _ => None,
+            })
+            .collect()
+    };
+    let (a, b) = (straight(x), straight(&plain));
+    let misread = a.len() == b.len() && a != b;
+    if !misread {
+        None
+    } else if sign_only_chain(x) {
+        Some(SIGN_ONLY_CHAIN)
+    } else {
+        Some(NO_READING)
+    }
+}
+
+/// Whether `c` is a straight or a typed quote.
+fn is_quote(c: char) -> bool {
+    matches!(
+        c,
+        '"' | '\'' | '«' | '»' | '„' | '“' | '”' | '‘' | '’' | '‹' | '›' | '‚'
+    )
+}
+
+/// Whether the text holds a chain of sign-only pairs that share a quote (`grammar_known_failure`).
 fn sign_only_chain(text: &str) -> bool {
     let chars: Vec<char> = text.chars().collect();
     for run in chars.split(|c| c.is_alphanumeric() || c.is_whitespace()) {
@@ -988,25 +1216,19 @@ fn sign_only_chain(text: &str) -> bool {
 }
 
 /// Whether a straight quote stands before signs, or nothing, and a typed `’`
-/// (`grammar_known_limit`).
+/// (`grammar_known_failure`).
 fn straight_before_signs_and_closer(text: &str) -> bool {
     let chars: Vec<char> = text.chars().collect();
-    let quote = |c: char| {
-        matches!(
-            c,
-            '"' | '\'' | '«' | '»' | '„' | '“' | '”' | '‘' | '’' | '‹' | '›' | '‚'
-        )
-    };
     chars.iter().enumerate().any(|(k, &c)| {
         matches!(c, '"' | '\'')
             && chars[k + 1..]
                 .iter()
-                .find(|&&d| d.is_alphanumeric() || d.is_whitespace() || quote(d))
+                .find(|&&d| d.is_alphanumeric() || d.is_whitespace() || is_quote(d))
                 == Some(&'’')
     })
 }
 
-/// Whether a typed `‘` stands before a straight `'` (`grammar_known_limit`).
+/// Whether a typed `‘` stands before a straight `'` (`grammar_known_failure`).
 fn typed_opener_before_straight(text: &str) -> bool {
     text.find('‘').is_some_and(|at| text[at..].contains('\''))
 }

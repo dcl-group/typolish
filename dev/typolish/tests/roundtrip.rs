@@ -26,7 +26,10 @@ use common::corpus::{
     template_pieces, text_lines, texts_and_slots, typographer,
 };
 use common::decode::TYPOGRAPHIC;
-use common::strategies::{GRAMMAR_LANGUAGES, GrammarConfig, grammar_known_limit, run_grammar};
+use common::strategies::{
+    GRAMMAR_LANGUAGES, GrammarConfig, NO_READING, SIGN_ONLY_CHAIN, Sentence,
+    grammar_known_p2_failure, run_grammar, run_grammar_long,
+};
 use common::{configs, interface, parse_tmpl, prose, show, vis, without_rule};
 use proptest::prelude::*;
 use typolish::{
@@ -1772,27 +1775,30 @@ const GRAMMAR_SEED: u64 = 0x7970_6f6c_6973_6811;
 /// The seed of the long run.
 const GRAMMAR_SEED_LONG: u64 = 0x7970_6f6c_6973_6812;
 
-/// P2 on the plain form of one sentence of the grammar: the sentence holds typed glyphs, and P2
-/// is stated for plain input (design section 12.2), so the input is `to_plain` of the sentence,
-/// skipped where that still holds a character of the typographic set or falls under a known limit
-/// (`grammar_known_limit`). With P2, `to_plain` of the output is a fixed point of `to_plain`, and
-/// P1 holds for it: `to_plain(typeset(z)) == z` for `z = to_plain(typeset(x))`.
-fn grammar_round_trip(config: &GrammarConfig, text: &str) -> Result<(), TestCaseError> {
+/// P2 on the plain forms of one sentence of the grammar (design section 12.2, which states P2 for
+/// plain input): the steps of the sentence written plain (`Sentence::plain`), and `to_plain` of the
+/// sentence with typed glyphs where that holds no character of the typographic set.
+fn grammar_round_trip(config: &GrammarConfig, sentence: &Sentence) -> Result<(), TestCaseError> {
     let t = config.typographer();
-    let x = t.to_plain(text).into_owned();
-    if x.contains(TYPOGRAPHIC) || grammar_known_limit(config.lang, &x).is_some() {
-        return Ok(());
+    plain_round_trip(config, &t, &sentence.plain)?;
+    let x = t.to_plain(&sentence.text);
+    if !x.contains(TYPOGRAPHIC) {
+        plain_round_trip(config, &t, &x)?;
     }
-    if let Err(error) = p2(&t, &x) {
-        let y = t.typeset(&x, Output::Unicode);
-        if quotes_read_differently(&x, &t.to_plain(&y)) {
-            // The known limit of `to_plain` of design section 10.8: no reading it tries brings the
-            // window back (`todo/plain-quotes-no-reading.md`).
+    Ok(())
+}
+
+/// P2 on the plain text `x`, skipped where it fails in the way of a known limit
+/// (`grammar_known_p2_failure`). With P2, `to_plain` of the output is a fixed point of `to_plain`,
+/// and P1 holds for it: `to_plain(typeset(z)) == z` for `z = to_plain(typeset(x))`.
+fn plain_round_trip(config: &GrammarConfig, t: &Typographer, x: &str) -> Result<(), TestCaseError> {
+    let y = t.typeset(x, Output::Unicode).into_owned();
+    if let Err(error) = p2(t, x) {
+        if grammar_known_p2_failure(t, config.lang, x, &y).is_some() {
             return Ok(());
         }
         return Err(TestCaseError::fail(error));
     }
-    let y = t.typeset(&x, Output::Unicode);
     let z = t.to_plain(&y).into_owned();
     prop_assert_eq!(
         t.to_plain(&z),
@@ -1800,19 +1806,8 @@ fn grammar_round_trip(config: &GrammarConfig, text: &str) -> Result<(), TestCase
         "to_plain is not stable on {:?}",
         x
     );
-    p1(&t, &z).map_err(TestCaseError::fail)?;
+    p1(t, &z).map_err(TestCaseError::fail)?;
     Ok(())
-}
-
-/// Whether `plain` differs from `x` only in straight quotes that stand where `x` has a straight
-/// quote: `to_plain` read the quotes of a window in another way than the input had them, the
-/// signature of the known limit of design section 10.8 whose windows do not typeset back.
-fn quotes_read_differently(x: &str, plain: &str) -> bool {
-    x != plain
-        && x.chars().count() == plain.chars().count()
-        && x.chars()
-            .zip(plain.chars())
-            .all(|(a, b)| a == b || (matches!(a, '"' | '\'') && matches!(b, '"' | '\'')))
 }
 
 #[test]
@@ -1827,16 +1822,48 @@ fn p2_over_the_grammar() {
 #[test]
 #[ignore = "long run of design section 13.5, property 13 over the grammar"]
 fn p2_over_the_grammar_long() {
-    std::thread::scope(|scope| {
-        for lang in 0..GRAMMAR_LANGUAGES {
-            scope.spawn(move || {
-                run_grammar(
-                    lang,
-                    1_000_000,
-                    GRAMMAR_SEED_LONG + lang as u64,
-                    grammar_round_trip,
-                );
-            });
+    // 100 000 sentences for each language, dash style and single quote mode.
+    run_grammar_long(100_000, GRAMMAR_SEED_LONG, grammar_round_trip);
+}
+
+#[test]
+fn the_p2_filters_name_their_limits() {
+    // `grammar_known_p2_failure` names the P2 failures of the known limits (design section 10.8).
+    // Every row still fails P2: when one does not, its limit is fixed, and the filter goes with
+    // its entry in design section 10.8.
+    use SingleQuotes::{Everywhere, NestedOnly};
+    for (lang, single, x, limit) in [
+        (0, NestedOnly, "\"a '(\" x' \"y'\" b\"", NO_READING),
+        (1, NestedOnly, "\"'S '5' 3'\"", NO_READING),
+        (1, NestedOnly, "\"5 ''3' 5' s\"", NO_READING),
+        (1, Everywhere, "'(\" s' \"s'\"", NO_READING),
+        (3, SingleQuotes::Never, "\"dogs' - 'tis\"", NO_READING),
+        // `to_plain` keeps a `’` that reads as an apostrophe and splits a label.
+        (3, NestedOnly, "\"\"dogs'\" word '1920x1080'\"", NO_READING),
+        (1, NestedOnly, "\"\"S'\" '0'\"", NO_READING),
+        (
+            3,
+            Everywhere,
+            "\"is \"Moscow i.e. DOGS' a\" №5 '№5'\"",
+            NO_READING,
+        ),
+        (1, NestedOnly, "\"x ''-'' y\"", SIGN_ONLY_CHAIN),
+        (1, Everywhere, "\"\"-''", SIGN_ONLY_CHAIN),
+    ] {
+        let t = GrammarConfig {
+            lang,
+            set: RuleSet::PROSE,
+            dash: None,
+            single,
+            percent: PercentSpacing::AsWritten,
         }
-    });
+        .typographer();
+        assert!(p2(&t, x).is_err(), "P2 holds for {x:?}");
+        let y = t.typeset(x, Output::Unicode);
+        assert_eq!(
+            grammar_known_p2_failure(&t, lang, x, &y),
+            Some(limit),
+            "{x:?}"
+        );
+    }
 }

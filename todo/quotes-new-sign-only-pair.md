@@ -21,8 +21,12 @@ reads it as a closing quote before the dash; in the third the outer `‘` pairs 
 the trailing possessive after it is placed. 0.1.1 gave the first pass on both passes: the defect
 came with C55 (commit `fce23b9`). Found by the structured grammar of design section 13.5; listed in
 design section 10.8, the README and `limits()` of `tests/documentation.rs`. The properties over the
-grammar skip every input in `en-US` and `en-GB` with a straight quote, then signs or nothing, then
-`’` (`grammar_known_limit` in `tests/common/strategies.rs`).
+grammar skip a failure in `en-US` and `en-GB` whose input holds a straight quote, then signs or
+nothing, then `’`, and whose second pass changes straight `'`, dashes and the space that glues a
+dash only (`NEW_SIGN_ONLY_PAIR` of `grammar_known_failure` in `tests/common/strategies.rs`). With
+`DashStyle::SpacedGlued` the second pass glues the dash too: en-GB, Prose,
+`SingleQuotes::Everywhere`, `s Paul "(’ -- St.)"` gives `s Paul ‘(’ -- St.)’`, then
+`s Paul ‘(’⍽— St.)’`.
 
 ## Analysis so far
 
@@ -42,4 +46,5 @@ points, and the output on the corpus and on the tables of `tests/` stays the sam
 - The inputs above are in `SEEDS` of `tests/properties.rs` and in the idempotence test with the
   declared pairs.
 - The limit is removed from design section 10.8, the README and `limits()` of
-  `tests/documentation.rs`, and its filter from `grammar_known_limit`.
+  `tests/documentation.rs`, and its filter `NEW_SIGN_ONLY_PAIR` from `grammar_known_failure` (with
+  its rows in `the_grammar_filters_name_their_limits`).

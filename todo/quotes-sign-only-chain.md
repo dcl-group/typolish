@@ -30,8 +30,10 @@ in the README.
 The structured grammar of design section 13.5 finds the class in every language it runs, also with a
 dash or a parenthesis as the sign: Russian `''—''` (`''—«»`, then `«»—«»`), English and en-GB
 `'('')'` with `SingleQuotes::Everywhere` (`'('“)”`, then `“(”“)”`). The properties over the grammar
-skip every input with such a chain (`grammar_known_limit` in `tests/common/strategies.rs`); that
-filter goes with this task.
+skip a failure whose input holds such a chain and whose second pass changes straight quotes only,
+and a P2 failure on such an input where `to_plain` read a `"` as `'` or the other way round
+(`SIGN_ONLY_CHAIN` of `grammar_known_failure` and `grammar_known_p2_failure` in
+`tests/common/strategies.rs`); that filter goes with this task.
 
 ## Analysis so far
 
@@ -52,4 +54,5 @@ the corpus and on the tables of `tests/` stays the same and `local_role` stays l
 - The inputs above are in `SEEDS` of `tests/properties.rs` and the P2 rows run in a test.
 - The limit is removed from design section 10.8, from the README (both the known limit and the
   exception in the feature list, if no other remains), from `limits()` of `tests/documentation.rs`
-  and from the exception of P2 in design section 12.2, and its filter from `grammar_known_limit`.
+  and from the exception of P2 in design section 12.2, and its filter `SIGN_ONLY_CHAIN` from
+  `grammar_known_failure` and `grammar_known_p2_failure` (with its rows in the filter tests).

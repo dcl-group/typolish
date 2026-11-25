@@ -287,8 +287,10 @@ expectation):
   and is placed. English, Prose and Interface: `‘S' ‘s'’ s’` gives `‘S' ‘s’’ s’`, then `‘S’ ‘s’’ s’`
   (every `SingleQuotes` mode); `‘"s'" s' 's’` gives `‘‘s’’ s' 's’`, then `‘‘s’’ s’ 's’`
   (`NestedOnly` and `Everywhere`). Version 0.1.1 gave the second result in one pass; the defect came
-  with C54 in 0.1.2. The grammar generator of section 13.5 found it only with a typed `‘` in the
-  input. This is a defect of the quote phase (sections 6.6 and 6.11), not a choice.
+  with C54 in 0.1.2. The input needs no typed `‘`: in a declared language whose primary pair is `‘’`
+  (en-GB) the first pass writes a straight `"` as `‘`, and `"s' y’ "" s"` gives `‘s' y’ “” s’`, then
+  `‘s’ y’ “” s’` (every `SingleQuotes` mode), which 0.1.1 gave at once. This is a defect of the
+  quote phase (sections 6.6 and 6.11), not a choice.
 - `to_plain` reads the glyphs of a pair as `"`, or as `'` where that does not pair again (section
   12.1); in a window where no reading it tries brings the quotes back, P2 fails (section 12.2),
   although the typeset text is a fixed point. A straight `"` without a role inside a pair turns into

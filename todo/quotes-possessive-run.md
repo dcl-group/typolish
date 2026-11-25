@@ -22,9 +22,10 @@ inner one, which follows no `s`, and `S'` is placed. In the second row the secon
 because the outer closer follows `s` of `'s` and the opener `'` stands between; on the second pass
 the outer pair closes before it, and it is placed. 0.1.1 gave the second pass at once on both rows.
 A declared language whose primary pair is `‘’` (en-GB) fails on the first row in Prose and Interface
-as well. Found by the structured grammar of design section 13.5; it found the class only with a
-typed `‘` in the input. Listed in design section 10.8, the README and `limits()` of
-`tests/documentation.rs`.
+as well. Found by the structured grammar of design section 13.5. The input needs no typed `‘`: in
+en-GB the first pass writes a straight `"` as `‘`, and `"s' y’ "" s"` gives `‘s' y’ “” s’`, then
+`‘s’ y’ “” s’` in every `SingleQuotes` mode (0.1.1 gave `‘s’ y’ “” s’` at once). Listed in design
+section 10.8, the README and `limits()` of `tests/documentation.rs`.
 
 ## Analysis so far
 
@@ -43,5 +44,6 @@ corpus and on the tables of `tests/` stays the same.
 
 - The inputs above are in `SEEDS` of `tests/properties.rs`.
 - The limit is removed from design section 10.8, the README and `limits()` of
-  `tests/documentation.rs`, and the filter of the typed `‘` from `grammar_known_limit` once
-  `todo/quotes-neutral-opener-repaired.md` is closed as well.
+  `tests/documentation.rs`, and the filter `OPENER_REPAIRED` from `grammar_known_failure` (with its
+  rows in `the_grammar_filters_name_their_limits`) once `todo/quotes-neutral-opener-repaired.md` is
+  closed as well.
