@@ -7,7 +7,7 @@
 use super::nbsp::holds_other;
 use super::quotes::{Role, local_role};
 use super::{
-    Frag, FragKind, Triggers, foreign, is_number, is_operand, is_range, is_technical,
+    Frag, FragKind, Triggers, foreign, is_number, is_operand, is_range, is_technical, joined_first,
     percent_owner, plain_side,
 };
 use super::{dictionary_word, is_word, single_letter, technical_sign};
@@ -76,8 +76,9 @@ pub(crate) fn dialogue(cx: &Cx<'_>, i: usize) -> Option<Match> {
         _ => {
             cx.in_core(r)
                 && cx.frag_of(r).is_some_and(|f| {
-                    // A `Joined` core reads as its first word (design section 4.3, I4).
-                    (is_word(cx, &plain_side(cx, f, false)) || dictionary_word(cx, f))
+                    // A `Joined` core reads as its first word (design section 4.3, I4), a label
+                    // as itself.
+                    (is_word(cx, &joined_first(cx, f)) || dictionary_word(cx, f))
                         && cx.core(f).next() == Some(r)
                 })
         }

@@ -261,6 +261,10 @@ const SEEDS: &[&str] = &[
     "- река—ООО",
     "1,5-2,5 ккал—бы",
     "1.5-2.5 mW—rock",
+    // A label after a dialogue dash is a word, not its sign (design section 8.4).
+    "- №5 дом",
+    "— §5 текст",
+    "- ¶IV дом",
 ];
 
 #[test]

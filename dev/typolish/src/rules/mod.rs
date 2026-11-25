@@ -373,6 +373,18 @@ pub(crate) fn plain_side(cx: &Cx<'_>, f: &Frag, left: bool) -> Frag {
     part.unwrap_or(*f)
 }
 
+/// The fragment `f` after a dash or a range as a rule that reads it whole reads it: a `Joined` core
+/// as its first word, as `plain_side` reads it on the right (design section 4.3, I4); any other
+/// fragment, a label among them, as itself (`№5` is a word after a dialogue dash, its sign `№` is
+/// not).
+pub(crate) fn joined_first(cx: &Cx<'_>, f: &Frag) -> Frag {
+    if f.kind == FragKind::Joined {
+        plain_side(cx, f, false)
+    } else {
+        *f
+    }
+}
+
 /// Whether token `i` starts a part of a `Joined` core: a `—` or `–` of the core stands right
 /// before it. Such a part was a fragment of its own before the closed style merged it (design
 /// sections 4.3, I4, and 8.4), so a rule that anchors at the start of a core anchors there too.

@@ -108,8 +108,10 @@ stands for U+00A0).
   matched, and the typed form gives what the plain form gives. Russian, Prose: `- река—ООО`:
   `- река—ООО` → `—⍽река—ООО`; `— река—ООО`: `— река—ООО` → `—⍽река—ООО`; `1,5-2,5 ккал—бы`:
   `1,5-2,5⍽ккал—бы` → `1,5–2,5⍽ккал—бы`. English, Prose: `1.5-2.5 mW—rock`: `1.5-2.5⍽mW—rock` →
-  `1.5–2.5⍽mW—rock`. Plain input with spaces around the dash does not change. Found by the grammar
-  generator of design section 13.5.
+  `1.5–2.5⍽mW—rock`. Only a `Joined` core reads so: a label after the dash or the range reads as
+  itself, a word after a dialogue dash, not as its sign (`- №5 дом`, `- §5 текст` and `- ¶IV дом`
+  give `—⍽№⍽5 дом`, `—⍽§⍽5 текст` and `—⍽¶⍽IV дом`, as in 0.1.1), and plain input with spaces around
+  the dash does not change. Found by the grammar generator of design section 13.5.
 
 ## 0.1.1 - unreleased
 

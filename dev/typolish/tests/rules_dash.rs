@@ -881,6 +881,18 @@ fn dialogue_in_russian() {
     check_unchanged("alone", &t, "Привет - пока");
     // With the quote rules of Prose: an opening quote after the dash.
     check_in("alone", &t, ("- \"Привет\"", "—⍽\"Привет\""));
+    // A label after the dash is a word (design section 8.4); only a `Joined` core reads as its
+    // first word, a label does not read as its sign. Prose also splits the label (`nbsp.signs`).
+    check_in("alone", &t, ("- №5 дом", "—⍽№5 дом"));
+    for row in [
+        ("- №5 дом", "—⍽№⍽5 дом"),
+        ("— №5 дом", "—⍽№⍽5 дом"),
+        ("- §5 текст", "—⍽§⍽5 текст"),
+        ("- ¶IV дом", "—⍽¶⍽IV дом"),
+        ("—⍽№⍽5 дом", "—⍽№⍽5 дом"),
+    ] {
+        check_in("Prose", &prose(Language::RU_RU), row);
+    }
     check_in(
         "Prose",
         &prose(Language::RU_RU),

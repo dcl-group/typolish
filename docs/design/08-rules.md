@@ -250,10 +250,11 @@ so does a protected span (section 2.6), and a dictionary sign read as a word or 
 (`- г-н Иванов` → `—⍽г-н⍽Иванов`, `- м2 это` → `—⍽м2 это`; section 8.2); a `Number` or `Date` slot
 does not. A `Joined` core after the space reads as its first word (section 4.3, I4), so the form
 that the closed style gives a dialogue line is a dialogue line too: `- река—ООО` → `—⍽река—ООО`, as
-`- река - ООО` gives with `DashStyle::Closed`. Before an `Other` slot the dash is set and the space
-stays, since no glue sticks to an `Other` slot (section 8.2): `- {o} пришёл` → `— {o} пришёл`,
-`- {w} пришёл` → `—⍽{w} пришёл`. Not in Interface: a line starting with `- ` in UI text is a list
-item. Settled in section 15.5, item 12.
+`- река - ООО` gives with `DashStyle::Closed`. Only a `Joined` core reads so: a label reads as the
+word it is, not as its sign (`- №5 дом` → `—⍽№⍽5 дом`, with the split of `nbsp.signs`). Before an
+`Other` slot the dash is set and the space stays, since no glue sticks to an `Other` slot (section
+8.2): `- {o} пришёл` → `— {o} пришёл`, `- {w} пришёл` → `—⍽{w} пришёл`. Not in Interface: a line
+starting with `- ` in UI text is a list item. Settled in section 15.5, item 12.
 
 Outputs show the rules named in the last column (with `quotes.pairs` where quotes appear); in the
 full sets other no-break rules add glue too (`Moscow—the⍽capital`, `“a⍽cat”`). The glue after `the`
@@ -319,6 +320,7 @@ itself is an ordinary word for the rules, with the script of its letters (sectio
   second pass found the unit `т` in the split `т.`. A `Joined` core as the next fragment reads as
   its first word, as the closed style merged it (section 4.3, I4): `1,5-2,5 ккал -- бы` and the
   typed `1,5-2,5 ккал—бы` both give `1,5–2,5⍽ккал—бы` (Russian with `DashStyle::Closed`, and Prose).
+  A label reads as itself, not as its sign.
 - **`range.time`** (Prose): `HH:MM[:SS]-HH:MM[:SS]` (check 5) → the same two times with `–` in place
   of the hyphen (`10:00-12:30` → `10:00–12:30`, `10:00:15-12:30:45` → `10:00:15–12:30:45`).
 
