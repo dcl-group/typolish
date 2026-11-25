@@ -719,7 +719,10 @@ The README states the known limits of section 10.8 and how to protect commands; 
 as doctests through a `#[cfg(doctest)]` item of `lib.rs` that includes it. `tests/documentation.rs`
 also checks that every README block is a `rust` block, that the numbers the README states (rules,
 version, MSRV) are those of the code, that its links point at files of the repository, that its
-known limits are those of section 10.8 and are what the crate does, that the CHANGELOG has the
+known limits are those of section 10.8 and are what the crate does (`known_limits_hold`: each row
+with its exact output and a second pass, in Prose and, where the row says so, Interface, in its
+`SingleQuotes` modes, also in en-GB, the declared language of section 13.5 whose primary pair is
+`‘’`, for the windows of sections 6.6 and 10.8 that exist only there), that the CHANGELOG has the
 prepared entry of the version of `Cargo.toml` first and the `0.1.1` entry naming every rule, and
 that every comment of the crate's Rust files that refers to this design says "design section N.M",
 never a bare "section N.M" (section 15.2, item 33). It reads the README through the crate's

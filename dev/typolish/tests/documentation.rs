@@ -28,7 +28,8 @@ use std::path::{Path, PathBuf};
 
 use common::{interface, prose, show, vis};
 use typolish::{
-    DiagnosticKind, HtmlStyle, Language, Output, Piece, Rule, RuleSet, Severity, Typographer,
+    DiagnosticKind, HtmlStyle, Language, LanguageBuilder, Output, Piece, QuotePairs, Rule, RuleSet,
+    Severity, SingleQuotes, Typographer,
 };
 
 fn crate_dir() -> PathBuf {
@@ -844,6 +845,8 @@ enum Sets {
 struct Limit {
     lang: &'static Language,
     sets: Sets,
+    /// The `SingleQuotes` modes the row holds in; `limit` gives the default mode.
+    modes: &'static [SingleQuotes],
     input: &'static str,
     expected: &'static str,
 }
@@ -854,9 +857,21 @@ const fn limit(
     input: &'static str,
     expected: &'static str,
 ) -> Limit {
+    limit_in(lang, sets, DEFAULT_MODE, input, expected)
+}
+
+/// A limit in the `SingleQuotes` modes `modes`.
+const fn limit_in(
+    lang: &'static Language,
+    sets: Sets,
+    modes: &'static [SingleQuotes],
+    input: &'static str,
+    expected: &'static str,
+) -> Limit {
     Limit {
         lang,
         sets,
+        modes,
         input,
         expected,
     }
@@ -864,6 +879,28 @@ const fn limit(
 
 const RU: &Language = &Language::RU_RU;
 const EN: &Language = &Language::EN_US;
+
+/// The default `SingleQuotes` mode of a typographer.
+const DEFAULT_MODE: &[SingleQuotes] = &[SingleQuotes::NestedOnly];
+/// Every `SingleQuotes` mode.
+const EVERY_MODE: &[SingleQuotes] = &[
+    SingleQuotes::NestedOnly,
+    SingleQuotes::Everywhere,
+    SingleQuotes::Never,
+];
+
+/// A declared language whose primary pair is `‘’` with `“”` nested, English data otherwise: the
+/// en-GB of the examples of design sections 6.6 and 10.8 and of the grammar of design section
+/// 13.5.
+fn en_gb() -> &'static Language {
+    static GB: std::sync::OnceLock<Language> = std::sync::OnceLock::new();
+    GB.get_or_init(|| {
+        LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+            .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+            .build()
+            .unwrap()
+    })
+}
 
 fn limits() -> Vec<Limit> {
     use Sets::{Both, ProseOnly};
@@ -911,6 +948,46 @@ fn limits() -> Vec<Limit> {
         // A window whose result a later pass would read in another way keeps its straight quotes
         // (design section 6.6): here the dash rule would read the typed `’` as a closing quote.
         limit(EN, Both, "\"a '-’ - x' c\"", "\"a⍽'-’ - x' c\""),
+        // In en-GB, where `’` closes the primary pair, the same window, in every mode (design
+        // section 10.8), and the settled windows of design section 6.6 with their output.
+        limit_in(en_gb(), Both, EVERY_MODE, "\"-’ - x\"", "\"-’ - x\""),
+        limit_in(
+            en_gb(),
+            Both,
+            EVERY_MODE,
+            "s Paul \"(’ -- St.)\"",
+            "s Paul \"(’ -- St.)\"",
+        ),
+        limit_in(en_gb(), Both, EVERY_MODE, "‘ \"dogs'’\" x", "‘ ‘dogs’’’ x"),
+        limit_in(
+            en_gb(),
+            Both,
+            &[SingleQuotes::Everywhere],
+            "‘'—’ l' s'",
+            "‘‘—’ l’ s'",
+        ),
+        limit_in(
+            en_gb(),
+            Both,
+            &[SingleQuotes::NestedOnly, SingleQuotes::Never],
+            "‘'—’ l' s'",
+            "‘'—’ l' s'",
+        ),
+        limit_in(EN, Both, EVERY_MODE, "‘\"s'\" s' 's’", "‘‘s’’ s’ 's’"),
+        limit_in(
+            en_gb(),
+            Both,
+            &[SingleQuotes::NestedOnly, SingleQuotes::Everywhere],
+            "‘\"s'\" s' 's’",
+            "‘“s’” s' 's’",
+        ),
+        limit_in(
+            en_gb(),
+            Both,
+            &[SingleQuotes::Never],
+            "‘\"s'\" s' 's’",
+            "‘“s’” s’ 's’",
+        ),
         // Windows whose plain form does not typeset back: a defect of `to_plain`, P2 fails.
         limit(RU, Both, "\"a '(\" x' \"y'\" b\"", "«a „(\" x“ „y'“ b»"),
         limit(EN, Both, "\"'S '5' 3'\"", "“‘S “5” 3’”"),
@@ -985,10 +1062,54 @@ fn typographers(lang: &Language, sets: Sets) -> Vec<(&'static str, Typographer)>
     out
 }
 
+/// The typographers of a limit: its sets in each of its modes.
+fn limit_typographers(l: &Limit) -> Vec<(String, Typographer)> {
+    let mut out = Vec::new();
+    for &mode in l.modes {
+        let mut sets = vec![("Prose", RuleSet::PROSE)];
+        if matches!(l.sets, Sets::Both) {
+            sets.push(("Interface", RuleSet::INTERFACE));
+        }
+        for (name, set) in sets {
+            let t = Typographer::builder(l.lang.clone(), set)
+                .single_quotes(mode)
+                .build()
+                .unwrap();
+            out.push((format!("{name} {mode:?}"), t));
+        }
+    }
+    out
+}
+
+#[test]
+fn the_default_mode_of_the_limits_is_the_default() {
+    // `limit` rows run in `DEFAULT_MODE`, which is what `Typographer::new` uses.
+    for lang in [RU, EN] {
+        for (name, plain) in typographers(lang, Sets::Both) {
+            let set = if name == "Prose" {
+                RuleSet::PROSE
+            } else {
+                RuleSet::INTERFACE
+            };
+            let built = Typographer::builder(lang.clone(), set)
+                .single_quotes(DEFAULT_MODE[0])
+                .build()
+                .unwrap();
+            for input in ["'a' \"b 'c'\" it's", "‘'—’ l' s'"] {
+                assert_eq!(
+                    plain.typeset(input, Output::Unicode),
+                    built.typeset(input, Output::Unicode),
+                    "{lang} {name}"
+                );
+            }
+        }
+    }
+}
+
 #[test]
 fn known_limits_hold() {
     for l in limits() {
-        for (name, t) in typographers(l.lang, l.sets) {
+        for (name, t) in limit_typographers(&l) {
             let input = vis(l.input);
             let expected = vis(l.expected);
             let got = t.typeset(&input, Output::Unicode);
