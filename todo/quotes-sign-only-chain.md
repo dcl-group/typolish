@@ -22,6 +22,11 @@ P2 (design section 12.2) fails on the same class in the default mode, in English
 | `en-US`, Prose/Interface | `"x ''-'' y"` | `“x ''-‘’ y”` | `"x ''-"" y"` | `“x ‘’-‘’ y”` |
 | `en-US`, `Everywhere`    | `""-''`       | `“”-“”`       | `""-""`       | `""-""`       |
 
+Choice C55 (0.1.2) extends the class to inputs on which 0.1.1 was a fixed point: the typed `‘’` that
+the first pass writes now closes on the second pass and cuts the chain. English, Prose, Interface
+and `ALL`, `NestedOnly` and `Everywhere`: `"""x\n''-''\ne"""` gives `“‘“x\n''-‘’\ne”’”`, then
+`“‘“x\n‘’-‘’\ne”’”`; 0.1.1 gave the first pass on both passes.
+
 Found while re-checking P2 after the fix of the mis-nested possessive (0.1.2), with a random
 generator over quotes, signs and short words in `en-US`, `ru-RU` and a declared language whose
 primary pair is `‘’`, all three `SingleQuotes` modes. The case is listed in design section 10.8 and

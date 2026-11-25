@@ -332,9 +332,14 @@ changes.
 (b) **Not converged.** No straight quote changed. The quotes with roles and their families are the
 same on the second pass, so the window again does not converge, and nothing changes.
 
-In both cases the phase is the identity on its own output. The property tests of section 13.5 check
-it on generated strings with all three `SingleQuotes` modes, and a fixed-point oracle compares one
-pass with passes repeated until nothing changes.
+In both cases the phase is the identity on its own output, except on the inputs of the defects
+listed in section 10.8, where the argument above fails: sign-only pairs that share a quote, a
+neutral `‘` that a second pass pairs, a straight quote that a second pass reads with a typed `’` as
+a sign-only pair, and a possessive kept straight by where the closer of its pair stands, which a
+second pass moves (a possessive placed inside that pair, or a typed `’` that a straight pair covered
+on the first pass, closes it early). The property tests of section 13.5 check it on generated
+strings with all three `SingleQuotes` modes, and a fixed-point oracle compares one pass with passes
+repeated until nothing changes.
 
 ### 6.12 Examples
 

@@ -316,8 +316,10 @@ The rules read the shape of the text, not its meaning. These cases are known and
   `UnmatchedQuote` warning; `key=""` stays as written.
 - Sign-only pairs that share a quote, as in `''-''`, are not idempotent: in Russian `"x ''-'' y"`
   gives `«x ''-„“ y»`, and a second pass gives `«x „“-„“ y»`. For the same reason in English
-  `"x ''-'' y"` gives `“x ''-‘’ y”`, and its plain form `"x ''-"" y"` gives `“x ‘’-‘’ y”`. This is a
-  defect, not a choice.
+  `"x ''-'' y"` gives `“x ''-‘’ y”`, and its plain form `"x ''-"" y"` gives `“x ‘’-‘’ y”`. Since
+  0.1.2 a typed `‘’` that the first pass writes cuts such a chain on a second pass too: in English
+  `"""x\n''-''\ne"""` gives `“‘“x\n''-‘’\ne”’”`, and a second pass gives `“‘“x\n‘’-‘’\ne”’”`, where
+  version 0.1.1 was a fixed point. This is a defect, not a choice.
 - A typed `‘` that the first pass leaves open and a second pass pairs lets a trailing possessive
   through, or pairs a single-quote pair that the first pass left straight, so the output is not
   idempotent. In a declared language whose primary pair is `‘’` (en-GB) a straight pair around a
@@ -325,7 +327,9 @@ The rules read the shape of the text, not its meaning. These cases are known and
   `‘ ‘dogs’’’ x`. In English a straight pair closed after a number does too:
   `He said ‘the dogs' "5"’` gives `He said ‘the⍽dogs' “5”’`, and a second pass gives
   `He said ‘the⍽dogs’ “5”’`, and `x ‘a 'b' "2"’ y` gives `x ‘a⍽'b' “2”’ y`, then `x ‘a⍽‘b’ “2”’ y`.
-  This is a defect, not a choice.
+  Since 0.1.2 a typed `‘-’` before such a pair closes and no longer keeps the possessive straight on
+  the second pass: en-GB `‘"-" "S'’"` gives `‘‘-’ ‘S'’’`, then `‘‘-’ ‘S’’’`, where version 0.1.1 was
+  a fixed point. This is a defect, not a choice.
 - A straight quote written as `‘` before a sign and a typed `’` is read by a second pass as a
   sign-only pair, which changes the role of the `’`: in English `"a '-’ - x' c"` gives
   `“a⍽‘-’ - x’ c”`, and a second pass gives `“a⍽‘-’ — x’ c”`. Version 0.1.1 gave the first result on
@@ -333,8 +337,10 @@ The rules read the shape of the text, not its meaning. These cases are known and
 - A trailing possessive placed inside a typed pair that `’` closes is read by a second pass as the
   closer of that pair, which then closes early; a possessive that the first pass kept straight
   because of where the old closer stood is placed then: in English `‘S' ‘s'’ s’` gives
-  `‘S' ‘s’’ s’`, and a second pass gives `‘S’ ‘s’’ s’`. Version 0.1.1 gave the second result at
-  once. This is a defect, not a choice.
+  `‘S' ‘s’’ s’`, and a second pass gives `‘S’ ‘s’’ s’`. A typed `’` inside a straight pair, which
+  the first pass reads as an apostrophe and a second pass as the closer of the pair, moves the
+  closer the same way: in English `‘S' "x’" s’` gives `‘S' ‘x’’ s’`, then `‘S’ ‘x’’ s’`. Version
+  0.1.1 gave the second result at once. This is a defect, not a choice.
 - `to_plain` does not always give back a text that typesets to the same result when the quotes are
   tangled: in Russian `"a '(" x' "y'" b"` gives `«a „(" x“ „y'“ b»`, whose plain form
   `"a "(" x" "y'" b"` keeps every quote straight; in English `"'S '5' 3'"` gives `“‘S “5” 3’”`,

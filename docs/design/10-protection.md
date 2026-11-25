@@ -258,7 +258,10 @@ expectation):
   so in Russian `"x ''-'' y"` gives `«x ''-„“ y»`, and a second pass, where the glyphs cut the
   chain, pairs the first two quotes (`«x „“-„“ y»`). The same class breaks P2 (section 12.2) in
   English: `"x ''-'' y"` gives `“x ''-‘’ y”`, whose `to_plain` `"x ''-"" y"` is typeset as
-  `“x ‘’-‘’ y”`. This is a defect of the quote phase (sections 6.3 and 6.11), not a choice.
+  `“x ‘’-‘’ y”`. Choice C55 (0.1.2) extends the class to inputs on which 0.1.1 was a fixed point,
+  since the typed `‘’` that a first pass writes now closes on the second pass and cuts the chain:
+  English, `NestedOnly` and `Everywhere`, `"""x\n''-''\ne"""` gives `“‘“x\n''-‘’\ne”’”`, then
+  `“‘“x\n‘’-‘’\ne”’”`. This is a defect of the quote phase (sections 6.3 and 6.11), not a choice.
 - A typed `‘` that the first pass leaves neutral and a second pass pairs lets a trailing possessive
   through, or a straight `'` pair that the first pass cancelled, so the output is not idempotent:
   the neutral `‘` keeps the possessive straight (section 6.6), and the second pass pairs the `‘` and
@@ -267,10 +270,13 @@ expectation):
   `‘ ‘dogs’’’ x`. In English a straight `"` opener whose closer is a weak quote after a digit
   (section 6.5) covers the typed `’` in pass 1, which ignores weak quotes: `He said ‘the dogs' "5"’`
   gives `He said ‘the⍽dogs' “5”’`, then `He said ‘the⍽dogs’ “5”’` (also `‘"0" S'’`). Both are older
-  than 0.1.2. The same re-pairing also encloses a straight `'` pair that the first pass cancelled at
-  the top level (`SingleQuotes::NestedOnly`, section 6.8), which then pairs: English
-  `x ‘a 'b' "2"’ y` gives `x ‘a⍽'b' “2”’ y`, then `x ‘a⍽‘b’ “2”’ y` (older than 0.1.2). This is a
-  defect of the quote phase (sections 6.6 and 6.11), not a choice.
+  than 0.1.2, but choice C55 (0.1.2) extends the first to inputs on which 0.1.1 was a fixed point: a
+  typed `‘-’` before the straight pair now closes, so it no longer keeps the possessive straight on
+  the second pass, and en-GB `‘"-" "S'’"` gives `‘‘-’ ‘S'’’`, then `‘‘-’ ‘S’’’` (every set and
+  mode). The same re-pairing also encloses a straight `'` pair that the first pass cancelled at the
+  top level (`SingleQuotes::NestedOnly`, section 6.8), which then pairs: English `x ‘a 'b' "2"’ y`
+  gives `x ‘a⍽'b' “2”’ y`, then `x ‘a⍽‘b’ “2”’ y` (older than 0.1.2). This is a defect of the quote
+  phase (sections 6.6 and 6.11), not a choice.
 - A straight quote that the first pass writes as `‘` before signs, or nothing, and a typed `’` is a
   sign-only pair on the second pass (choice C55: a typed `’` closes the `‘` of a sign-only pair),
   which the first pass did not see, so the second pass reads the quotes and their roles differently.
@@ -289,8 +295,17 @@ expectation):
   (`NestedOnly` and `Everywhere`). Version 0.1.1 gave the second result in one pass; the defect came
   with C54 in 0.1.2. The input needs no typed `‘`: in a declared language whose primary pair is `‘’`
   (en-GB) the first pass writes a straight `"` as `‘`, and `"s' y’ "" s"` gives `‘s' y’ “” s’`, then
-  `‘s’ y’ “” s’` (every `SingleQuotes` mode), which 0.1.1 gave at once. This is a defect of the
-  quote phase (sections 6.6 and 6.11), not a choice.
+  `‘s’ y’ “” s’` (every `SingleQuotes` mode), which 0.1.1 gave at once. The pairs move the same way
+  when a typed `’` inside a straight pair, which the first pass reads as an apostrophe because the
+  `"` entry covers it (section 6.4), closes the typed `‘` of that pair on the second pass. English,
+  Prose, Interface and `ALL`, every `SingleQuotes` mode: `‘S' "x’" s’` gives `‘S' ‘x’’ s’`, then
+  `‘S’ ‘x’’ s’`; `"He said "the boys’ dogs' "x" bowls" were empty."` gives
+  `“He said ‘the⍽boys’ dogs' “x” bowls’ were empty.”`, then
+  `“He said ‘the⍽boys’ dogs’ “x” bowls’ were empty.”`; en-GB (`NestedOnly` and `Everywhere`):
+  `She said "the boys’ dogs' 'bowls" were empty.` gives
+  `She said ‘the⍽boys’ dogs' 'bowls’ were empty.`, then
+  `She said ‘the⍽boys’ dogs’ 'bowls’ were empty.`. 0.1.1 gave the second result at once on all of
+  them. This is a defect of the quote phase (sections 6.6 and 6.11), not a choice.
 - `to_plain` reads the glyphs of a pair as `"`, or as `'` where that does not pair again (section
   12.1); in a window where no reading it tries brings the quotes back, P2 fails (section 12.2),
   although the typeset text is a fixed point. A straight `"` without a role inside a pair turns into

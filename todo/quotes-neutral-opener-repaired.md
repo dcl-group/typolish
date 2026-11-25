@@ -19,9 +19,14 @@ apostrophe, the typed `‘` stays neutral, and section 6.6 keeps `dogs'` straigh
 `‘`, the new `’` closes the `‘` that was neutral, no neutral `‘` is left, and the possessive is
 placed. P2 fails on the first row too: `to_plain` gives `" "dogs'"" x`, which does not converge.
 
-The case is older than 0.1.2 (the output of 0.1.1 is the same). In en-US, whose nested pair is `‘’`,
-the same input inside a straight `"` pair is a fixed point. Found by a random generator over typed
-and straight quotes after the fixes of 0.1.2; listed in design section 10.8 and the README.
+The case is older than 0.1.2 (the output of 0.1.1 is the same on these rows), but choice C55 (0.1.2)
+extends it to inputs on which 0.1.1 was a fixed point: a typed `‘-’` before the straight pair now
+closes, so it no longer keeps the possessive straight on the second pass. Prose, Interface and
+`ALL`, every `SingleQuotes` mode: `‘"-" "S'’"` gives `‘‘-’ ‘S'’’`, then `‘‘-’ ‘S’’’`; also
+`‘ "-" "S'’"` and `‘"-" "Smiths' x’"`. 0.1.1 gave the first pass on both passes. In en-US, whose
+nested pair is `‘’`, the same input inside a straight `"` pair is a fixed point. Found by a random
+generator over typed and straight quotes after the fixes of 0.1.2; listed in design section 10.8 and
+the README.
 
 The structured grammar of design section 13.5 found two more causes of the neutral `‘`. In English
 (en-US and en-GB) a straight `"` opener whose closer is a weak quote after a digit (design section

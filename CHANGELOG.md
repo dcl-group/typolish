@@ -79,8 +79,9 @@ stands for U+00A0).
   `“‘s' 'x.’'”`; `“"s' '."'”`: `“‘s’ '.’'”` → `“‘s' '.’'”`; `"a "dogs' 's" b"`: `“a⍽‘dogs’ 's’ b”` →
   `“a⍽‘dogs' 's’ b”`; `"a "DOGS' 'S" b"`: `“a⍽‘DOGS’ 'S’ b”` → `“a⍽‘DOGS' 'S’ b”`;
   `"a "dogs' 'x' bowls" b"`: `“a⍽‘dogs’ “x” bowls’ b”` → `“a⍽‘dogs' “x” bowls’ b”`. A declared
-  language whose primary pair is `‘’` (en-GB), Prose, Interface and `ALL`, every `SingleQuotes`
-  mode: `"S' 's"`: `‘S’ 's’` → `‘S' 's’`; `"the dogs' 'x' bowls"`: `‘the⍽dogs’ “x” bowls’` →
+  language whose primary pair is `‘’` (en-GB), Prose, Interface and `ALL`,
+  `SingleQuotes::NestedOnly` and `Everywhere` (with `SingleQuotes::Never` these rows keep the output
+  of 0.1.1): `"S' 's"`: `‘S’ 's’` → `‘S' 's’`; `"the dogs' 'x' bowls"`: `‘the⍽dogs’ “x” bowls’` →
   `‘the⍽dogs' “x” bowls’`; `"the dogs' 'bowls" today`: `‘the⍽dogs’ 'bowls’ today` →
   `‘the⍽dogs' 'bowls’ today`; `"S'. a(\n'3,".'`: `‘S’. a(\n'3,’.'` → `‘S'. a(\n'3,’.'`;
   `it) - 'cause' - 'cause -- "'cause) DOGS' - 'house' - it, - oz.) '90s" a`:
@@ -96,7 +97,16 @@ stands for U+00A0).
   early. English, Prose and Interface: `‘S' ‘s'’ s’` gives `‘S' ‘s’’ s’`, then `‘S’ ‘s’’ s’`, which
   0.1.1 gave at once; in a declared language whose primary pair is `‘’` (en-GB), where the first
   pass writes a straight `"` as `‘`, input without a typed `‘` too: `"s' y’ "" s"` gives
-  `‘s' y’ “” s’`, then `‘s’ y’ “” s’`, which 0.1.1 gave at once. Listed in design section 10.8.
+  `‘s' y’ “” s’`, then `‘s’ y’ “” s’`, which 0.1.1 gave at once. A typed `’` inside a straight pair,
+  which the first pass reads as an apostrophe and a second pass as the closer of the pair, moves the
+  closer the same way. English, Prose, Interface and `ALL`, every `SingleQuotes` mode:
+  `‘S' "x’" s’`: `‘S’ ‘x’’ s’` → `‘S' ‘x’’ s’` (then `‘S’ ‘x’’ s’` on a second pass);
+  `"He said "the boys’ dogs' "x" bowls" were empty."`:
+  `“He said ‘the⍽boys’ dogs’ “x” bowls’ were empty.”` →
+  `“He said ‘the⍽boys’ dogs' “x” bowls’ were empty.”` (then the first form again). en-GB, the same
+  sets, `NestedOnly` and `Everywhere`: `She said "the boys’ dogs' 'bowls" were empty.`:
+  `She said ‘the⍽boys’ dogs’ 'bowls’ were empty.` → `She said ‘the⍽boys’ dogs' 'bowls’ were empty.`
+  (then the first form again). Listed in design section 10.8.
 
 - A typed `’` closes the `‘` of its pair when only signs, or nothing, stand between them and the
   neighbors allow the sign-only pair (design section 6.3), as the plain `""` that a first pass
@@ -110,8 +120,13 @@ stands for U+00A0).
   closed `‘` no longer counts as a neutral opener, so a trailing possessive after it is placed
   (English and en-GB, Prose, Interface and `ALL`: `‘’\n”bowls'`: `‘’\n”bowls'` → `‘’\n”bowls’`), and
   the rules that read the role of a quote read it too (English and en-GB, the same sets:
-  `)(\n ‘’ - ')“` gives `‘’ —` where it gave `‘’ -`). Such a pair is no longer reported: `x ‘’ y`
-  gave `UnmatchedQuote` (info), `"a ‘’ b"` `CrossingQuotes` (warning).
+  `)(\n ‘’ - ')“` gives `‘’ —` where it gave `‘’ -`). In a declared language with Russian data whose
+  primary pair is `‘’`, the dash after a sign-only pair that the first pass writes as `‘’` is glued,
+  as after `«»` in Russian: Prose, Interface and `ALL`, every `SingleQuotes` mode,
+  `Он сказал "" - и ушёл`: `Он⍽сказал ‘’ — и⍽ушёл` → `Он⍽сказал ‘’⍽— и⍽ушёл` (Interface:
+  `Он сказал ‘’⍽— и⍽ушёл`); `"" - ""`: `‘’ — ‘’` → `‘’⍽— ‘’`; `Он сказал "-" - и ушёл`: `‘-’ —` →
+  `‘-’⍽—`. Such a pair is no longer reported: `x ‘’ y` gave `UnmatchedQuote` (info), `"a ‘’ b"`
+  `CrossingQuotes` (warning).
 - `to_plain`, `to_plain_template`, `lint` and `lint_template` are linear in the length of the text
   on long runs of quote characters in one paragraph as well (design section 12.1): the neighbors of
   a series of quotes, the open pairs and the later closer of a `’` after `s` were searched again for
