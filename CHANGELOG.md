@@ -45,6 +45,10 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `x—Ⓜ\u{200D}★`, and in both languages `🅰\u{200D}★'s` stays as written where 1.12.0 gave
   `🅰\u{200D}★’s`. Callers who need byte-stable output keep the version of the dependency in their
   lock file. Nothing changes for 0.1.1, which already requires 1.13.3.
+- `report`, `report_template`, `lint` and `lint_template` no longer collect the pieces of a record
+  into a temporary vector before recording it; the result does not change. Measured in a release
+  build, Russian Prose, `Он - "врач", см. host:8080 и т. д. ` repeated 20 times (140 changes, 20
+  protected spans): 314 → 154 allocations per `report` call.
 
 ### Fixed
 

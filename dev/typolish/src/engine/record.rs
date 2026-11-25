@@ -153,27 +153,31 @@ pub(crate) struct Sink<'a, R> {
     pub(crate) lens: &'a [usize],
 }
 
-impl<R: Recorder> Sink<'_, R> {
-    /// The pieces that a range of the call's text covers, with the range in each.
-    fn split(&self, start: u32, end: u32) -> impl Iterator<Item = (usize, Range<usize>)> + '_ {
-        let first = self.pieces.partition_point(|p| p.end <= start);
-        self.pieces
-            .get(first..)
-            .unwrap_or_default()
-            .iter()
-            .take_while(move |p| p.start < end)
-            .filter_map(move |p| {
-                let s = start.max(p.start);
-                let e = end.min(p.end);
-                (s < e).then(|| {
-                    (
-                        p.piece as usize,
-                        (s - p.start) as usize..(e - p.start) as usize,
-                    )
-                })
+/// The pieces that a range of the call's text covers, with the range in each.
+fn split(
+    pieces: &[TextPiece],
+    start: u32,
+    end: u32,
+) -> impl Iterator<Item = (usize, Range<usize>)> + '_ {
+    let first = pieces.partition_point(|p| p.end <= start);
+    pieces
+        .get(first..)
+        .unwrap_or_default()
+        .iter()
+        .take_while(move |p| p.start < end)
+        .filter_map(move |p| {
+            let s = start.max(p.start);
+            let e = end.min(p.end);
+            (s < e).then(|| {
+                (
+                    p.piece as usize,
+                    (s - p.start) as usize..(e - p.start) as usize,
+                )
             })
-    }
+        })
+}
 
+impl<R: Recorder> Sink<'_, R> {
     /// Records an applied edit of `rule` over `start..end` of the call's text: one record per piece
     /// it covers, the first holding the whole replacement and the others an empty one (design
     /// section 3.11). An insertion (an empty range) belongs to the `Text` piece that ends at its
@@ -191,8 +195,9 @@ impl<R: Recorder> Sink<'_, R> {
             }
             return;
         }
-        let records: Vec<(usize, Range<usize>)> = self.split(start, end).collect();
-        for (n, (piece, range)) in records.into_iter().enumerate() {
+        // The pieces outlive the borrow of the sink, so the records need no collected copy.
+        let pieces = self.pieces;
+        for (n, (piece, range)) in split(pieces, start, end).enumerate() {
             let replacement = if n == 0 { text } else { "" };
             self.rec
                 .change(Change::new(rule, piece, range, replacement.to_owned()));
@@ -214,8 +219,8 @@ impl<R: Recorder> Sink<'_, R> {
                     .protected(ProtectedSpan::new(piece as usize, 0..len, kind));
             }
             Loc::Flat(start, end) => {
-                let records: Vec<(usize, Range<usize>)> = self.split(start, end).collect();
-                for (piece, range) in records {
+                let pieces = self.pieces;
+                for (piece, range) in split(pieces, start, end) {
                     self.rec.protected(ProtectedSpan::new(piece, range, kind));
                 }
             }
@@ -241,7 +246,7 @@ impl<R: Recorder> Sink<'_, R> {
         }
         let (piece, range) = match at {
             Loc::Piece(piece) => (piece as usize, 0..0),
-            Loc::Flat(start, end) => match self.split(start, end).next() {
+            Loc::Flat(start, end) => match split(self.pieces, start, end).next() {
                 Some(first) => first,
                 None => return,
             },
