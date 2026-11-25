@@ -1929,7 +1929,11 @@ fn the_p2_filters_name_their_limits() {
 fn the_p2_filters_name_nothing_else() {
     // Design section 13.5: the filter of the P2 failures names only the misreading of
     // `p2_misread`, on a typeset text that is a fixed point. Each row is `None`: a filter that
-    // names every failure, or one that skips the check of the fixed point, fails here.
+    // names every failure, that skips the check that the reading explains the failure, or whose
+    // `p2_misread` names any pair of texts, fails here. A filter that skips the check of the fixed
+    // point does not: the explanation check asks `typeset(restored) == y`, so `y` is an output of
+    // `typeset` and, while `typeset` is idempotent (P1), a fixed point; no input reaches the fixed
+    // point check alone, which stays as a guard should P1 break.
     for (x, plain) in [
         // No quotes, or the same quotes in the same order.
         ("a - b", "a - b"),
@@ -1993,7 +1997,8 @@ fn the_p2_filters_name_nothing_else() {
         }
         .typographer();
         // A typeset text that is no fixed point falls under no limit, even where its quotes
-        // would read as misread: the `...` typesets again.
+        // would read as misread: the `...` typesets again. Both the fixed point check and the
+        // explanation check refuse these rows (see above).
         for (x, y) in [
             ("'a'...", "\"a\"..."),
             ("\"a\"...", "\"a\"..."),
