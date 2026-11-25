@@ -184,6 +184,10 @@ const SEEDS: &[&str] = &[
     "10-20 % - 5",
     "5 - 1,5-2,5 %",
     "5 - 1.5-2.5 %",
+    // A range of Roman numerals with its percent sign after spaces, which the percent setting
+    // attaches (design section 8.2).
+    "XIX-XX % - 27",
+    "I-5 % - x",
     // A label number owns its percent sign after spaces too (design section 8.2).
     "№5 % — т.е.",
     "№10 % — -5% +",

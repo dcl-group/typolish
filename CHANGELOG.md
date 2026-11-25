@@ -48,6 +48,15 @@ stands for U+00A0).
 
 ### Fixed
 
+- The dash rules read a range of Roman numerals with its percent sign attached (`XIX-XX%`, `I-5%`)
+  as a percentage range, as they read the range with the sign after spaces (`XIX-XX %` is a range by
+  check 17, design sections 3.6 and 8.2). Before, the percent setting that attaches the sign made a
+  technical fragment of it, and a second pass set the dash after it: Russian, Prose,
+  `PercentSpacing::Attached`, `XIX-XX % - 27` gave `XIX-XX% - 27`, then `XIX-XX%⍽— 27`. The output
+  of the first pass on such input is unchanged; on input with the sign attached it is now the same
+  as with the sign after spaces. Russian, Prose: `XIX-XX% - 27`: `XIX-XX%⍽— 27` → `XIX-XX% - 27`;
+  `5 - XIX-XX%`: `5⍽— XIX-XX%` → `5 - XIX-XX%`. English, Prose: `I-5% - x`: `I-5% — x` → `I-5% - x`;
+  `x - V-X%`: `x — V-X%` → `x - V-X%`. Found by the grammar generator of design section 13.5.
 - A trailing possessive inside a pair that `’` closes stays straight where a second pass or
   `to_plain` would read it as the closer of the pair and change what stands between them (design
   section 6.6): a straight `'` opener that stayed unpaired stands after it, and a straight `'` or a

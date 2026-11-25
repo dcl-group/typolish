@@ -205,11 +205,14 @@ fn percent_shape(cx: &Cx<'_>, f: &Frag, joint: &str) -> bool {
     else {
         return false;
     };
+    // A side is what check 17 takes: a number, a Roman numeral (`XIX-XX%`, as `XIX-XX %` is a
+    // range) or a decimal number.
     let side = |part: &[(usize, usize)]| match part {
-        [one] => matches!(
-            cx.kind(one.0),
-            Some(Kind::Number | Kind::Slot(crate::SlotKind::Number))
-        ),
+        [one] => match cx.kind(one.0) {
+            Some(Kind::Number | Kind::Slot(crate::SlotKind::Number)) => true,
+            Some(Kind::Word(_)) => range::roman_value(cx.visible(one.0, one.1)).is_some(),
+            _ => false,
+        },
         [a, sep, b] => {
             let separator = match cx.data.numbers.decimal {
                 '.' => cx.kind(sep.0) == Some(Kind::Dots) && cx.is(sep.0, "."),

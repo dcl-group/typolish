@@ -1243,6 +1243,10 @@ fn percent_spacing_and_the_dash_rules() {
         (Attached, "5 % - 10 %", "5% - 10%"),
         (Spaced, "5% - 10%", "5⍽% - 10⍽%"),
         (Spaced, "5 - 5–10%", "5 - 5–10⍽%"),
+        // A range of Roman numerals reads as a range with its sign attached too (check 17 of
+        // design section 3.6): the sign that the setting attaches changes nothing.
+        (Attached, "XIX-XX % - 27", "XIX-XX% - 27"),
+        (AsWritten, "XIX-XX% - 27", "XIX-XX% - 27"),
     ];
     for (spacing, input, expected) in rows {
         let t = Typographer::builder(ru(), RuleSet::PROSE)
