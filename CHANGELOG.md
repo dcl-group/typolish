@@ -64,6 +64,15 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   section 3.8): the engine wrote it a second time as the insertion after the match. Russian,
   `nbsp.signs` alone and Prose, `№`, 254 × U+200B, `5`: `№…⍽⍽5` (258 characters) → `№…⍽5` (257). The
   same path served a compact abbreviation and a `Markup` piece of a template. Found by review.
+- `range.context` reads a `Joined` core before the range, and `nbsp.dates` one before a day, as its
+  last word, the fragment it was before the closed style merged it (design sections 4.3, 8.5 and
+  8.7), as the rules that read the fragment after them already did. So the typed form gives what the
+  plain form gives. Russian, Prose and `ALL`: `поле—с. 1941-45`: `поле—с. 1941-45` →
+  `поле—с. 1941–45`; `книга—стр. 1941-45`: `книга—стр.⍽1941-45` → `книга—стр.⍽1941–45` (as
+  `книга - стр. 1941-45` gives with `DashStyle::Closed`). English, Prose and `ALL`:
+  `field—p. 1941-45`: `field—p.⍽1941-45` → `field—p.⍽1941–45`; Prose, Interface and `ALL`:
+  `spring—May 5`: `spring—May 5` → `spring—May⍽5`. Interface has no `range.context`, and its output
+  of the range rows does not change. Found by review.
 - The dash rules read a range with its percent sign attached as a percentage range, as they read the
   range with the sign after spaces, whatever its sides and its joint (design sections 3.6 and 8.2):
   a side may be a Roman numeral (`XIX-XX %` and `XIX–10 %` are ranges by check 17) or a decimal

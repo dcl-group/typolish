@@ -352,6 +352,9 @@ fn context_before(cx: &Cx<'_>, first: usize) -> bool {
     if f.core_start >= f.core_end {
         return false;
     }
+    // A `Joined` core reads as its last word, the fragment it was before the closed style merged
+    // it (design section 4.3, I4).
+    let f = &super::plain_side(cx, f, true);
     let chars = cx.core_chars(f);
     let list = cx.data.range_lead_words;
     folded_in(list, chars.clone()) || (f.stop && folded_in(list, chars.chain(['.'])))

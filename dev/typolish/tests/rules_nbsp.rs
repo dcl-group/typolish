@@ -894,6 +894,9 @@ const EN_DATES: &[(&str, &str)] = &[
     ("Sept. 5", "Sept.⍽5"),
     ("15 Jan", "15⍽Jan"),
     ("May 5", "May⍽5"),
+    // A `Joined` core before the day reads as its last word, the month (design section 4.3, I4):
+    // the form `spring—May` that the closed style gives `spring - May`.
+    ("spring—May 5", "spring—May⍽5"),
     ("on 5 May", "on 5⍽May"),
     ("21 November, 2026", "21⍽November, 2026"),
     // `May` matches only as written; the day is 1 to 31.

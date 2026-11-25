@@ -190,6 +190,10 @@ const RU_CONTEXT: &[(&str, &str)] = &[
     ("1,5-2,5 т. е.", "1,5–2,5 т. е."),
     // A `Joined` core reads as its first word, the unit (design section 4.3, I4).
     ("1,5-2,5 ккал—бы", "1,5–2,5 ккал—бы"),
+    // A `Joined` core before the range reads as its last word, the lead word (design section 4.3,
+    // I4): the form `поле—с.` that the closed style gives `поле - с.`.
+    ("поле—с. 1941-45", "поле—с. 1941–45"),
+    ("книга—стр. 1941-45", "книга—стр. 1941–45"),
     // The tail is not greater than the last two digits of the year; no year word; no context.
     ("2026-11 гг.", "2026-11 гг."),
     ("2010-11", "2010-11"),
@@ -217,6 +221,7 @@ const EN_CONTEXT: &[(&str, &str)] = &[
     ("5-10 MB", "5–10 MB"),
     ("1.5-2.5 kg", "1.5–2.5 kg"),
     ("1.5-2.5 mW—rock", "1.5–2.5 mW—rock"),
+    ("field—p. 1941-45", "field—p. 1941–45"),
     ("p. 9-12", "p. 9–12"),
     ("pp. 9-12", "pp. 9–12"),
     ("See p. 9-12.", "See p. 9–12."),

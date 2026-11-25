@@ -845,7 +845,9 @@ pub(crate) fn dates(cx: &Cx<'_>, s: usize) -> Option<Match> {
     let left_core = cx.in_core(l);
     // The conditions are pure; the cheap ones are read first.
     let found = (after_day && left_core && day(cx, fl) && month_ahead(cx, fr))
-        || (before_day && day(cx, fr) && month_behind(cx, fl, l))
+        // A `Joined` core reads as its last word, the fragment it was before the closed style
+        // merged it (design section 4.3, I4).
+        || (before_day && day(cx, fr) && month_behind(cx, &plain_side(cx, fl, true), l))
         || (left_core && dotted_word(cx, fr, data.year_words) && year_like(cx, fl))
         || (left_core && dotted_word(cx, fr, data.century_words) && century_like(cx, fl));
     found.then(|| glue_one(cx, s, Glue::NoBreak)).flatten()

@@ -334,7 +334,9 @@ itself is an ordinary word for the rules, with the script of its letters (sectio
   second pass found the unit `т` in the split `т.`. A `Joined` core as the next fragment reads as
   its first word, as the closed style merged it (section 4.3, I4): `1,5-2,5 ккал -- бы` and the
   typed `1,5-2,5 ккал—бы` both give `1,5–2,5⍽ккал—бы` (Russian with `DashStyle::Closed`, and Prose).
-  A label reads as itself, not as its sign.
+  A label reads as itself, not as its sign. A `Joined` core as the previous fragment reads as its
+  last word: `книга - стр. 1941-45` (Russian with `DashStyle::Closed`) and the typed
+  `книга—стр. 1941-45` both give `книга—стр.⍽1941–45` in Prose.
 - **`range.time`** (Prose): `HH:MM[:SS]-HH:MM[:SS]` (check 5) → the same two times with `–` in place
   of the hyphen (`10:00-12:30` → `10:00–12:30`, `10:00:15-12:30:45` → `10:00:15–12:30:45`).
 
@@ -411,12 +413,14 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   `Москва Т. е.` in one pass: `Москва⍽Т.⍽е.`.
 - **`nbsp.dates`.** By `month_position`: `AfterDay` (ru) glues a day number 1 to 31 (or a `Number`
   slot) before a month form (`21⍽ноября`); `BeforeDay` glues a month form before a day number;
-  `Both` (en) glues both orders (`November⍽21`, `21⍽November`). With year and century words (only in
-  languages that have them): a number, a range, a `YearMonth` core, a date core (section 8.2; the
-  core stays frozen, only the space after it is glued) or a `Number`/`Date` slot before a year word
-  ending in `.` (`2026⍽г.`, `1990–2000⍽гг.`, `2010-11⍽гг.`, `21.11.2026⍽г.`, `21.11.26⍽г.`); a Roman
-  numeral, a number or a range of them before a century word ending in `.` (`XIX⍽в.`, `XIX–XX⍽вв.`).
-  Labels and percentages are not numbers here (section 8.2).
+  `Both` (en) glues both orders (`November⍽21`, `21⍽November`); a `Joined` core before the day reads
+  as its last word (section 4.3, I4), so the typed `spring—May 5` gives `spring—May⍽5`, as
+  `spring - May 5` does. With year and century words (only in languages that have them): a number, a
+  range, a `YearMonth` core, a date core (section 8.2; the core stays frozen, only the space after
+  it is glued) or a `Number`/`Date` slot before a year word ending in `.` (`2026⍽г.`,
+  `1990–2000⍽гг.`, `2010-11⍽гг.`, `21.11.2026⍽г.`, `21.11.26⍽г.`); a Roman numeral, a number or a
+  range of them before a century word ending in `.` (`XIX⍽в.`, `XIX–XX⍽вв.`). Labels and percentages
+  are not numbers here (section 8.2).
 - **`nbsp.units`.** A number (not a label or a percentage), a `Number` slot or a range, one space,
   then a unit of the list (longest match, case-sensitive, followed by a non-letter and non-digit) →
   glue: `5⍽МБ`, `30⍽с.`, `12⍽дн.`, `5–10⍽кг`, `{n}⍽дн.`, `5⍽ГБ/с`, `60⍽км/ч`. An ambiguous unit

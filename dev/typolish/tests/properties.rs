@@ -307,6 +307,14 @@ const SEEDS: &[&str] = &[
     "- река—ООО",
     "1,5-2,5 ккал—бы",
     "1.5-2.5 mW—rock",
+    // A `Joined` core before a context range or a day reads as its last word (design section 4.3,
+    // I4).
+    "поле - с. 1941-45",
+    "поле—с. 1941-45",
+    "книга—стр. 1941-45",
+    "field—p. 1941-45",
+    "spring—May 5",
+    "spring - May 5",
     // A label after a dialogue dash is a word, not its sign (design section 8.4).
     "- №5 дом",
     "— §5 текст",
