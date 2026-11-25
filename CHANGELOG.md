@@ -93,10 +93,14 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   forward form takes them, as for any two surnames (design section 15.2, item 22):
   `Иванов И. И. Пушкин-Smith`: `Иванов⍽И.⍽И. Пушкин-Smith` → `Иванов И.⍽И.⍽Пушкин-Smith`. A compound
   word of two scripts is a surname only where every word of it is capitalized and one is a surname
-  of the language's script on its own, so `IT-отдел`, `SMS-рассылка`, `XIX-XXм` and
-  `Smith-jones-Петров` take no initials and keep their 0.1.1 output (`Иванов⍽И.⍽И. IT-отдел`,
-  `дом XIX-XXм А. С. дом`); a surname with no word of the language's script stays unglued
-  (`А. Smith-Jones`). Found by review.
+  of the language's script on its own, not in capitals (C65), so `IT-отдел`, `SMS-рассылка`,
+  `XIX-XXм` and `Smith-jones-Петров` take no initials and keep their 0.1.1 output in every language
+  (`Иванов⍽И.⍽И. IT-отдел`, `дом XIX-XXм А. С. дом`), and so do acronyms in Russian
+  (`Иванов И. И. МВД-FBI`, `Иванов И. И. СМИ-Smith`: `Иванов⍽И.⍽И. …`; `А. ПУШКИН-Smith` unglued)
+  and in English (`J. XIX-XXм` unglued, `Smith J. CNN-Россия` → `Smith⍽J. CNN-Россия`,
+  `Smith J. R. IT-Отдел` → `Smith⍽J.⍽R. IT-Отдел`, `J. SMITH-Петров` unglued); a surname with no
+  word of the language's script stays unglued (`А. Smith-Jones`). A word of one script is read as in
+  0.1.1 (`Иванов И. И. СМИ-отдел` → `Иванов И.⍽И.⍽СМИ-отдел`, unchanged). Found by review.
 - `report_template` gives a `Protected` piece longer than `u32::MAX` bytes its whole length in its
   protected span; the range was cut to `u32::MAX` (design section 3.11). Such a piece is no part of
   the call's text, so the limit of design section 3.4 does not apply to it. Found by review.

@@ -635,6 +635,12 @@ const RU_INITIALS: &[(&str, &str)] = &[
     ("дом XIX-XXм А. С. дом", "дом XIX-XXм А. С. дом"),
     ("А. IT-отдел", "А. IT-отдел"),
     ("А. IT-Отдел", "А.⍽IT-Отдел"),
+    // A word in capitals is an acronym, not a surname of the compound on its own, so the
+    // initials stay with the real surname before them (design section 8.7, C65).
+    ("Иванов И. И. МВД-FBI", "Иванов⍽И.⍽И. МВД-FBI"),
+    ("Иванов И. И. СМИ-Smith", "Иванов⍽И.⍽И. СМИ-Smith"),
+    ("А. МВД-Smith", "А. МВД-Smith"),
+    ("А. ПУШКИН-Smith", "А. ПУШКИН-Smith"),
     // Spaces other than a single U+0020 are not glued.
     ("А.\tПетров", "А.\tПетров"),
     ("А.\nПетров", "А.\nПетров"),
@@ -676,6 +682,17 @@ const EN_INITIALS: &[(&str, &str)] = &[
     ("J. Петров-Сидоров", "J. Петров-Сидоров"),
     ("Smith J. HR-отдел", "Smith⍽J. HR-отдел"),
     ("J. Smith-jones-Петров", "J. Smith-jones-Петров"),
+    // A word in capitals is an acronym, not a surname of the compound on its own: a Latin acronym
+    // or Roman numeral with a Russian word is no surname in English either (design section 8.7,
+    // C65).
+    ("J. XIX-XXм", "J. XIX-XXм"),
+    ("XIX-XXм J. R.", "XIX-XXм J. R."),
+    ("Smith J. XIX-XXм", "Smith⍽J. XIX-XXм"),
+    ("Smith J. R. IT-Отдел", "Smith⍽J.⍽R. IT-Отдел"),
+    ("Smith J. CNN-Россия", "Smith⍽J. CNN-Россия"),
+    ("Smith J. МВД-FBI", "Smith⍽J. МВД-FBI"),
+    ("J. SMITH-Петров", "J. SMITH-Петров"),
+    ("J. Smith-ПЕТРОВ", "J.⍽Smith-ПЕТРОВ"),
 ];
 
 #[test]

@@ -404,7 +404,12 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   (section 8.2) and a surname where every word of it is capitalized and one of them is a surname of
   the language's script on its own, so `А. Пушкин-Smith` → `А.⍽Пушкин-Smith` and `J. Smith-Петров` →
   `J.⍽Smith-Петров`, while `IT-отдел`, `SMS-рассылка` and `XIX-XXм` are no surnames and take no
-  initials (`Иванов⍽И.⍽И. IT-отдел`; C62). The spaces inside the pattern are glued: `А. С. Пушкин` →
+  initials (`Иванов⍽И.⍽И. IT-отдел`; C62). A word of the compound in capitals is an acronym or a
+  numeral and no surname on its own, so `МВД-FBI` and `СМИ-Smith` are no surnames in Russian, and
+  `XIX-XXм`, `IT-Отдел`, `CNN-Россия` and `SMITH-Петров` none in English (`Smith⍽J. CNN-Россия`;
+  C65). A word of one script is read as a whole, as in 0.1.1: `СМИ-отдел` and `BBC-news` are
+  surnames, so `Иванов И. И. СМИ-отдел` → `Иванов И.⍽И.⍽СМИ-отдел` while `Иванов И. И. IT-отдел`
+  keeps the initials with `Иванов` (C65). The spaces inside the pattern are glued: `А. С. Пушкин` →
   `А.⍽С.⍽Пушкин`, `J. R. R. Tolkien` → `J.⍽R.⍽R.⍽Tolkien`. A compact `А.С.` gets no inserted space;
   only the space before the surname is glued. Two or more initials, the reversed form and a single
   initial before a surname are glued wherever they stand (`от⍽И.⍽Петрова`, `Автор: А.⍽Пушкин`,

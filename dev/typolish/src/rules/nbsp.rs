@@ -638,7 +638,9 @@ fn first_visible(cx: &Cx<'_>, f: &Frag) -> Option<usize> {
 /// A surname: a capitalized word of the language's script of at least two letters. A compound word
 /// with words of two scripts (`Пушкин-Smith`) is a word of each of them (design section 8.2) and a
 /// surname where every word of it is capitalized and one is a surname of the language's script on
-/// its own; `IT-отдел` and `XIX-XXм` are not (design section 8.7, C62).
+/// its own; `IT-отдел` and `XIX-XXм` are not (design section 8.7, C62). A word of the compound in
+/// capitals is an acronym and no surname on its own, so `МВД-FBI`, `CNN-Россия` and `SMITH-Петров`
+/// are no surnames in any language (C65).
 fn surname(cx: &Cx<'_>, f: &Frag) -> bool {
     if !is_word(cx, f)
         || cx
@@ -654,27 +656,32 @@ fn surname(cx: &Cx<'_>, f: &Frag) -> bool {
     mask == language_bit(cx) || (mask & language_bit(cx) != 0 && compound_surname(cx, f))
 }
 
-/// The letters of one word of a compound: their scripts, their number and whether the first is
-/// uppercase.
+/// The letters of one word of a compound: their scripts, their number, whether the first is
+/// uppercase and whether a later one is lowercase.
 #[derive(Clone, Copy, Default)]
 struct Part {
     mask: u8,
     n: usize,
     capital: bool,
+    lower: bool,
 }
 
 impl Part {
     fn push(&mut self, c: char) {
         if self.n == 0 {
             self.capital = c.is_uppercase();
+        } else {
+            self.lower |= c.is_lowercase();
         }
         self.mask |= script_bit(c);
         self.n += 1;
     }
 
-    /// A surname of the script `bit` on its own: capitalized, at least two letters, all of `bit`.
+    /// A surname of the script `bit` on its own: capitalized, at least two letters, all of `bit`,
+    /// and not in capitals (`МВД`, `XIX` and `IT` are acronyms or numerals; design section 8.7,
+    /// C65).
     fn own(self, bit: u8) -> bool {
-        self.capital && self.n >= 2 && self.mask == bit
+        self.capital && self.lower && self.n >= 2 && self.mask == bit
     }
 }
 
