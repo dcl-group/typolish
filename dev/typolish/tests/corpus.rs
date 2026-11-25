@@ -4,8 +4,8 @@
 //!
 //! The snapshots are plain files, updated deliberately by hand (no `insta`): after a change that
 //! is meant to alter the output, run
-//! `cargo test -p typolish --test corpus -- --ignored update_snapshots` from `dev/`, read the diff
-//! of `tests/corpus/expected/` and commit it.
+//! `TYPOLISH_UPDATE_SNAPSHOTS=1 cargo test -p typolish --test corpus -- --ignored update_snapshots`
+//! from `dev/`, read the diff of `tests/corpus/expected/` and commit it.
 
 #![allow(
     clippy::unwrap_used,
@@ -98,8 +98,8 @@ fn snapshots_match_byte_for_byte() {
     }
     assert!(
         failures.is_empty(),
-        "{} of {} snapshots differ (update deliberately with \
-         `cargo test -p typolish --test corpus -- --ignored update_snapshots`):\n{}",
+        "{} of {} snapshots differ (update deliberately with `TYPOLISH_UPDATE_SNAPSHOTS=1 \
+         cargo test -p typolish --test corpus -- --ignored update_snapshots`):\n{}",
         failures.len(),
         all_snapshots().len(),
         failures.join("\n")
@@ -131,14 +131,24 @@ fn the_snapshot_directory_has_no_stray_files() {
     );
 }
 
+/// The variable that `update_snapshots` needs, set to `1`, before it writes anything.
+const UPDATE: &str = "TYPOLISH_UPDATE_SNAPSHOTS";
+
 /// Writes every snapshot. Run by hand, never in a normal run, and alone:
-/// `cargo test --test corpus update_snapshots -- --ignored`; never with `--include-ignored`, where
-/// it would write the snapshots while `snapshots_match_byte_for_byte` reads them. A bare
-/// `cargo test -- --ignored` runs it too: always name the test file and the test.
+/// `TYPOLISH_UPDATE_SNAPSHOTS=1 cargo test --test corpus update_snapshots -- --ignored`; never
+/// with `--include-ignored`, where it would write the snapshots while
+/// `snapshots_match_byte_for_byte` reads them. Without the variable it writes nothing and says so,
+/// so the long runs of `cargo test -- --ignored` leave the snapshots alone (design section 13.7).
+/// The variable is read here only; the crate reads no environment.
 #[test]
-#[ignore = "rewrites tests/corpus/expected/; run alone by hand after a deliberate change: \
-            cargo test --test corpus update_snapshots -- --ignored; never with --include-ignored"]
+#[ignore = "rewrites tests/corpus/expected/ with TYPOLISH_UPDATE_SNAPSHOTS=1 only; run alone by \
+            hand after a deliberate change: TYPOLISH_UPDATE_SNAPSHOTS=1 cargo test --test corpus \
+            update_snapshots -- --ignored; never with --include-ignored"]
 fn update_snapshots() {
+    if std::env::var_os(UPDATE).is_none_or(|v| v != "1") {
+        eprintln!("update_snapshots: {UPDATE} is not 1, so no snapshot is written");
+        return;
+    }
     for (lang, file, set_name, output_name, output) in all_snapshots() {
         let path = snapshot_path(lang, file, set_name, output_name);
         fs::create_dir_all(path.parent().unwrap()).unwrap();

@@ -576,9 +576,12 @@ tests/corpus/
 `.tmpl` is a test-only mini syntax: `id = text {n:number} {name:word} {d:date} {x}`, parsed by a
 helper of about 50 lines; no Fluent dependency. The corpus serves idempotence, P1 and P2, load
 measurements and snapshots. Snapshots in `expected/` are plain files compared byte for byte; a
-failing test prints a diff, and files are updated deliberately by hand (no `insta`).
-`.gitattributes` marks `tests/corpus/**` and `tests/fixtures/**` as `-text`, since they contain
-U+00A0 and must not be normalized.
+failing test prints a diff, and files are updated deliberately by hand (no `insta`): the `#[ignore]`
+test `update_snapshots` writes them only with the variable `TYPOLISH_UPDATE_SNAPSHOTS=1` (the test
+reads it, the crate reads no environment), so `cargo test -- --ignored`, which runs the long tests,
+leaves them alone; the diff of `expected/` is read before it is committed. `.gitattributes` marks
+`tests/corpus/**` and `tests/fixtures/**` as `-text`, since they contain U+00A0 and must not be
+normalized.
 
 ### 13.8 Load and allocation
 
