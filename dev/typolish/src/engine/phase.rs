@@ -156,6 +156,11 @@ pub(crate) struct Cx<'a> {
     pub(crate) frags: &'a [Frag],
     /// The decisions of the quote phase, one per token (design section 6); empty in other phases.
     pub(crate) quotes: &'a [crate::rules::quotes::Mark],
+    /// The text of quote tokens as a second pass of the quote phase reads it, by token index in
+    /// order (design section 6.6); empty outside that pass.
+    pub(crate) overlay: &'a [(u32, char)],
+    /// The place in `overlay` of the last quote read, where the next read usually is.
+    pub(crate) hint: core::cell::Cell<usize>,
     pub(crate) pairs: Option<QuotePairs>,
     pub(crate) single_quotes: SingleQuotes,
     pub(crate) dash: Option<DashData>,
@@ -182,7 +187,24 @@ impl<'a> Cx<'a> {
 
     /// The first character of the current text of a token.
     pub(crate) fn chr(&self, i: usize) -> Option<char> {
-        match self.toks.get(i)?.repl {
+        let t = self.toks.get(i)?;
+        if !self.overlay.is_empty() && t.kind == Kind::Quote {
+            // The quotes are read mostly in order: the place of the last read, or one next to it.
+            let h = self.hint.get();
+            let near = [h, h.saturating_add(1), h.saturating_sub(1)]
+                .into_iter()
+                .find(|&k| self.overlay.get(k).is_some_and(|&(at, _)| at as usize == i));
+            let found = near.or_else(|| {
+                self.overlay
+                    .binary_search_by_key(&i, |&(at, _)| at as usize)
+                    .ok()
+            });
+            if let Some(k) = found {
+                self.hint.set(k);
+                return self.overlay.get(k).map(|&(_, c)| c);
+            }
+        }
+        match t.repl {
             Repl::Source => self.src(i).chars().next(),
             Repl::Char(c) => Some(c),
             Repl::Ellipsis(form) => ellipsis_tail(&self.data, form).chars().next(),
@@ -798,6 +820,8 @@ mod tests {
             pairs: None,
             single_quotes: SingleQuotes::NestedOnly,
             dash: None,
+            overlay: &[],
+            hint: core::cell::Cell::new(0),
             sides: core::cell::Cell::new(None),
         };
         let empty = Frag {

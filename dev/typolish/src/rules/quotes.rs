@@ -3,7 +3,8 @@
 //! The quote phase has a linear preliminary pass over the window (`analyze`): certain apostrophes
 //! and primes (step 1, design section 6.2), roles of series (6.3), families and stack matching
 //! (6.4), quotes after numbers in two passes (6.5), the all-or-nothing decision (6.6), levels (6.7)
-//! and single quotes at the top level (6.8). It leaves one decision per token; the three rules only
+//! and single quotes at the top level (6.8), then settles the result by running again over the
+//! window with the decisions applied (6.6). It leaves one decision per token; the three rules only
 //! read the decisions and propose the edits, each attributed to the rule whose behavior it is.
 //! Classification does not depend on which of the three rules are enabled.
 
@@ -198,7 +199,7 @@ pub(crate) fn local_role(cx: &Cx<'_>, i: usize) -> Option<Role> {
             let (l, r) = neighbors(cx, i);
             // As in the quote phase, a later pair overrides an earlier one: the opening role of a
             // pair that starts here wins over the closing role of a pair that ends here.
-            if class(cx, l).opens() && sign_only_partner(cx, i, || series_count(cx, i)).is_some() {
+            if class(cx, l).opens() && sign_only_partner(cx, i, || three_or_more(cx, i)).is_some() {
                 return Some(Role::Open);
             }
             if class(cx, r).ends() && sign_only_opener(cx, i).is_some() {
@@ -225,6 +226,9 @@ pub(crate) fn local_role(cx: &Cx<'_>, i: usize) -> Option<Role> {
         }
     }
 }
+
+/// The most runs of the phase that `settle` makes over one window (design section 6.6).
+const ROUNDS: usize = 3;
 
 /// No index.
 const NONE: u32 = u32::MAX;
@@ -269,6 +273,9 @@ pub(crate) struct Q {
     step1: Mark,
     /// The pair is cancelled by `SingleQuotes::NestedOnly`.
     cancelled: bool,
+    /// A `’` that closes a typed opener as the second quote of a sign-only pair (design section
+    /// 6.3).
+    sign_pair: bool,
 }
 
 /// One entry of the matching stack.
@@ -294,6 +301,42 @@ pub(crate) struct Work {
     /// and, for the opener of a pair that `’` closes, the outermost pair of the run of such pairs
     /// around one another that starts with it.
     before: Vec<[u32; 5]>,
+    /// The memory of the runs that settle the result (design section 6.6).
+    again: Again,
+}
+
+/// Working memory of the passes of `analyze` that check its result: per quote of the window, what
+/// the first pass found and the decision so far, and the text of every quote with the decisions
+/// applied.
+#[derive(Debug, Default)]
+pub(crate) struct Again {
+    saved: Vec<Saved>,
+    overlay: Vec<(u32, char)>,
+}
+
+/// One quote of the window for the passes that check the result.
+#[derive(Clone, Copy, Debug)]
+struct Saved {
+    tok: u32,
+    glyph: char,
+    /// The edit of step 1 (design section 6.2).
+    step1: Mark,
+    /// The decision so far.
+    mark: Mark,
+}
+
+impl Again {
+    const fn new() -> Again {
+        Again {
+            saved: Vec::new(),
+            overlay: Vec::new(),
+        }
+    }
+
+    fn heap_bytes(&self) -> usize {
+        self.saved.capacity() * size_of::<Saved>()
+            + self.overlay.capacity() * size_of::<(u32, char)>()
+    }
 }
 
 impl Work {
@@ -302,6 +345,7 @@ impl Work {
             qs: Vec::new(),
             stack: Vec::new(),
             before: Vec::new(),
+            again: Again::new(),
         }
     }
 
@@ -309,7 +353,139 @@ impl Work {
         self.qs.capacity() * size_of::<Q>()
             + self.stack.capacity() * size_of::<Entry>()
             + self.before.capacity() * size_of::<[u32; 5]>()
+            + self.again.heap_bytes()
     }
+}
+
+/// The text that a decision writes over a token when its rule is enabled.
+fn applied(cx: &Cx<'_>, mark: Mark) -> Option<char> {
+    let active = cx.t.active_rules();
+    match mark {
+        Mark::None => None,
+        Mark::Apostrophe => active
+            .contains(crate::Rule::QuotesApostrophe)
+            .then_some(APOSTROPHE_CHAR),
+        Mark::Glyph(c) => active.contains(crate::Rule::QuotesPairs).then_some(c),
+        Mark::Prime(c) => active.contains(crate::Rule::QuotesPrimes).then_some(c),
+    }
+}
+
+/// Whether another rule may read the role of the quote at `i` (design section 8.2): the token
+/// after a space that follows anything but a quote (`dash.*`, `nbsp.dash` and the glue of design
+/// section 8.2 read whether it opens), the token before a space and a dash (`dash.*` and
+/// `nbsp.dash` read whether it closes), and the token after an ellipsis (`ellipsis.*`).
+fn role_read(cx: &Cx<'_>, i: usize) -> bool {
+    let space = |j: Option<usize>| {
+        matches!(
+            j.and_then(|j| cx.kind(j)),
+            Some(Kind::Space | Kind::Newline)
+        )
+    };
+    let prev = cx.prev(i);
+    let next = cx.next(i);
+    let before_space = prev.and_then(|p| cx.prev(p));
+    (space(prev) && before_space.is_some_and(|b| !is_quote(cx, b)))
+        || prev.and_then(|p| cx.kind(p)) == Some(Kind::Dots)
+        || (space(next)
+            && next.and_then(|n| cx.next(n)).and_then(|d| cx.kind(d)) == Some(Kind::Dash))
+}
+
+/// Settles the result of the first pass in `marks` (design sections 6.6 and 6.11): runs the phase
+/// again over the window with the decisions applied and takes what it adds, until a run changes
+/// nothing, at most `ROUNDS` runs. A token changes at most once, since only straight quotes get
+/// decisions. When the last run would still change a quote, or a quote that keeps its text has
+/// another role for the other rules (`local_role`, design section 8.2) in the result than in the
+/// input, the window does not converge: no straight quote changes, step 1 stays, and the first
+/// such quote is returned.
+fn settle(cx: &Cx<'_>, work: &mut Work, marks: &mut Vec<Mark>) -> Option<usize> {
+    let Work {
+        qs,
+        stack,
+        before,
+        again: Again { saved, overlay },
+    } = work;
+    // Only quotes get decisions: they are kept per quote while `marks` serves the next pass.
+    saved.clear();
+    saved.extend(qs.iter().map(|q| Saved {
+        tok: q.tok,
+        glyph: q.glyph,
+        step1: q.step1,
+        mark: marks.get(q.tok as usize).copied().unwrap_or_default(),
+    }));
+    // The text of every quote after the decisions so far.
+    let fill = |overlay: &mut Vec<(u32, char)>, saved: &[Saved]| {
+        overlay.clear();
+        overlay.extend(
+            saved
+                .iter()
+                .map(|q| (q.tok, applied(cx, q.mark).unwrap_or(q.glyph))),
+        );
+    };
+    fill(overlay, saved);
+    let mut rec = crate::engine::record::NoRecord;
+    let mut result = None;
+    for round in 0..ROUNDS {
+        let cx2 = Cx {
+            overlay,
+            hint: core::cell::Cell::new(0),
+            sides: core::cell::Cell::new(None),
+            ..*cx
+        };
+        let mut sink = Sink {
+            rec: &mut rec,
+            pieces: &[],
+            lens: &[],
+        };
+        decide(&cx2, qs, stack, before, marks, &mut sink, false);
+        let mut first = None;
+        for q in saved.iter_mut() {
+            let i = q.tok as usize;
+            let m = marks.get(i).copied().unwrap_or_default();
+            if let Some(c) = applied(cx, m)
+                && cx2.chr(i) != Some(c)
+            {
+                first = first.or(Some(i));
+                q.mark = m;
+            }
+        }
+        if first.is_none() {
+            break;
+        }
+        if round + 1 == ROUNDS {
+            result = first;
+            break;
+        }
+        fill(overlay, saved);
+    }
+    if result.is_none() {
+        let cx2 = Cx {
+            overlay,
+            hint: core::cell::Cell::new(0),
+            sides: core::cell::Cell::new(None),
+            ..*cx
+        };
+        result = saved.iter().find_map(|q| {
+            let i = q.tok as usize;
+            (applied(cx, q.mark).is_none()
+                && role_read(cx, i)
+                && local_role(cx, i) != local_role(&cx2, i))
+            .then_some(i)
+        });
+    }
+    marks.clear();
+    marks.resize(cx.toks.len(), Mark::None);
+    for q in saved.iter() {
+        let mark = match result {
+            // No straight quote changes; step 1 stays.
+            Some(_) if matches!(q.glyph, '"' | '\'') => q.step1,
+            Some(_) => Mark::None,
+            None => q.mark,
+        };
+        if let Some(slot) = marks.get_mut(q.tok as usize) {
+            *slot = mark;
+        }
+    }
+    result
 }
 
 /// The matching stack with a pointer to the topmost entry of every family, so finding the nearest
@@ -411,9 +587,68 @@ pub(crate) fn analyze<R: Recorder>(
     sink: &mut Sink<'_, R>,
     report: bool,
 ) {
+    if !decide(
+        cx,
+        &mut work.qs,
+        &mut work.stack,
+        &mut work.before,
+        marks,
+        sink,
+        report,
+    ) {
+        return;
+    }
+    // A result without edits is a fixed point.
+    if !marks.iter().any(|&m| applied(cx, m).is_some()) {
+        return;
+    }
+    // A later pass would change the result: the window does not converge (design section 6.6).
+    if let Some(t) = settle(cx, work, marks).and_then(|i| cx.tok(i))
+        && report
+    {
+        sink.diagnostic_of(
+            DiagnosticKind::CrossingQuotes,
+            Severity::Warning,
+            Some(crate::Rule::QuotesPairs),
+            loc(t),
+        );
+    }
+}
+
+/// The decisions of the quote phase over the window (`analyze`), without the check of a second
+/// pass; whether the window converges.
+fn decide<R: Recorder>(
+    cx: &Cx<'_>,
+    qs: &mut Vec<Q>,
+    stack: &mut Vec<Entry>,
+    before: &mut Vec<[u32; 5]>,
+    marks: &mut Vec<Mark>,
+    sink: &mut Sink<'_, R>,
+    report: bool,
+) -> bool {
+    match decide_with(cx, qs, stack, before, marks, sink, false, true) {
+        Some(converges) if !report => converges,
+        Some(_) => decide_with(cx, qs, stack, before, marks, sink, true, true).unwrap_or(false),
+        None => decide_with(cx, qs, stack, before, marks, sink, report, false).unwrap_or(false),
+    }
+}
+
+/// `decide` with the typed sign-only pairs of design section 6.3 read as pairs when `sign_pairs`
+/// is set. `None` when such a pair stands at a level whose glyphs are not its own (design section
+/// 6.7): then the window is decided without them.
+#[allow(clippy::too_many_arguments)]
+fn decide_with<R: Recorder>(
+    cx: &Cx<'_>,
+    qs: &mut Vec<Q>,
+    stack: &mut Vec<Entry>,
+    before: &mut Vec<[u32; 5]>,
+    marks: &mut Vec<Mark>,
+    sink: &mut Sink<'_, R>,
+    report: bool,
+    sign_pairs: bool,
+) -> Option<bool> {
     marks.clear();
     marks.resize(cx.toks.len(), Mark::None);
-    let Work { qs, stack, before } = work;
     qs.clear();
     for (i, t) in cx.toks.iter().enumerate() {
         if t.kind == Kind::Quote
@@ -432,11 +667,12 @@ pub(crate) fn analyze<R: Recorder>(
                 prime: false,
                 step1: Mark::None,
                 cancelled: false,
+                sign_pair: false,
             });
         }
     }
     if qs.is_empty() {
-        return;
+        return Some(false);
     }
     let diag = |sink: &mut Sink<'_, R>, kind: DiagnosticKind, severity: Severity, t: &Tok| {
         if report {
@@ -481,10 +717,12 @@ pub(crate) fn analyze<R: Recorder>(
                 Cat::Cond => {
                     // U+2019 can close only where the neighbors allow a closing role, or as the
                     // second quote of a sign-only pair with the typed opener before it.
-                    if !(!lc.opens() && rc.ends())
-                        && !(rc.ends() && typed_sign_only(cx, q.tok as usize, lc))
-                    {
-                        q.cat = Cat::Skip;
+                    if lc.opens() || !rc.ends() {
+                        if sign_pairs && rc.ends() && typed_sign_only(cx, q.tok as usize, lc) {
+                            q.sign_pair = true;
+                        } else {
+                            q.cat = Cat::Skip;
+                        }
                     }
                 }
                 _ => {}
@@ -682,7 +920,7 @@ pub(crate) fn analyze<R: Recorder>(
         }
     }
     if !converges {
-        return;
+        return Some(false);
     }
 
     // Single quotes at the top level and levels (design sections 6.7 and 6.8).
@@ -711,6 +949,13 @@ pub(crate) fn analyze<R: Recorder>(
         }
         let opens = (q.partner as usize) > idx;
         let straight_s = q.cat == Cat::Straight && q.fam == S;
+        if opens
+            && q.cat == Cat::Typed
+            && qs.get(q.partner as usize).is_some_and(|c| c.sign_pair)
+            && level_open(cx, depth) != Some(q.glyph)
+        {
+            return None;
+        }
         if opens {
             let cancelled =
                 straight_s && cx.single_quotes == SingleQuotes::NestedOnly && enclosing == 0;
@@ -758,7 +1003,7 @@ pub(crate) fn analyze<R: Recorder>(
                 *m = q.step1;
             }
         }
-        return;
+        return Some(false);
     }
 
     // What lies between a trailing possessive and the closer of the pair around it (design section
@@ -866,6 +1111,7 @@ pub(crate) fn analyze<R: Recorder>(
             }
         }
     }
+    Some(true)
 }
 
 /// Whether the quote is a straight `'` opener that takes part, stayed unpaired and stays straight
@@ -1003,6 +1249,16 @@ fn family_index(fam: u8) -> Option<usize> {
         N => Some(1),
         _ => None,
     }
+}
+
+/// The opening glyph of a pair at `level` (design section 6.7).
+fn level_open(cx: &Cx<'_>, level: usize) -> Option<char> {
+    let pairs = cx.pairs?;
+    Some(if level.is_multiple_of(2) {
+        pairs.primary.0
+    } else {
+        pairs.nested.0
+    })
 }
 
 /// The family of the glyphs of a new pair at `level`, as `categorize` reads them on a second
@@ -1370,7 +1626,7 @@ fn sign_only_opener(cx: &Cx<'_>, i: usize) -> Option<usize> {
         return None;
     }
     let (l, _) = neighbors(cx, a);
-    (class(cx, l).opens() && sign_only_partner(cx, a, || series_count(cx, a)) == Some(i))
+    (class(cx, l).opens() && sign_only_partner(cx, a, || three_or_more(cx, a)) == Some(i))
         .then_some(a)
 }
 
@@ -1443,18 +1699,8 @@ fn at_least_three(cx: &Cx<'_>, i: usize) -> bool {
     count >= 3
 }
 
-/// The number of quotes, of any form, in the series that holds the quote at `i`.
-fn series_count(cx: &Cx<'_>, i: usize) -> usize {
-    let mut count = 1;
-    let mut l = cx.prev(i);
-    while let Some(j) = l.filter(|&j| is_quote(cx, j)) {
-        count += 1;
-        l = cx.prev(j);
-    }
-    let mut r = cx.next(i);
-    while let Some(j) = r.filter(|&j| is_quote(cx, j)) {
-        count += 1;
-        r = cx.next(j);
-    }
-    count
+/// The number of quotes of the series that holds the quote at `i` as `sign_only_partner` reads
+/// it: 3 for three or more, found in constant time (`at_least_three`), 0 otherwise.
+fn three_or_more(cx: &Cx<'_>, i: usize) -> usize {
+    if at_least_three(cx, i) { 3 } else { 0 }
 }

@@ -100,59 +100,69 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   `"S' 'dogs" -the` and `TypographicChar`, now `"S’ 'dogs" -the` and no report). Where nothing could
   pair with the opener, the possessive is placed as before (`"a "dogs' 'x" b"` gives
   `“a⍽‘dogs’ 'x’ b”`, en-GB `"s' 'x"` gives `‘s’ 'x’`), and with only text between the possessive
-  and the closer nothing changes (`“He said ‘the⍽dogs’ bowls’”`). Typed input is not a fixed point
-  in every case since this change: a possessive kept straight because the closer of its typed pair
-  follows `s` is placed by a second pass when a possessive placed inside the same pair closes it
-  early. English, Prose and Interface: `‘S' ‘s'’ s’` gives `‘S' ‘s’’ s’`, then `‘S’ ‘s’’ s’`, which
-  0.1.1 gave at once; in a declared language whose primary pair is `‘’` (en-GB), where the first
-  pass writes a straight `"` as `‘`, input without a typed `‘` too: `"s' y’ "" s"` gives
-  `‘s' y’ “” s’`, then `‘s’ y’ “” s’`, which 0.1.1 gave at once. A typed `’` inside a straight pair,
-  which the first pass reads as an apostrophe and a second pass as the closer of the pair, moves the
-  closer the same way. English, Prose, Interface and `ALL`, every `SingleQuotes` mode:
-  `‘S' "x’" s’`: `‘S’ ‘x’’ s’` → `‘S' ‘x’’ s’` (then `‘S’ ‘x’’ s’` on a second pass);
-  `"He said "the boys’ dogs' "x" bowls" were empty."`:
-  `“He said ‘the⍽boys’ dogs’ “x” bowls’ were empty.”` →
-  `“He said ‘the⍽boys’ dogs' “x” bowls’ were empty.”` (then the first form again). en-GB, the same
-  sets, `NestedOnly` and `Everywhere`: `She said "the boys’ dogs' 'bowls" were empty.`:
-  `She said ‘the⍽boys’ dogs’ 'bowls’ were empty.` → `She said ‘the⍽boys’ dogs' 'bowls’ were empty.`
-  (then the first form again); `"a’ s' 's"`: `‘a’ s’ 's’` → `‘a’ s' 's’` (then the first form
-  again). P2 fails on all of these inputs too, since `to_plain` of the new result typesets as a
-  second pass does or to another result; on the English rows 0.1.1 failed it as well, while on the
-  en-GB rows it held in 0.1.1: with `NestedOnly`, `"a’ s' 's"` and
-  `She said "the boys’ dogs' 'bowls" were empty.` now give a plain form that typesets as the second
-  pass, and `‘S' ‘s'’ s’` gives the plain form `"S' "s'" s"`, which typesets as `‘S' “s’” s’`.
-  Listed in design sections 10.8 and 12.2.
+  and the closer nothing changes (`“He said ‘the⍽dogs’ bowls’”`). In en-GB, where `’` closes the
+  primary pair, a typed `’` inside a straight pair keeps the possessive before the pair straight
+  too, for `to_plain`; Prose, Interface and `ALL`: `‘S' "x’" s’`: `‘S’ “x’” s’` → `‘S' “x’” s’`
+  (every `SingleQuotes` mode); `‘"s'" s' 's’`: `‘“s’” s’ 's’` → `‘“s’” s' 's’` (`NestedOnly` and
+  `Everywhere`). Where a possessive placed inside the same pair, or a typed `’` that a straight pair
+  covers on the first pass, would close the pair early on a second pass and move its closer, the
+  quote phase settles the window (below) and gives the output of 0.1.1, which is a fixed point:
+  English `‘S' ‘s'’ s’` gives `‘S’ ‘s’’ s’`, `‘S' "x’" s’` gives `‘S’ ‘x’’ s’`, and en-GB
+  `"a’ s' 's"` gives `‘a’ s’ 's’`, as in 0.1.1.
 - A typed `’` closes the `‘` of its pair when only signs, or nothing, stand between them and the
   neighbors allow the sign-only pair (design section 6.3), as the plain `""` that a first pass
   typesets as `‘’` does; other rules read the same closing role. In a declared language whose
   primary pair is `‘’` (en-GB), Prose: `'a ""-3'` gives `'a⍽‘’-3'` as before, and the second pass no
-  longer gives `'a⍽‘’-3′`. Typed `'a ‘’-3'`, and likewise `'a ‘’ 3'`: in English and en-GB, Prose
-  and `ALL`, `'a⍽‘’-3′` → `'a⍽‘’-3'`; with `SingleQuotes::Everywhere` the outer pair now pairs:
-  English `'a⍽‘’-3′` (Prose, `ALL`) and `'a⍽‘’-3'` (Interface) → `“a⍽‘’-3”`, en-GB `'a⍽‘’-3′`
-  (Prose, `ALL`) and `'a⍽‘’-3'` (Interface) → `‘a⍽‘’-3’`. English, both sets: `"a ‘’ b"`: `"a⍽‘’ b"`
-  → `“a⍽‘’ b”`; `"a ‘-’ b"`: `"a⍽‘-’ b"` → `“a⍽‘-’ b”`; `"a ‘’, b"`: `"a⍽‘’, b"` → `“a⍽‘’, b”`. The
-  closed `‘` no longer counts as a neutral opener, so a trailing possessive after it is placed
-  (English and en-GB, Prose, Interface and `ALL`: `‘’\n”bowls'`: `‘’\n”bowls'` → `‘’\n”bowls’`), and
-  the rules that read the role of a quote read it too (English and en-GB, the same sets:
-  `)(\n ‘’ - ')“` gives `‘’ —` where it gave `‘’ -`). In a declared language with Russian data whose
-  primary pair is `‘’`, the dash after a sign-only pair that the first pass writes as `‘’` is glued,
-  as after `«»` in Russian: Prose, Interface and `ALL`, every `SingleQuotes` mode,
-  `Он сказал "" - и ушёл`: `Он⍽сказал ‘’ — и⍽ушёл` → `Он⍽сказал ‘’⍽— и⍽ушёл` (Interface:
-  `Он сказал ‘’⍽— и⍽ушёл`); `"" - ""`: `‘’ — ‘’` → `‘’⍽— ‘’`; `Он сказал "-" - и ушёл`: `‘-’ —` →
-  `‘-’⍽—`. Such a pair is no longer reported: `x ‘’ y` gave `UnmatchedQuote` (info), `"a ‘’ b"`
-  `CrossingQuotes` (warning). Typed input is not a fixed point in every case since this change
-  (design section 10.8), and 0.1.1 gave the first result on both passes on each of the following
-  inputs. Where the first pass writes a straight quote as `‘` before signs, or nothing, and a typed
-  `’`, a second pass reads them as a sign-only pair and the `’` as its closer: English, Prose and
-  Interface, `NestedOnly` and `Everywhere`, `"a '-’ - x' c"` gives `“a⍽‘-’ - x’ c”`, then
-  `“a⍽‘-’ — x’ c”`; en-GB, Prose: `"-’ - x"` gives `‘-’ - x’`, then `‘-’ — x’`; en-GB, Prose,
-  `SingleQuotes::Everywhere`: `‘'—’ l' s'` gives `‘‘—’ l’ s'`, then `‘‘—’ l’ s’`. A typed `‘-’`
-  before a straight pair no longer keeps a trailing possessive straight on a second pass: en-GB,
-  Prose, Interface and `ALL`, every `SingleQuotes` mode, `‘"-" "S'’"` gives `‘‘-’ ‘S'’’`, then
-  `‘‘-’ ‘S’’’`. The typed `‘’` that a first pass writes in a chain of sign-only pairs closes on a
-  second pass and cuts the chain: English, every set, `NestedOnly` (the default) and `Everywhere`,
-  `"x ''-'' y"` gives `“x ''-‘’ y”`, then `“x ‘’-‘’ y”`, and `"""x\n''-''\ne"""` gives
-  `“‘“x\n''-‘’\ne”’”`, then `“‘“x\n‘’-‘’\ne”’”`.
+  longer gives `'a⍽‘’-3′`. Typed `'a ‘’-3'`, and likewise `'a ‘’ 3'`: in en-GB, Prose and `ALL`,
+  `NestedOnly`, `'a⍽‘’-3′` → `'a⍽‘’-3'`; in English with `SingleQuotes::Everywhere` the outer pair
+  now pairs: `'a⍽‘’-3′` (Prose, `ALL`) and `'a⍽‘’-3'` (Interface) → `“a⍽‘’-3”`. English, both sets:
+  `"a ‘’ b"`: `"a⍽‘’ b"` → `“a⍽‘’ b”`; `"a ‘-’ b"`: `"a⍽‘-’ b"` → `“a⍽‘-’ b”`; `"a ‘’, b"`:
+  `"a⍽‘’, b"` → `“a⍽‘’, b”`. The closed `‘` no longer counts as a neutral opener, so a trailing
+  possessive after it is placed (English and en-GB, Prose, Interface and `ALL`: `‘’\n”bowls'`:
+  `‘’\n”bowls'` → `‘’\n”bowls’`), and the rules that read the role of a quote read it too (English
+  and en-GB, the same sets: `)(\n ‘’ - ')“` gives `‘’ —` where it gave `‘’ -`). In a declared
+  language with Russian data whose primary pair is `‘’`, the dash after a sign-only pair that the
+  first pass writes as `‘’` is glued, as after `«»` in Russian: Prose, Interface and `ALL`, every
+  `SingleQuotes` mode, `Он сказал "" - и ушёл`: `Он⍽сказал ‘’ — и⍽ушёл` → `Он⍽сказал ‘’⍽— и⍽ушёл`
+  (Interface: `Он сказал ‘’⍽— и⍽ушёл`); `"" - ""`: `‘’ — ‘’` → `‘’⍽— ‘’`; `Он сказал "-" - и ушёл`:
+  `‘-’ —` → `‘-’⍽—`. Such a pair is no longer reported: `x ‘’ y` gave `UnmatchedQuote` (info),
+  `"a ‘’ b"` `CrossingQuotes` (warning). The quote phase reads such a pair only where it stands at a
+  level whose opening glyph is its `‘`, the level at which a first pass writes a plain sign-only
+  pair as `‘’` (design section 6.3); elsewhere the window is decided as in 0.1.1, since a typed `‘’`
+  at the level of `“”` is no output of plain text and its plain form would not typeset back. So the
+  typed `'a ‘’-3'` and `'a ‘’ 3'` keep the output of 0.1.1 in English with `NestedOnly` (`'a⍽‘’-3′`)
+  and in en-GB with `Everywhere` (`'a⍽‘’-3′` in Prose and `ALL`, `'a⍽‘’-3'` in Interface).
+- The quote phase settles its result (design section 6.6): it runs again over the paragraph with its
+  decisions applied, as a second call would read it, and takes what that run adds, at most three
+  runs; a paragraph that the third run still changes, or where a quote that keeps its text would get
+  another role in a place that another rule reads (after a space, before a space and a dash, after
+  an ellipsis), keeps its straight quotes with `CrossingQuotes` (warning). So `typeset` is
+  idempotent on the windows where its first pass was not: sign-only pairs that share a quote, a
+  typed `‘` that the first pass left neutral and a second pass paired, a possessive or a covered `’`
+  that closes a pair early on a second pass, and a typed `’` after a straight quote and signs that a
+  second pass reads as the closer of a sign-only pair. P2 holds again on the en-GB inputs where
+  0.1.1 held it and the first pass of 0.1.2 broke it (`"a’ s' 's"`, `‘S' ‘s'’ s’`,
+  `She said "the boys’ dogs' 'bowls" were empty.`, with `NestedOnly`), and on the sign-only chains
+  in English (`"x ''-'' y"`; `""-''` with `SingleQuotes::Everywhere`). Each row gives the output of
+  0.1.1, which a second pass changed, and the output now. English, Prose, Interface and `ALL`,
+  `NestedOnly` and `Everywhere`: `"x ''-'' y"`: `“x ''-‘’ y”` → `“x ‘’-‘’ y”`; `"""x\n''-''\ne"""`:
+  `“‘“x\n''-‘’\ne”’”` → `“‘“x\n‘’-‘’\ne”’”`; Russian, the same: `"x ''-'' y"`: `«x ''-„“ y»` →
+  `«x „“-„“ y»`. With `SingleQuotes::Everywhere`: English `''-''`: `''-“”` → `“”-“”`, `'('')'`:
+  `'('“)”` → `“(”“)”`; Russian `''—''`: `''—«»` → `«»—«»`. English, every `SingleQuotes` mode:
+  `He said ‘the dogs' "5"’`: `He said ‘the⍽dogs' “5”’` → `He said ‘the⍽dogs’ “5”’`; `‘s' "0"’`:
+  `‘s' “0”’` → `‘s’ “0”’`; `‘"0" S'’`: `‘“0” S'’` → `‘“0” S’’`; `‘"8"’ s'`: `‘“8”’ s'` → `‘“8”’ s’`.
+  English, `NestedOnly`: `x ‘a 'b' "2"’ y`: `x ‘a⍽'b' “2”’ y` → `x ‘a⍽‘b’ “2”’ y`. en-GB (primary
+  pair `‘’`), every `SingleQuotes` mode: `‘ "dogs'’" x`: `‘ ‘dogs'’’ x` → `‘ ‘dogs’’’ x`;
+  `‘"s'»’".`: `‘‘s'»’’.` → `‘‘s’»’’.`; `NestedOnly`: `‘ '' "2"’`: `‘ '' ‘2’’` → `‘ “” ‘2’’`. Where
+  the result would give a quote that the dash rule reads another role than the input gave it, the
+  quotes stay straight. 0.1.1 gave a fixed point on the following inputs, since it read the `’`
+  after `‘-` as no closer; since the typed sign-only pair above a second pass reads it as the closer
+  of `‘-’` and sets the dash after it, so the paragraph keeps its straight quotes. English, Prose
+  and Interface, `NestedOnly` and `Everywhere`: `"a '-’ - x' c"`: `“a⍽‘-’ - x’ c”` →
+  `"a⍽'-’ - x' c"`; en-GB, every set and `SingleQuotes` mode: `"-’ - x"`: `‘-’ - x’` → `"-’ - x"`,
+  `s Paul "(’ -- St.)"`: `s Paul ‘(’ -- St.)’` → `s Paul "(’ -- St.)"` (design section 10.8). The
+  settling runs the phase again on a paragraph whose quotes it changes; measured in a release build,
+  English Interface, `"a" ` repeated to 1 MiB: 227 ns per byte before it, 277 after.
 - `to_plain`, `to_plain_template`, `lint` and `lint_template` are linear in the length of the text
   on long runs of quote characters in one paragraph as well (design section 12.1): the neighbors of
   a series of quotes, the open pairs and the later closer of a `’` after `s` were searched again for

@@ -253,65 +253,14 @@ expectation):
   `key: ""` gives `key: «»`. A frozen core that does not end in `=` keeps its wrapper quotes as
   candidates, so `Путь /etc/"" и "да".` fails the paragraph the same way, with `UnmatchedQuote`
   (warning, section 6.1), while `key=""` stays as written.
-- Sign-only pairs that share a quote (section 6.3; in `''-''` the second `'` closes the pair `''`
-  and opens the pair `'-'`) are not idempotent: a later pair overrides the roles of an earlier one,
-  so in Russian `"x ''-'' y"` gives `«x ''-„“ y»`, and a second pass, where the glyphs cut the
-  chain, pairs the first two quotes (`«x „“-„“ y»`). The same class breaks P2 (section 12.2): in
-  English `"x ''-'' y"` gives `“x ''-‘’ y”`, whose `to_plain` `"x ''-"" y"` is typeset as
-  `“x ‘’-‘’ y”`. Choice C55 (0.1.2) extends the class to inputs on which 0.1.1 was a fixed point,
-  since the typed `‘’` that a first pass writes now closes on the second pass and cuts the chain.
-  English, every set, `NestedOnly` (the default) and `Everywhere`: `"x ''-'' y"` gives
-  `“x ''-‘’ y”`, then `“x ‘’-‘’ y”`, and `"""x\n''-''\ne"""` gives `“‘“x\n''-‘’\ne”’”`, then
-  `“‘“x\n‘’-‘’\ne”’”`. This is a defect of the quote phase (sections 6.3 and 6.11), not a choice.
-- A typed `‘` that the first pass leaves neutral and a second pass pairs lets a trailing possessive
-  through, or a straight `'` pair that the first pass cancelled, so the output is not idempotent:
-  the neutral `‘` keeps the possessive straight (section 6.6), and the second pass pairs the `‘` and
-  places the possessive. In a declared language whose primary pair is `‘’` (en-GB) a straight pair
-  around a typed `’` covers that `’` on the first pass: `‘ "dogs'’" x` gives `‘ ‘dogs'’’ x`, then
-  `‘ ‘dogs’’’ x`. In English a straight `"` opener whose closer is a weak quote after a digit
-  (section 6.5) covers the typed `’` in pass 1, which ignores weak quotes: `He said ‘the dogs' "5"’`
-  gives `He said ‘the⍽dogs' “5”’`, then `He said ‘the⍽dogs’ “5”’` (also `‘"0" S'’`). Both are older
-  than 0.1.2, but choice C55 (0.1.2) extends the first to inputs on which 0.1.1 was a fixed point: a
-  typed `‘-’` before the straight pair now closes, so it no longer keeps the possessive straight on
-  the second pass, and en-GB `‘"-" "S'’"` gives `‘‘-’ ‘S'’’`, then `‘‘-’ ‘S’’’` (every set and
-  mode). The same re-pairing also encloses a straight `'` pair that the first pass cancelled at the
-  top level (`SingleQuotes::NestedOnly`, section 6.8), which then pairs: English `x ‘a 'b' "2"’ y`
-  gives `x ‘a⍽'b' “2”’ y`, then `x ‘a⍽‘b’ “2”’ y` (older than 0.1.2). This is a defect of the quote
-  phase (sections 6.6 and 6.11), not a choice.
-- A straight quote that the first pass writes as `‘` before signs, or nothing, and a typed `’` is a
-  sign-only pair on the second pass (choice C55: a typed `’` closes the `‘` of a sign-only pair),
-  which the first pass did not see, so the second pass reads the quotes and their roles differently.
-  English, Prose and Interface: `"a '-’ - x' c"` gives `“a⍽‘-’ - x’ c”`, then `“a⍽‘-’ — x’ c”` (with
-  `NestedOnly` and `Everywhere`), where the `’` now closes the sign-only pair and the dash rule
-  reads it as a closing quote; en-GB, Prose: `"-’ - x"` gives `‘-’ - x’`, then `‘-’ — x’`; with
-  `SingleQuotes::Everywhere`, `‘'—’ l' s'` gives `‘‘—’ l’ s'`, then `‘‘—’ l’ s’`. Version 0.1.1 gave
-  the first result on both passes; the defect came with C55 in 0.1.2. This is a defect of the quote
-  phase (sections 6.3 and 6.11), not a choice.
-- A trailing possessive placed inside a typed pair that `’` closes lets a second pass close that
-  pair early, and the pairs around it whose closer is `’` with it (the run of section 6.6); a
-  possessive that the first pass kept straight because of where the old closer stood (section 6.6,
-  choice C54: the closer follows `s` and a quote of a pair stands between) then reads another pair
-  and is placed. English, Prose and Interface: `‘S' ‘s'’ s’` gives `‘S' ‘s’’ s’`, then `‘S’ ‘s’’ s’`
-  (every `SingleQuotes` mode); `‘"s'" s' 's’` gives `‘‘s’’ s' 's’`, then `‘‘s’’ s’ 's’`
-  (`NestedOnly` and `Everywhere`). Version 0.1.1 gave the second result in one pass; the defect came
-  with C54 in 0.1.2. The input needs no typed `‘`: in a declared language whose primary pair is `‘’`
-  (en-GB) the first pass writes a straight `"` as `‘`, and `"s' y’ "" s"` gives `‘s' y’ “” s’`, then
-  `‘s’ y’ “” s’` (every `SingleQuotes` mode), which 0.1.1 gave at once. The pairs move the same way
-  when a typed `’` inside a straight pair, which the first pass reads as an apostrophe because the
-  `"` entry covers it (section 6.4), closes the typed `‘` of that pair on the second pass. English,
-  Prose, Interface and `ALL`, every `SingleQuotes` mode: `‘S' "x’" s’` gives `‘S' ‘x’’ s’`, then
-  `‘S’ ‘x’’ s’`; `"He said "the boys’ dogs' "x" bowls" were empty."` gives
-  `“He said ‘the⍽boys’ dogs' “x” bowls’ were empty.”`, then
-  `“He said ‘the⍽boys’ dogs’ “x” bowls’ were empty.”`; en-GB (`NestedOnly` and `Everywhere`):
-  `She said "the boys’ dogs' 'bowls" were empty.` gives
-  `She said ‘the⍽boys’ dogs' 'bowls’ were empty.`, then
-  `She said ‘the⍽boys’ dogs’ 'bowls’ were empty.`; en-GB, `NestedOnly` and `Everywhere`:
-  `"a’ s' 's"` gives `‘a’ s' 's’`, then `‘a’ s’ 's’`. 0.1.1 gave the second result at once on all of
-  them. P2 fails on these inputs too (section 12.2), since `to_plain` of the first result typesets
-  as a second pass does or to another result: on the en-US rows 0.1.1 failed it as well, while on
-  the en-GB rows (`‘S' ‘s'’ s’`, which now gives `‘S' “s’” s’` from its plain form,
-  `She said "the boys’ dogs' 'bowls" were empty.` and `"a’ s' 's"` with `NestedOnly`) 0.1.1 held it.
-  This is a defect of the quote phase (sections 6.6 and 6.11), not a choice.
+- A window whose result a second pass would read in another way, and which three runs of the quote
+  phase do not settle, keeps its straight quotes with `CrossingQuotes` (section 6.6, choice C59); so
+  does a window where a quote that keeps its text would get another role for a rule that reads it.
+  In English, Prose and Interface, `NestedOnly` and `Everywhere`, `"a '-’ - x' c"` gives
+  `"a⍽'-’ - x' c"`, where version 0.1.1 gave `“a⍽‘-’ - x’ c”`: on a second pass the `’` after `‘-`
+  closes a sign-only pair (choice C55) and the dash rule reads it as a closing quote; in en-GB
+  `"-’ - x"` and `s Paul "(’ -- St.)"` stay as written for the same reason, in every `SingleQuotes`
+  mode, where 0.1.1 gave `‘-’ - x’` and `s Paul ‘(’ -- St.)’`.
 - `to_plain` reads the glyphs of a pair as `"`, or as `'` where that does not pair again (section
   12.1); in a window where no reading it tries brings the quotes back, P2 fails (section 12.2),
   although the typeset text is a fixed point. A straight `"` without a role inside a pair turns into

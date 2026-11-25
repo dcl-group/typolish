@@ -129,7 +129,13 @@ and `‘’`, `‘-’` and `‘?’` close as the plain `""`, `"-"` and `"?"` t
 them do (section 6.11): `"a ‘-’ b"` → `“a ‘-’ b”`. In a language whose primary pair is `‘’` (en-GB)
 a first pass typesets `'a ""-3'` as `'a ‘’-3'`: the closed pair `‘’` leaves the top-level `'` that
 pass 1 left unpaired on top of the stack, so the weak `'` after `3` pairs with it on every pass
-(section 6.5), where an open `‘` would make it a prime on the second.
+(section 6.5), where an open `‘` would make it a prime on the second. Such a typed pair counts only
+where it stands at a level whose opening glyph is its `‘` (section 6.7), the level at which a first
+pass writes the plain pair as `‘’`: where it would stand at another level, the window is decided as
+if the `’` closed nothing (choice C60). In en-GB with `SingleQuotes::Everywhere` and the quote rules
+alone, `'a ‘’ 3'` gives `'a ‘’ 3′`, as in version 0.1.1, where the closed pair would let the outer
+quotes pair and give `‘a ‘’ 3’`, a typed `‘’` at the level of `“”` that no plain text typesets to,
+so P2 (section 12.2) could not hold.
 
 ### 6.4 Families and stack matching
 
@@ -229,6 +235,27 @@ Then, when the window converges:
 - a straight `'` that is in no pair after pass 2 at the start of an elision of the language's list
   that a straight `'` closes at once (section 6.2) becomes `’`: unpaired, it is the elision
   (`Never`: `'twas'` → `’twas’`, the last `'` a trailing possessive).
+
+**Settling** (choice C59). The rules above aim at a result that a second pass leaves as it is
+(section 6.11), and miss in a few classes of windows: sign-only pairs that share a quote, a typed
+`‘` that the first pass leaves neutral and a second pass pairs, a typed `’` that a straight pair
+covers on the first pass and that closes a typed pair on the second, a possessive placed inside a
+pair that `’` closes, which closes that pair early on the second pass and moves the closers of the
+pairs around it, and a typed `’` after a straight quote and signs, which a second pass reads as the
+closer of a sign-only pair. So the phase checks its result. It runs again over the window as a
+second call would read it, the decisions applied to the quotes (only where their rules are enabled),
+and takes the decisions that the run adds; a quote changes at most once, because only straight
+quotes get decisions. When a run adds nothing, the result is a fixed point. After three runs that
+still add something, or when a quote that keeps its text has another role in the result than in the
+input (`local_role`, section 8.2) where another rule reads it (after a space that does not follow a
+quote, before a space and a dash, after an ellipsis), the window does not converge: `CrossingQuotes`
+(warning) at that quote, and no straight quote changes. Examples, English, Prose: `"x ''-'' y"`
+gives `“x ‘’-‘’ y”` (the second run pairs the first two quotes, which the chain of sign-only pairs
+left unpaired), `He said ‘the dogs' "5"’` gives `He said ‘the⍽dogs’ “5”’`, `‘S' ‘s'’ s’` gives
+`‘S’ ‘s’’ s’`, and `"a '-’ - x' c"` keeps its straight quotes (`"a⍽'-’ - x' c"`), because the dash
+rule would read the `’` after `‘-` as the closer of a sign-only pair on a second pass and set the
+dash. A window that does not converge after the runs keeps the input of the phase as it is, so a
+second call decides it the same way.
 
 If the window does **not** converge, no straight quote of the window changes; the edits of step 1
 (section 6.2) are kept. The caller gets a diagnostic at the position of the first cause.
@@ -332,14 +359,17 @@ changes.
 (b) **Not converged.** No straight quote changed. The quotes with roles and their families are the
 same on the second pass, so the window again does not converge, and nothing changes.
 
-In both cases the phase is the identity on its own output, except on the inputs of the defects
-listed in section 10.8, where the argument above fails: sign-only pairs that share a quote, a
-neutral `‘` that a second pass pairs, a straight quote that a second pass reads with a typed `’` as
-a sign-only pair, and a possessive kept straight by where the closer of its pair stands, which a
-second pass moves (a possessive placed inside that pair, or a typed `’` that a straight pair covered
-on the first pass, closes it early). The property tests of section 13.5 check it on generated
-strings with all three `SingleQuotes` modes, and a fixed-point oracle compares one pass with passes
-repeated until nothing changes.
+The argument above shows how the rules aim at a fixed point; it fails for the classes of windows
+named under settling in section 6.6, where a placed glyph is read on a second pass in a way the
+first pass did not see (a typed `‘’` that cuts a chain of sign-only pairs, a neutral `‘` that pairs,
+a placed possessive or a covered `’` that closes a pair early, a `’` that closes a sign-only pair
+with a new `‘`). The settling of section 6.6 closes the gap by construction: the result of the phase
+is a window that a further run of the phase leaves as it is, with the same roles for the quotes that
+other rules read, or the input of the phase unchanged except for step 1, which a second call reads
+as the first did (step 1 removes the same tokens, I4) and so leaves unchanged again. So the phase is
+the identity on its own output. The property tests of section 13.5 check it on generated strings
+with all three `SingleQuotes` modes, and a fixed-point oracle compares one pass with passes repeated
+until nothing changes.
 
 ### 6.12 Examples
 

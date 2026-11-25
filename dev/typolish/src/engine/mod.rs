@@ -172,6 +172,8 @@ fn run_on<R: Recorder>(
                 pairs,
                 single_quotes,
                 dash,
+                overlay: &[],
+                hint: core::cell::Cell::new(0),
                 sides: core::cell::Cell::new(None),
             };
             if *phase == Phase::Quotes {

@@ -395,18 +395,15 @@ sentences per language in a normal run. The `#[ignore]` tests `grammar_propertie
 `grammar_long_configurations`: each of the five languages with each dash style and each
 `SingleQuotes` mode, 60 configurations and 6 000 000 sentences, the rule set and the percent setting
 drawn per sentence, on all available threads (`run_grammar_long`); every failing configuration is
-reported. Only a sentence that fails is measured against the known limits of section 10.8, so every
-other sentence is checked in full: a failure of idempotence is skipped when `grammar_known_failure`
-names its limit, by the shape of the input and the edits of the second pass together (sign-only
-pairs that share a quote, where the second pass changes straight quotes only; in `en-US` and
-`en-GB`, a first pass with a `‘` before a straight `'` whose second pass changes straight `'` only;
-a straight quote before signs, or nothing, and a typed `’` whose second pass changes straight `'`
-and dashes only), and a failure of P2 when `grammar_known_p2_failure` names its limit (where the
-output is no fixed point, as for idempotence; otherwise where `to_plain` read a `"` of the input as
-`'` or the other way round, the limit of `to_plain`, or a sign-only chain).
-`the_grammar_filters_name_their_limits` and `the_p2_filters_name_their_limits` check that every
-filter names the inputs of its limit and that those inputs still fail, and each filter goes with its
-limit.
+reported. No failure of idempotence is skipped: since the quote phase settles its result (section
+6.6, choice C59) the known limits of section 10.8 hold no window that is no fixed point. Only a
+sentence that fails P2 is measured against the known limit of `to_plain` in section 10.8, so every
+other sentence is checked in full: a failure of P2 is skipped when `grammar_known_p2_failure` names
+the limit, where the output is a fixed point and `to_plain` read a `"` of the input as `'` or the
+other way round. `the_p2_filters_name_their_limits` checks that the filter names the inputs of the
+limit and that those inputs still fail, and the filter goes with its limit;
+`the_grammar_rows_of_the_settled_windows_are_fixed_points` keeps the sentences that failed
+idempotence before the settling as fixed points.
 
 1. **Idempotence**: `f(f(x)) == f(x)` for {ru, en, COMMON} × {Prose, Interface, all, random subsets}
    × the three `SingleQuotes` modes, and over the structured grammar for its five languages, two of

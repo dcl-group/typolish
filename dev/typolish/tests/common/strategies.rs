@@ -1075,91 +1075,20 @@ pub fn run_grammar_long(cases: u32, seed: u64, check: impl GrammarCheck) {
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
 
-/// The name of the sign-only chain limit (`todo/quotes-sign-only-chain.md`).
-pub const SIGN_ONLY_CHAIN: &str = "sign-only pairs that share a quote";
-/// The name of the limits of a `‘` that a second pass pairs or closes in another place
-/// (`todo/quotes-neutral-opener-repaired.md` and `todo/quotes-possessive-run.md`).
-pub const OPENER_REPAIRED: &str = "a `‘` that a second pass pairs or closes in another place";
-/// The name of the limit of a new sign-only pair (`todo/quotes-new-sign-only-pair.md`).
-pub const NEW_SIGN_ONLY_PAIR: &str = "a new `‘` that a second pass reads as a sign-only pair";
 /// The name of the limit of `to_plain` (`todo/plain-quotes-no-reading.md`).
 pub const NO_READING: &str = "`to_plain` finds no reading that brings the quotes back";
 
-/// The known limit of design section 10.8 that a failure of idempotence or I4 on a sentence of the
-/// grammar falls under, by its name, or `None`. `text` is the input, `once` the first pass and
-/// `second` the changes of the second pass as `(original, replacement)`. The properties over the
-/// grammar skip only a failing sentence that a filter names, so every sentence that does not fail
-/// is checked in full; each filter needs both the shape of the inputs of its limit and the edits
-/// its second pass makes, and goes when its limit is fixed.
-///
-/// - Sign-only pairs that share a quote (`todo/quotes-sign-only-chain.md`): the input holds three
-///   straight quotes in a run of characters that are no letter, digit or space, each next to the
-///   one before it or with signs between them, at least one sign in all, in series of one or two
-///   quotes (a series of three or more has no sign-only pair): `''-''`, `'('')'`; and the second
-///   pass changes straight quotes only.
-/// - In the English languages, `en-US` and `en-GB`, a `‘` that the first pass leaves neutral and a
-///   second pass pairs (`todo/quotes-neutral-opener-repaired.md`), which then places a trailing
-///   possessive (`‘s' "0"’`) or pairs a straight `'` pair that the first pass cancelled at the top
-///   level (`x ‘a 'b' "2"’ y`); and a typed pair that a placed possessive closes early on a second
-///   pass around a possessive kept straight (`todo/quotes-possessive-run.md`, `‘S' ‘s'’ s’`, and
-///   in `en-GB`, where the first pass writes `"` as `‘`, `"s' y’ "" s"`): the first pass holds a
-///   `‘` before a straight `'`, and the second pass changes straight `'` only.
-/// - In `en-US` and `en-GB`, a straight quote that the first pass writes as `‘` before signs, or
-///   nothing, and a typed `’`, which the second pass reads as a sign-only pair
-///   (`todo/quotes-new-sign-only-pair.md`, `"a '-’ - x' c"`): the input holds a straight quote,
-///   then characters that are no letter, digit, space or quote, then `’`; and the second pass
-///   changes straight `'`, dashes and the space that glues a dash only, and not the space alone
-///   (the quote before a dash reads as a closer then).
-pub fn grammar_known_failure(
-    lang: usize,
-    text: &str,
-    once: &str,
-    second: &[(&str, &str)],
-) -> Option<&'static str> {
-    fn dash(o: &str) -> bool {
-        o.contains(['-', '–', '—']) && o.chars().all(|c| matches!(c, ' ' | '-' | '–' | '—'))
-    }
-    let changes = |allowed: fn(&str) -> bool| second.iter().all(|&(original, _)| allowed(original));
-    let english = matches!(lang % GRAMMAR_LANGUAGES, 1 | 3);
-    if changes(|o| matches!(o, "'" | "\"")) && sign_only_chain(text) {
-        return Some(SIGN_ONLY_CHAIN);
-    }
-    if english && changes(|o| o == "'") && typed_opener_before_straight(once) {
-        return Some(OPENER_REPAIRED);
-    }
-    if english
-        && changes(|o| o == "'" || o == " " || dash(o))
-        && second.iter().any(|&(original, _)| original != " ")
-        && straight_before_signs_and_closer(text)
-    {
-        return Some(NEW_SIGN_ONLY_PAIR);
-    }
-    None
-}
-
 /// The known limit of design section 10.8 that a failure of P2 on the plain text `x` falls under,
-/// by its name, or `None`; `y` is the typeset text. Where `y` is no fixed point, the failure is
-/// one of idempotence and `grammar_known_failure` names it. Otherwise P2 fails where `to_plain`
-/// reads the quotes of a window in another way than `x` had them, so that the window does not
-/// typeset back, or typesets back with its quotes but not with a rule that reads them
-/// (`todo/plain-quotes-no-reading.md`, and the sign-only chains of
-/// `todo/quotes-sign-only-chain.md`): the quotes of its plain form, `"`, `'` and `’` in order
-/// (a prime `′` or `″` that it keeps read as `'` or `"`), hold a `"` where those of `x` hold `'` or
-/// `’`, or the other way round.
-pub fn grammar_known_p2_failure(
-    t: &Typographer,
-    lang: usize,
-    x: &str,
-    y: &str,
-) -> Option<&'static str> {
+/// by its name, or `None`; `y` is the typeset text. A `y` that is no fixed point falls under none.
+/// Otherwise P2 fails where `to_plain` reads the quotes of a window in another way than `x` had
+/// them, so that the window does not typeset back, or typesets back with its quotes but not with
+/// a rule that reads them (`todo/plain-quotes-no-reading.md`): the quotes of its plain form, `"`,
+/// `'` and `’` in order (a prime `′` or `″` that it keeps read as `'` or `"`), hold a `"` where
+/// those of `x` hold `'` or `’`, or the other way round.
+pub fn grammar_known_p2_failure(t: &Typographer, x: &str, y: &str) -> Option<&'static str> {
     let second = t.report(y, Output::Unicode);
     if second.result() != y || !second.changes().is_empty() {
-        let changes: Vec<(&str, &str)> = second
-            .changes()
-            .iter()
-            .map(|c| (second.original(c), c.replacement()))
-            .collect();
-        return grammar_known_failure(lang, x, y, &changes);
+        return None;
     }
     let plain = t.to_plain(y);
     let straight = |s: &str| -> Vec<char> {
@@ -1172,72 +1101,5 @@ pub fn grammar_known_p2_failure(
             .collect()
     };
     let (a, b) = (straight(x), straight(&plain));
-    let misread = a.len() == b.len() && a != b;
-    if !misread {
-        None
-    } else if sign_only_chain(x) {
-        Some(SIGN_ONLY_CHAIN)
-    } else {
-        Some(NO_READING)
-    }
-}
-
-/// Whether `c` is a straight or a typed quote.
-fn is_quote(c: char) -> bool {
-    matches!(
-        c,
-        '"' | '\'' | '«' | '»' | '„' | '“' | '”' | '‘' | '’' | '‹' | '›' | '‚'
-    )
-}
-
-/// Whether the text holds a chain of sign-only pairs that share a quote (`grammar_known_failure`).
-fn sign_only_chain(text: &str) -> bool {
-    let chars: Vec<char> = text.chars().collect();
-    for run in chars.split(|c| c.is_alphanumeric() || c.is_whitespace()) {
-        // The quotes of the run with the number of signs before each and the length of its series.
-        let mut quotes: Vec<(usize, usize)> = Vec::new();
-        let mut signs = 0;
-        let mut k = 0;
-        while k < run.len() {
-            if matches!(run[k], '"' | '\'') {
-                let start = k;
-                while k < run.len() && matches!(run[k], '"' | '\'') {
-                    k += 1;
-                }
-                let len = k - start;
-                for n in 0..len {
-                    quotes.push((if n == 0 { signs } else { 0 }, len));
-                }
-                signs = 0;
-            } else {
-                signs += 1;
-                k += 1;
-            }
-        }
-        if quotes
-            .windows(3)
-            .any(|w| w.iter().all(|&(_, len)| len <= 2) && w[1].0 + w[2].0 > 0)
-        {
-            return true;
-        }
-    }
-    false
-}
-
-/// Whether a straight quote stands before signs, or nothing, and a typed `’`
-/// (`grammar_known_failure`).
-fn straight_before_signs_and_closer(text: &str) -> bool {
-    let chars: Vec<char> = text.chars().collect();
-    chars.iter().enumerate().any(|(k, &c)| {
-        matches!(c, '"' | '\'')
-            && chars[k + 1..]
-                .iter()
-                .find(|&&d| d.is_alphanumeric() || d.is_whitespace() || is_quote(d))
-                == Some(&'’')
-    })
-}
-
-/// Whether a typed `‘` stands before a straight `'` (`grammar_known_failure`).
-fn typed_opener_before_straight(text: &str) -> bool {
-    text.find('‘').is_some_and(|at| text[at..].contains('\''))
+    (a.len() == b.len() && a != b).then_some(NO_READING)
 }

@@ -433,6 +433,68 @@ fn a_typed_closer_after_its_opener_and_signs_closes_it() {
     }
 }
 
+#[test]
+fn a_typed_sign_only_pair_at_a_foreign_level_is_no_pair() {
+    // Design section 6.3: a typed sign-only pair `‘’` that would stand at a level whose glyphs are
+    // not `‘’` is no pair, as in 0.1.1; the weak quote after the number is a prime.
+    let gb = typolish::LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    let gb = quotes_with(gb, SingleQuotes::Everywhere);
+    for row in [
+        ("'a ‘’ 3'", "'a ‘’ 3′"),
+        ("'a ‘’-3'", "'a ‘’-3′"),
+        ("'‘(’ 0'", "'‘(’ 0′"),
+        // The plain sign-only pair stands at its own level.
+        ("'a \"\"-3'", "‘a “”-3’"),
+    ] {
+        check_exact("en-GB quotes alone, Everywhere", &gb, row);
+    }
+}
+
+#[test]
+fn a_window_that_a_later_pass_reads_otherwise_is_settled() {
+    // Design section 6.6: the phase runs again over its result and takes what that run adds, so
+    // the first pass gives what a second pass would; a window whose result changes the role of a
+    // quote that another rule reads keeps its straight quotes, with `CrossingQuotes`.
+    let en = quotes(Language::EN_US);
+    for row in [
+        // Sign-only pairs that share a quote.
+        ("\"x ''-'' y\"", "“x ‘’-‘’ y”"),
+        // A neutral `‘` that a later pass pairs, and a straight pair that it then encloses.
+        ("He said ‘the dogs' \"5\"’", "He said ‘the dogs’ “5”’"),
+        ("x ‘a 'b' \"2\"’ y", "x ‘a ‘b’ “2”’ y"),
+        // A possessive inside a pair that a placed possessive or a covered `’` closes early.
+        ("‘S' ‘s'’ s’", "‘S’ ‘s’’ s’"),
+        ("‘S' \"x’\" s’", "‘S’ ‘x’’ s’"),
+        // The `’` after `‘-` would close a sign-only pair on a second pass, which the dash reads.
+        ("\"a '-’ - x' c\"", "\"a '-’ - x' c\""),
+    ] {
+        check_exact("en quotes alone", &en, row);
+    }
+    let gb = typolish::LanguageBuilder::from_language(&Language::EN_US, "en-GB")
+        .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
+        .build()
+        .unwrap();
+    let gb = quotes(gb);
+    for row in [
+        // The outer `‘` stays neutral and keeps the possessive straight, as in 0.1.1.
+        ("‘\"-\" \"S'’\"", "‘‘-’ ‘S'’’"),
+        ("\"s' y’ \"\" s\"", "‘s’ y’ “” s’"),
+        ("\"-’ - x\"", "\"-’ - x\""),
+    ] {
+        check_exact("en-GB quotes alone", &gb, row);
+    }
+    let crossing = diagnostics_of(&en, "\"a '-’ - x' c\"");
+    assert!(
+        crossing
+            .iter()
+            .any(|d| d.0 == DiagnosticKind::CrossingQuotes),
+        "{crossing:?}"
+    );
+}
+
 // The rows of design section 6.12 that need `quotes.primes`: Prose (design section 6.5), and what
 // Interface does.
 #[test]

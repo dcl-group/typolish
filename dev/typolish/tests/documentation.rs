@@ -846,9 +846,6 @@ struct Limit {
     sets: Sets,
     input: &'static str,
     expected: &'static str,
-    /// What a second pass gives for a limit that design section 10.8 lists as no fixed point;
-    /// `None` for a limit whose output is one.
-    second: Option<&'static str>,
 }
 
 const fn limit(
@@ -862,24 +859,6 @@ const fn limit(
         sets,
         input,
         expected,
-        second: None,
-    }
-}
-
-/// A limit whose output a second pass changes to `second` (a defect of design section 10.8).
-const fn unstable(
-    lang: &'static Language,
-    sets: Sets,
-    input: &'static str,
-    expected: &'static str,
-    second: &'static str,
-) -> Limit {
-    Limit {
-        lang,
-        sets,
-        input,
-        expected,
-        second: Some(second),
     }
 }
 
@@ -929,47 +908,9 @@ fn limits() -> Vec<Limit> {
         limit(RU, Both, "сказал: \"привет\"", "сказал: «привет»"),
         limit(RU, Both, "key: \"\"", "key: «»"),
         limit(RU, Both, "key=\"\"", "key=\"\""),
-        // Sign-only pairs that share a quote: a defect, not idempotent (in English since 0.1.2).
-        unstable(RU, Both, "\"x ''-'' y\"", "«x ''-„“ y»", "«x „“-„“ y»"),
-        unstable(EN, Both, "\"x ''-'' y\"", "“x ''-‘’ y”", "“x ‘’-‘’ y”"),
-        unstable(
-            EN,
-            Both,
-            "\"\"\"x\n''-''\ne\"\"\"",
-            "“‘“x\n''-‘’\ne”’”",
-            "“‘“x\n‘’-‘’\ne”’”",
-        ),
-        // A typed `‘` that the first pass leaves neutral and a second pass pairs: a defect, not
-        // idempotent.
-        unstable(
-            EN,
-            Both,
-            "He said ‘the dogs' \"5\"’",
-            "He said ‘the⍽dogs' “5”’",
-            "He said ‘the⍽dogs’ “5”’",
-        ),
-        unstable(
-            EN,
-            Both,
-            "x ‘a 'b' \"2\"’ y",
-            "x ‘a⍽'b' “2”’ y",
-            "x ‘a⍽‘b’ “2”’ y",
-        ),
-        // A new `‘` before a sign and a typed `’` is a sign-only pair on a second pass: a defect,
-        // not idempotent.
-        unstable(
-            EN,
-            Both,
-            "\"a '-’ - x' c\"",
-            "“a⍽‘-’ - x’ c”",
-            "“a⍽‘-’ — x’ c”",
-        ),
-        // A possessive placed inside a typed pair closes it early on a second pass: a defect, not
-        // idempotent.
-        unstable(EN, Both, "‘S' ‘s'’ s’", "‘S' ‘s’’ s’", "‘S’ ‘s’’ s’"),
-        // A typed `’` that a straight pair covers on the first pass closes the pair on a second
-        // pass: a defect, not idempotent.
-        unstable(EN, Both, "‘S' \"x’\" s’", "‘S' ‘x’’ s’", "‘S’ ‘x’’ s’"),
+        // A window whose result a later pass would read in another way keeps its straight quotes
+        // (design section 6.6): here the dash rule would read the typed `’` as a closing quote.
+        limit(EN, Both, "\"a '-’ - x' c\"", "\"a⍽'-’ - x' c\""),
         // Windows whose plain form does not typeset back: a defect of `to_plain`, P2 fails.
         limit(RU, Both, "\"a '(\" x' \"y'\" b\"", "«a „(\" x“ „y'“ b»"),
         limit(EN, Both, "\"'S '5' 3'\"", "“‘S “5” 3’”"),
@@ -1066,16 +1007,14 @@ fn known_limits_hold() {
                 l.lang,
                 show(&input)
             );
-            // A limit is a fixed point unless design section 10.8 lists it as none, and then the
-            // second pass gives what the section says.
+            // A limit is a fixed point (design sections 4.4 and 10.8).
             let again = t.typeset(&got, Output::Unicode);
-            let second = l.second.map_or_else(|| expected.clone(), vis);
             assert!(
-                again == second,
+                again == expected,
                 "{} {name}: second pass\ninput    {}\nexpected {}\ngot      {}",
                 l.lang,
                 show(&got),
-                show(&second),
+                show(&expected),
                 show(&again)
             );
         }

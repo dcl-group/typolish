@@ -27,8 +27,8 @@ use common::corpus::{
 };
 use common::decode::TYPOGRAPHIC;
 use common::strategies::{
-    GRAMMAR_LANGUAGES, GrammarConfig, NO_READING, SIGN_ONLY_CHAIN, Sentence,
-    grammar_known_p2_failure, run_grammar, run_grammar_long,
+    GRAMMAR_LANGUAGES, GrammarConfig, NO_READING, Sentence, grammar_known_p2_failure, run_grammar,
+    run_grammar_long,
 };
 use common::{configs, interface, parse_tmpl, prose, show, vis, without_rule};
 use proptest::prelude::*;
@@ -410,43 +410,43 @@ fn windows_whose_plain_form_does_not_typeset_back_are_listed() {
 }
 
 #[test]
-fn windows_that_are_no_fixed_point_break_p2() {
-    // Design sections 10.8 and 12.2: where the first pass is no fixed point, `to_plain` of its
-    // output typesets to what the second pass gives, so P2 fails as well. The possessive run of
-    // choice C54 (0.1.2) breaks P2 in en-GB on inputs where 0.1.1 held it; the sign-only chain
-    // breaks it in English in the default mode. When a row holds P2, its defect is gone: remove it
-    // from design sections 10.8 and 12.2, the README and `limits()` of `tests/documentation.rs`.
+fn settled_windows_round_trip() {
+    // Design sections 6.6 and 12.2: windows whose first pass a later pass would read in another
+    // way are settled, so the result is a fixed point and P2 holds on them: the possessive run of
+    // choice C54 in en-GB, where 0.1.1 held P2, and the sign-only chains in English.
     let gb = LanguageBuilder::from_language(&en(), "en-GB")
         .quotes(Some(QuotePairs::new(('‘', '’'), ('“', '”'))))
         .build()
         .unwrap();
-    let mut fixed = Vec::new();
-    for (language, x, again) in [
-        (gb.clone(), "\"a’ s' 's\"", "‘a’ s’ 's’"),
-        (gb.clone(), "‘S' ‘s'’ s’", "‘S' “s’” s’"),
+    let mut failures = Vec::new();
+    use SingleQuotes::{Everywhere, NestedOnly};
+    for (language, mode, x) in [
+        (gb.clone(), NestedOnly, "\"a’ s' 's\""),
+        (gb.clone(), NestedOnly, "‘S' ‘s'’ s’"),
         (
             gb,
+            NestedOnly,
             "She said \"the boys’ dogs' 'bowls\" were empty.",
-            "She said ‘the⍽boys’ dogs’ 'bowls’ were empty.",
         ),
-        (en(), "\"x ''-'' y\"", "“x ‘’-‘’ y”"),
+        (en(), NestedOnly, "\"x ''-'' y\""),
+        (en(), Everywhere, "\"x ''-'' y\""),
+        (en(), Everywhere, "\"\"-''"),
     ] {
         for set in [RuleSet::PROSE, RuleSet::INTERFACE] {
             let t = Typographer::builder(language.clone(), set)
-                .single_quotes(SingleQuotes::NestedOnly)
+                .single_quotes(mode)
                 .build()
                 .unwrap();
-            let y = t.typeset(x, Output::Unicode).into_owned();
-            let plain = t.to_plain(&y).into_owned();
-            let got = t.typeset(&plain, Output::Unicode);
-            if got == y {
-                fixed.push(format!("{language} {set} {x:?}"));
-            } else {
-                assert_eq!(got, vis(again), "{language} {set} {x:?}");
+            if let Err(e) = p2(&t, x) {
+                failures.push(format!("{language} {set} {mode:?}: {e}"));
+            }
+            let y = t.typeset(x, Output::Unicode);
+            if t.typeset(&y, Output::Unicode) != y {
+                failures.push(format!("{language} {set} {mode:?} {x:?}: idempotence"));
             }
         }
     }
-    assert!(fixed.is_empty(), "P2 holds now: {}", fixed.join(", "));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
 #[test]
@@ -1820,10 +1820,10 @@ const GRAMMAR_SEED_LONG: u64 = 0x7970_6f6c_6973_6812;
 /// sentence with typed glyphs where that holds no character of the typographic set.
 fn grammar_round_trip(config: &GrammarConfig, sentence: &Sentence) -> Result<(), TestCaseError> {
     let t = config.typographer();
-    plain_round_trip(config, &t, &sentence.plain)?;
+    plain_round_trip(&t, &sentence.plain)?;
     let x = t.to_plain(&sentence.text);
     if !x.contains(TYPOGRAPHIC) {
-        plain_round_trip(config, &t, &x)?;
+        plain_round_trip(&t, &x)?;
     }
     Ok(())
 }
@@ -1831,10 +1831,10 @@ fn grammar_round_trip(config: &GrammarConfig, sentence: &Sentence) -> Result<(),
 /// P2 on the plain text `x`, skipped where it fails in the way of a known limit
 /// (`grammar_known_p2_failure`). With P2, `to_plain` of the output is a fixed point of `to_plain`,
 /// and P1 holds for it: `to_plain(typeset(z)) == z` for `z = to_plain(typeset(x))`.
-fn plain_round_trip(config: &GrammarConfig, t: &Typographer, x: &str) -> Result<(), TestCaseError> {
+fn plain_round_trip(t: &Typographer, x: &str) -> Result<(), TestCaseError> {
     let y = t.typeset(x, Output::Unicode).into_owned();
     if let Err(error) = p2(t, x) {
-        if grammar_known_p2_failure(t, config.lang, x, &y).is_some() {
+        if grammar_known_p2_failure(t, x, &y).is_some() {
             return Ok(());
         }
         return Err(TestCaseError::fail(error));
@@ -1887,8 +1887,6 @@ fn the_p2_filters_name_their_limits() {
             "\"is \"Moscow i.e. DOGS' a\" №5 '№5'\"",
             NO_READING,
         ),
-        (1, NestedOnly, "\"x ''-'' y\"", SIGN_ONLY_CHAIN),
-        (1, Everywhere, "\"\"-''", SIGN_ONLY_CHAIN),
     ] {
         let t = GrammarConfig {
             lang,
@@ -1900,10 +1898,6 @@ fn the_p2_filters_name_their_limits() {
         .typographer();
         assert!(p2(&t, x).is_err(), "P2 holds for {x:?}");
         let y = t.typeset(x, Output::Unicode);
-        assert_eq!(
-            grammar_known_p2_failure(&t, lang, x, &y),
-            Some(limit),
-            "{x:?}"
-        );
+        assert_eq!(grammar_known_p2_failure(&t, x, &y), Some(limit), "{x:?}");
     }
 }

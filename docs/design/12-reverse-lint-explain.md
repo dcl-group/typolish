@@ -151,16 +151,16 @@ the rule sets of section 13.5 (property "Round trip"):
   the settings under test, except the pattern of `NestedPossessive` (two `s'` or `S'` at the same
   depth of one nested pair). Every mismatch fails: inside the canonical form there is no other loss.
 - **P2**: `typeset(to_plain(y)) == y` for `y = typeset(x)` and any plain `x`, the rows of the table
-  below included, except the defects listed in section 10.8: sign-only pairs that share a quote, a
-  neutral `‘` that a second pass pairs, a straight quote written as `‘` that a second pass reads as
-  a sign-only pair with a typed `’` (choice C55), a possessive kept straight that a second pass
-  places because a possessive placed inside its pair closes that pair early (choice C54), and
-  windows where no reading of the quotes that `to_plain` tries brings them back (a straight `"`
-  without a role inside a pair, a weak quote after a digit that closes a pair, a reading that brings
-  the quotes back but not a dash that reads them). The first four are classes whose first pass can
-  be no fixed point; there `to_plain` of its output typesets to the second result or to another one.
-  Choice C54 (0.1.2) brought P2 failures on inputs where 0.1.1 held it, in en-GB: `"a’ s' 's"`,
-  `‘S' ‘s'’ s’` and `She said "the boys’ dogs' 'bowls" were empty.` (section 10.8).
+  below included, except the defect of `to_plain` listed in section 10.8: windows where no reading
+  of the quotes that `to_plain` tries brings them back (a straight `"` without a role inside a pair,
+  a weak quote after a digit that closes a pair, a reading that brings the quotes back but not a
+  dash that reads them). Since the quote phase settles its result (section 6.6, choice C59), `y` is
+  a fixed point, so P2 fails only where `to_plain` misreads it; the P2 failures that choice C54
+  brought in en-GB on inputs where version 0.1.1 held P2 (`"a’ s' 's"`, `‘S' ‘s'’ s’` and
+  `She said "the boys’ dogs' 'bowls" were empty.`, with `NestedOnly`) and those of the sign-only
+  chains in English (`"x ''-'' y"`; `""-''` with `SingleQuotes::Everywhere`) are gone. For an `x`
+  with typed quotes P2 is no property: the typed glyphs may stand where no plain text would put
+  them.
 
 There is no external corpus (decided by the maintainer on 2026-11-21); stage reports say that the
 corpus is the project's own. P1 runs on a generator of canonical strings and on the corpus files of

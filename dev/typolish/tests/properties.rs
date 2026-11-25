@@ -23,8 +23,7 @@ use std::borrow::Cow;
 use common::decode::{TYPOGRAPHIC, all_outputs, check_safe_alphabet, decode};
 use common::show;
 use common::strategies::{
-    GRAMMAR_LANGUAGES, GenPiece, GrammarConfig, NEW_SIGN_ONLY_PAIR, OPENER_REPAIRED,
-    SIGN_ONLY_CHAIN, Sentence, any_text, borrow, grammar_known_failure, pieces, risky_text,
+    GRAMMAR_LANGUAGES, GenPiece, GrammarConfig, Sentence, any_text, borrow, pieces, risky_text,
     rule_set, run_grammar, run_grammar_long,
 };
 use proptest::prelude::*;
@@ -286,6 +285,26 @@ const SEEDS: &[&str] = &[
     "- №5 дом",
     "— §5 текст",
     "- ¶IV дом",
+    // Windows whose first pass a later pass would read in another way are settled (design section
+    // 6.6): sign-only pairs that share a quote, a neutral `‘` that a later pass pairs, a possessive
+    // inside a pair that a placed possessive or a covered `’` closes early, and a `’` whose role a
+    // dash reads.
+    "\"x ''-'' y\"",
+    "\"\"\"x\n''-''\ne\"\"\"",
+    "''-''",
+    "''-')'«",
+    "''—''",
+    "'('')'",
+    "He said ‘the dogs' \"5\"’",
+    "‘s' \"0\"’",
+    "‘\"0\" S'’",
+    "x ‘a 'b' \"2\"’ y",
+    "\"a '-’ - x' c\"",
+    "‘'—’ l' s'",
+    "‘S' ‘s'’ s’",
+    "‘\"s'\" s' 's’",
+    "‘S' \"x’\" s’",
+    "\"He said \"the boys’ dogs' \"x\" bowls\" were empty.\"",
 ];
 
 #[test]
@@ -425,6 +444,27 @@ fn idempotence_of_the_seed_with_a_built_language() {
         "'a \"\"-3'",
         "'a \"\" 3'",
         "\"\" ('s'’ “”«",
+        // Windows that a later pass would read in another way (design section 6.6).
+        "‘ \"dogs'’\" x",
+        "‘\"s'»’\".",
+        "‘\"'s'»’''\". ",
+        "‘\"8\"’ s'",
+        "‘ '' \"2\"’",
+        "\"-’ - x\"",
+        "‘'—’ l' s'",
+        "s Paul \"(’ -- St.)\"",
+        "‘\"-\" \"S'’\"",
+        "‘ \"-\" \"S'’\"",
+        "‘\"-\" \"Smiths' x’\"",
+        "\"s' y’ \"\" s\"",
+        "\"dogs' bowl’ \"\" s\"",
+        "She said \"the boys’ dogs' 'bowls\" were empty.",
+        "\"a’ s' 's\"",
+        "‘S' ‘s'’ s’",
+        // A typed sign-only pair at a level whose glyphs are not its own is no pair (design
+        // section 6.3).
+        "'a ‘’ 3'",
+        "'‘(’ 0'",
     ] {
         for set in [
             RuleSet::EMPTY,
@@ -2144,8 +2184,7 @@ fn structural(report: &Report<'_>, change: &Change) -> bool {
 /// replaces no letter and no digit (I1); the kinds of the protected spans of both passes are equal
 /// where no change inserted or removed a space (I2); every change starts from a plain form (I3);
 /// the report of the second pass holds no change (I4); and a window without a line break that does
-/// not converge changes no straight `"` and a straight `'` only into `’` or `′` (I5). A sentence whose
-/// second pass fails in the way of a known limit is skipped (`grammar_known_failure`); every other
+/// not converge changes no straight `"` and a straight `'` only into `’` or `′` (I5). Every
 /// sentence is checked in full.
 fn grammar_properties(config: &GrammarConfig, sentence: &Sentence) -> Result<(), TestCaseError> {
     let text = sentence.text.as_str();
@@ -2159,13 +2198,11 @@ fn grammar_properties(config: &GrammarConfig, sentence: &Sentence) -> Result<(),
             .iter()
             .map(|c| (second.original(c), c.replacement()))
             .collect();
-        if grammar_known_failure(config.lang, text, &once, &changes).is_some() {
-            return Ok(());
-        }
         prop_assert!(
             false,
-            "idempotence and I4: {:?}\nfirst pass:\n{}\nsecond pass:\n{}",
+            "idempotence and I4: {:?} {:?}\nfirst pass:\n{}\nsecond pass:\n{}",
             text,
+            changes,
             report,
             second
         );
@@ -2243,98 +2280,50 @@ fn grammar_properties_hold_long() {
 }
 
 #[test]
-fn the_grammar_filters_name_their_limits() {
-    // Each filter of `grammar_known_failure` names the failures of its limit (design section
-    // 10.8). Every row still fails: when one does not, its limit is fixed, and the filter goes
-    // with its entry in design section 10.8.
+fn the_grammar_rows_of_the_settled_windows_are_fixed_points() {
+    // Design section 6.6: the sentences of the grammar that a second pass changed before the
+    // quote phase settled its result are fixed points, in every rule set of the grammar.
     use SingleQuotes::{Everywhere, NestedOnly};
-    for (lang, single, text, limit) in [
-        (0, NestedOnly, "\"x ''-'' y\"", SIGN_ONLY_CHAIN),
-        (0, Everywhere, "''—''", SIGN_ONLY_CHAIN),
-        // In English since 0.1.2, in the default mode: the typed `‘’` of the first pass closes.
-        (1, NestedOnly, "\"x ''-'' y\"", SIGN_ONLY_CHAIN),
-        (1, Everywhere, "''-''", SIGN_ONLY_CHAIN),
-        (1, Everywhere, "'('')'", SIGN_ONLY_CHAIN),
-        (1, NestedOnly, "He said ‘the dogs' \"5\"’", OPENER_REPAIRED),
-        (1, NestedOnly, "‘s' \"0\"’", OPENER_REPAIRED),
-        (1, NestedOnly, "x ‘a 'b' \"2\"’ y", OPENER_REPAIRED),
-        (3, NestedOnly, "‘\"8\"’ s'", OPENER_REPAIRED),
-        (1, NestedOnly, "‘S' ‘s'’ s’", OPENER_REPAIRED),
-        (3, NestedOnly, "‘S' ‘s'’ s’", OPENER_REPAIRED),
-        // In `en-GB` the first pass writes the straight `"` as `‘`.
-        (3, NestedOnly, "\"s' y’ \"\" s\"", OPENER_REPAIRED),
-        (3, Everywhere, "\"dogs' bowl’ \"\" s\"", OPENER_REPAIRED),
-        (1, NestedOnly, "\"a '-’ - x' c\"", NEW_SIGN_ONLY_PAIR),
-        (3, NestedOnly, "\"-’ - x\"", NEW_SIGN_ONLY_PAIR),
-    ] {
-        known_failure_of(lang, single, None, text, limit);
-    }
-    // With `DashStyle::SpacedGlued` the second pass also glues the space before the dash.
-    known_failure_of(
-        3,
-        Everywhere,
-        Some(DashStyle::SpacedGlued),
-        "s Paul \"(’ -- St.)\"",
-        NEW_SIGN_ONLY_PAIR,
-    );
-    // Neither the shape of the input alone nor the edits of the second pass alone name a limit.
-    for (lang, text, once, changes) in [
-        // Russian has no limit of a `‘`.
-        (0, "‘s' \"0\"’", "‘s' «0»’", &[("'", "’")][..]),
-        // A second pass that sets a dash or adds glue is no quote limit of a `‘`.
-        (1, "‘s' x’ - y", "‘s' x’ - y", &[(" - ", " — ")][..]),
-        (1, "‘s' \"0\"’", "‘s' “0”’", &[(" ", "\u{a0}")][..]),
-        // No `‘` before a straight `'` in the first pass, no chain, no straight quote before signs
-        // and `’`.
-        (1, "dogs' ‘a’", "dogs' ‘a’", &[("'", "’")][..]),
+    for (lang, single, dash, text) in [
+        (0, NestedOnly, None, "\"x ''-'' y\""),
+        (0, Everywhere, None, "''—''"),
+        (1, NestedOnly, None, "\"x ''-'' y\""),
+        (1, Everywhere, None, "''-''"),
+        (1, Everywhere, None, "'('')'"),
+        (1, NestedOnly, None, "He said ‘the dogs' \"5\"’"),
+        (1, NestedOnly, None, "‘s' \"0\"’"),
+        (1, NestedOnly, None, "x ‘a 'b' \"2\"’ y"),
+        (3, NestedOnly, None, "‘\"8\"’ s'"),
+        (1, NestedOnly, None, "‘S' ‘s'’ s’"),
+        (3, NestedOnly, None, "‘S' ‘s'’ s’"),
+        (3, NestedOnly, None, "\"s' y’ \"\" s\""),
+        (3, Everywhere, None, "\"dogs' bowl’ \"\" s\""),
+        (1, NestedOnly, None, "\"a '-’ - x' c\""),
+        (3, NestedOnly, None, "\"-’ - x\""),
         (
-            1,
-            "\"a '-” - x' c\"",
-            "“a⍽‘-” - x’ c”",
-            &[(" - ", " — ")][..],
+            3,
+            Everywhere,
+            Some(DashStyle::SpacedGlued),
+            "s Paul \"(’ -- St.)\"",
         ),
-        (0, "\"a\" - \"b\"", "«a» - «b»", &[("\"", "«")][..]),
-        (0, "\"--\"\"\"", "«--»\"\"", &[("\"", "«")][..]),
-        // A chain whose second pass changes a dash.
-        (0, "''-''", "''-«»", &[("-", "—")][..]),
     ] {
-        assert_eq!(
-            grammar_known_failure(lang, text, once, changes),
-            None,
-            "{text:?}"
-        );
+        for set in [RuleSet::PROSE, RuleSet::INTERFACE, RuleSet::ALL] {
+            let t = GrammarConfig {
+                lang,
+                set,
+                dash,
+                single,
+                percent: PercentSpacing::AsWritten,
+            }
+            .typographer();
+            let once = t.typeset(text, Output::Unicode).into_owned();
+            let second = t.report(&once, Output::Unicode);
+            assert!(
+                second.changes().is_empty() && *second.result() == once,
+                "{set} {text:?}: {} then {}",
+                show(&once),
+                show(second.result())
+            );
+        }
     }
-}
-
-/// Asserts that `text` is no fixed point in Prose of the language `lang` of `grammar_language` and
-/// that `grammar_known_failure` names `limit` for it.
-#[track_caller]
-fn known_failure_of(
-    lang: usize,
-    single: SingleQuotes,
-    dash: Option<DashStyle>,
-    text: &str,
-    limit: &str,
-) {
-    let t = GrammarConfig {
-        lang,
-        set: RuleSet::PROSE,
-        dash,
-        single,
-        percent: PercentSpacing::AsWritten,
-    }
-    .typographer();
-    let once = t.typeset(text, Output::Unicode).into_owned();
-    let second = t.report(&once, Output::Unicode);
-    assert!(!second.changes().is_empty(), "{text:?} is a fixed point");
-    let changes: Vec<(&str, &str)> = second
-        .changes()
-        .iter()
-        .map(|c| (second.original(c), c.replacement()))
-        .collect();
-    assert_eq!(
-        grammar_known_failure(lang, text, &once, &changes),
-        Some(limit),
-        "{text:?} -> {once:?}: {changes:?}"
-    );
 }
