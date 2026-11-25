@@ -377,7 +377,9 @@ fn round(typographer: &Typographer, scratch: &mut Scratch, input: &[Input<'_>]) 
     let mut spans = Spans::default();
     super::run(typographer, scratch, input, &mut spans);
     let mut base: Vec<REdit> = scratch.edits.clone();
-    base.sort_unstable_by_key(|e| (e.start, e.end));
+    // The full order of `REdit` (C39), as the forward run sorts them: no two different edits stay
+    // in an unspecified order.
+    base.sort_unstable();
     let mut stops: Vec<(usize, Near)> = Vec::new();
     let mut boundaries: Vec<usize> = Vec::new();
     for atom in &scratch.atoms {
@@ -736,7 +738,7 @@ impl Check<'_, '_> {
             .collect();
         super::run(self.typographer, scratch, &current, &mut NoRecord);
         let mut edits: Vec<REdit> = scratch.edits.clone();
-        edits.sort_unstable_by_key(|e| (e.start, e.end));
+        edits.sort_unstable();
         let data = self.typographer.language().data();
         let mut used = vec![false; edits.len()];
         let mut failed = vec![false; cands.len()];
