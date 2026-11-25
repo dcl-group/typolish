@@ -110,8 +110,10 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   protected span; the range was cut to `u32::MAX` (design section 3.11). Such a piece is no part of
   the call's text, so the limit of design section 3.4 does not apply to it. Found by review.
 - English (en-US) glues the area and volume units of the metre that Russian glues (design section
-  7.3, C63, under the maintainer's extension of the unit lists): `km²`, `cm²`, `m³`, `cm³` (CLDR 49)
-  and `mm²`, `m2`, `m3`, `km2`, `cm2`, `cm3`, `mm2`. English, Prose and Interface:
+  7.3): a design choice of the lead (C63, design section 15.3) that extends the families in the
+  spirit of the maintainer's extension of the unit lists (design section 15.2, item 35), which does
+  not list these units, for the maintainer to overrule: `km²`, `cm²`, `m³`, `cm³` (CLDR 49) and
+  `mm²`, `m2`, `m3`, `km2`, `cm2`, `cm3`, `mm2`. English, Prose and Interface:
   `5 km² 5 cm² 5 mm² 5 m³ 5 cm³`: unchanged → `5⍽km² 5⍽cm² 5⍽mm² 5⍽m³ 5⍽cm³`;
   `5 m2 5 m3 5 km2 5 cm2 5 cm3 5 mm2`: unchanged → `5⍽m2 5⍽m3 5⍽km2 5⍽cm2 5⍽cm3 5⍽mm2`; `5-10 m³`:
   `5–10 m³` → `5–10⍽m³` (Prose), `5-10 m³` → `5-10⍽m³` (Interface). A unit is context for
