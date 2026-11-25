@@ -188,6 +188,8 @@ const RU_CONTEXT: &[(&str, &str)] = &[
     // off: `т.е.` as `т.`, a unit (design sections 4.3, I4, and 8.5).
     ("1,5-2,5 т.е.", "1,5–2,5 т.е."),
     ("1,5-2,5 т. е.", "1,5–2,5 т. е."),
+    // A `Joined` core reads as its first word, the unit (design section 4.3, I4).
+    ("1,5-2,5 ккал—бы", "1,5–2,5 ккал—бы"),
     // The tail is not greater than the last two digits of the year; no year word; no context.
     ("2026-11 гг.", "2026-11 гг."),
     ("2010-11", "2010-11"),
@@ -214,6 +216,7 @@ const EN_CONTEXT: &[(&str, &str)] = &[
     ("5-10 kg", "5–10 kg"),
     ("5-10 MB", "5–10 MB"),
     ("1.5-2.5 kg", "1.5–2.5 kg"),
+    ("1.5-2.5 mW—rock", "1.5–2.5 mW—rock"),
     ("p. 9-12", "p. 9–12"),
     ("pp. 9-12", "pp. 9–12"),
     ("See p. 9-12.", "See p. 9–12."),

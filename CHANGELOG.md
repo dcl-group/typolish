@@ -98,6 +98,14 @@ stands for U+00A0).
   `Ждать 1,5-2,5 т.е. и т.д.`: `Ждать 1,5-2,5⍽т.⍽е. и⍽т.⍽д.` → `Ждать 1,5–2,5⍽т.⍽е. и⍽т.⍽д.`.
   Interface has no `range.context` and does not change. Found by the grammar generator of design
   section 13.5.
+- `dash.dialogue` and `range.context` read a `Joined` core after the dash or the range, the form
+  `word—word` that the closed style writes, as its first word, as the other rules that read a
+  neighbor do (design sections 4.3, 8.4 and 8.5). So a second pass matches what the first pass
+  matched, and the typed form gives what the plain form gives. Russian, Prose: `- река—ООО`:
+  `- река—ООО` → `—⍽река—ООО`; `— река—ООО`: `— река—ООО` → `—⍽река—ООО`; `1,5-2,5 ккал—бы`:
+  `1,5-2,5⍽ккал—бы` → `1,5–2,5⍽ккал—бы`. English, Prose: `1.5-2.5 mW—rock`: `1.5-2.5⍽mW—rock` →
+  `1.5–2.5⍽mW—rock`. Plain input with spaces around the dash does not change. Found by the grammar
+  generator of design section 13.5.
 
 ## 0.1.1 - unreleased
 

@@ -253,6 +253,11 @@ const SEEDS: &[&str] = &[
     // 4.3, I4, and 8.5): `т.е.` reads as `т.`, the part `nbsp.abbreviations` splits off.
     "1,5-2,5 т.е.",
     "Ждать 1,5-2,5 т.е. и т.д.",
+    // A `Joined` core after a dialogue dash or a context range reads as its first word (design
+    // section 4.3, I4).
+    "- река—ООО",
+    "1,5-2,5 ккал—бы",
+    "1.5-2.5 mW—rock",
 ];
 
 #[test]
@@ -462,6 +467,9 @@ fn merged_and_split_fragments_read_as_their_plain_form() {
         (&ru_p, "§5 же ты", "§\u{a0}5 же\u{a0}ты"),
         (&ru_p, "№V ли ты", "№\u{a0}V\u{a0}ли ты"),
         (&ru_closed, "ли - ведь же (к)", "ли—ведь\u{a0}же (к)"),
+        // A dialogue dash and a context range before a merge (design sections 8.4 and 8.5).
+        (&ru_closed, "- река - ООО", "—\u{a0}река—ООО"),
+        (&ru_closed, "1,5-2,5 ккал -- бы", "1,5–2,5\u{a0}ккал—бы"),
         // A dash next to a label reads its numeral or its sign (design section 8.4).
         (&ru_p, "№5 - x", "№\u{a0}5 - x"),
         (&ru_p, "X - №V", "X\u{a0}— №\u{a0}V"),

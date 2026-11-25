@@ -5,7 +5,7 @@
 
 use core::cmp::Ordering;
 
-use super::{Frag, FragKind, Triggers, compact_abbreviation, folded_in, with_key};
+use super::{Frag, FragKind, Triggers, compact_abbreviation, folded_in, plain_side, with_key};
 use crate::SlotKind;
 use crate::engine::lex::{Kind, Repl};
 use crate::engine::phase::{Cx, Edit, Edits, Match};
@@ -280,7 +280,7 @@ fn context_after(cx: &Cx<'_>, last: usize) -> bool {
     if f.core_start >= f.core_end || cx.core(f).next() != Some(n) {
         return false;
     }
-    let f = &first_part(cx, f);
+    let f = &first_part(cx, &plain_side(cx, f, false));
     let data = cx.data;
     let chars = cx.core_chars(f);
     let unit = |key: &str| cx.t.has_unit(key);
@@ -307,10 +307,10 @@ fn context_after(cx: &Cx<'_>, last: usize) -> bool {
     words(data.year_words) || words(data.century_words)
 }
 
-/// The fragment after a range as `range.context` reads it: a compact abbreviation (`т.е.`) reads as
-/// its first part with its full stop (`т.`), the fragment that `nbsp.abbreviations` splits off, so
-/// the split of the first pass changes nothing for the rule (design section 4.3, I4). Any other
-/// fragment reads as itself.
+/// The fragment after a range as `range.context` reads it, after `plain_side` has read a `Joined`
+/// core as its first word: a compact abbreviation (`т.е.`) reads as its first part with its full
+/// stop (`т.`), the fragment that `nbsp.abbreviations` splits off, so the split of the first pass
+/// changes nothing for the rule (design section 4.3, I4). Any other fragment reads as itself.
 fn first_part(cx: &Cx<'_>, f: &Frag) -> Frag {
     if !compact_abbreviation(cx, f) {
         return *f;

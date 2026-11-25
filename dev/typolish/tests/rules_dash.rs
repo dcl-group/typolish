@@ -851,6 +851,10 @@ const RU_DIALOGUE: &[(&str, &str)] = &[
     ("\t- Привет", "\t—⍽Привет"),
     ("Он ушёл.\n\n- Привет", "Он ушёл.\n\n—⍽Привет"),
     ("Он ушёл.\r\n- Привет", "Он ушёл.\r\n—⍽Привет"),
+    // A `Joined` core after the dash reads as its first word (design section 4.3, I4): the form
+    // that the closed style gives `- река - ООО`, typed.
+    ("- река—ООО", "—⍽река—ООО"),
+    ("— река—ООО", "—⍽река—ООО"),
     // Not at a line start, no single space, no word after it.
     ("-Привет", "-Привет"),
     ("-  Привет", "-  Привет"),
