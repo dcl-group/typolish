@@ -285,9 +285,11 @@ selectors) or reserved (the code points of section 7.6), written out in the code
 does not depend on the Rust version, wider than the format characters of the lexer in section 5.4)
 is written as `U+XXXX`; any other text of a change is written in double quotes, with `"`, `\` and
 invisible characters escaped (`\"`, `\\`, `\u{a0}`). A protected text is written as it is, with
-invisible characters escaped the same way, so that every record stays on one line, and trailing
-spaces are not written (a `Slot` record ends after its range). A report without records prints
-nothing. Like the `Display` of `Diagnostic`, the text is not part of the contract (section 2.13).
+invisible characters escaped the same way, so that every record stays on one line, its own spaces
+included (`protected  ProtectedPiece  1:0..5  foo  ` for `Piece::Protected("foo  ")`); only the
+padding of the columns is not written after a record without text (a `Slot` record ends after its
+range). A report without records prints nothing. Like the `Display` of `Diagnostic`, the text is not
+part of the contract (section 2.13).
 
 `report` runs the same engine as `typeset`, so its result equals `typeset` byte for byte (a property
 test), and applying `changes()` to the input reproduces the result. In stage 5 the comparison with

@@ -207,13 +207,17 @@ impl<T> fmt::Display for Report<'_, T> {
                 .get(span.piece)
                 .and_then(|text| text.get(span.range.clone()))
                 .unwrap_or("");
-            let line = format!(
-                "protected  {:<kind_width$}{:<place_width$}{}",
+            let columns = format!(
+                "protected  {:<kind_width$}{:<place_width$}",
                 format!("{:?}", span.kind),
                 place(span.piece, &span.range),
-                Raw(text),
             );
-            writeln!(f, "{}", line.trim_end_matches(' '))?;
+            // Only the padding of the columns is trimmed; the protected text keeps its spaces.
+            if text.is_empty() {
+                writeln!(f, "{}", columns.trim_end_matches(' '))?;
+            } else {
+                writeln!(f, "{columns}{}", Raw(text))?;
+            }
         }
         Ok(())
     }

@@ -699,6 +699,26 @@ protected  Technical(Colon)  0:25..34  host:8080
 }
 
 #[test]
+fn the_display_keeps_the_trailing_spaces_of_a_protected_text() {
+    // Design section 12.5: only the padding of the columns is trimmed, not the protected text.
+    let r = UI.report_template::<()>(
+        [
+            Piece::Text("a "),
+            Piece::Protected("foo  "),
+            Piece::Text("b"),
+            Piece::Protected(""),
+        ],
+        Output::Unicode,
+    );
+    assert_eq!(
+        r.to_string(),
+        "\
+protected  ProtectedPiece  1:0..5  foo  \n\
+protected  ProtectedPiece  3:0..0\n"
+    );
+}
+
+#[test]
 fn the_display_escapes_format_characters_beyond_section_5_4() {
     // Design sections 7.6 and 12.5: a protected text escapes every character of general category
     // `Cf` and every reserved default-ignorable code point, also those the lexer does not treat
