@@ -2001,15 +2001,87 @@ fn merged_texts(parts: &[GenPiece]) -> Vec<String> {
     texts
 }
 
-/// Characters of `skeleton` appear in `whole` in order (a subsequence).
-fn is_subsequence(skeleton: &str, whole: &str) -> bool {
-    let mut rest = whole.chars();
-    skeleton.chars().all(|c| rest.any(|w| w == c))
+/// Whether `plain` is `x` with each character that an entry covers replaced by another text, never
+/// empty (`to_plain` removes no character), and every other character kept: `plain = s0 r1 s1 … rn sn`, where the `s` are the
+/// parts of `x` between the entries and no `r` is the character its entry covers. So an entry
+/// stands on a character that `to_plain` changes, and every changed character has an entry.
+fn entries_explain(x: &str, entries: &[(std::ops::Range<usize>, char)], plain: &str) -> bool {
+    // The parts of `x` between the entries.
+    let mut parts = Vec::new();
+    let mut at = 0;
+    for (range, _) in entries {
+        let Some(part) = x.get(at..range.start) else {
+            return false;
+        };
+        parts.push(part);
+        at = range.end;
+    }
+    let Some(last) = x.get(at..) else {
+        return false;
+    };
+    parts.push(last);
+    let ends: Vec<usize> = plain
+        .char_indices()
+        .map(|(i, _)| i)
+        .chain([plain.len()])
+        .collect();
+    // The positions of `plain` where the parts so far can end.
+    let mut reach: Vec<usize> = Vec::new();
+    if plain.starts_with(parts[0]) {
+        reach.push(parts[0].len());
+    }
+    for (k, part) in parts.iter().enumerate().skip(1) {
+        let covered = entries[k - 1].1.to_string();
+        let mut next = Vec::new();
+        for &from in &reach {
+            for &to in ends.iter().filter(|&&e| e >= from) {
+                if from < to
+                    && plain[from..to] != covered
+                    && plain[to..].starts_with(part)
+                    && !next.contains(&(to + part.len()))
+                {
+                    next.push(to + part.len());
+                }
+            }
+        }
+        reach = next;
+    }
+    reach.contains(&plain.len())
+}
+
+#[test]
+fn entries_explain_names_only_what_changed() {
+    // Property 15 (design section 13.5): `entries_explain` accepts the entries of exactly the
+    // characters that the plain form changes, and refuses an entry on another copy of the same
+    // character, an extra entry, and a missing one.
+    let e = |at: usize, c: char| (at..at + c.len_utf8(), c);
+    for (x, entries, plain, holds) in [
+        ("a—b", vec![e(1, '—')], "a-b", true),
+        ("a…", vec![e(1, '…')], "a...", true),
+        ("——", vec![e(0, '—'), e(3, '—')], "--", true),
+        ("a\u{a0}b", vec![e(1, '\u{a0}')], "a b", true),
+        ("«a»", vec![e(0, '«'), e(3, '»')], "\"a\"", true),
+        // `to_plain` keeps the second `—`: an entry on the first only.
+        ("— —", vec![e(0, '—')], "- —", true),
+        ("— —", vec![e(4, '—')], "- —", false),
+        // An entry on a character that stays.
+        ("a—é", vec![e(1, '—'), e(4, 'é')], "a-é", false),
+        ("— —", vec![e(0, '—'), e(4, '—')], "- —", false),
+        // A changed character without an entry.
+        ("a—b…", vec![e(1, '—')], "a-b...", false),
+        ("——", vec![e(0, '—')], "--", false),
+    ] {
+        assert_eq!(
+            entries_explain(x, &entries, plain),
+            holds,
+            "{x:?} {entries:?} {plain:?}"
+        );
+    }
 }
 
 /// Property 15: the entries of `TypographicChar` of one string: each covers exactly the character it
-/// names, they are ordered and disjoint, and the characters that no entry covers stay in the
-/// plain form in order.
+/// names, they are ordered and disjoint, and they stand on exactly the characters that `to_plain`
+/// changes (`entries_explain`).
 fn assert_entries_cover_what_to_plain_changes(
     t: &Typographer,
     x: &str,
@@ -2023,7 +2095,6 @@ fn assert_entries_cover_what_to_plain_changes(
         "lint and to_plain disagree on {}",
         show(x)
     );
-    let mut skeleton = String::new();
     let mut at = 0;
     for (piece, range, found) in &entries {
         prop_assert_eq!(*piece, 0);
@@ -2035,15 +2106,15 @@ fn assert_entries_cover_what_to_plain_changes(
             "found {:?}",
             found
         );
-        skeleton.push_str(&x[at..range.start]);
         at = range.end;
     }
-    skeleton.push_str(&x[at..]);
+    let covered: Vec<_> = entries.iter().map(|(_, r, c)| (r.clone(), *c)).collect();
     prop_assert!(
-        is_subsequence(&skeleton, &plain),
-        "a character that no entry covers changed: {} -> {}",
+        entries_explain(x, &covered, &plain),
+        "the entries are not the characters that to_plain changes: {} -> {}: {:?}",
         show(x),
-        show(&plain)
+        show(&plain),
+        covered
     );
     Ok(())
 }
@@ -2081,7 +2152,8 @@ proptest! {
     }
 
     /// 15 for pieces: `lint_template` has a `TypographicChar` exactly when `to_plain_template`
-    /// changes a text, and each entry covers its character in a `Text` piece.
+    /// changes a text, each entry covers its character in a `Text` piece, and the entries of each
+    /// text between slots stand on exactly the characters it changes (`entries_explain`).
     #[test]
     fn lint_template_matches_to_plain_template(parts in pieces(), lang in 0usize..3, set in rule_set()) {
         let t = typographer(lang, set, 0, 0);
@@ -2092,14 +2164,39 @@ proptest! {
         let after: Vec<&str> = plain.texts().iter().map(|c| c.as_ref()).collect();
         let before: Vec<&str> = before.iter().map(String::as_str).collect();
         prop_assert_eq!(!entries.is_empty(), after != before, "{:?}", parts);
-        for (piece, range, found) in &entries {
-            match &parts[*piece] {
-                GenPiece::Text(text) => {
-                    let named = found.to_string();
-                    prop_assert_eq!(text.get(range.clone()), Some(named.as_str()));
+        // The entries of each text between slots, at their place in it.
+        let mut covered = vec![Vec::new(); before.len()];
+        let (mut text_index, mut offset) = (0, 0);
+        for (i, part) in parts.iter().enumerate() {
+            match part {
+                GenPiece::Slot(..) => {
+                    text_index += 1;
+                    offset = 0;
                 }
-                other => prop_assert!(false, "an entry in {:?}", other),
+                GenPiece::Text(text) => {
+                    for (piece, range, found) in &entries {
+                        if *piece == i {
+                            let named = found.to_string();
+                            prop_assert_eq!(text.get(range.clone()), Some(named.as_str()));
+                            covered[text_index].push((offset + range.start..offset + range.end, *found));
+                        }
+                    }
+                    offset += text.len();
+                }
+                GenPiece::Protected(text) | GenPiece::Markup(text) | GenPiece::Block(text) => {
+                    prop_assert!(entries.iter().all(|e| e.0 != i), "an entry in {:?}", part);
+                    offset += text.len();
+                }
             }
+        }
+        for ((x, plain), covered) in before.iter().zip(&after).zip(&covered) {
+            prop_assert!(
+                entries_explain(x, covered, plain),
+                "the entries are not the characters that to_plain_template changes: {} -> {}: {:?}",
+                show(x),
+                show(plain),
+                covered
+            );
         }
     }
 
@@ -2466,6 +2563,37 @@ fn i2_over_the_grammar_leaves_out_only_the_fragments_next_to_a_split() {
         assert_eq!(before, after, "{text:?}");
         assert_eq!(before.len(), compared, "{text:?} -> {once:?}: {before:?}");
     }
+}
+
+#[test]
+fn lint_matches_to_plain_over_the_grammar() {
+    // Property 15 over the structured grammar of design section 13.5: the sentence with its typed
+    // glyphs and the typeset forms of both forms of it.
+    for lang in 0..GRAMMAR_LANGUAGES {
+        run_grammar(
+            lang,
+            512,
+            GRAMMAR_SEED + 0x20 + lang as u64,
+            lint_over_the_grammar,
+        );
+    }
+}
+
+#[test]
+#[ignore = "long run of design section 13.5, property 15 over the grammar"]
+fn lint_matches_to_plain_over_the_grammar_long() {
+    run_grammar_long(20_000, GRAMMAR_SEED_LONG + 0x20, lint_over_the_grammar);
+}
+
+/// Property 15 on one sentence of the grammar (`assert_entries_cover_what_to_plain_changes`).
+fn lint_over_the_grammar(config: &GrammarConfig, sentence: &Sentence) -> Result<(), TestCaseError> {
+    let t = config.typographer();
+    for text in [&sentence.text, &sentence.plain] {
+        let typeset = t.typeset(text, Output::Unicode).into_owned();
+        assert_entries_cover_what_to_plain_changes(&t, text)?;
+        assert_entries_cover_what_to_plain_changes(&t, &typeset)?;
+    }
+    Ok(())
 }
 
 #[test]

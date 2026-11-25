@@ -496,7 +496,12 @@ idempotence before the settling as fixed points.
 14. **No panic** on arbitrary strings and arbitrary pieces, including lone combining marks, control
     characters and noncharacters: 10 000 cases in a normal run, 1 000 000 in an `#[ignore]` test.
 15. **lint matches to_plain**: `lint(x)` contains a `TypographicChar` exactly when
-    `to_plain(x) != x`, and each such entry covers one character that `to_plain` changes.
+    `to_plain(x) != x`, and the entries stand on exactly the characters that `to_plain` changes:
+    `to_plain(x)` is `x` with each covered character replaced by a text that is not empty and not
+    that character, and every other character kept in place (`entries_explain`, whose rows refuse an
+    entry on another copy of the same character, an extra entry and a missing one). The same holds
+    per text of `lint_template` and `to_plain_template`, and over the structured grammar
+    (`lint_matches_to_plain_over_the_grammar`, with an `#[ignore]` long run).
 16. **to_plain is stable**: `to_plain(to_plain(x)) == to_plain(x)` for {ru, en} × {Prose, Interface}
     on generated strings and the corpus, and `to_plain(x)` is `Borrowed` exactly when it equals `x`.
 17. **Safe alphabet**: for every output kind, the output of `typeset` and of `typeset_template`
