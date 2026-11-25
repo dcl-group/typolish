@@ -940,9 +940,11 @@ impl Typographer {
     /// `to_plain` is the matching fix. Like `to_plain`, it uses the thread-local working memory and
     /// makes no allocation promise. It is the tooling path: the time is linear in the length of the
     /// text, long runs of quote characters in one paragraph included, and on ordinary text a few
-    /// times that of `typeset`; text dense in glue and typographic characters costs about 100 to
-    /// 150 times that, 10 to 15 microseconds per byte in a release build, so limit the length of
-    /// untrusted input (design section 12.1).
+    /// times that of `typeset` (about 1 to 3 times for `to_plain` and 2 to 4 times for `lint` on
+    /// text that `typeset` wrote); text dense in glue and typographic characters that the rules do
+    /// not write there costs about 40 to 240 times that, 12 to 25 microseconds per byte in a
+    /// release build on the machine measured, so limit the length of untrusted input (design
+    /// section 12.1).
     ///
     /// ```
     /// use typolish::{DiagnosticKind, Language, RuleSet, Typographer};
@@ -970,9 +972,11 @@ impl Typographer {
     /// [`Typographer::to_plain_template`] would change. A diagnostic over several pieces is
     /// reported at its first piece (design section 3.11). It is the tooling path: the time is
     /// linear in the length of the text, long runs of quote characters in one paragraph included,
-    /// and on ordinary text a few times that of `typeset`; text dense in glue and typographic
-    /// characters costs about 100 to 150 times that, 10 to 15 microseconds per byte in a release
-    /// build, so limit the length of untrusted input (design section 12.1).
+    /// and on ordinary text a few times that of `typeset` (about 1 to 3 times for `to_plain` and 2
+    /// to 4 times for `lint` on text that `typeset` wrote); text dense in glue and typographic
+    /// characters that the rules do not write there costs about 40 to 240 times that, 12 to 25
+    /// microseconds per byte in a release build on the machine measured, so limit the length of
+    /// untrusted input (design section 12.1).
     ///
     /// ```
     /// use typolish::{DiagnosticKind, Language, Piece, RuleSet, Severity, Slot, Typographer};
@@ -1003,9 +1007,10 @@ impl Typographer {
     /// such characters comes back borrowed. It uses the thread-local working memory and makes no
     /// allocation promise. It is the tooling path: the time is linear in the length of the text,
     /// long runs of quote characters in one paragraph included, and on ordinary text a few times
-    /// that of `typeset`; text dense in glue and typographic characters costs about 100 to 150
-    /// times that, 10 to 15 microseconds per byte in a release build, so limit the length of
-    /// untrusted input (design section 12.1).
+    /// that of `typeset` (about 1 to 3 times for `to_plain` and 2 to 4 times for `lint` on text
+    /// that `typeset` wrote); text dense in glue and typographic characters that the rules do not
+    /// write there costs about 40 to 240 times that, 12 to 25 microseconds per byte in a release
+    /// build on the machine measured, so limit the length of untrusted input (design section 12.1).
     ///
     /// ```
     /// use typolish::{Language, RuleSet, Typographer};
@@ -1027,9 +1032,11 @@ impl Typographer {
     /// `BlockMarkup` piece ends the paragraph, as in `typeset_template`), and the texts are
     /// in the n + 1 form of [`Template`] (design section 2.10). It is the tooling path: the time is
     /// linear in the length of the text, long runs of quote characters in one paragraph included,
-    /// and on ordinary text a few times that of `typeset`; text dense in glue and typographic
-    /// characters costs about 100 to 150 times that, 10 to 15 microseconds per byte in a release
-    /// build, so limit the length of untrusted input (design section 12.1).
+    /// and on ordinary text a few times that of `typeset` (about 1 to 3 times for `to_plain` and 2
+    /// to 4 times for `lint` on text that `typeset` wrote); text dense in glue and typographic
+    /// characters that the rules do not write there costs about 40 to 240 times that, 12 to 25
+    /// microseconds per byte in a release build on the machine measured, so limit the length of
+    /// untrusted input (design section 12.1).
     ///
     /// ```
     /// use typolish::{Language, Piece, RuleSet, Slot, Typographer};

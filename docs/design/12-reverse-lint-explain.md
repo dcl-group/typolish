@@ -87,21 +87,25 @@ back. The whole pass repeats on its own output until nothing changes, so `to_pla
 construction. There is no second copy of the rule patterns to drift from them. The price is up to
 about (readings within 256 bytes) × (readings of a character) forward runs per pass, each over the
 whole text: on dense typographic text that is hundreds of runs. On ordinary text the time is linear
-in its length and a few times that of `typeset` (1.5 to 6 times on the files of `tests/corpus`,
-measured on text that `typeset` had written, release build). On text dense in glue and typographic
-characters it is about 100 to 150 times that of `typeset`, 10 to 15 microseconds per byte (`a⍽b⍽`
-and `в⍽«а»⍽— ` repeated to 64 KiB in Russian, `a⍽“b”⍽— ` in English, Prose, release build), which
-the tooling path allows (section 2.12) and the maintainer accepted (section 15.2, item 28, which
-gives the earlier figure of 100 to 200 times without telling the two kinds of text apart). A long
-run of quote characters in one paragraph is linear too. The readings of the quotes are found in one
-pass over them: the neighbors of a series of quotes (section 6.3) are found once for the series, not
-once for each of its quotes; the open pairs are kept with the places of the entries of each kind, so
-the innermost pair of a kind and whether a nested pair is open below it are found in constant time;
-and the later `’` that the rule for `’` below looks for is found for every `’` after `s` or `S` in
-one pass, the `’` that wait at the same depth grouped together. Before version 0.1.2 each of these
-was searched again for every quote, and 96 KB of `’` in one paragraph took about 5 s; it now takes
-about 20 ms, and `«„` repeated, `x`, `“»` repeated (96 KB, Russian Prose) about 45 ms instead of 4.4
-s. Every pass that changes something turns at least one non-ASCII character into ASCII text, so the
+in its length and a few times that of `typeset`: on text that `typeset` had written, `to_plain`
+takes about 1 to 3 times as long as `typeset` took to write it and `lint` about 2 to 4 times, in
+Russian and English prose, with quotes, dense in quotes or without them, and `lint` of the plain
+source about as long as `typeset`. On text dense in glue and typographic characters that the rules
+do not write there, both take about 40 to 240 times as long as `typeset` on the same text, 12 to 25
+microseconds per byte (`a⍽b⍽` and `в⍽«а»⍽— ` repeated in Russian, `a⍽“b”⍽— ` in English). These
+figures were measured on 2026-11-26 in Prose, release build, at 64 KiB and 1 MiB, the median of
+three to seven runs, on one shared machine at a load average of 8 to 26; the times per byte depend
+on the machine and its load, the ratios much less. This cost is what the tooling path allows
+(section 2.12) and what the maintainer accepted (section 15.2, item 28). A long run of quote
+characters in one paragraph is linear too. The readings of the quotes are found in one pass over
+them: the neighbors of a series of quotes (section 6.3) are found once for the series, not once for
+each of its quotes; the open pairs are kept with the places of the entries of each kind, so the
+innermost pair of a kind and whether a nested pair is open below it are found in constant time; and
+the later `’` that the rule for `’` below looks for is found for every `’` after `s` or `S` in one
+pass, the `’` that wait at the same depth grouped together. Before version 0.1.2 each of these was
+searched again for every quote, and 96 KB of `’` in one paragraph took about 5 s; it now takes about
+20 ms, and `«„` repeated, `x`, `“»` repeated (96 KB, Russian Prose) about 45 ms instead of 4.4 s.
+Every pass that changes something turns at least one non-ASCII character into ASCII text, so the
 passes end; on the inputs measured, ordinary prose and long runs of quotes in one paragraph alike,
 there are one or two.
 

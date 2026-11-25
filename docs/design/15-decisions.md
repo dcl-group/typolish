@@ -134,8 +134,15 @@ Decided by the maintainer on 2026-11-23; not reopened here:
 27. The speed of the forward pass, about 7 to 15 MB/s on the corpus in Unicode output (6.8 to 14.6)
     against the indicative 20 MB/s of section 13.8, is accepted for version 0.1; the phases of
     section 3.8 are not reworked for it.
-28. `to_plain` and `lint` cost about 100 to 200 times `typeset`, because every reading is checked by
-    a forward run of the engine (section 12.1; formerly the lead's choice C31); this is accepted.
+28. `to_plain` and `lint` cost more than `typeset`, because every reading is checked by a forward
+    run of the engine (section 12.1; formerly the lead's choice C31); this is accepted. The cost
+    depends on the kind of text (measured on 2026-11-26, section 12.1): on text that `typeset`
+    wrote, Russian and English prose with quotes, dense in quotes or without them, `to_plain` takes
+    about 1 to 3 times as long as `typeset` and `lint` about 2 to 4 times; on text dense in glue and
+    typographic characters that the rules do not write there, both take about 40 to 240 times as
+    long, 12 to 25 microseconds per byte on the machine measured. The ratios depend on the machine
+    much less than the times. The item said "about 100 to 200 times `typeset`" for every text until
+    the maintainer ordered it corrected to the measured figures on 2026-11-26.
 29. Every public item has a rustdoc example, every enum variant included; an example of the type
     does not stand for its variants (section 13.10).
 30. `LanguageBuilder::abbreviations` takes entries made of parts and the way they bind; the list
