@@ -294,12 +294,13 @@ pub(crate) struct Entry {
 pub(crate) struct Work {
     qs: Vec<Q>,
     stack: Vec<Entry>,
-    /// Per quote, for the trailing possessive (design section 6.6): the number of straight `'`
-    /// openers before it that take part and stayed unpaired, the number of quotes before it that
-    /// belong to a pair that is not cancelled, the opener of the innermost pair around it, and
-    /// the first quote at or after it that could close a straight `'` opener on a second pass,
-    /// and, for the opener of a pair that `’` closes, the outermost pair of the run of such pairs
-    /// around one another that starts with it.
+    /// Per quote, for the trailing possessive (design section 6.6), by index in `qs` (`NONE` where
+    /// there is none): the index of the first straight `'` opener at or after it that takes part
+    /// and stayed unpaired; the number of quotes before it that belong to a pair that is not
+    /// cancelled; the opener of the innermost pair around it; the index of the first quote at or
+    /// after it that could close a straight `'` opener on a second pass; and, for the opener of a
+    /// pair that `’` closes, the outermost pair of the run of such pairs around one another that
+    /// starts with it.
     before: Vec<[u32; 5]>,
     /// The memory of the runs that settle the result (design section 6.6).
     again: Again,
@@ -1161,7 +1162,7 @@ fn closed_by_apostrophe(qs: &[Q], marks: &[Mark], opener: usize) -> bool {
 }
 
 /// Whether a trailing possessive at `qs[idx]` would be read as the closer of the pair around it
-/// and so change what lies between them (design section 6.6). `before` holds the counts of
+/// and so change what lies between them (design section 6.6). `before` holds the entries of
 /// `Work::before`; those of the quotes after `idx` are complete.
 ///
 /// The pair is closed by `’` and the neighbors of `q` allow a closing role (design section 6.3):
