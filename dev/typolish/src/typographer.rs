@@ -796,6 +796,49 @@ impl Typographer {
     /// assert_eq!(t.slots()[0].0, "n");
     /// ```
     ///
+    /// The rules read the pieces of one call as one stream, and nothing outside them. Text
+    /// typeset in separate calls, such as the alternative branches of one message, gets no context
+    /// from the text around it: the first and the last word of a branch have no neighbor, the
+    /// start of a branch is the start of a text (in Prose a branch that starts with `- ` reads as
+    /// a dialogue line), and a quote pair that opens outside a branch and closes inside it is a
+    /// pair for neither call, so both quotes stay straight and [`Typographer::report_template`]
+    /// reports `UnmatchedQuote` in each. The crate takes no context from another call. Typeset
+    /// the surrounding text as one template with one [`Slot::WORD`](crate::Slot::WORD) where the
+    /// branches stand, typeset each branch as a template of its own, and keep every quote pair
+    /// inside one of them (design section 2.14).
+    ///
+    /// ```
+    /// use typolish::{DiagnosticKind, Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    ///
+    /// // `Удалить "{count} файл"?`, with `{count} файл` as one branch of the message.
+    /// let outer = RU_UI.report_template(
+    ///     [Piece::Text("Удалить \""), Piece::Slot("branch", Slot::WORD), Piece::Text("\"?")],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(outer.result().texts(), ["Удалить «", "»?"]);
+    /// let branch = RU_UI.typeset_template(
+    ///     [Piece::Slot("count", Slot::NUMBER), Piece::Text(" файл")],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(branch.texts(), ["", " файл"]);
+    ///
+    /// // The same message with the closing quote inside the branch: no pair in either call.
+    /// let outer = RU_UI.report_template(
+    ///     [Piece::Text("Удалить \""), Piece::Slot("branch", Slot::WORD), Piece::Text("?")],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(outer.result().texts(), ["Удалить \"", "?"]);
+    /// assert_eq!(outer.diagnostics()[0].kind(), &DiagnosticKind::UnmatchedQuote);
+    /// let branch = RU_UI.report_template(
+    ///     [Piece::Slot("count", Slot::NUMBER), Piece::Text(" файл\"")],
+    ///     Output::Unicode,
+    /// );
+    /// assert_eq!(branch.result().texts(), ["", " файл\""]);
+    /// assert_eq!(branch.diagnostics()[0].kind(), &DiagnosticKind::UnmatchedQuote);
+    /// ```
+    ///
     /// Allocates at most three vectors (the piece texts, the texts and the slots) plus one string
     /// per text that is changed or merged from more than one non-empty piece (design section
     /// 2.12). The vectors are sized from the lower bound of the iterator's `size_hint`; an iterator

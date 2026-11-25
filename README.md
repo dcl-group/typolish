@@ -99,8 +99,54 @@ assert_eq!(t.texts(), ["Удалено ", " файлов из\u{a0}папки «
 assert_eq!(t.slots(), [("n", Slot::NUMBER), ("dir", Slot::WORD)]);
 ```
 
-How each slot kind takes part in the rules is the slot participation table of
-[design section 2.6](https://github.com/dcl-group/typolish/blob/main/docs/design/02-public-api.md).
+A code generator walks the result in order with `iter()` and writes texts and slots back
+interleaved; empty texts are skipped, and `fill` does the same at run time:
+
+```rust
+use typolish::{Language, Output, Piece, RuleSet, Slot, TemplatePart, Typographer};
+
+static RU_UI: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+
+fn main() -> Result<(), &'static str> {
+    let t = RU_UI.typeset_template(
+        [
+            Piece::Slot("n", Slot::NUMBER),
+            Piece::Text(" файлов из папки \""),
+            Piece::Slot("dir", Slot::WORD),
+            Piece::Text("\""),
+        ],
+        Output::Unicode,
+    );
+    let mut code = String::new();
+    for part in t.iter() {
+        match part {
+            // The `Debug` form of a `str` is a valid Rust string literal.
+            TemplatePart::Text(text) => code.push_str(&format!("s.push_str({text:?}); ")),
+            TemplatePart::Slot(name, _) => code.push_str(&format!("s.push_str({name}); ")),
+            // `TemplatePart` is non-exhaustive: refuse a part this generator does not know.
+            _ => return Err("a template part this generator does not know"),
+        }
+    }
+    assert_eq!(
+        code,
+        "s.push_str(n); s.push_str(\" файлов из\\u{a0}папки «\"); s.push_str(dir); s.push_str(\"»\"); "
+    );
+    Ok(())
+}
+```
+
+How each slot kind takes part in the rules is the table in the rustdoc of `SlotKind` (the slot
+participation table of
+[design section 2.6](https://github.com/dcl-group/typolish/blob/main/docs/design/02-public-api.md)).
+Pass `Slot::OTHER` for a placeholder whose kind is unknown: no glue sticks to it and no rule reads
+it as a number or a date.
+
+The rules see only the pieces of one call. Text typeset in separate calls, such as the alternative
+branches of one message, has no context from the text around it: the first and the last word of a
+branch have no neighbor, and a quote pair that opens outside a branch and closes inside it is a pair
+for neither call, so both quotes stay straight and `report_template` reports `UnmatchedQuote` in
+each. Typeset the surrounding text as one template with one `Slot::WORD` where the branches stand,
+each branch as a template of its own, and keep every quote pair inside one of them.
 
 Markup from an HTML splitter goes in as pieces of its own: `Piece::Markup` for inline tags, which
 the rules read across, and `Piece::BlockMarkup` for a block boundary, which ends the paragraph as a

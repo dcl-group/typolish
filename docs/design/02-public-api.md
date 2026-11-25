@@ -589,23 +589,26 @@ Output contract:
    the output kind encoded it. Merging adjacent pieces into one text is not a change.
 
 How a slot takes part in rules (the slot participation table). A slot is one opaque, frozen token;
-for its neighbors it behaves as its kind says:
+for its neighbors it behaves as its kind says. The rustdoc of `SlotKind` holds the same table, since
+this document is not part of the published documentation; the two are changed together:
 
-| Context                                                                               | `Number`                                                        | `Word`   | `Date`              | `Other`  |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------- | ------------------- | -------- |
-| quotes around it (`"{x}"`)                                                            | word                                                            | word     | word                | word     |
-| apostrophe after it (`{x}'s`)                                                         | yes                                                             | yes      | no                  | no       |
-| quote after it as a prime (`{n}"`, Prose)                                             | yes, if the quote is unpaired                                   | no       | no                  | no       |
-| `range.placeholders` (`{a}-{b}`)                                                      | with another `Number`                                           | no       | with another `Date` | no       |
-| `nbsp.units` on its left (`{n} МБ`)                                                   | yes                                                             | no       | no                  | no       |
-| `nbsp.dates` (`{n} мая`, `{d} г.`)                                                    | day or year                                                     | no       | year                | no       |
-| a `Next` abbreviation after it does not bind forward (`{n} ч. Потом`, `{d} г. Затем`) | yes                                                             | no       | yes                 | no       |
-| `number.times` (`{w}x{h}`, Prose)                                                     | yes                                                             | no       | no                  | no       |
-| glue before it (`в {x}`, `№ {x}`)                                                     | yes                                                             | yes      | yes                 | no       |
-| glue after it (`{x} же`)                                                              | yes                                                             | yes      | yes                 | no       |
-| operand of `dash.spaced-hyphen` (`{x} - слово`)                                       | yes; next to a number, a range or a single-letter word: no dash | yes      | yes                 | yes      |
-| `SlotGlue` diagnostic                                                                 | `{n}МБ`, `{a}{b}`                                               | `{a}{b}` | `{a}{b}`            | `{a}{b}` |
-| any rule across a `BlockMarkup` piece (`{x}</p><p> МБ`, `{a}</p><p>{b}`)              | no                                                              | no       | no                  | no       |
+| Context                                                                               | `Number`                                                        | `Word`   | `Date`              | `Other`              |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------- | ------------------- | -------------------- |
+| quotes around it (`"{x}"`)                                                            | word                                                            | word     | word                | word                 |
+| apostrophe after it (`{x}'s`)                                                         | yes                                                             | yes      | no                  | no                   |
+| quote after it as a prime (`{n}"`, Prose)                                             | yes, if the quote is unpaired                                   | no       | no                  | no                   |
+| `range.placeholders` (`{a}-{b}`)                                                      | with another `Number`                                           | no       | with another `Date` | no                   |
+| `nbsp.units` on its left (`{n} МБ`)                                                   | yes                                                             | no       | no                  | no                   |
+| `nbsp.dates` (`{n} мая`, `{d} г.`)                                                    | day or year                                                     | no       | year                | no                   |
+| a `Next` abbreviation after it does not bind forward (`{n} ч. Потом`, `{d} г. Затем`) | yes                                                             | no       | yes                 | no                   |
+| `number.times` (`{w}x{h}`, Prose)                                                     | yes                                                             | no       | no                  | no                   |
+| glue before it (`в {x}`, `№ {x}`)                                                     | yes                                                             | yes      | yes                 | no                   |
+| glue after it (`{x} же`)                                                              | yes                                                             | yes      | yes                 | no                   |
+| operand of `dash.spaced-hyphen` (`{x} - слово`)                                       | yes; next to a number, a range or a single-letter word: no dash | yes      | yes                 | yes                  |
+| the word after `dash.dialogue` (`- {x} пришёл`, Prose)                                | no                                                              | yes      | no                  | yes; the space stays |
+| a word for `ellipsis.inner` (`{a}...{b}`, Prose)                                      | no                                                              | yes      | no                  | yes                  |
+| `SlotGlue` diagnostic                                                                 | `{n}МБ`, `МБ{n}`, `{a}{b}`                                      | `{a}{b}` | `{a}{b}`            | `{a}{b}`             |
+| any rule across a `BlockMarkup` piece (`{x}</p><p> МБ`, `{a}</p><p>{b}`)              | no                                                              | no       | no                  | no                   |
 
 The other pieces take part as follows. A `Protected` piece is one frozen word for its neighbors; a
 `Markup` piece is transparent: the rules read across it as if it were not there (a run of spaces cut
@@ -624,6 +627,12 @@ glues it to the sign, and the rules that read a quantity or a year (`nbsp.units`
 leave it alone. Two `Number` slots or two `Date` slots joined by `-` form a `Range` core (check 17
 of section 3.6), which is how `range.placeholders` reaches them; a `Number` slot and a literal
 number form one too, but no rule edits its dash.
+
+A caller that does not know the kind of a placeholder passes `Other` (section 2.14): it assumes the
+least about the value, since no glue sticks to it and no rule reads it as a number or a date. It is
+not neutral: it is a word for quotes, an operand of `dash.spaced-hyphen`, and the word of
+`dash.dialogue` and `ellipsis.inner`, so `{a} - {b}` gets a dash with two `Other` slots and keeps
+the hyphen with two `Number` slots.
 
 Choices:
 

@@ -122,7 +122,8 @@ pub struct Slot {
 }
 
 impl Slot {
-    /// A number formatted by `format_number` of the same typographer.
+    /// A number formatted by `format_number` of the same typographer. What it enables is
+    /// [`SlotKind::Number`].
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
@@ -136,7 +137,7 @@ impl Slot {
     /// assert_eq!(t.texts(), ["", "\u{a0}дн."]);
     /// ```
     pub const NUMBER: Slot = Slot::new(SlotKind::Number);
-    /// A word or a name.
+    /// A word or a name. What it enables is [`SlotKind::Word`].
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
@@ -150,7 +151,7 @@ impl Slot {
     /// assert_eq!(t.texts(), ["Файл «", "» удалён"]);
     /// ```
     pub const WORD: Slot = Slot::new(SlotKind::Word);
-    /// A date or a time.
+    /// A date or a time. What it enables is [`SlotKind::Date`].
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
@@ -164,7 +165,8 @@ impl Slot {
     /// assert_eq!(t.texts(), ["", "–", ""]);
     /// ```
     pub const DATE: Slot = Slot::new(SlotKind::Date);
-    /// Anything else: a path, a URL, code, a string of unknown length.
+    /// Anything else: a path, a URL, code, a string of unknown length. What it enables is
+    /// [`SlotKind::Other`]; it is the slot to pass when the kind is unknown.
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
@@ -205,18 +207,86 @@ impl Slot {
     }
 }
 
-/// The kind of a slot: how it takes part in the rules around it (the slot participation table of
-/// design section 2.6).
+/// The kind of a slot: how it takes part in the rules around it.
+///
+/// A slot is one opaque, frozen token; the rules never edit it, and for its neighbors it behaves
+/// as its kind says. The table is the slot participation table of design section 2.6 (a rule
+/// named in it applies only where the rule set holds it):
+///
+/// | Context                                                                               | `Number`                                                        | `Word`   | `Date`              | `Other`               |
+/// | ------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------- | ------------------- | --------------------- |
+/// | quotes around it (`"{x}"`)                                                            | word                                                            | word     | word                | word                  |
+/// | apostrophe after it (`{x}'s`)                                                         | yes                                                             | yes      | no                  | no                    |
+/// | quote after it as a prime (`{n}"`, Prose)                                             | yes, if the quote is unpaired                                   | no       | no                  | no                    |
+/// | `range.placeholders` (`{a}-{b}`)                                                      | with another `Number`                                           | no       | with another `Date` | no                    |
+/// | `nbsp.units` on its left (`{n} МБ`)                                                   | yes                                                             | no       | no                  | no                    |
+/// | `nbsp.dates` (`{n} мая`, `{d} г.`)                                                    | day or year                                                     | no       | year                | no                    |
+/// | a `Next` abbreviation after it does not bind forward (`{n} ч. Потом`, `{d} г. Затем`) | yes                                                             | no       | yes                 | no                    |
+/// | `number.times` (`{w}x{h}`, Prose)                                                     | yes                                                             | no       | no                  | no                    |
+/// | glue before it (`в {x}`, `№ {x}`)                                                     | yes                                                             | yes      | yes                 | no                    |
+/// | glue after it (`{x} же`)                                                              | yes                                                             | yes      | yes                 | no                    |
+/// | operand of `dash.spaced-hyphen` (`{x} - слово`)                                       | yes; next to a number, a range or a single-letter word: no dash | yes      | yes                 | yes                   |
+/// | the word after `dash.dialogue` (`- {x} пришёл`, Prose)                                | no                                                              | yes      | no                  | yes; the space stays  |
+/// | a word for `ellipsis.inner` (`{a}...{b}`, Prose)                                      | no                                                              | yes      | no                  | yes                   |
+/// | `SlotGlue` diagnostic                                                                 | `{n}МБ`, `МБ{n}`, `{a}{b}`                                      | `{a}{b}` | `{a}{b}`            | `{a}{b}`              |
+/// | any rule across a `BlockMarkup` piece (`{x}</p><p> МБ`, `{a}</p><p>{b}`)              | no                                                              | no       | no                  | no                    |
+///
+/// No glue sticks to an `Other` slot, nor to the fragment that holds it: `и "{o}"` and `в ({o})`
+/// keep their spaces. A `Number` slot after `№`, `§` or `¶` is a label number: `nbsp.signs` glues
+/// it to the sign, and `nbsp.units` and `nbsp.dates` leave it alone.
+///
+/// # When the kind is unknown
+///
+/// Pass [`SlotKind::Other`] ([`Slot::OTHER`]) for a placeholder whose kind the caller does not
+/// know. It assumes the least about the value: no glue sticks to it, so a long value is never held
+/// in one unbreakable group with its neighbors, and no rule reads it as a number, a date or a
+/// year, so no unit, day, year, range, dimension or prime is glued or edited on a guess. The price
+/// is the glue a short value would have had (`в {x}`, `{x} МБ`). `Word` would glue a value of any
+/// length; `Number` and `Date` would read the text around a value that is no number or date as
+/// units, ranges and dates.
+///
+/// `Other` is not invisible to the rules: like every kind it is a word for the quotes around it,
+/// and like `Word` it is an operand of a spaced hyphen and, in Prose, the word of `dash.dialogue`
+/// and `ellipsis.inner`. So `{a} - {b}` gets a dash with two `Other` slots and keeps the hyphen
+/// with two `Number` slots. Where that matters, declare the kind.
 ///
 /// ```
-/// use typolish::{Slot, SlotKind};
+/// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
 ///
-/// assert_eq!(Slot::OTHER.kind(), SlotKind::Other);
+/// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+///
+/// // The texts of `pieces` with every slot of the kind `slot`.
+/// fn texts(pieces: &[Piece<'static, ()>], slot: Slot) -> Vec<String> {
+///     let pieces = pieces.iter().map(|p| match p {
+///         Piece::Slot(..) => Piece::Slot((), slot),
+///         other => *other,
+///     });
+///     let t = RU.typeset_template(pieces, Output::Unicode);
+///     t.texts().iter().map(|text| text.to_string()).collect()
+/// }
+///
+/// let unit = [Piece::Slot((), Slot::OTHER), Piece::Text(" МБ")];
+/// assert_eq!(texts(&unit, Slot::NUMBER), ["", "\u{a0}МБ"]);
+/// assert_eq!(texts(&unit, Slot::OTHER), ["", " МБ"]);
+///
+/// let before = [Piece::Text("в "), Piece::Slot((), Slot::OTHER)];
+/// assert_eq!(texts(&before, Slot::WORD), ["в\u{a0}", ""]);
+/// assert_eq!(texts(&before, Slot::OTHER), ["в ", ""]);
+///
+/// let hyphen = [Piece::Slot((), Slot::OTHER), Piece::Text(" - "), Piece::Slot((), Slot::OTHER)];
+/// assert_eq!(texts(&hyphen, Slot::NUMBER), ["", " - ", ""]);
+/// assert_eq!(texts(&hyphen, Slot::OTHER), ["", " — ", ""]);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum SlotKind {
     /// A number formatted by `format_number` of the same typographer (count, size, port).
+    ///
+    /// Enables what a number enables: glue before a unit, a month or a year word after it, a range
+    /// dash between two `Number` slots, the times sign and, in Prose, a prime after it; also glue
+    /// before and after it and an apostrophe after it. A spaced hyphen between it and a number, a
+    /// range or a single-letter word stays a hyphen, and it is not a word for `dash.dialogue` and
+    /// `ellipsis.inner`. See the table of [`SlotKind`].
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, SlotKind, Typographer};
@@ -232,6 +302,10 @@ pub enum SlotKind {
     /// ```
     Number,
     /// A word or a name.
+    ///
+    /// Enables what a word enables: glue before and after it, an apostrophe after it, a dash
+    /// operand, and the word of `dash.dialogue` and `ellipsis.inner`. No rule reads it as a number
+    /// or a date. See the table of [`SlotKind`].
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, SlotKind, Typographer};
@@ -252,6 +326,10 @@ pub enum SlotKind {
     Word,
     /// A date or a time, in words or digits.
     ///
+    /// Enables glue before and after it, glue before a year word after it, a range dash between
+    /// two `Date` slots, and a dash operand. No apostrophe after it, and not a word for
+    /// `dash.dialogue` and `ellipsis.inner`. See the table of [`SlotKind`].
+    ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, SlotKind, Typographer};
     ///
@@ -270,6 +348,11 @@ pub enum SlotKind {
     /// ```
     Date,
     /// Anything else: a path, a URL, code, a string of unknown length.
+    ///
+    /// Enables the least: no glue before or after it, no apostrophe, and no rule reads it as a
+    /// number or a date; it is still a word for quotes, a dash operand, and the word of
+    /// `dash.dialogue` and `ellipsis.inner`. The kind to pass when the kind is unknown (see
+    /// [`SlotKind`]).
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, SlotKind, Typographer};
@@ -299,6 +382,44 @@ pub enum SlotKind {
 /// );
 /// assert_eq!(t.texts(), ["Привет, ", "!"]);
 /// assert_eq!(t.fill(|name| (*name).into()), "Привет, name!");
+/// ```
+///
+/// A code generator walks the result in order with [`Template::iter`] and writes texts and slots
+/// back interleaved; empty texts are skipped. Here each part becomes a line of Rust code (the
+/// `Debug` form of a `str` is a valid Rust string literal):
+///
+/// ```
+/// use typolish::{Language, Output, Piece, RuleSet, Slot, TemplatePart, Typographer};
+///
+/// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+///
+/// let t = RU.typeset_template(
+///     [
+///         Piece::Slot("count", Slot::NUMBER),
+///         Piece::Text(" файлов в папке \""),
+///         Piece::Slot("dir", Slot::WORD),
+///         Piece::Text("\""),
+///     ],
+///     Output::Unicode,
+/// );
+/// let mut code = String::new();
+/// for part in t.iter() {
+///     match part {
+///         TemplatePart::Text(text) => code.push_str(&format!("s.push_str({text:?});\n")),
+///         TemplatePart::Slot(name, _) => code.push_str(&format!("s.push_str({name});\n")),
+///         // `TemplatePart` is non-exhaustive: refuse a part this generator does not know
+///         // rather than lose text.
+///         _ => return Err("a template part this generator does not know"),
+///     }
+/// }
+/// assert_eq!(
+///     code,
+///     "s.push_str(count);\n\
+///      s.push_str(\" файлов в\\u{a0}папке «\");\n\
+///      s.push_str(dir);\n\
+///      s.push_str(\"»\");\n"
+/// );
+/// # Ok::<(), &str>(())
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Template<'t, S> {
