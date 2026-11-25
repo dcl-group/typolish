@@ -1903,6 +1903,7 @@ fn the_p2_filters_name_their_limits() {
             "'-\" - §5 '\" \"\" dogs' word \"v1.2.3\"'\"'",
             NO_READING,
         ),
+        (1, Everywhere, "'(\" - §5 \"... - \"\")'", NO_READING),
         (
             3,
             Everywhere,

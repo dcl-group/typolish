@@ -44,6 +44,13 @@ with this task. The plain writing of the grammar finds the class with labels and
 too: en-GB, Prose, `""dogs'" word '1920x1080'"` gives `‘“dogs’” word “1920×1080”’`, whose plain form
 `""dogs’" word "1920x1080""` gives `""dogs’" word "1920×1080""`.
 
+A misreading of the quotes can also change what `to_plain` writes for a glued space: in English with
+`SingleQuotes::Everywhere`, Prose, `'-" - §5 '" "" dogs' word "v1.2.3"'"'` gives
+`“-" - §⍽5 '" ‘’ dogs” word “v1.2.3″'”'`, whose plain form `"-" - § 5 '" "" dogs" word "v1.2.3″'"'`
+writes `§⍽5` as `§ 5`; and `'(" - §5 "... - "")'` gives `“(" - §⍽5 "… — ‘’)”`, plain form
+`"(" - § 5 "... - "")"`. With the quotes of the input back, each plain form typesets to the output,
+so the filter names them (found by the long run of P2 over the grammar with other seeds).
+
 ## Analysis so far
 
 Adding the tries "nested and deep glyphs as `'`" and "nested, primary and deep glyphs as `'`" to
