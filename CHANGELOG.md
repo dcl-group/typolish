@@ -69,7 +69,16 @@ now (`⍽` stands for U+00A0). Minimum supported Rust version: 1.100.
   → `XIX–XX% -- x`. A setting that spaces the sign spaces it in such a core with a Roman side too:
   Russian, Prose, `PercentSpacing::Spaced`, `5 - I–10%`: `5 - I–10%` → `5 - I–10⍽%`. A range written
   with `–` and a Roman first side keeps its output (`x - XIX–10%` and `- XIX–10%` stay as written,
-  as in 0.1.1). Found by the grammar generator of design section 13.5 and by review.
+  as in 0.1.1). Next to a word outside the language's script or a technical fragment such a core is
+  neither, as the `Range` core of the spaced form is not (design section 8.4), so it gets the dash
+  that the spaced form gets, also with a hyphen joint (older than 0.1.2). Russian, Prose and
+  Interface: `XIX-XX% - word`: `XIX-XX% - word` → `XIX-XX%⍽— word`, as `XIX-XX % - word` gives
+  `XIX-XX⍽%⍽— word`; `XIX–XX% - word`: `XIX–XX% - word` → `XIX–XX%⍽— word`; `word - 1,5–2,5%`:
+  `word - 1,5–2,5%` → `word⍽— 1,5–2,5%`; `word - V–X%`: `word - V–X%` → `word⍽— V–X%`;
+  `word - 5-10%`: `word - 5-10%` → `word⍽— 5-10%`, as `word - 5-10 %` gives `word⍽— 5–10⍽%` (Prose).
+  English, Prose and Interface: `/usr/bin - 5-10%`: `/usr/bin - 5-10%` → `/usr/bin — 5-10%`;
+  `host:8080 - 1.5–2.5%`: `host:8080 - 1.5–2.5%` → `host:8080 — 1.5–2.5%`. Found by the grammar
+  generator of design section 13.5 and by review.
 - A trailing possessive inside a pair that `’` closes stays straight where a second pass or
   `to_plain` would read it as the closer of the pair and change what stands between them (design
   section 6.6): a straight `'` opener that stayed unpaired stands after it, and a straight `'` or a

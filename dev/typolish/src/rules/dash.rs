@@ -221,8 +221,11 @@ fn between(cx: &Cx<'_>, i: usize, double: bool) -> Option<Match> {
     // split of the first pass: across a wrapper, `Moscow—a,` reads as `a,` (design sections 4.3,
     // I4, and 8.4).
     let (pl, pr) = (plain_side(cx, fl, true), plain_side(cx, fr, false));
+    // A range is neither: a percentage range with the sign attached (`XIX-XX%`, `1,5–2,5%`, a
+    // technical or a foreign core by its shape) reads as the range with the sign after spaces
+    // does, the `Range` core that `percent_owner` gives (design section 8.2, invariant I2).
     let foreign_or_technical =
-        |f: &Frag| foreign(cx, f) || is_technical(f) || technical_sign(cx, f);
+        |f: &Frag| !is_range(cx, f) && (foreign(cx, f) || is_technical(f) || technical_sign(cx, f));
     let refused = (small(cx, &pl, true) && small(cx, &pr, false))
         || flag_like(cx, &pl)
         || flag_like(cx, &pr)

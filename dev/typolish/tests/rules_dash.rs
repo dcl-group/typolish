@@ -28,8 +28,8 @@ use common::{
 };
 use probe::{diag_ranges, diagnostics_of};
 use typolish::{
-    Bind, DashStyle, DiagnosticKind, Language, LanguageBuilder, Output, Piece, Rule, RuleSet, Slot,
-    Typographer,
+    Bind, DashStyle, DiagnosticKind, Language, LanguageBuilder, Output, PercentSpacing, Piece,
+    Rule, RuleSet, Slot, Typographer,
 };
 
 const SPACED: Rule = Rule::DashSpacedHyphen;
@@ -123,6 +123,17 @@ const RU_SPACED: &[(&str, &str)] = &[
 // Rows that the sets change with other rules of their own: Prose sets `-- ` and `- ` at a line
 // start (`dash.double-hyphen`, `dash.dialogue`). `dash.spaced-hyphen` alone and in Interface
 // leaves them, and does not match a `--` run, not even with an empty edit (design section 8.4).
+// Next to a foreign word a percentage range is no foreign or technical core, whatever its shape,
+// as the range with the sign after spaces is not (design section 8.2). The sets glue the dash to
+// the percent sign (`nbsp.dash`), so these rows run with the rule alone.
+const RU_SPACED_PERCENT_FOREIGN: &[(&str, &str)] = &[
+    ("XIX-XX% - word", "XIX-XX% — word"),
+    ("XIX–XX% - word", "XIX–XX% — word"),
+    ("word - 1,5–2,5%", "word — 1,5–2,5%"),
+    ("word - V–X%", "word — V–X%"),
+    ("word - 5-10%", "word — 5-10%"),
+];
+
 const RU_SPACED_NOT_PROSE: &[(&str, &str)] = &[
     ("слово\n- слово", "слово\n- слово"),
     ("- слово", "- слово"),
@@ -149,12 +160,50 @@ fn spaced_hyphen_in_russian() {
     check_rows(&all, &plain);
     let alone = &all[..1];
     check_rows(alone, RU_SPACED_NOT_PROSE);
+    check_rows(alone, RU_SPACED_PERCENT_FOREIGN);
     check_rows(&all[2..], RU_SPACED_NOT_PROSE);
     let dimension: Vec<(&str, &str)> = dimension.into_iter().copied().collect();
     check_rows(alone, &dimension);
     for (what, t) in &all {
         assert_changed_by_with_glue(what, t, "Москва - столица", SPACED);
         assert_changed_by_with_glue(what, t, "Привет, - сказал он.", SPACED);
+    }
+}
+
+#[test]
+fn a_percentage_range_reads_alike_with_the_sign_attached_and_spaced() {
+    // Design section 8.2: a percentage range reads as the same range with the sign after spaces,
+    // next to a number and next to a foreign word, with every percent setting; so the dash is set
+    // in both forms or in neither.
+    for (attached, spaced) in [
+        ("XIX-XX% - word", "XIX-XX % - word"),
+        ("XIX–XX% - word", "XIX–XX % - word"),
+        ("word - 1,5–2,5%", "word - 1,5–2,5 %"),
+        ("word - V–X%", "word - V–X %"),
+        ("word - 5-10%", "word - 5-10 %"),
+        ("XIX-XX% - 27", "XIX-XX % - 27"),
+        ("1,5–2,5% - и", "1,5–2,5 % - и"),
+    ] {
+        for percent in [
+            PercentSpacing::Language,
+            PercentSpacing::Attached,
+            PercentSpacing::Spaced,
+            PercentSpacing::AsWritten,
+        ] {
+            for set in [RuleSet::PROSE, RuleSet::INTERFACE] {
+                let t = Typographer::builder(Language::RU_RU, set)
+                    .percent(percent)
+                    .build()
+                    .unwrap();
+                let a = t.typeset(attached, Output::Unicode);
+                let s = t.typeset(spaced, Output::Unicode);
+                assert_eq!(
+                    a.contains('—'),
+                    s.contains('—'),
+                    "{percent:?}: {attached:?} gave {a:?}, {spaced:?} gave {s:?}"
+                );
+            }
+        }
     }
 }
 

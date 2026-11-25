@@ -73,7 +73,10 @@ and `0.2.27` is not. Two kinds of number name or measure something other than a 
   do (`1,5–2,5% - и` and `стр. 1,5-2,5 % - и` with `PercentSpacing::Attached` keep the hyphen). A
   percentage range always reads as one range, never as its first side, also where that side is a
   Roman numeral that reads as a word (`XIX–10%`): `x - XIX–10%` and `- XIX–10%` keep the hyphen, as
-  `x - XIX–10 %` and `- XIX–10 %` do.
+  `x - XIX–10 %` and `- XIX–10 %` do. For the same reason it is neither a foreign word nor a
+  technical fragment in the refusal of section 8.4, as the `Range` core of the spaced form is
+  neither: in Russian text `XIX-XX% - word` and `word - 5-10%` get the dash, as `XIX-XX % - word`
+  and `word - 5-10 %` do.
 
 Both count as numbers everywhere (operands, the "numbers on both sides" refusal of the dash rules; a
 percent sign after spaces is read there with its number, label number or range, so `100 % - норма`
@@ -205,7 +208,9 @@ right → em dash. It does not fire, and reports `AmbiguousHyphen`, when:
   the dash. A compound word counts by the script of its letters, as any word (section 8.2): in
   Russian text `кто-то - что-то` gets the dash, while `tls-server - agent-ca` (Latin compound words)
   does not, as `cat - file` does not; a compound word without letters (`123-45-67`) counts as a
-  foreign word in every language.
+  foreign word in every language. A range is neither, a percentage range with the sign attached
+  included (section 8.2), whatever core its shape makes: `XIX-XX% - word`, `word - 1,5–2,5%` and
+  `word - V–X%` in Russian text get the dash, as `XIX-XX % - word` does.
 
 Spacing by `DashStyle`: `SpacedGlued` (ru) and `Spaced` keep the author's spaces (`nbsp.dash` glues
 the one before the dash under `SpacedGlued`). `Closed` (en) removes both spaces (`word—word`) only

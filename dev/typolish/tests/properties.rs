@@ -198,6 +198,13 @@ const SEEDS: &[&str] = &[
     "- XIX–10 % - 27",
     "стр. 1,5-2,5 % - и",
     "p. 1.5-2.5 % - x",
+    // Next to a foreign word a percentage range is no foreign or technical core in either form
+    // (design section 8.2).
+    "XIX-XX % - word",
+    "XIX-XX% - word",
+    "word - 1,5–2,5 %",
+    "word - V–X%",
+    "word - 5-10%",
     // A label number owns its percent sign after spaces too (design section 8.2).
     "№5 % — т.е.",
     "№10 % — -5% +",
