@@ -319,6 +319,9 @@ const SEEDS: &[&str] = &[
     // sections 8.7 and 15.3, C65).
     "Иванов И. И. МВД-FBI - А. ПУШКИН-Smith - Иванов И. И. СМИ-Smith",
     "J. XIX-XXм - Smith J. R. IT-Отдел - Smith J. CNN-Россия - J. SMITH-Петров",
+    // A compound whose word of the other script is in capitals or of one letter (C65).
+    "Иванов И. И. IT-Отдел - А. IT-Отдел - Иванов И. И. Пушкин-J - А. Пушкин-SMITH",
+    "Smith J. R. МВД-Office - J. МВД-Office - J. Smith-ПЕТРОВ - Smith J. Smith-П",
     // A glued dash after a sign-only pair written as `‘’` (design sections 6.3 and 8.1).
     "\"\" - x - а \"\" - б - \"5 '' -- 100\"",
     // A `Joined` core before a context range or a day reads as its last word (design section 4.3,

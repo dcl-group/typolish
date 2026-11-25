@@ -637,10 +637,10 @@ fn first_visible(cx: &Cx<'_>, f: &Frag) -> Option<usize> {
 
 /// A surname: a capitalized word of the language's script of at least two letters. A compound word
 /// with words of two scripts (`Пушкин-Smith`) is a word of each of them (design section 8.2) and a
-/// surname where every word of it is capitalized and one is a surname of the language's script on
-/// its own; `IT-отдел` and `XIX-XXм` are not (design section 8.7, C62). A word of the compound in
-/// capitals is an acronym and no surname on its own, so `МВД-FBI`, `CNN-Россия` and `SMITH-Петров`
-/// are no surnames in any language (C65).
+/// surname where every word of it is a name, capitalized and not in capitals, and one is a name of
+/// the language's script; `IT-отдел` and `XIX-XXм` are not (design section 8.7, C62). A word in
+/// capitals is an acronym or a numeral in either script, so `МВД-FBI`, `CNN-Россия`,
+/// `SMITH-Петров`, `МВД-Office` and `IT-Отдел` are no surnames in any language (C65).
 fn surname(cx: &Cx<'_>, f: &Frag) -> bool {
     if !is_word(cx, f)
         || cx
@@ -677,23 +677,27 @@ impl Part {
         self.n += 1;
     }
 
-    /// A surname of the script `bit` on its own: capitalized, at least two letters, all of `bit`,
-    /// and not in capitals (`МВД`, `XIX` and `IT` are acronyms or numerals; design section 8.7,
-    /// C65).
+    /// A name: capitalized and not in capitals, so of at least two letters (`МВД`, `XIX`, `IT`
+    /// and `FBI` are acronyms or numerals in either script; design section 8.7, C65).
+    fn name(self) -> bool {
+        self.capital && self.lower
+    }
+
+    /// A name of the script `bit` on its own: a name all of whose letters are of `bit`.
     fn own(self, bit: u8) -> bool {
-        self.capital && self.lower && self.n >= 2 && self.mask == bit
+        self.name() && self.mask == bit
     }
 }
 
-/// Whether every word of a compound core is capitalized and one of them is a surname of the
-/// language's script on its own (`Пушкин-Smith`, `Smith-Петров`).
+/// Whether every word of a compound core is a name and one of them is a name of the language's
+/// script on its own (`Пушкин-Smith`, `Smith-Петров`).
 fn compound_surname(cx: &Cx<'_>, f: &Frag) -> bool {
     let bit = language_bit(cx);
     let mut own = false;
     let mut part = Part::default();
     for j in cx.core(f) {
         if cx.kind(j) == Some(Kind::Dash) {
-            if !part.capital {
+            if !part.name() {
                 return false;
             }
             own |= part.own(bit);
@@ -704,7 +708,7 @@ fn compound_surname(cx: &Cx<'_>, f: &Frag) -> bool {
                 .for_each(|c| part.push(c));
         }
     }
-    part.capital && (own || part.own(bit))
+    part.name() && (own || part.own(bit))
 }
 
 /// The space after a fragment and the token after that space, when the space is a pattern space.

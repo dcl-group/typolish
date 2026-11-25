@@ -404,24 +404,27 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   (section 8.2) and a surname where every word of it is capitalized and one of them is a surname of
   the language's script on its own, so `А. Пушкин-Smith` → `А.⍽Пушкин-Smith` and `J. Smith-Петров` →
   `J.⍽Smith-Петров`, while `IT-отдел`, `SMS-рассылка` and `XIX-XXм` are no surnames and take no
-  initials (`Иванов⍽И.⍽И. IT-отдел`; C62). A word of the compound in capitals is an acronym or a
-  numeral and no surname on its own, so `МВД-FBI` and `СМИ-Smith` are no surnames in Russian, and
-  `XIX-XXм`, `IT-Отдел`, `CNN-Россия` and `SMITH-Петров` none in English (`Smith⍽J. CNN-Россия`;
-  C65). A word of one script is read as a whole, as in 0.1.1: `СМИ-отдел` and `BBC-news` are
-  surnames, so `Иванов И. И. СМИ-отдел` → `Иванов И.⍽И.⍽СМИ-отдел` while `Иванов И. И. IT-отдел`
-  keeps the initials with `Иванов` (C65). The spaces inside the pattern are glued: `А. С. Пушкин` →
-  `А.⍽С.⍽Пушкин`, `J. R. R. Tolkien` → `J.⍽R.⍽R.⍽Tolkien`. A compact `А.С.` gets no inserted space;
-  only the space before the surname is glued. Two or more initials, the reversed form and a single
-  initial before a surname are glued wherever they stand (`от⍽И.⍽Петрова`, `Автор: А.⍽Пушкин`,
-  `сказал А.⍽Петров`). A capital letter with a full stop that ends a sentence (a one-letter label,
-  en `I`) before a capitalized word gets the same glue (`вариант А.⍽После`): the rule does not look
-  for sentence ends (section 15.2, item 11), and the glue only forbids a line break there (section
-  10.8). Where initials stand between two capitalized words, the forward form takes them and the
-  word before stays apart (`Иван А.⍽Петров`, `Пушкин А.⍽С.⍽Иванов`; section 15.2, item 22). A label
-  numeral is not an initial (`§V.`); a surname at the end of a `Joined` core is read as the word it
-  was (section 4.3, I4). A compact abbreviation after a surname is read as its first part, the
-  fragment that `nbsp.abbreviations` splits off (section 4.3, I2), so `Москва Т.е.` gets the glue of
-  `Москва Т. е.` in one pass: `Москва⍽Т.⍽е.`.
+  initials (`Иванов⍽И.⍽И. IT-отдел`; C62). A word of the compound in capitals or of one letter is an
+  acronym, a numeral or an initial, in either script, and no name: every word of the compound has a
+  lowercase letter after its capital, so `МВД-FBI`, `СМИ-Smith`, `IT-Отдел` and `Пушкин-J` are no
+  surnames in Russian, and `XIX-XXм`, `IT-Отдел`, `CNN-Россия`, `SMITH-Петров`, `МВД-Office` and
+  `Smith-ПЕТРОВ` none in English (`Smith⍽J. CNN-Россия`, `Smith⍽J.⍽R. МВД-Office`,
+  `Иванов⍽И.⍽И. IT-Отдел`; C65). A word of one script is read as a whole, as in 0.1.1: `СМИ-отдел`
+  and `BBC-news` are surnames, so `Иванов И. И. СМИ-отдел` → `Иванов И.⍽И.⍽СМИ-отдел` while
+  `Иванов И. И. IT-отдел` keeps the initials with `Иванов` (C65). The spaces inside the pattern are
+  glued: `А. С. Пушкин` → `А.⍽С.⍽Пушкин`, `J. R. R. Tolkien` → `J.⍽R.⍽R.⍽Tolkien`. A compact `А.С.`
+  gets no inserted space; only the space before the surname is glued. Two or more initials, the
+  reversed form and a single initial before a surname are glued wherever they stand
+  (`от⍽И.⍽Петрова`, `Автор: А.⍽Пушкин`, `сказал А.⍽Петров`). A capital letter with a full stop that
+  ends a sentence (a one-letter label, en `I`) before a capitalized word gets the same glue
+  (`вариант А.⍽После`): the rule does not look for sentence ends (section 15.2, item 11), and the
+  glue only forbids a line break there (section 10.8). Where initials stand between two capitalized
+  words, the forward form takes them and the word before stays apart (`Иван А.⍽Петров`,
+  `Пушкин А.⍽С.⍽Иванов`; section 15.2, item 22). A label numeral is not an initial (`§V.`); a
+  surname at the end of a `Joined` core is read as the word it was (section 4.3, I4). A compact
+  abbreviation after a surname is read as its first part, the fragment that `nbsp.abbreviations`
+  splits off (section 4.3, I2), so `Москва Т.е.` gets the glue of `Москва Т. е.` in one pass:
+  `Москва⍽Т.⍽е.`.
 - **`nbsp.dates`.** By `month_position`: `AfterDay` (ru) glues a day number 1 to 31 (or a `Number`
   slot) before a month form (`21⍽ноября`); `BeforeDay` glues a month form before a day number;
   `Both` (en) glues both orders (`November⍽21`, `21⍽November`); a `Joined` core before the day reads
