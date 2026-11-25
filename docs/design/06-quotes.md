@@ -147,7 +147,8 @@ typed glyph its pair (primary or nested). One pass over the window with a stack 
   - on top: (entry, c) is a pair, the entry is popped;
   - covered only by `S` entries: those straight `'` are unpaired and popped, then the pair is made;
   - covered by a `D` entry or a typed entry: the pairs would cross; the window does not converge,
-    `CrossingQuotes` (warning) at the covering entry;
+    `CrossingQuotes` (warning) at the covering entry; where several entries cover it, at the
+    innermost one, the topmost on the stack (in Russian `«a "b „c» d"` at `„`, `«a "b» c"` at `"`);
   - absent: a straight `"` makes the window non-converging with `UnmatchedQuote` (warning); a
     straight `'` is unpaired; `’` is an apostrophe (section 6.3); any other typed glyph is neutral,
     with `UnmatchedQuote` (info);

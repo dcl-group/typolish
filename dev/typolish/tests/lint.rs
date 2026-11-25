@@ -231,6 +231,13 @@ fn crossing_quotes() {
         "«a \"b» c\"",
         &[(CrossingQuotes, Warning, Some(Rule::QuotesPairs), 4..5)],
     );
+    // Several entries cover the closer: the diagnostic sits at the innermost one, the nearest to
+    // the closer on the stack (`„`, 7..10), not at the straight `"` of the pair that would cross.
+    check_in_sets(
+        &RU,
+        "«a \"b „c» d\"",
+        &[(CrossingQuotes, Warning, Some(Rule::QuotesPairs), 7..10)],
+    );
     // A neutral typed closer inside a new pair of its family (design section 6.6).
     check_in_sets(
         &RU,
