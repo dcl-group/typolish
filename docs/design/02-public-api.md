@@ -590,13 +590,16 @@ Output contract:
 7. An edit never crosses a slot, and it is never owned by a slot, a `Protected` piece or markup. A
    replaced or removed character belongs to the `Text` piece that holds it. An inserted character
    (the no-break space of `nbsp.signs`, `nbsp.units` and `nbsp.abbreviations` is the only insertion
-   today) belongs to the `Text` piece on its left when a text token precedes it or no text token
-   follows it, and to the `Text` piece on its right otherwise (section 3.11). It lands in the text
-   of the output on that side of a slot: `Text("№")`, `Slot(Number)` gives `№⍽` before the slot,
-   `Slot(Number)`, `Text("%")` with `PercentSpacing::Spaced` gives `⍽%` after it. No rule inserts
-   where a slot or a `Protected` piece lies on each side of the point (protected | slot, slot |
-   protected, text | protected | slot): such a template is unchanged and its journal is empty. A
-   rule that inserted there would extend this item and section 3.11 in the same change.
+   today) belongs to the `Text` piece of the token immediately before the insertion point when that
+   token is text, and to the `Text` piece of the token immediately after it otherwise; where markup
+   stands between the two characters, the point comes after the markup when a text token follows
+   (`5<b>%` → `5<b>⍽%`, `№<b>5` → `№<b>⍽5`) and right after the text when a slot or a protected
+   piece follows (`№<b>{n}` → `№⍽<b>{n}`; section 3.11). It lands in the text of the output on that
+   side of a slot: `Text("№")`, `Slot(Number)` gives `№⍽` before the slot, `Slot(Number)`,
+   `Text("%")` with `PercentSpacing::Spaced` gives `⍽%` after it. No rule inserts where a slot or a
+   `Protected` piece lies on each side of the point (protected | slot, slot | protected, text |
+   protected | slot): such a template is unchanged and its journal is empty. A rule that inserted
+   there would extend this item and section 3.11 in the same change.
 
 How a slot takes part in rules (the slot participation table). A slot is one opaque, frozen token;
 for its neighbors it behaves as its kind says. The rustdoc of `SlotKind` holds the same table, since
@@ -1000,8 +1003,11 @@ Choices:
   becomes several records in input order: the first holds the replacement, the others delete the
   rest; `original()` of each returns the slice of its own piece. The rustdoc of `report_template`
   and `Report::changes` and the README give this as the supported way to distribute a result over
-  adjacent text pieces, with a compiled example. A report of differences against the reference
-  implementation is printed from them without a second run.
+  adjacent text pieces, with a compiled example. A replacement is Unicode, before output encoding,
+  so the records rebuild the `Output::Unicode` result; for another output kind the caller encodes
+  each rebuilt part on its own (a one-piece template of its kind with `RuleSet::EMPTY` in the target
+  output), and a nowrap group that spans several pieces is not rebuilt that way. A report of
+  differences against the reference implementation is printed from them without a second run.
 - **`report` and `typeset` are one engine**; `report` turns on a recorder that the plain path
   compiles out (section 3.11). A property test checks `report(x).result() == typeset(x)` and that
   applying `changes()` to the input yields the result.

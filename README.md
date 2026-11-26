@@ -267,7 +267,11 @@ assert_eq!(
 Adjacent `Text`, `Protected` and `Markup` pieces of a template merge into one text of the result. A
 caller that must give each input piece its own part applies the journal of edits: every record names
 the piece that owns it and a byte range in that piece, and an edit across a boundary gives one
-record per piece, the first with the whole replacement and the others with an empty one:
+record per piece, the first with the whole replacement and the others with an empty one. The
+replacements are Unicode, so the records rebuild the result of `Output::Unicode`; for HTML or an
+escaped output, encode each rebuilt part on its own, for example as a one-piece template of its kind
+with `RuleSet::EMPTY` in the target output. Nowrap groups that span several pieces are not rebuilt
+that way: each part gets only the groups inside it.
 
 ```rust
 use typolish::{Language, Output, Piece, RuleSet, Typographer};

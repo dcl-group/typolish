@@ -16,7 +16,8 @@ use std::borrow::Cow;
 pub enum Piece<'t, S> {
     /// Text to typeset. Adjacent `Text`, `Protected` and `Markup` pieces come out as one entry of
     /// [`Template::texts`]; to tell which input piece an edit belongs to, use the journal of
-    /// [`Typographer::report_template`](crate::Typographer::report_template).
+    /// [`Typographer::report_template`](crate::Typographer::report_template), made with
+    /// [`Output::Unicode`](crate::Output::Unicode).
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
@@ -523,7 +524,9 @@ impl<'t, S> Template<'t, S> {
 
     /// The n + 1 texts; `texts()[i]` stands before `slots()[i]`. Adjacent text pieces of the input
     /// are one entry here; [`Report::changes`](crate::Report::changes) is the supported way to
-    /// distribute the result over them again.
+    /// distribute the result over them again: the records rebuild the
+    /// [`Output::Unicode`](crate::Output::Unicode) result, and each rebuilt part is encoded on its
+    /// own for another output kind, without the nowrap groups that span pieces.
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};

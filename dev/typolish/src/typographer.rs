@@ -938,6 +938,13 @@ impl Typographer {
     /// piece to that piece (design section 2.9). An edit across a boundary gives one record per
     /// piece: the first holds the whole replacement and the others have an empty replacement.
     ///
+    /// A replacement is Unicode, before output encoding, so the records rebuild the result of
+    /// [`Output::Unicode`]. For another output kind, rebuild the parts from a report with
+    /// `Output::Unicode` and then encode each part on its own as a one-piece template of its kind
+    /// (`Piece::Text` or `Piece::Markup`) with [`RuleSet::EMPTY`] in the target output. Nowrap
+    /// groups are not rebuilt that way: with a nowrap style each part gets only the groups inside
+    /// it, and a group that spans several pieces in the result is lost.
+    ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Typographer};
     ///
@@ -958,6 +965,43 @@ impl Typographer {
     ///
     /// // `original` returns the slice of the piece that a record replaced.
     /// assert_eq!(r.original(&r.changes()[1]), "..");
+    /// ```
+    ///
+    /// For HTML, the parts rebuilt in Unicode are encoded one by one:
+    ///
+    /// ```
+    /// use typolish::{HtmlStyle, Language, Output, Piece, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    /// static ENCODE: Typographer = Typographer::new(Language::RU_RU, RuleSet::EMPTY);
+    ///
+    /// let html = Output::Html(HtmlStyle::NAMED);
+    /// let pieces = [
+    ///     Piece::<()>::Text("Ждём."),
+    ///     Piece::Text(".."),
+    ///     Piece::Markup("<b>"),
+    ///     Piece::Text(" \"дальше\""),
+    /// ];
+    /// let r = RU.report_template(pieces, Output::Unicode);
+    /// let mut split: Vec<String> = ["Ждём.", "..", "<b>", " \"дальше\""].map(String::from).into();
+    /// for c in r.changes().iter().rev() {
+    ///     split[c.piece()].replace_range(c.range(), c.replacement());
+    /// }
+    /// assert_eq!(split, ["Ждём…", "", "<b>", " «дальше»"]);
+    ///
+    /// let encoded: Vec<String> = pieces
+    ///     .iter()
+    ///     .zip(&split)
+    ///     .map(|(piece, part)| {
+    ///         let one = match piece {
+    ///             Piece::Markup(_) => Piece::<()>::Markup(part),
+    ///             _ => Piece::Text(part),
+    ///         };
+    ///         ENCODE.typeset_template([one], html).texts().concat()
+    ///     })
+    ///     .collect();
+    /// assert_eq!(encoded, ["Ждём&hellip;", "", "<b>", " &laquo;дальше&raquo;"]);
+    /// assert_eq!(encoded.concat(), RU.typeset_template(pieces, html).texts()[0]);
     /// ```
     ///
     /// ```

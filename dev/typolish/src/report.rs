@@ -75,8 +75,10 @@ impl<'a, T> Report<'a, T> {
     /// pieces gives one record per piece (design section 2.9): the first holds the whole
     /// replacement and the others have an empty one. This is the supported way to distribute a
     /// template result over adjacent text pieces, which
-    /// [`Template::texts`](crate::Template::texts) merges; see
-    /// [`Typographer::report_template`](crate::Typographer::report_template) for an example.
+    /// [`Template::texts`](crate::Template::texts) merges. A replacement is Unicode, so the records
+    /// rebuild the [`Output::Unicode`](crate::Output::Unicode) result; for another output kind,
+    /// encode each rebuilt part on its own, and nowrap groups that span pieces are not rebuilt.
+    /// See [`Typographer::report_template`](crate::Typographer::report_template) for both.
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};
@@ -350,10 +352,13 @@ impl Change {
     /// never owned by a slot, a protected piece or markup.
     ///
     /// A replaced or removed character belongs to the piece that holds it. An insertion (the
-    /// no-break space of a glue rule) belongs to the `Text` piece on its left when a text token
-    /// precedes it or no text token follows it (a slot, a protected piece or markup follows), and
-    /// to the `Text` piece on its right otherwise. No rule inserts where a slot or a protected
-    /// piece lies on each side of the point.
+    /// no-break space of a glue rule) belongs to the `Text` piece of the token immediately before
+    /// the insertion point when that token is text, and to the `Text` piece of the token
+    /// immediately after it otherwise. Where markup stands between the two characters, the point
+    /// comes after the markup when a text token follows (`5<b>%` → `5<b>⍽%` and `№<b>5` →
+    /// `№<b>⍽5`, both owned by the piece on the right), and right after the text when a slot or a
+    /// protected piece follows (`№<b>{n}` → `№⍽<b>{n}`, owned by the piece on the left). No rule
+    /// inserts where a slot or a protected piece lies on each side of the point.
     ///
     /// ```
     /// # use typolish::{Language, Output, RuleSet, Typographer};
@@ -376,6 +381,24 @@ impl Change {
     /// let c = &r.changes()[0];
     /// assert_eq!((c.piece(), c.range()), (0, 10..10));
     /// assert_eq!(r.result().texts(), ["Дом №\u{a0}", ""]);
+    ///
+    /// // Markup between the two characters: the point is after it when text follows.
+    /// let r = t.report_template(
+    ///     [Piece::<()>::Text("Дом №"), Piece::Markup("<b>"), Piece::Text("5")],
+    ///     Output::Unicode,
+    /// );
+    /// let c = &r.changes()[0];
+    /// assert_eq!((c.piece(), c.range()), (2, 0..0));
+    /// assert_eq!(r.result().texts(), ["Дом №<b>\u{a0}5"]);
+    ///
+    /// // And before it when a slot follows.
+    /// let r = t.report_template(
+    ///     [Piece::Text("№"), Piece::Markup("<b>"), Piece::Slot("n", Slot::NUMBER)],
+    ///     Output::Unicode,
+    /// );
+    /// let c = &r.changes()[0];
+    /// assert_eq!((c.piece(), c.range()), (0, 3..3));
+    /// assert_eq!(r.result().texts(), ["№\u{a0}<b>", ""]);
     /// ```
     #[must_use]
     pub fn piece(&self) -> usize {
