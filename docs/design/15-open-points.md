@@ -168,10 +168,10 @@ style), that space is glued after a slot of any kind too, with the same no-break
 an `Other` slot, whose value is unknown: ru `{o} - слово` → `{o}⍽— слово`, as `{w} - слово` →
 `{w}⍽— слово` and `Москва - столица` → `Москва⍽— столица`. en-US (`Closed`) and `Language::COMMON`
 (no dash rules) keep the ordinary space after a slot, as after a word (en `{x} - word` →
-`{x} — word`); that is accepted, not a defect. No slot kind is added. In those languages this is the
-one exception to section 15.2, item 20; the glue is that of `nbsp.dash` (section 8.7). Rejected: (b)
-the space stays after an `Other` slot, the behavior of 0.1.2, so that a dash after it could start a
-line.
+`{x} — word`); that is accepted, not a defect. No slot kind is added. In the languages whose dash
+style glues the space (`DashStyle::SpacedGlued`) this is the one exception to section 15.2, item 20;
+the glue is that of `nbsp.dash` (section 8.7). Rejected: (b) the space stays after an `Other` slot,
+the behavior of 0.1.2, so that a dash after it could start a line.
 
 The consequence for the renderer that the lead chose, C67 (section 15.3), is accepted by the
 maintainer on 2026-11-26: a slot of kind `Other` is no material of a nowrap group, so its unknown
