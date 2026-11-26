@@ -248,6 +248,8 @@ println!("{report}");
 let report = RU_UI.report("Ошибка: \"x", Output::Unicode);
 assert_eq!(report.result(), "Ошибка: \"x");
 assert_eq!(report.diagnostics()[0].rule(), Some(Rule::QuotesPairs));
+// Every diagnostic kind has a stable id, for lists of allowed diagnostics in configuration.
+assert_eq!(report.diagnostics()[0].kind().id(), "unmatched-quote");
 
 assert_eq!(RU_UI.lint("Он сказал «привет»").len(), 2);
 assert_eq!(

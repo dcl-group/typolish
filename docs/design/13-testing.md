@@ -256,7 +256,16 @@ gives the output of the whole set.
   `report` and `lint` (no prefilter, section 3.2): ru Interface `Мoсква` (Latin `o`) →
   `MixedScript`; `report_template([Slot(n, NUMBER), Text("МБ")])` → `SlotGlue` (warning);
   `[Slot(a), Slot(b)]` → `SlotGlue` (info); ``don`t`` → `UnclosedDelimiter`; `` `code` `` →
-  `report().protected()` holds one `Delimited` record.
+  `report().protected()` holds one `Delimited` record. The ids of section 12.4: a table pins the id
+  of every kind, and `id`, `Display`, `DiagnosticKind::IDS` (equal to the table, in declaration
+  order) and `canonical_id` agree with it; the ids are unique, lowercase ASCII words joined by `-`,
+  and none is a rule id or reads as a `RuleSet`; `canonical_id` refuses near misses (case, spaces,
+  `_`, the variant name, a rule id, the source labels of the `Display` of `Diagnostic`); one input
+  of every kind, both severities of `UnmatchedQuote` and `SlotGlue` and several characters of
+  `TypographicChar` give one id per kind, and the samples raise every id; every diagnostic of
+  `report`, `report_template` and `lint` over the corpus (section 13.7) has a pinned id. A kind
+  without a pinned id fails these tests; inside the crate, `id` and a unit test of `src/report.rs`
+  match the enum without a wildcard, so a kind added without an id does not compile.
 - `tests/fluent_isolation.rs`: run-time strings with U+2068 and U+2069 around values give the same
   typesetting as without them, with the isolates unchanged, an empty value included
   (`"\u{2068}\u{2069}"` → `«\u{2068}\u{2069}»`, as `""` → `«»`), and an inch mark after an isolated

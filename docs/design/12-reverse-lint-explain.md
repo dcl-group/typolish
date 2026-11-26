@@ -228,19 +228,19 @@ never decides for the caller.
 
 ### 12.4 Diagnostics
 
-| Kind                | Severity | Raised by                                  | When                                                                                                          |
-| ------------------- | -------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `UnmatchedQuote`    | warning  | `quotes.pairs`                             | a straight `"` without a pair; its window keeps straight quotes (section 6.6)                                 |
-| `UnmatchedQuote`    | info     | `quotes.pairs`                             | a typed quote glyph of the language without a partner; it stays neutral                                       |
-| `CrossingQuotes`    | warning  | `quotes.pairs`                             | pairs would cross each other or a typed pair                                                                  |
-| `AmbiguousQuote`    | info     | `quotes.pairs`                             | a straight quote with spaces or letters on both sides, or one of three or more quotes in a series: no role    |
-| `UnclosedDelimiter` | warning  | protection (no rule)                       | an opening delimiter without its closing one; it was treated as text                                          |
-| `AmbiguousHyphen`   | info     | `dash.spaced-hyphen`, `dash.double-hyphen` | `-` that section 8.4 refuses (numbers, ranges, single letters, foreign words, a flag)                         |
-| `MixedScript`       | warning  | classifier (no rule)                       | a word with letters of two of Cyrillic, Latin and Greek (`Мoсква`), unless a dictionary entry (`μs`)          |
-| `SlotGlue`          | warning  | classifier (no rule)                       | a `Number` slot glued to letters (`{n}МБ`)                                                                    |
-| `SlotGlue`          | info     | classifier (no rule)                       | two slots glued together (`{a}{b}`)                                                                           |
-| `NowrapFallback`    | info     | renderer (no rule)                         | a nowrap group split at a `Markup` piece (reported at that piece); the glue at the split written as an entity |
-| `TypographicChar`   | info     | `lint` only                                | a character that `to_plain` would change (section 12.3)                                                       |
+| Kind                | Id                   | Severity | Raised by                                  | When                                                                                                          |
+| ------------------- | -------------------- | -------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `UnmatchedQuote`    | `unmatched-quote`    | warning  | `quotes.pairs`                             | a straight `"` without a pair; its window keeps straight quotes (section 6.6)                                 |
+| `UnmatchedQuote`    | `unmatched-quote`    | info     | `quotes.pairs`                             | a typed quote glyph of the language without a partner; it stays neutral                                       |
+| `CrossingQuotes`    | `crossing-quotes`    | warning  | `quotes.pairs`                             | pairs would cross each other or a typed pair                                                                  |
+| `AmbiguousQuote`    | `ambiguous-quote`    | info     | `quotes.pairs`                             | a straight quote with spaces or letters on both sides, or one of three or more quotes in a series: no role    |
+| `UnclosedDelimiter` | `unclosed-delimiter` | warning  | protection (no rule)                       | an opening delimiter without its closing one; it was treated as text                                          |
+| `AmbiguousHyphen`   | `ambiguous-hyphen`   | info     | `dash.spaced-hyphen`, `dash.double-hyphen` | `-` that section 8.4 refuses (numbers, ranges, single letters, foreign words, a flag)                         |
+| `MixedScript`       | `mixed-script`       | warning  | classifier (no rule)                       | a word with letters of two of Cyrillic, Latin and Greek (`Мoсква`), unless a dictionary entry (`μs`)          |
+| `SlotGlue`          | `slot-glue`          | warning  | classifier (no rule)                       | a `Number` slot glued to letters (`{n}МБ`)                                                                    |
+| `SlotGlue`          | `slot-glue`          | info     | classifier (no rule)                       | two slots glued together (`{a}{b}`)                                                                           |
+| `NowrapFallback`    | `nowrap-fallback`    | info     | renderer (no rule)                         | a nowrap group split at a `Markup` piece (reported at that piece); the glue at the split written as an entity |
+| `TypographicChar`   | `typographic-char`   | info     | `lint` only                                | a character that `to_plain` would change (section 12.3)                                                       |
 
 `Diagnostic` carries its kind, severity, the rule that raised it (`Option<Rule>`), the piece and the
 byte range. A diagnostic over several pieces is reported at its first piece, with the range clipped
@@ -251,6 +251,23 @@ diagnostic that starts at a slot is reported at the slot's piece with the empty 
 byte end, then kind in the order of the `DiagnosticKind` declaration (`TypographicChar` last).
 `Diagnostic` implements `Display`:
 `warning quotes.pairs 0:10..11: straight quote has no pair; left as is`.
+
+Each kind has a string id, the second column of the table: `DiagnosticKind::id`, written by the
+`Display` of the kind and listed in `DiagnosticKind::IDS`. It serves the configuration of callers,
+such as a list of diagnostics they allow, and test tables. Form: lowercase ASCII words joined by
+`-`, without the `.` of rule ids, so a kind id never equals a rule id or a base set name of
+`RuleSet::from_str`. The id names the kind only: the two severities of `UnmatchedQuote` and of
+`SlotGlue`, the two rules behind `AmbiguousHyphen` and every character `found` of `TypographicChar`
+share one id, and a caller who tells them apart reads `severity()` and `rule()` as well. The id is
+stable across versions, on the terms of rule ids (section 2.3): an id never changes meaning; a
+renamed kind keeps its old id as an alias that `DiagnosticKind::canonical_id` answers with the new
+one; the id of a removed kind is reserved forever and never given to another kind; version 1 has
+neither. `canonical_id` reads an id from configuration exactly, without case folding or trimming,
+and returns `None` for a string that is no id. There is no `FromStr` that returns a
+`DiagnosticKind`, because the id does not carry the data of `TypographicChar`. The `Display` of
+`Diagnostic` is still not part of the contract (section 2.13): its source label (`protection`,
+`classifier`, ...) is not a kind id, and a caller matches `kind().id()`, not that text (choice C66,
+section 15.3).
 
 ### 12.5 Explain mode
 

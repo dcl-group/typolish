@@ -943,6 +943,16 @@ pub enum DiagnosticKind {
     MixedScript, SlotGlue, NowrapFallback,
     #[non_exhaustive] TypographicChar { found: char },
 }
+impl DiagnosticKind {
+    /// The id of every kind of the running version (section 12.4).
+    pub const IDS: &'static [&'static str];
+    /// `"unmatched-quote"`; neither the severity nor the data of a variant.
+    pub const fn id(&self) -> &'static str;
+    /// The id of the running version that `id` names, aliases included; `None` otherwise.
+    pub fn canonical_id(id: &str) -> Option<&'static str>;
+}
+/// Writes the id.
+impl core::fmt::Display for DiagnosticKind {}
 ```
 
 ```rust
@@ -960,6 +970,7 @@ nbsp.units          0:12..13  \" \" -> U+00A0
 let r = RU.report("Он сказал \"привет.", Output::Unicode);
 assert_eq!(r.result(), "Он сказал \"привет.");          // not guessed
 assert_eq!(r.diagnostics()[0].kind(), &DiagnosticKind::UnmatchedQuote);
+assert_eq!(r.diagnostics()[0].kind().id(), "unmatched-quote");
 assert_eq!(r.diagnostics()[0].range(), 18..19);
 ```
 
@@ -1134,14 +1145,17 @@ included); streaming without a buffer (quote pairing defers decisions to the end
   the value types of section 2.1 (the rows from `QuotePairs` to `NumberData`) implement `Debug`,
   `PartialEq`, `Eq` and `Hash`, and the value types also `Copy`, so a field added to them later must
   have these traits too (language data holds strings, characters, numbers and flags, which do); rule
-  ids are permanent. `Number` holds floats and is `PartialEq` only; integers compare by value
-  whatever their type, while `1`, `1.0` and `Number::decimal("1")` are three different numbers.
+  ids and diagnostic kind ids are permanent. `Number` holds floats and is `PartialEq` only; integers
+  compare by value whatever their type, while `1`, `1.0` and `Number::decimal("1")` are three
+  different numbers.
 - Not part of the contract: the order of `Rule::ALL` (it is the execution order, and a new rule may
   go into the middle); the representation of `RuleSet`; the contents of language lists; the text of
-  `summary()`, of every `Debug` and of the `Display` of `Error`, `Diagnostic` and `Report`. The
-  `Display` of `Rule`, `RuleSet` and `Language` is part of the contract: it prints the id, the id
-  list and the tag, and `FromStr` reads it back. For `Language` the round trip covers the built-in
-  languages and `COMMON` (section 2.2): the tag of a caller's language (`from_data`, `from_static`,
+  `summary()`, of every `Debug` and of the `Display` of `Error`, `Diagnostic` and `Report`; the
+  order of `DiagnosticKind::IDS`. The `Display` of `Rule`, `RuleSet` and `Language` is part of the
+  contract: it prints the id, the id list and the tag, and `FromStr` reads it back. So is the
+  `Display` of `DiagnosticKind`, which prints the id of the kind that `DiagnosticKind::canonical_id`
+  reads back (section 12.4). For `Language` the round trip covers the built-in languages and
+  `COMMON` (section 2.2): the tag of a caller's language (`from_data`, `from_static`,
   `LanguageBuilder`) is read against the registry too, so `FromStr` answers it with
   `Error::UnknownLanguage`, or, when `from_tag` resolves the tag (a built-in tag, its bare language
   subtag such as `ru`, or `und`), with that built-in language or `COMMON`, which is not equal to the

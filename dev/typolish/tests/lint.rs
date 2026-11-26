@@ -1244,3 +1244,232 @@ fn the_typeset_corpus_templates_are_checked_piece_by_piece() {
         }
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// The stable string id of every kind (design section 12.4).
+// ---------------------------------------------------------------------------------------------
+
+/// Every kind with its pinned id, in the order of the declaration. An id is permanent: a row is
+/// never changed, only added.
+const KIND_IDS: [(&str, &str); 9] = [
+    ("UnmatchedQuote", "unmatched-quote"),
+    ("CrossingQuotes", "crossing-quotes"),
+    ("AmbiguousQuote", "ambiguous-quote"),
+    ("UnclosedDelimiter", "unclosed-delimiter"),
+    ("AmbiguousHyphen", "ambiguous-hyphen"),
+    ("MixedScript", "mixed-script"),
+    ("SlotGlue", "slot-glue"),
+    ("NowrapFallback", "nowrap-fallback"),
+    ("TypographicChar", "typographic-char"),
+];
+
+/// The pinned id of a kind. `DiagnosticKind` is `#[non_exhaustive]`, so the match needs a
+/// wildcard here; a kind added later answers `None`, which fails every test that meets it.
+fn pinned(kind: &DiagnosticKind) -> Option<&'static str> {
+    let name = match kind {
+        UnmatchedQuote => "UnmatchedQuote",
+        CrossingQuotes => "CrossingQuotes",
+        AmbiguousQuote => "AmbiguousQuote",
+        UnclosedDelimiter => "UnclosedDelimiter",
+        AmbiguousHyphen => "AmbiguousHyphen",
+        MixedScript => "MixedScript",
+        SlotGlue => "SlotGlue",
+        NowrapFallback => "NowrapFallback",
+        DiagnosticKind::TypographicChar { .. } => "TypographicChar",
+        _ => return None,
+    };
+    KIND_IDS.iter().find(|(n, _)| *n == name).map(|(_, id)| *id)
+}
+
+/// Checks one kind against its pinned id: `id`, `Display`, `IDS` and the way back.
+fn check_kind_id(what: &str, kind: &DiagnosticKind) -> &'static str {
+    let Some(id) = pinned(kind) else {
+        panic!("{what}: a kind without a pinned id: {kind:?}");
+    };
+    assert_eq!(kind.id(), id, "{what}: {kind:?}");
+    assert_eq!(kind.to_string(), id, "{what}: {kind:?}");
+    assert!(DiagnosticKind::IDS.contains(&id), "{what}: {id}");
+    assert_eq!(DiagnosticKind::canonical_id(id), Some(id), "{what}: {id}");
+    id
+}
+
+/// One diagnostic of every kind and both severities where a kind has two, from `report`,
+/// `report_template` and `lint`.
+fn one_of_every_kind() -> Vec<Diagnostic> {
+    let ru = interface(RU);
+    let en = interface(EN);
+    let mut all = Vec::new();
+    let mut take = |diagnostics: &[Diagnostic]| all.extend(diagnostics.iter().cloned());
+    take(en.report("He said \"hi", Output::Unicode).diagnostics());
+    take(ru.report("Цена 27»", Output::Unicode).diagnostics());
+    take(ru.report("«a \"b» c\"", Output::Unicode).diagnostics());
+    take(
+        en.report("He said - \" a cat\"", Output::Unicode)
+            .diagnostics(),
+    );
+    take(en.report("don`t", Output::Unicode).diagnostics());
+    take(en.report("a - b", Output::Unicode).diagnostics());
+    take(en.report("Мoсква", Output::Unicode).diagnostics());
+    take(
+        ru.report_template(
+            [Piece::Slot("n", Slot::NUMBER), Piece::Text("МБ")],
+            Output::Unicode,
+        )
+        .diagnostics(),
+    );
+    take(
+        ru.report_template(
+            [Piece::Slot("a", Slot::WORD), Piece::Slot("b", Slot::WORD)],
+            Output::Unicode,
+        )
+        .diagnostics(),
+    );
+    take(
+        ru.report_template::<()>(
+            [Piece::Text("в "), Piece::Markup("<b>"), Piece::Text("дом")],
+            nowrap(),
+        )
+        .diagnostics(),
+    );
+    take(&ru.lint("Файл «a» не найден"));
+    take(&ru.lint("Он — врач…"));
+    all
+}
+
+#[test]
+fn kinds_have_their_ids() {
+    let ids: Vec<&str> = KIND_IDS.iter().map(|(_, id)| *id).collect();
+    assert_eq!(DiagnosticKind::IDS, ids.as_slice());
+    for (kind, id) in [
+        (UnmatchedQuote, "unmatched-quote"),
+        (CrossingQuotes, "crossing-quotes"),
+        (AmbiguousQuote, "ambiguous-quote"),
+        (UnclosedDelimiter, "unclosed-delimiter"),
+        (AmbiguousHyphen, "ambiguous-hyphen"),
+        (MixedScript, "mixed-script"),
+        (SlotGlue, "slot-glue"),
+        (NowrapFallback, "nowrap-fallback"),
+    ] {
+        assert_eq!(check_kind_id("table", &kind), id);
+    }
+    // `TypographicChar` cannot be built outside the crate; its id comes from `lint`.
+    let linted = interface(RU).lint("Файл «a» не найден");
+    assert!(matches!(
+        linted[0].kind(),
+        DiagnosticKind::TypographicChar { found: '«', .. }
+    ));
+    assert_eq!(check_kind_id("lint", linted[0].kind()), "typographic-char");
+}
+
+#[test]
+fn kind_ids_are_unique_and_of_their_form() {
+    let mut seen: Vec<&str> = Vec::new();
+    for id in DiagnosticKind::IDS {
+        assert!(!seen.contains(id), "a repeated id: {id}");
+        seen.push(id);
+        assert!(!id.is_empty());
+        assert!(
+            id.bytes().all(|b| b.is_ascii_lowercase() || b == b'-'),
+            "lowercase ASCII words joined by `-`: {id}"
+        );
+        assert!(
+            !id.starts_with('-') && !id.ends_with('-') && !id.contains("--"),
+            "{id}"
+        );
+        // No `.`, so a kind id is never a rule id, nor a base set name of `RuleSet::from_str`.
+        assert_eq!(Rule::from_id(id), None, "{id}");
+        assert!(id.parse::<RuleSet>().is_err(), "{id}");
+    }
+    assert_eq!(seen.len(), KIND_IDS.len());
+}
+
+#[test]
+fn unknown_kind_ids_have_no_way_back() {
+    for bad in [
+        "",
+        "unmatched",
+        "Unmatched-Quote",
+        "UNMATCHED-QUOTE",
+        "UnmatchedQuote",
+        "unmatched_quote",
+        " unmatched-quote",
+        "unmatched-quote ",
+        "unmatched-quote,",
+        "quotes.pairs",
+        "classifier",
+        "protection",
+        "renderer",
+        "lint",
+    ] {
+        assert_eq!(DiagnosticKind::canonical_id(bad), None, "{bad:?}");
+    }
+}
+
+#[test]
+fn every_kind_is_raised_with_its_id_whatever_the_severity_or_data() {
+    let diagnostics = one_of_every_kind();
+    let mut ids: Vec<&str> = Vec::new();
+    let mut severities: Vec<(&str, Severity)> = Vec::new();
+    for d in &diagnostics {
+        let id = check_kind_id("sample", d.kind());
+        if !ids.contains(&id) {
+            ids.push(id);
+        }
+        if !severities.contains(&(id, d.severity())) {
+            severities.push((id, d.severity()));
+        }
+    }
+    ids.sort_unstable();
+    let mut all: Vec<&str> = DiagnosticKind::IDS.to_vec();
+    all.sort_unstable();
+    assert_eq!(ids, all, "the samples raise every kind");
+    // One id for both severities of a kind.
+    for id in ["unmatched-quote", "slot-glue"] {
+        assert!(severities.contains(&(id, Warning)), "{id}");
+        assert!(severities.contains(&(id, Info)), "{id}");
+    }
+    // One id whatever the character found.
+    let found: Vec<char> = diagnostics
+        .iter()
+        .filter_map(|d| match d.kind() {
+            DiagnosticKind::TypographicChar { found, .. } => Some(*found),
+            _ => None,
+        })
+        .collect();
+    assert!(found.len() >= 3, "{found:?}");
+    assert!(found.windows(2).any(|w| w[0] != w[1]), "{found:?}");
+}
+
+#[test]
+fn the_corpus_raises_only_pinned_kind_ids() {
+    for lang in LANGS {
+        for (set_name, _) in SETS {
+            let t = typographer(lang, set_name);
+            for file in FILES {
+                let lines: Vec<String> = if file.ends_with(".tmpl") {
+                    messages(lang).iter().map(|m| m.flat()).collect()
+                } else {
+                    text_lines(lang, file)
+                };
+                for line in &lines {
+                    let typeset = t.typeset(line, Output::Unicode).into_owned();
+                    let what = format!("{lang} {set_name} {file}");
+                    for d in t
+                        .report(line, Output::Unicode)
+                        .diagnostics()
+                        .iter()
+                        .chain(&t.lint(&typeset))
+                    {
+                        check_kind_id(&what, d.kind());
+                    }
+                }
+            }
+            for message in messages(lang) {
+                let report = t.report_template(message.pieces().iter().copied(), nowrap());
+                for d in report.diagnostics() {
+                    check_kind_id(&message.id, d.kind());
+                }
+            }
+        }
+    }
+}

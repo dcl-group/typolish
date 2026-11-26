@@ -9,6 +9,18 @@ All notable changes to this crate are recorded in this file. The format follows
 In development: changes since 0.1.2, not tagged and not published. Minimum supported Rust version:
 1.100.
 
+### Added
+
+- A stable string id for every diagnostic kind (design section 12.4), for callers that keep lists of
+  allowed diagnostics in configuration: `DiagnosticKind::id` (`UnmatchedQuote` → `unmatched-quote`,
+  `TypographicChar { .. }` → `typographic-char`), `DiagnosticKind::IDS` with the id of every kind,
+  `DiagnosticKind::canonical_id`, which reads an id back (`Some("mixed-script")` for
+  `"mixed-script"`, `None` for `"Mixed-Script"`), and a `Display` of `DiagnosticKind` that writes
+  the id. The ids are `unmatched-quote`, `crossing-quotes`, `ambiguous-quote`, `unclosed-delimiter`,
+  `ambiguous-hyphen`, `mixed-script`, `slot-glue`, `nowrap-fallback` and `typographic-char`. An id
+  names the kind, not its severity, rule or data, and never changes meaning, as a rule id does not.
+  The output and the `Display` of `Diagnostic` do not change.
+
 ## 0.1.2 - 2026-11-26
 
 A patch release, tagged on 2026-11-26 and not published yet; publication follows the tag. It holds

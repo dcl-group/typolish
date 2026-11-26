@@ -885,7 +885,13 @@ pub enum Severity {
     Warning,
 }
 
-/// What a diagnostic is about (design section 12.4).
+/// What a diagnostic is about (design section 12.4). The string id of a kind is stable across
+/// versions: callers keep it in configuration, for example in a list of diagnostics they allow.
+///
+/// The id names the kind only. Severity and the rule that raised the diagnostic are not part of
+/// it, and neither are the data of a variant (`found` of `TypographicChar`); a caller who needs
+/// them reads [`Diagnostic::severity`] and [`Diagnostic::rule`]. Ids are lowercase ASCII words
+/// joined by `-` and hold no `.`, so a kind id never equals a [`Rule`] id.
 ///
 /// ```
 /// use typolish::{DiagnosticKind, Language, Output, Piece, RuleSet, Slot, Typographer};
@@ -893,6 +899,9 @@ pub enum Severity {
 /// let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
 /// let r = t.report_template([Piece::Slot("n", Slot::NUMBER), Piece::Text("МБ")], Output::Unicode);
 /// assert_eq!(r.diagnostics()[0].kind(), &DiagnosticKind::SlotGlue);
+/// assert_eq!(r.diagnostics()[0].kind().id(), "slot-glue");
+/// assert_eq!(DiagnosticKind::SlotGlue.to_string(), "slot-glue");
+/// assert_eq!(DiagnosticKind::canonical_id("slot-glue"), Some("slot-glue"));
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -987,6 +996,81 @@ pub enum DiagnosticKind {
 }
 
 impl DiagnosticKind {
+    /// The id of every kind of the running version, in the order of the declaration. A kind added
+    /// in a later release joins the list; the order is not part of the API contract.
+    ///
+    /// ```
+    /// use typolish::DiagnosticKind;
+    ///
+    /// assert!(DiagnosticKind::IDS.contains(&"mixed-script"));
+    /// assert!(DiagnosticKind::IDS.contains(&DiagnosticKind::NowrapFallback.id()));
+    /// ```
+    pub const IDS: &'static [&'static str] = &[
+        "unmatched-quote",
+        "crossing-quotes",
+        "ambiguous-quote",
+        "unclosed-delimiter",
+        "ambiguous-hyphen",
+        "mixed-script",
+        "slot-glue",
+        "nowrap-fallback",
+        "typographic-char",
+    ];
+
+    /// The stable id, for example `"unmatched-quote"`. It does not depend on the severity or on
+    /// the data of the variant (design section 12.4).
+    ///
+    /// ```
+    /// use typolish::{DiagnosticKind, Language, RuleSet, Typographer};
+    ///
+    /// assert_eq!(DiagnosticKind::AmbiguousHyphen.id(), "ambiguous-hyphen");
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::INTERFACE);
+    /// let d = t.lint("Файл «a» не найден");
+    /// assert_eq!(d[0].kind().id(), "typographic-char");
+    /// ```
+    #[must_use]
+    pub const fn id(&self) -> &'static str {
+        match self {
+            DiagnosticKind::UnmatchedQuote => "unmatched-quote",
+            DiagnosticKind::CrossingQuotes => "crossing-quotes",
+            DiagnosticKind::AmbiguousQuote => "ambiguous-quote",
+            DiagnosticKind::UnclosedDelimiter => "unclosed-delimiter",
+            DiagnosticKind::AmbiguousHyphen => "ambiguous-hyphen",
+            DiagnosticKind::MixedScript => "mixed-script",
+            DiagnosticKind::SlotGlue => "slot-glue",
+            DiagnosticKind::NowrapFallback => "nowrap-fallback",
+            DiagnosticKind::TypographicChar { .. } => "typographic-char",
+        }
+    }
+
+    /// Reads an id from configuration: the id of the running version that `id` names, or `None`
+    /// for a string that is no id. A kind renamed in a later version keeps its old id here as an
+    /// alias, answered with the new one (design section 12.4); version 1 has none. The match is
+    /// exact: no case folding and no trimming.
+    ///
+    /// ```
+    /// use typolish::{DiagnosticKind, Language, Output, RuleSet, Typographer};
+    ///
+    /// assert_eq!(DiagnosticKind::canonical_id("mixed-script"), Some("mixed-script"));
+    /// assert_eq!(DiagnosticKind::canonical_id("Mixed-Script"), None);
+    ///
+    /// // An allow list read from configuration.
+    /// let allowed: Vec<&str> = ["ambiguous-hyphen"]
+    ///     .iter()
+    ///     .filter_map(|id| DiagnosticKind::canonical_id(id))
+    ///     .collect();
+    /// let t = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// let r = t.report("a - b", Output::Unicode);
+    /// assert!(r.diagnostics().iter().all(|d| allowed.contains(&d.kind().id())));
+    /// ```
+    #[must_use]
+    pub fn canonical_id(id: &str) -> Option<&'static str> {
+        DiagnosticKind::IDS
+            .iter()
+            .copied()
+            .find(|known| *known == id)
+    }
+
     /// The position in the declaration order, which orders diagnostics at one range.
     fn order(&self) -> u8 {
         match self {
@@ -999,6 +1083,60 @@ impl DiagnosticKind {
             DiagnosticKind::SlotGlue => 6,
             DiagnosticKind::NowrapFallback => 7,
             DiagnosticKind::TypographicChar { .. } => 8,
+        }
+    }
+}
+
+/// Writes the id.
+impl fmt::Display for DiagnosticKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.id())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// One value of every kind, in the order of the declaration. The match below has no
+    /// wildcard, so a kind added to the enum stops this test from compiling until the match names
+    /// it; whoever adds it there adds it to the list as well, and the test then checks its id in
+    /// `IDS`. `id` and `order` have no wildcard either.
+    fn every_kind() -> Vec<DiagnosticKind> {
+        let all = vec![
+            DiagnosticKind::UnmatchedQuote,
+            DiagnosticKind::CrossingQuotes,
+            DiagnosticKind::AmbiguousQuote,
+            DiagnosticKind::UnclosedDelimiter,
+            DiagnosticKind::AmbiguousHyphen,
+            DiagnosticKind::MixedScript,
+            DiagnosticKind::SlotGlue,
+            DiagnosticKind::NowrapFallback,
+            DiagnosticKind::TypographicChar { found: '«' },
+        ];
+        for kind in &all {
+            match kind {
+                DiagnosticKind::UnmatchedQuote
+                | DiagnosticKind::CrossingQuotes
+                | DiagnosticKind::AmbiguousQuote
+                | DiagnosticKind::UnclosedDelimiter
+                | DiagnosticKind::AmbiguousHyphen
+                | DiagnosticKind::MixedScript
+                | DiagnosticKind::SlotGlue
+                | DiagnosticKind::NowrapFallback
+                | DiagnosticKind::TypographicChar { .. } => {}
+            }
+        }
+        all
+    }
+
+    #[test]
+    fn ids_list_every_kind_in_declaration_order() {
+        let all = every_kind();
+        assert_eq!(DiagnosticKind::IDS.len(), all.len());
+        for (i, kind) in all.iter().enumerate() {
+            assert_eq!(usize::from(kind.order()), i, "{kind:?}");
+            assert_eq!(DiagnosticKind::IDS.get(i), Some(&kind.id()), "{kind:?}");
         }
     }
 }
