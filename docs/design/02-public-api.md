@@ -636,18 +636,18 @@ No glue sticks to an `Other` slot: its value may be long, and a nowrap group aro
 breaks the layout. That holds for the whole fragment that holds the slot, since a group takes whole
 fragments (section 11.5): no glue before or after a quoted or bracketed `Other` slot or one joined
 to other tokens (`and "{o}"`, `в ({o})`, `и {d}{o}` keep their spaces; section 15.2, item 20). The
-one exception is the space before a dash: where the dash style is `SpacedGlued` (ru-RU), a dash
-never starts a line after a slot of any kind, so `nbsp.dash` glues it after an `Other` slot or a
-fragment that holds one as after a word (ru `{o} - слово` → `{o}⍽— слово`, `"{o}" - слово` →
-`«{o}»⍽— слово`; section 15.5, item 18). With a nowrap style that glue is written as an entity and
-no group takes the slot (section 11.5), so the value still breaks where it would. en-US (`Closed`)
-and `Language::COMMON` (no dash rules) keep the author's space before a dash after a slot of every
-kind (en `{x} - word` → `{x} — word`; `Language::COMMON` keeps `{x} — word`). A `Number` slot after
-`№`, `§` or `¶` (`№ {n}`, `№{n}`) is a label number (section 8.2): `nbsp.signs` glues it to the
-sign, and the rules that read a quantity or a year (`nbsp.units`, `nbsp.dates`) leave it alone. Two
-`Number` slots or two `Date` slots joined by `-` form a `Range` core (check 17 of section 3.6),
-which is how `range.placeholders` reaches them; a `Number` slot and a literal number form one too,
-but no rule edits its dash.
+one exception is the space before a dash: where the dash style is `SpacedGlued` (ru-RU and declared
+languages of that style), a dash never starts a line after a slot of any kind, so `nbsp.dash` glues
+it after an `Other` slot or a fragment that holds one as after a word (ru `{o} - слово` →
+`{o}⍽— слово`, `"{o}" - слово` → `«{o}»⍽— слово`; section 15.5, item 18). With a nowrap style that
+glue is written as an entity and no group takes the slot (section 11.5), so the value still breaks
+where it would. en-US (`Closed`) and `Language::COMMON` (no dash rules) keep the author's space
+before a dash after a slot of every kind (en `{x} - word` → `{x} — word`; `Language::COMMON` keeps
+`{x} — word`). A `Number` slot after `№`, `§` or `¶` (`№ {n}`, `№{n}`) is a label number (section
+8.2): `nbsp.signs` glues it to the sign, and the rules that read a quantity or a year (`nbsp.units`,
+`nbsp.dates`) leave it alone. Two `Number` slots or two `Date` slots joined by `-` form a `Range`
+core (check 17 of section 3.6), which is how `range.placeholders` reaches them; a `Number` slot and
+a literal number form one too, but no rule edits its dash.
 
 A caller that does not know the kind of a placeholder passes `Other` (section 2.14): it assumes the
 least about the value, since no glue sticks to it but the space before a dash after it and no rule
@@ -1192,9 +1192,9 @@ included); streaming without a buffer (quote pairing defers decisions to the end
   caller's language when their data differ.
 - The policy for changes of output, for new built-in languages and for the MSRV is section 15.1.
 - `cargo-semver-checks` is not installed on the development machine. For the first published release
-  there is no previous release: none of 0.1.0, 0.1.1 and 0.1.2 is published yet (section 15.1); the
-  public surface is fixed by the doctests. From the second published release on, the preparation of
-  each release compares the public surface with the previous published release
+  there is no previous release: none of 0.1.0, 0.1.1, 0.1.2 and 0.1.3 is published yet (section
+  15.1); the public surface is fixed by the doctests. From the second published release on, the
+  preparation of each release compares the public surface with the previous published release
   (`cargo semver-checks` where installed, otherwise a review of `cargo doc` output).
 
 ### 2.14 Build-time use with Fluent

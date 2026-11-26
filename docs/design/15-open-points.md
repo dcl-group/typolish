@@ -120,8 +120,8 @@ maintainer on 2026-11-26: the one exception that does not come from a release of
 that changes only because a later 1.x of `unicode-segmentation` brings newer Unicode tables
 (sections 5.6, 15.1, C56); callers avoid it with their lock file, and the dependency is not pinned.
 Decided by the maintainer on 2026-11-26: release 0.1.3 changes output in a patch release under a
-dated exception recorded in item 18, which covers that change only. Rejected: (b) output
-improvements in any release; (ii) `ALL` frozen at the rules of 0.1; pinning
+dated exception recorded in item 18, which covers that change and its nowrap consequence only.
+Rejected: (b) output improvements in any release; (ii) `ALL` frozen at the rules of 0.1; pinning
 `unicode-segmentation = "=1.13.3"` without the exception.
 
 **14.** **Public language data in version 1.** Settled 2026-11-22: (a) `LanguageData` is public with
@@ -180,11 +180,11 @@ value never becomes unbreakable, and the HTML output with a nowrap style changes
 
 Exception to the output stability policy (item 13, section 15.1), decided by the maintainer on
 2026-11-26: the change of this item and its consequence for the nowrap output ship in the patch
-release 0.1.3, with "before → after" examples in the CHANGELOG, although they change the output of
-Prose and Interface for built-in languages and are no fix of output that contradicts the
-documentation. Reason: the crate is not published on crates.io yet, so the policy protects no
+release 0.1.3. Reason: the crate is not published on crates.io yet, so the policy protects no
 published output. The exception covers this change and that consequence only, and does not relax the
-policy for any later change.
+policy for any later change. The lead's note: both changes alter the output of Prose and Interface
+for built-in languages and fix no output that contradicts the documentation, which is why they need
+the exception; the CHANGELOG of 0.1.3 lists them with "before → after" examples.
 
 #### Earlier decisions
 
