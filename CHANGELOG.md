@@ -4,10 +4,10 @@ All notable changes to this crate are recorded in this file. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the crate follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) as Cargo applies it.
 
-## 0.1.3 - unreleased
+## 0.1.3 - 2026-11-26
 
-In development: changes since 0.1.2, not tagged and not published. Minimum supported Rust version:
-1.100.
+A patch release, tagged on 2026-11-26 and not published yet; publication follows the tag. It holds
+everything since 0.1.2. Minimum supported Rust version: 1.100.
 
 ### Added
 

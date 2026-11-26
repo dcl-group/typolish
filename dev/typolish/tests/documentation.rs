@@ -727,9 +727,8 @@ fn design_references_say_design() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// CHANGELOG (design sections 15.2 and 15.4: the undated entry of the version of `Cargo.toml` in
-// development first, the dated entry of the tagged 0.1.2 next, and the 0.1.1 entry, the first one,
-// naming every rule).
+// CHANGELOG (design sections 15.2 and 15.4: the dated entry of the version of `Cargo.toml` first,
+// the dated entry of the tagged 0.1.2 next, and the 0.1.1 entry, the first one, naming every rule).
 
 fn changelog_entry(text: &str, version: &str) -> String {
     let mut out = String::new();
@@ -751,6 +750,23 @@ fn changelog_entry(text: &str, version: &str) -> String {
     out
 }
 
+/// Whether a CHANGELOG heading is `## {version} - YYYY-MM-DD`.
+fn dated_heading(heading: &str, version: &str) -> bool {
+    heading
+        .strip_prefix(format!("## {version} - ").as_str())
+        .is_some_and(|d| {
+            let b = d.as_bytes();
+            b.len() == 10
+                && b.iter().enumerate().all(|(i, c)| {
+                    if i == 4 || i == 7 {
+                        *c == b'-'
+                    } else {
+                        c.is_ascii_digit()
+                    }
+                })
+        })
+}
+
 #[test]
 fn changelog_has_the_dated_entry() {
     let Some(text) = changelog() else {
@@ -762,27 +778,16 @@ fn changelog_has_the_dated_entry() {
     let headings: Vec<&str> = text.lines().filter(|l| l.starts_with("## ")).collect();
     let version = env!("CARGO_PKG_VERSION");
     assert_eq!(version, "0.1.3");
-    // The version of Cargo.toml is in development: its entry comes first and has no date.
-    assert_eq!(
-        headings.first().copied(),
-        Some(format!("## {version} - unreleased").as_str()),
-        "the first entry is the version of Cargo.toml, not tagged yet"
-    );
-    // The tagged release before it carries the date of its tag.
-    let second = headings.get(1).copied().unwrap_or_default();
-    let date = second.strip_prefix("## 0.1.2 - ");
+    // The version of Cargo.toml is tagged: its entry comes first with the date of its tag.
+    let first = headings.first().copied().unwrap_or_default();
     assert!(
-        date.is_some_and(|d| {
-            let b = d.as_bytes();
-            b.len() == 10
-                && b.iter().enumerate().all(|(i, c)| {
-                    if i == 4 || i == 7 {
-                        *c == b'-'
-                    } else {
-                        c.is_ascii_digit()
-                    }
-                })
-        }),
+        dated_heading(first, version),
+        "the first entry is the version of Cargo.toml with the date of its tag: {first}"
+    );
+    // The tagged release before it carries the date of its tag too.
+    let second = headings.get(1).copied().unwrap_or_default();
+    assert!(
+        dated_heading(second, "0.1.2"),
         "the second entry is the tagged 0.1.2 with the date of its tag: {second}"
     );
     assert_eq!(
@@ -801,9 +806,6 @@ fn changelog_has_the_dated_entry() {
             entry.contains("not published"),
             "the {v} entry says that nothing is published yet"
         );
-    }
-    for v in ["0.1.2", "0.1.1"] {
-        let entry = changelog_entry(&text, v);
         assert!(entry.contains("### Added"), "the {v} entry has Added");
     }
 }
