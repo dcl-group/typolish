@@ -1,6 +1,6 @@
 [package]
 name = "typolish"
-version = "0.1.2"
+version = "0.1.3"
 description = "Typesetting of plain text for a language: quotes, dashes, ellipses, no-break spaces and numbers."
 edition.workspace = true
 rust-version.workspace = true

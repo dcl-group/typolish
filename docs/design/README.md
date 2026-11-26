@@ -1,8 +1,9 @@
 # typolish design
 
 Status: the design of version 0.1, approved by the maintainer on 2026-11-22; stages 2 to 5 are
-implemented in `dev/typolish`, and version 0.1.2 is tagged and not published (section 15.4). Where
-this document and the code disagree, one of them is fixed in the same change.
+implemented in `dev/typolish`, and version 0.1.2 is tagged and not published (section 15.4); 0.1.3
+is in development. Where this document and the code disagree, one of them is fixed in the same
+change.
 
 Conventions used below:
 

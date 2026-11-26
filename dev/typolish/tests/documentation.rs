@@ -727,8 +727,9 @@ fn design_references_say_design() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// CHANGELOG (design sections 15.2 and 15.4: a dated entry of the version of `Cargo.toml` first,
-// and the 0.1.1 entry, the first one, naming every rule).
+// CHANGELOG (design sections 15.2 and 15.4: the undated entry of the version of `Cargo.toml` in
+// development first, the dated entry of the tagged 0.1.2 next, and the 0.1.1 entry, the first one,
+// naming every rule).
 
 fn changelog_entry(text: &str, version: &str) -> String {
     let mut out = String::new();
@@ -760,9 +761,16 @@ fn changelog_has_the_dated_entry() {
     assert!(text.contains("semver.org"));
     let headings: Vec<&str> = text.lines().filter(|l| l.starts_with("## ")).collect();
     let version = env!("CARGO_PKG_VERSION");
-    assert_eq!(version, "0.1.2");
-    let first = headings.first().copied().unwrap_or_default();
-    let date = first.strip_prefix(format!("## {version} - ").as_str());
+    assert_eq!(version, "0.1.3");
+    // The version of Cargo.toml is in development: its entry comes first and has no date.
+    assert_eq!(
+        headings.first().copied(),
+        Some(format!("## {version} - unreleased").as_str()),
+        "the first entry is the version of Cargo.toml, not tagged yet"
+    );
+    // The tagged release before it carries the date of its tag.
+    let second = headings.get(1).copied().unwrap_or_default();
+    let date = second.strip_prefix("## 0.1.2 - ");
     assert!(
         date.is_some_and(|d| {
             let b = d.as_bytes();
@@ -775,25 +783,28 @@ fn changelog_has_the_dated_entry() {
                     }
                 })
         }),
-        "the first entry is the version of Cargo.toml with the date of its tag: {first}"
+        "the second entry is the tagged 0.1.2 with the date of its tag: {second}"
     );
     assert_eq!(
-        headings.get(1).copied(),
+        headings.get(2).copied(),
         Some("## 0.1.1 - unreleased"),
-        "the second entry is the first version"
+        "the third entry is the first version"
     );
-    assert_eq!(headings.len(), 2, "no other versions: {headings:?}");
-    for v in [version, "0.1.1"] {
+    assert_eq!(headings.len(), 3, "no other versions: {headings:?}");
+    for v in [version, "0.1.2", "0.1.1"] {
         let entry = changelog_entry(&text, v);
-        assert!(entry.contains("### Added"), "the {v} entry has Added");
         assert!(
             entry.contains("1.100"),
             "the {v} entry names the minimum Rust version"
         );
         assert!(
             entry.contains("not published"),
-            "an entry says that nothing is published yet"
+            "the {v} entry says that nothing is published yet"
         );
+    }
+    for v in ["0.1.2", "0.1.1"] {
+        let entry = changelog_entry(&text, v);
+        assert!(entry.contains("### Added"), "the {v} entry has Added");
     }
 }
 
