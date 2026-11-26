@@ -995,8 +995,10 @@ Choices:
 - **Edits are atomic and relative to the input.** Each record replaces one contiguous byte range of
   one piece. An edit across a boundary of adjacent `Text` pieces (`Text("Ждём.")`, `Text("..")`)
   becomes several records in input order: the first holds the replacement, the others delete the
-  rest; `original()` of each returns the slice of its own piece. A report of differences against the
-  reference implementation is printed from them without a second run.
+  rest; `original()` of each returns the slice of its own piece. The rustdoc of `report_template`
+  and `Report::changes` and the README give this as the supported way to distribute a result over
+  adjacent text pieces, with a compiled example. A report of differences against the reference
+  implementation is printed from them without a second run.
 - **`report` and `typeset` are one engine**; `report` turns on a recorder that the plain path
   compiles out (section 3.11). A property test checks `report(x).result() == typeset(x)` and that
   applying `changes()` to the input yields the result.

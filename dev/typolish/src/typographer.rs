@@ -930,6 +930,36 @@ impl Typographer {
     /// always a `Text` piece; [`Change::piece`](crate::Change::piece) says which one owns an
     /// insertion next to a slot, a protected piece or markup.
     ///
+    /// Adjacent `Text`, `Protected` and `Markup` pieces merge into one entry of
+    /// [`Template::texts`](crate::Template::texts), so the result alone does not say where one
+    /// piece ends. The journal of edits does: [`Report::changes`](crate::Report::changes) gives
+    /// every edit with the index of the input piece that owns it and a byte range in that piece,
+    /// so a caller that must hand each piece its own part of the result applies the records of a
+    /// piece to that piece (design section 2.9). An edit across a boundary gives one record per
+    /// piece: the first holds the whole replacement and the others have an empty replacement.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Typographer};
+    ///
+    /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    ///
+    /// let parts = ["Ждём.", "..", " дальше"];
+    /// let r = RU.report_template(parts.map(Piece::<()>::Text), Output::Unicode);
+    /// // The three pieces come out as one text.
+    /// assert_eq!(r.result().texts(), ["Ждём… дальше"]);
+    ///
+    /// // The records of a piece, applied from the end, give the part of that piece.
+    /// let mut split: Vec<String> = parts.iter().map(|p| p.to_string()).collect();
+    /// for c in r.changes().iter().rev() {
+    ///     split[c.piece()].replace_range(c.range(), c.replacement());
+    /// }
+    /// assert_eq!(split, ["Ждём…", "", " дальше"]);
+    /// assert_eq!(split.concat(), r.result().texts()[0]);
+    ///
+    /// // `original` returns the slice of the piece that a record replaced.
+    /// assert_eq!(r.original(&r.changes()[1]), "..");
+    /// ```
+    ///
     /// ```
     /// use typolish::{Language, Output, Piece, ProtectedKind, RuleSet, Typographer};
     ///

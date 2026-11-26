@@ -72,7 +72,11 @@ impl<'a, T> Report<'a, T> {
     }
 
     /// The edits, ordered by position, then by rule order; an edit across a boundary of `Text`
-    /// pieces gives one record per piece (design section 2.9).
+    /// pieces gives one record per piece (design section 2.9): the first holds the whole
+    /// replacement and the others have an empty one. This is the supported way to distribute a
+    /// template result over adjacent text pieces, which
+    /// [`Template::texts`](crate::Template::texts) merges; see
+    /// [`Typographer::report_template`](crate::Typographer::report_template) for an example.
     ///
     /// ```
     /// use typolish::{Language, Output, RuleSet, Typographer};

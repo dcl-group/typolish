@@ -23,6 +23,12 @@ In development: changes since 0.1.2, not tagged and not published. Minimum suppo
 
 ### Documentation
 
+- The journal of edits as the supported way to distribute a template result over adjacent text
+  pieces (design section 2.9): the rustdoc of `Typographer::report_template`, `Report::changes`,
+  `Piece::Text` and `Template::texts` and the README say that adjacent pieces merge in `texts()`,
+  that `Change::piece` and `Change::range` locate each edit in the input, that the first record of a
+  split edit holds the replacement, and show a compiled example that splits a result back over three
+  pieces. No output changes.
 - Which piece owns an edit in a template report (design sections 2.6, 2.9 and 3.11): a replaced or
   removed character belongs to the `Text` piece that holds it; an inserted no-break space belongs to
   the `Text` piece on its left when a text token precedes it or no text token follows it, and to the

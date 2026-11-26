@@ -259,6 +259,29 @@ assert_eq!(
 );
 ```
 
+### Distributing a result over adjacent pieces
+
+Adjacent `Text`, `Protected` and `Markup` pieces of a template merge into one text of the result. A
+caller that must give each input piece its own part applies the journal of edits: every record names
+the piece that owns it and a byte range in that piece, and an edit across a boundary gives one
+record per piece, the first with the whole replacement and the others with an empty one:
+
+```rust
+use typolish::{Language, Output, Piece, RuleSet, Typographer};
+
+static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+
+let parts = ["Ждём.", "..", " дальше"];
+let r = RU.report_template(parts.map(Piece::<()>::Text), Output::Unicode);
+assert_eq!(r.result().texts(), ["Ждём… дальше"]);
+
+let mut split: Vec<String> = parts.iter().map(|p| p.to_string()).collect();
+for c in r.changes().iter().rev() {
+    split[c.piece()].replace_range(c.range(), c.replacement());
+}
+assert_eq!(split, ["Ждём…", "", " дальше"]);
+```
+
 ## Protecting commands and code
 
 The rules work on text, and a command typed in running text looks like text: in `cat - file` the `-`
