@@ -165,8 +165,10 @@ Decided by the maintainer on 2026-11-23; not reopened here:
     N.M". `design_references_say_design` in `tests/documentation.rs` checks the comments of every
     Rust file of the crate (section 13.10).
 34. Publishing on crates.io waits for the maintainer's command; until then only the GitHub
-    repository is pushed (items 1 and 15). The tag `v0.1.2` is set and pushed only on that command
-    too (section 14.7).
+    repository is pushed (items 1 and 15). The tags `v0.1.2` and `v0.1.3` were set and pushed on the
+    maintainer's commands (2026-11-26); neither version is published. The first publication to
+    crates.io is `0.1.3` (section 15.1, item 1), and the maintainer does it himself. A tag and a
+    publication still happen only on his explicit command for that action (section 14.7).
 
 Decided by the maintainer on 2026-11-24; not reopened here:
 
