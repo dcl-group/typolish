@@ -224,31 +224,36 @@ impl Slot {
 /// | a `Next` abbreviation after it does not bind forward (`{n} ч. Потом`, `{d} г. Затем`) | yes                                                             | no       | yes                 | no                    |
 /// | `number.times` (`{w}x{h}`, Prose)                                                     | yes                                                             | no       | no                  | no                    |
 /// | glue before it (`в {x}`, `№ {x}`)                                                     | yes                                                             | yes      | yes                 | no                    |
-/// | glue after it (`{x} же`)                                                              | yes                                                             | yes      | yes                 | no                    |
+/// | glue after it (`{x} же`)                                                              | yes                                                             | yes      | yes                 | only `nbsp.dash`      |
 /// | operand of `dash.spaced-hyphen` (`{x} - слово`)                                       | yes; next to a number, a range or a single-letter word: no dash | yes      | yes                 | yes                   |
+/// | `nbsp.dash` after it (`{x} - слово`, `{x}, - сказал`)                                 | yes                                                             | yes      | yes                 | yes                   |
 /// | the word after `dash.dialogue` (`- {x} пришёл`, Prose)                                | no                                                              | yes      | no                  | yes; the space stays  |
 /// | a word for `ellipsis.inner` (`{a}...{b}`, Prose)                                      | no                                                              | yes      | no                  | yes                   |
 /// | `SlotGlue` diagnostic                                                                 | `{n}МБ`, `МБ{n}`, `{a}{b}`                                      | `{a}{b}` | `{a}{b}`            | `{a}{b}`              |
 /// | any rule across a `BlockMarkup` piece (`{x}</p><p> МБ`, `{a}</p><p>{b}`)              | no                                                              | no       | no                  | no                    |
 ///
 /// No glue sticks to an `Other` slot, nor to the fragment that holds it: `и "{o}"` and `в ({o})`
-/// keep their spaces. A `Number` slot after `№`, `§` or `¶` is a label number: `nbsp.signs` glues
-/// it to the sign, and `nbsp.units` and `nbsp.dates` leave it alone.
+/// keep their spaces. The one exception is the space before a dash: a dash never starts a line
+/// after a slot of any kind, so `nbsp.dash` binds it to the slot as it binds it to a word (ru
+/// `{o} - слово` → `{o}⍽— слово`, `"{o}" - слово` → `«{o}»⍽— слово`), and with a nowrap style that
+/// glue is written as an entity, so no nowrap group takes the value. A `Number` slot after `№`,
+/// `§` or `¶` is a label number: `nbsp.signs` glues it to the sign, and `nbsp.units` and
+/// `nbsp.dates` leave it alone.
 ///
 /// # When the kind is unknown
 ///
 /// Pass [`SlotKind::Other`] ([`Slot::OTHER`]) for a placeholder whose kind the caller does not
-/// know. It assumes the least about the value: no glue sticks to it, so a long value is never held
-/// in one unbreakable group with its neighbors, and no rule reads it as a number, a date or a
-/// year, so no unit, day, year, range, dimension or prime is glued or edited on a guess. The price
-/// is the glue a short value would have had (`в {x}`, `{x} МБ`). `Word` would glue a value of any
-/// length; `Number` and `Date` would read the text around a value that is no number or date as
-/// units, ranges and dates.
+/// know. It assumes the least about the value: no glue sticks to it but the one before a dash
+/// after it, so a long value is never held in one unbreakable group with its neighbors, and no
+/// rule reads it as a number, a date or a year, so no unit, day, year, range, dimension or prime
+/// is glued or edited on a guess. The price is the glue a short value would have had (`в {x}`,
+/// `{x} МБ`). `Word` would glue a value of any length; `Number` and `Date` would read the text
+/// around a value that is no number or date as units, ranges and dates.
 ///
 /// `Other` is not invisible to the rules: like every kind it is a word for the quotes around it,
 /// and like `Word` it is an operand of a spaced hyphen and, in Prose, the word of `dash.dialogue`
-/// and `ellipsis.inner`. So `{a} - {b}` gets a dash with two `Other` slots and keeps the hyphen
-/// with two `Number` slots. Where that matters, declare the kind.
+/// and `ellipsis.inner`. So `{a} - {b}` gets a dash glued to the slot before it with two `Other`
+/// slots and keeps the hyphen with two `Number` slots. Where that matters, declare the kind.
 ///
 /// ```
 /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
@@ -275,7 +280,12 @@ impl Slot {
 ///
 /// let hyphen = [Piece::Slot((), Slot::OTHER), Piece::Text(" - "), Piece::Slot((), Slot::OTHER)];
 /// assert_eq!(texts(&hyphen, Slot::NUMBER), ["", " - ", ""]);
-/// assert_eq!(texts(&hyphen, Slot::OTHER), ["", " — ", ""]);
+/// assert_eq!(texts(&hyphen, Slot::OTHER), ["", "\u{a0}— ", ""]);
+///
+/// // A dash never starts a line after a slot, whatever its kind.
+/// let dash = [Piece::Slot((), Slot::OTHER), Piece::Text(" - слово")];
+/// assert_eq!(texts(&dash, Slot::WORD), ["", "\u{a0}— слово"]);
+/// assert_eq!(texts(&dash, Slot::OTHER), ["", "\u{a0}— слово"]);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -349,10 +359,10 @@ pub enum SlotKind {
     Date,
     /// Anything else: a path, a URL, code, a string of unknown length.
     ///
-    /// Enables the least: no glue before or after it, no apostrophe, and no rule reads it as a
-    /// number or a date; it is still a word for quotes, a dash operand, and the word of
-    /// `dash.dialogue` and `ellipsis.inner`. The kind to pass when the kind is unknown (see
-    /// [`SlotKind`]).
+    /// Enables the least: no glue before or after it except the space before a dash after it, no
+    /// apostrophe, and no rule reads it as a number or a date; it is still a word for quotes, a
+    /// dash operand, and the word of `dash.dialogue` and `ellipsis.inner`. The kind to pass when
+    /// the kind is unknown (see [`SlotKind`]).
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, RuleSet, Slot, SlotKind, Typographer};

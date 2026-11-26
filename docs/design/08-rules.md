@@ -153,7 +153,9 @@ Conditions that hold for every rule:
   (`nbsp.dash` before a dash, `nbsp.units` before a unit, `nbsp.short-words` before a sign of
   `signs`). Never before a fragment that starts with `-` (`ls -la` stays intact whatever the lists
   say), and never next to a fragment that holds an `Other` slot, on either side, whatever wraps the
-  slot (`and "{o}"` stays; section 2.6).
+  slot (`and "{o}"` stays; section 2.6), except the space before a dash that `nbsp.dash` glues: a
+  dash never starts a line after a slot of any kind (`{o} - слово` → `{o}⍽— слово`; section 15.5,
+  item 18).
 - A trigger word is a whole core, compared as section 7.1 (Lookups) says for its list. The wrapper
   does not hide it: `(в 2026)` → `(в⍽2026)`. A word followed by closing punctuation (`и,`) triggers
   nothing. A particle of `nbsp.particles` is no trigger word: it stands after the glued space, and
@@ -505,7 +507,13 @@ Examples: `Подождите...` → `Подождите…`; `Подождит
   `Москва — столица` → `Москва⍽— столица`, `Москва – столица` → `Москва⍽– столица`. The refusals of
   `dash.spaced-hyphen` do not apply here: a typed dash gets the glue between any operands, numbers
   included (`10 – 20` → `10⍽– 20`), while a plain `-` that `dash.spaced-hyphen` refused is not a
-  dash and gets none.
+  dash and gets none. A slot on the left gets the glue whatever its kind, and so does a fragment
+  that holds an `Other` slot, the one glue that sticks to such a fragment (section 15.5, item 18):
+  ru `{o} - слово` → `{o}⍽— слово`, `"{o}" - слово` → `«{o}»⍽— слово`, `{o}, - сказал он` →
+  `{o},⍽— сказал он`, as after a word, so the dash never starts a line after the slot. The nowrap
+  renderer writes that glue as an entity and keeps the slot out of every group (section 11.5). The
+  space after the dash stays (`слово - {o}` → `слово⍽— {o}`, unchanged), as does the space after a
+  dialogue dash before an `Other` slot (`dash.dialogue`).
 
 In the tables and examples of sections 8.5 to 8.9 an output shows the edits of the rules named with
 it, as in section 8.4; a row marked Prose or Interface shows the output of the whole set. In the
@@ -600,7 +608,7 @@ How each kind of slot takes part in each rule is the table of section 2.6. In sh
 frozen token; `Number` slots count as numbers for units, ranges, dates, dimensions and primes,
 except after a sign, where they are labels; `Date` slots count as years for year words and pair with
 each other in ranges (check 17); `Word` and `Other` slots count as words; no glue sticks to an
-`Other` slot.
+`Other` slot but the space before a dash after it (`nbsp.dash`).
 
 ### 8.11 Coverage of the task's rule list
 

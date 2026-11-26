@@ -509,13 +509,9 @@ fn row_operand_of_the_spaced_hyphen() {
                 [Piece::Slot("x", slot), Piece::Text(" - слово")],
                 Output::Unicode,
             );
-            // `nbsp.dash` glues the space before the dash, but not next to an `Other` slot.
-            let expected = if slot.kind() == SlotKind::Other {
-                " — слово"
-            } else {
-                "\u{a0}— слово"
-            };
-            assert_eq!(texts(&out), ["", expected], "{what} {name}");
+            // `nbsp.dash` glues the space before the dash after a slot of every kind, `Other`
+            // included, so the dash never starts a line (design sections 2.6 and 15.5, item 18).
+            assert_eq!(texts(&out), ["", "\u{a0}— слово"], "{what} {name}");
             let out = t.typeset_template(
                 [Piece::Text("слово - "), Piece::Slot("x", slot)],
                 Output::Unicode,
@@ -545,6 +541,137 @@ fn row_operand_of_the_spaced_hyphen() {
         );
         assert_eq!(texts(&out), ["", "\u{a0}— x"], "{what}");
     }
+}
+
+#[test]
+fn a_dash_never_starts_a_line_after_a_slot_of_any_kind() {
+    // Design sections 2.6, 8.7 and 15.5, item 18: the space before a dash after a slot is glued
+    // whatever the kind of the slot, `Other` included, also when the slot is quoted, bracketed or
+    // followed by a comma, as after a word.
+    let glued = |slot: Slot| {
+        let mut rows = vec![
+            (
+                vec![Piece::Slot("x", slot), Piece::Text(" - слово")],
+                vec!["", "\u{a0}— слово"],
+            ),
+            (
+                vec![Piece::Slot("x", slot), Piece::Text(" – слово")],
+                vec!["", "\u{a0}– слово"],
+            ),
+            (
+                vec![Piece::Slot("x", slot), Piece::Text(" — слово")],
+                vec!["", "\u{a0}— слово"],
+            ),
+            (
+                vec![
+                    Piece::Text("\""),
+                    Piece::Slot("x", slot),
+                    Piece::Text("\" - слово"),
+                ],
+                vec!["«", "»\u{a0}— слово"],
+            ),
+            (
+                vec![
+                    Piece::Text("("),
+                    Piece::Slot("x", slot),
+                    Piece::Text(") - слово"),
+                ],
+                vec!["(", ")\u{a0}— слово"],
+            ),
+            (
+                vec![Piece::Slot("x", slot), Piece::Text(", - сказал он")],
+                vec!["", ",\u{a0}— сказал он"],
+            ),
+        ];
+        // Two `Number` slots keep the hyphen (`{a} - {b}`, the row of `dash.spaced-hyphen`).
+        if slot.kind() != SlotKind::Number {
+            rows.push((
+                vec![
+                    Piece::Slot("a", slot),
+                    Piece::Text(" - "),
+                    Piece::Slot("b", slot),
+                ],
+                vec!["", "\u{a0}— ", ""],
+            ));
+        }
+        rows
+    };
+    for (what, t) in sets(&Language::RU_RU) {
+        for (slot, name) in KINDS {
+            for (pieces, expected) in glued(slot) {
+                let out = t.typeset_template(pieces.clone(), Output::Unicode);
+                let got = texts(&out);
+                assert_eq!(got, expected, "{what} {name} {pieces:?}");
+                // Idempotent: the output typeset again is unchanged.
+                let again = t.typeset_template(rebuild(&out), Output::Unicode);
+                assert_eq!(texts(&again), expected, "{what} {name} {pieces:?} again");
+                assert!(!again.changed(), "{what} {name} {pieces:?} again");
+                // The plain form comes back: `to_plain_template` undoes the glue and the dash.
+                // A typed `—` comes back as the `-` that gives it (design section 12.1).
+                let back = t.to_plain_template(rebuild(&out));
+                let plain: Vec<String> = input_texts(&pieces)
+                    .iter()
+                    .map(|text| text.replace('—', "-"))
+                    .collect();
+                assert_eq!(texts(&back), plain, "{what} {name} {pieces:?} plain");
+            }
+        }
+    }
+}
+
+#[test]
+fn the_space_after_the_dash_and_other_languages_stay_as_they_were() {
+    // Design section 15.5, item 18 binds the dash to the slot before it, not the slot after it.
+    for (what, t) in sets(&Language::RU_RU) {
+        for (slot, name) in KINDS {
+            let out = t.typeset_template(
+                [
+                    Piece::Text("слово - "),
+                    Piece::Slot("x", slot),
+                    Piece::Text(" ещё"),
+                ],
+                Output::Unicode,
+            );
+            assert_eq!(texts(&out), ["слово\u{a0}— ", " ещё"], "{what} {name}");
+        }
+    }
+    // en-US glues nothing before a dash, and its closed style keeps the spaces next to a slot;
+    // `Language::COMMON` has no dash rules. Nothing there depends on the kind.
+    for (language, expected) in [(Language::EN_US, " — word"), (Language::COMMON, " - word")] {
+        for (what, t) in sets(&language) {
+            for (slot, name) in KINDS {
+                let out = t.typeset_template(
+                    [Piece::Slot("x", slot), Piece::Text(" - word")],
+                    Output::Unicode,
+                );
+                assert_eq!(texts(&out), ["", expected], "{what} {name}");
+            }
+        }
+    }
+}
+
+/// The texts of a list of text and slot pieces in the n + 1 form.
+fn input_texts(pieces: &[Piece<'_, &str>]) -> Vec<String> {
+    let mut texts = vec![String::new()];
+    for piece in pieces {
+        match piece {
+            Piece::Text(text) => texts.last_mut().unwrap().push_str(text),
+            _ => texts.push(String::new()),
+        }
+    }
+    texts
+}
+
+/// The pieces of a typeset template: its texts with its slots between them.
+fn rebuild<'a>(t: &'a Template<'_, &'static str>) -> Vec<Piece<'a, &'static str>> {
+    let mut pieces = Vec::new();
+    for (i, text) in t.texts().iter().enumerate() {
+        pieces.push(Piece::Text(text.as_ref()));
+        if let Some(&(name, slot)) = t.slots().get(i) {
+            pieces.push(Piece::Slot(name, slot));
+        }
+    }
+    pieces
 }
 
 #[test]

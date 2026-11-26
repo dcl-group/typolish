@@ -86,16 +86,17 @@ test compares it with `tests/fixtures/whatwg-entities.txt`, an extract of that l
 instead of entities. A **group** is a maximal run of non-space fragments joined by glue marks; its
 **joints** are those glue marks and every U+2011 inside its fragments. The renderer finds groups on
 the characters of the result: a glue mark is a single U+00A0 or U+202F between two characters that
-are not whitespace (or slots) of the rules' text, so a typed or produced glued space; a U+00A0 in a
-run of spaces, at a line end or next to a protected span or a `Markup` piece joins nothing and is
-written as an entity. Protected spans never belong to a group. A group with at least one joint is
-written as `<span class="c">…</span>` or as `<span style="white-space:nowrap">…</span>`. Inside it,
-U+00A0 glue becomes an ordinary space; U+202F glue, U+2011 and the other characters of the set are
-written as references of the chosen style (`&#x202F;`, `&#x2011;`, `&mdash;`; the characters
-themselves with `CHARACTERS`). So the narrow space keeps its width, a hyphen the caller typed as
-U+2011 comes back as U+2011, and an ordinary space inside the element can only be U+00A0 glue, which
-keeps decoding exact (section 11.8). The class string is escaped as an attribute value. Groups do
-not nest. Output with nowrap elements is element content only; it is not an attribute value.
+are not whitespace (or slots of a kind other than `Other`) of the rules' text, so a typed or
+produced glued space; a U+00A0 in a run of spaces, at a line end or next to a protected span, a
+`Markup` piece or a slot of kind `Other` joins nothing and is written as an entity. Protected spans
+never belong to a group. A group with at least one joint is written as `<span class="c">…</span>` or
+as `<span style="white-space:nowrap">…</span>`. Inside it, U+00A0 glue becomes an ordinary space;
+U+202F glue, U+2011 and the other characters of the set are written as references of the chosen
+style (`&#x202F;`, `&#x2011;`, `&mdash;`; the characters themselves with `CHARACTERS`). So the
+narrow space keeps its width, a hyphen the caller typed as U+2011 comes back as U+2011, and an
+ordinary space inside the element can only be U+00A0 glue, which keeps decoding exact (section
+11.8). The class string is escaped as an attribute value. Groups do not nest. Output with nowrap
+elements is element content only; it is not an attribute value.
 
 - Example: `и⍽т.⍽д.` → `<span class="nowrap">и т. д.</span>`; a telephone number `+7 495 123-45-67`
   glued by `nbsp.phone` (Prose) → `<span class="nowrap">+7 495 123-45-67</span>`; the same number
@@ -116,7 +117,12 @@ not nest. Output with nowrap elements is element content only; it is not an attr
   protected span, without a diagnostic: the span's content may be long and has spaces of its own,
   which an element would make unbreakable and a decoder could not tell from glue (the reason no glue
   sticks to an `Other` slot, section 2.6). The glue between a group and a protected span is written
-  as an entity (`в&nbsp;` before `` `--config` ``), and so is glue inside a protected span.
+  as an entity (`в&nbsp;` before `` `--config` ``), and so is glue inside a protected span. A slot
+  of kind `Other` ends a group in the same way and never belongs to one: the only glue a rule puts
+  next to it is the space before a dash (section 15.5, item 18), written as an entity, so ru
+  `{o} - слово` gives the texts `["", "&nbsp;&mdash; слово"]` and `"{o}" - слово` gives
+  `["&laquo;", "<span class=\"nowrap\">&raquo; &mdash;</span> слово"]`. A slot of the other kinds is
+  group material, as above.
 
 ### 11.6 Escaped string bodies
 

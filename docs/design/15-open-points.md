@@ -4,10 +4,10 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 
 ### 15.5 Points put to the maintainer, all settled
 
-No point is open. The maintainer settled all seventeen points on 2026-11-22; each records the option
-chosen, and the rest of the design follows it. The other decisions of the maintainer, those of
-2026-11-21 and of 2026-11-22, are listed in section 15.2. Numbers never change; settled points keep
-their number and record the date of the decision.
+No point is open. The maintainer settled points 1 to 17 on 2026-11-22 and point 18 on 2026-11-26;
+each records the option chosen, and the rest of the design follows it. The other decisions of the
+maintainer, those of 2026-11-21 and of 2026-11-22, are listed in section 15.2. Numbers never change;
+settled points keep their number and record the date of the decision.
 
 | Item | Subject                                     | Status             | Decision                                                                                                                  |
 | ---- | ------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
@@ -28,6 +28,7 @@ their number and record the date of the decision.
 | 15   | `nbsp.phone` in Interface                   | Settled 2026-11-22 | Prose only                                                                                                                |
 | 16   | Word lists and norms from secondary sources | Settled 2026-11-22 | lists as in section 7; unit lists extended 2026-11-24                                                                     |
 | 17   | Digit grouping in text                      | Settled 2026-11-22 | no text rule; `format_number` groups values                                                                               |
+| 18   | Dash after a slot                           | Settled 2026-11-26 | glued to a slot of any kind, `Other` included                                                                             |
 
 #### Settled on 2026-11-22
 
@@ -151,6 +152,17 @@ number the author already grouped by single spaces in threes (`1 000 000` → `1
 where the language's group separator is not a space; (c) full grouping in text, which needs digit
 runs lexed in groups and commas inserted for English. (b) can still be added later as a new rule
 outside both sets (section 15.1).
+
+#### Settled on 2026-11-26
+
+**18.** **Dash after a slot.** Settled 2026-11-26: (a) a dash never starts a line after a slot,
+whatever its kind. The space before the dash is glued after a slot of any kind with the same
+no-break space the language uses after a word, also after an `Other` slot, whose value is unknown:
+ru `{o} - слово` → `{o}⍽— слово`, as `{w} - слово` → `{w}⍽— слово` and `Москва - столица` →
+`Москва⍽— столица`. No slot kind is added. This is the one exception to section 15.2, item 20; the
+glue is that of `nbsp.dash` (section 8.7). Rejected: (b) the space stays after an `Other` slot, the
+behavior of 0.1.2, so that a dash after it could start a line. The consequences that are the lead's
+choices are C67 (section 15.3).
 
 #### Earlier decisions
 

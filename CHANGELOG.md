@@ -21,6 +21,24 @@ In development: changes since 0.1.2, not tagged and not published. Minimum suppo
   names the kind, not its severity, rule or data, and never changes meaning, as a rule id does not.
   The output and the `Display` of `Diagnostic` do not change.
 
+### Changed
+
+- A dash never starts a line after a slot, whatever its kind (design sections 2.6, 8.7 and 15.5,
+  item 18, decided by the maintainer). `nbsp.dash` now glues the space before the dash after a slot
+  of kind `Other` and after a fragment that holds one, as it already did after a `Number`, `Word` or
+  `Date` slot and after a word; it was the one place where a dash after a slot kept a breakable
+  space. Russian, both sets (`⍽` stands for U+00A0): `{o} - слово` gave `{o} — слово` and now gives
+  `{o}⍽— слово`; `"{o}" - слово` gave `«{o}» — слово`, now `«{o}»⍽— слово`; `{o} - {p}` gave
+  `{o} — {p}`, now `{o}⍽— {p}`. With a nowrap style an `Other` slot never belongs to a nowrap group,
+  so its value stays breakable: the glue next to it is written as an entity (design section 11.5),
+  `{o} - слово` gives the texts `["", "&nbsp;&mdash; слово"]`, and `"{o}" - слово` gives
+  `["&laquo;", "<span class=\"nw\">&raquo; &mdash;</span> слово"]` with `nowrap_class("nw")`. A
+  U+00A0 the caller typed next to an `Other` slot is written as an entity too, where it formed a
+  group with the slot before. Unchanged: the space after the dash (`слово - {o}`), the dialogue dash
+  before an `Other` slot (`- {o} пришёл` → `— {o} пришёл`), the ellipsis, English, whose closed dash
+  glues nothing before a dash and keeps the spaces next to a slot (`{x} - word` → `{x} — word` for
+  every kind), and `Language::COMMON`, which has no dash rules.
+
 ## 0.1.2 - 2026-11-26
 
 A patch release, tagged on 2026-11-26 and not published yet; publication follows the tag. It holds

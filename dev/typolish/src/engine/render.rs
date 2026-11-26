@@ -25,7 +25,7 @@ use super::record::Recorder;
 use crate::lang::data::Table;
 use crate::output::{self, Count, Encoder, Nowrap, Out, Res, Same};
 use crate::report::Diagnostic;
-use crate::{DiagnosticKind, Output, Severity};
+use crate::{DiagnosticKind, Output, Severity, SlotKind};
 
 /// The new text of an edit.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -316,8 +316,8 @@ enum Seg<'a> {
     Block(&'a str),
     /// The one character an edit wrote.
     Char(char),
-    /// A slot: the end of a text of the n + 1 form.
-    Slot,
+    /// A slot: the end of a text of the n + 1 form; whether it is of kind `Other`.
+    Slot(bool),
 }
 
 /// The parts of the result in order: the walk of `write_piece` over every input piece, with the
@@ -394,9 +394,9 @@ impl<'v, 't> Segs<'v, 't> {
         let edits = self.v.edits;
         loop {
             match *self.v.input.get(self.k)? {
-                Input::Slot(_) => {
+                Input::Slot(slot) => {
                     self.k += 1;
-                    return Some(Seg::Slot);
+                    return Some(Seg::Slot(slot.kind() == SlotKind::Other));
                 }
                 Input::Protected(s) => {
                     self.k += 1;
@@ -490,16 +490,19 @@ enum Item<'a> {
     /// A `BlockMarkup` piece: a paragraph ends there, so no group runs across it, even when
     /// markup is looked through.
     Block(&'a str),
-    Slot,
+    /// A slot, and whether it is of kind `Other`.
+    Slot(bool),
 }
 
 impl Item<'_> {
     /// Material of a nowrap group (design section 11.5): a character of the rules' text that is
-    /// not whitespace, or a slot. Whitespace, protected text and markup end a group.
+    /// not whitespace, or a slot that is not of kind `Other`. Whitespace, protected text, markup
+    /// and an `Other` slot end a group: the value of an `Other` slot may be long, so glue next to
+    /// it is written as an entity and no group takes it (design sections 2.6 and 15.5, item 18).
     fn content(self) -> bool {
         match self {
             Item::Char(c, protected) => !protected && !c.is_whitespace(),
-            Item::Slot => true,
+            Item::Slot(other) => !other,
             Item::Markup(..) | Item::Block(_) => false,
         }
     }
@@ -545,7 +548,7 @@ impl<'v, 't> Items<'v, 't> {
                 Seg::Char(c) => self.one = Some(c),
                 Seg::Markup(s, k) => return Some(Item::Markup(s, k)),
                 Seg::Block(s) => return Some(Item::Block(s)),
-                Seg::Slot => return Some(Item::Slot),
+                Seg::Slot(other) => return Some(Item::Slot(other)),
             }
         }
     }
@@ -685,7 +688,7 @@ impl Writer {
                     self.encoder.char(o, c, self.group && !protected)?;
                 }
                 Item::Markup(s, _) | Item::Block(s) => self.encoder.markup(o, s)?,
-                Item::Slot => {
+                Item::Slot(_) => {
                     self.encoder.flush(o)?;
                     self.after_slot = true;
                     return Ok(true);

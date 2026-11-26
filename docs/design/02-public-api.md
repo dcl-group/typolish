@@ -603,8 +603,9 @@ this document is not part of the published documentation; the two are changed to
 | a `Next` abbreviation after it does not bind forward (`{n} ч. Потом`, `{d} г. Затем`) | yes                                                             | no       | yes                 | no                   |
 | `number.times` (`{w}x{h}`, Prose)                                                     | yes                                                             | no       | no                  | no                   |
 | glue before it (`в {x}`, `№ {x}`)                                                     | yes                                                             | yes      | yes                 | no                   |
-| glue after it (`{x} же`)                                                              | yes                                                             | yes      | yes                 | no                   |
+| glue after it (`{x} же`)                                                              | yes                                                             | yes      | yes                 | only `nbsp.dash`     |
 | operand of `dash.spaced-hyphen` (`{x} - слово`)                                       | yes; next to a number, a range or a single-letter word: no dash | yes      | yes                 | yes                  |
+| `nbsp.dash` after it (`{x} - слово`, `{x}, - сказал`)                                 | yes                                                             | yes      | yes                 | yes                  |
 | the word after `dash.dialogue` (`- {x} пришёл`, Prose)                                | no                                                              | yes      | no                  | yes; the space stays |
 | a word for `ellipsis.inner` (`{a}...{b}`, Prose)                                      | no                                                              | yes      | no                  | yes                  |
 | `SlotGlue` diagnostic                                                                 | `{n}МБ`, `МБ{n}`, `{a}{b}`                                      | `{a}{b}` | `{a}{b}`            | `{a}{b}`             |
@@ -621,18 +622,22 @@ blank line (`dash.dialogue`, the fenced blocks of section 10.1).
 No glue sticks to an `Other` slot: its value may be long, and a nowrap group around a long path
 breaks the layout. That holds for the whole fragment that holds the slot, since a group takes whole
 fragments (section 11.5): no glue before or after a quoted or bracketed `Other` slot or one joined
-to other tokens (`and "{o}"`, `в ({o})`, `и {d}{o}` keep their spaces; section 15.2, item 20). A
-`Number` slot after `№`, `§` or `¶` (`№ {n}`, `№{n}`) is a label number (section 8.2): `nbsp.signs`
-glues it to the sign, and the rules that read a quantity or a year (`nbsp.units`, `nbsp.dates`)
-leave it alone. Two `Number` slots or two `Date` slots joined by `-` form a `Range` core (check 17
-of section 3.6), which is how `range.placeholders` reaches them; a `Number` slot and a literal
-number form one too, but no rule edits its dash.
+to other tokens (`and "{o}"`, `в ({o})`, `и {d}{o}` keep their spaces; section 15.2, item 20). The
+one exception is the space before a dash: a dash never starts a line after a slot of any kind, so
+`nbsp.dash` glues it after an `Other` slot or a fragment that holds one as after a word (ru
+`{o} - слово` → `{o}⍽— слово`, `"{o}" - слово` → `«{o}»⍽— слово`; section 15.5, item 18). With a
+nowrap style that glue is written as an entity and no group takes the slot (section 11.5), so the
+value still breaks where it would. A `Number` slot after `№`, `§` or `¶` (`№ {n}`, `№{n}`) is a
+label number (section 8.2): `nbsp.signs` glues it to the sign, and the rules that read a quantity or
+a year (`nbsp.units`, `nbsp.dates`) leave it alone. Two `Number` slots or two `Date` slots joined by
+`-` form a `Range` core (check 17 of section 3.6), which is how `range.placeholders` reaches them; a
+`Number` slot and a literal number form one too, but no rule edits its dash.
 
 A caller that does not know the kind of a placeholder passes `Other` (section 2.14): it assumes the
-least about the value, since no glue sticks to it and no rule reads it as a number or a date. It is
-not neutral: it is a word for quotes, an operand of `dash.spaced-hyphen`, and the word of
-`dash.dialogue` and `ellipsis.inner`, so `{a} - {b}` gets a dash with two `Other` slots and keeps
-the hyphen with two `Number` slots.
+least about the value, since no glue sticks to it but the space before a dash after it and no rule
+reads it as a number or a date. It is not neutral: it is a word for quotes, an operand of
+`dash.spaced-hyphen`, and the word of `dash.dialogue` and `ellipsis.inner`, so `{a} - {b}` gets a
+dash glued to `{a}` with two `Other` slots and keeps the hyphen with two `Number` slots.
 
 Choices:
 

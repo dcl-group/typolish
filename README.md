@@ -140,7 +140,8 @@ How each slot kind takes part in the rules is the table in the rustdoc of `SlotK
 participation table of
 [design section 2.6](https://github.com/dcl-group/typolish/blob/main/docs/design/02-public-api.md)).
 Pass `Slot::OTHER` for a placeholder whose kind is unknown: no glue sticks to it and no rule reads
-it as a number or a date.
+it as a number or a date. The one glue it takes is the space before a dash after it, since a dash
+never starts a line after a slot of any kind (`{o} - слово` → `{o}⍽— слово` in Russian).
 
 The rules see only the pieces of one call. Text typeset in separate calls, such as the alternative
 branches of one message, has no context from the text around it: the first and the last word of a

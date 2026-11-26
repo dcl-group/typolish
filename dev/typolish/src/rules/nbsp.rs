@@ -134,7 +134,8 @@ fn glue_of(cx: &Cx<'_>, place: NarrowGlue) -> Glue {
 
 /// Whether a token is a slot of kind `Other` or belongs to a fragment that holds one: no glue
 /// sticks to such a fragment, quoted or bracketed alike (`and "{o}"`), because a nowrap group
-/// would take the whole fragment, slot included (design sections 2.6, 8.2 and 11.5).
+/// would take the whole fragment, slot included (design sections 2.6, 8.2 and 11.5). `nbsp.dash`
+/// does not ask: a dash never starts a line after a slot (design section 15.5, item 18).
 pub(crate) fn holds_other(cx: &Cx<'_>, i: usize) -> bool {
     cx.kind(i) == Some(Kind::Slot(SlotKind::Other)) || cx.frag_of(i).is_some_and(|f| f.other_slot)
 }
@@ -1286,7 +1287,10 @@ fn bound_particle(cx: &Cx<'_>, f: &Frag) -> bool {
 
 /// `nbsp.dash` (style `SpacedGlued`): the space before a lone `—` (produced or typed) or a typed
 /// `–` in the context of `dash.spaced-hyphen` is glued; its refusals do not apply. Anchors at
-/// the space.
+/// the space. The space is glued after a slot of any kind and after a fragment that holds an
+/// `Other` slot too (`{o} - слово` → `{o}⍽— слово`, design section 15.5, item 18): a line never
+/// starts with that dash, and the nowrap renderer writes the glue next to an `Other` slot as an
+/// entity, so no group takes the slot (design section 11.5).
 pub(crate) fn dash(cx: &Cx<'_>, s: usize) -> Option<Match> {
     if !cx.pattern_space(s) {
         return None;
@@ -1302,9 +1306,6 @@ pub(crate) fn dash(cx: &Cx<'_>, s: usize) -> Option<Match> {
     }
     let l = cx.prev(s)?;
     let r = cx.next(s2)?;
-    if holds_other(cx, l) {
-        return None;
-    }
     let left = if cx.in_core(l) {
         cx.frag_of(l)
             .is_some_and(|f| is_operand(cx, percent_owner(cx, f)))

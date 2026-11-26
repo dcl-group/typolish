@@ -1091,6 +1091,69 @@ fn nowrap_in_templates() {
 }
 
 #[test]
+fn an_other_slot_never_belongs_to_a_nowrap_group() {
+    // Design sections 11.5 and 15.5, item 18: the space before a dash after an `Other` slot is
+    // glued, and the glue is written as an entity, so no group takes the value of the slot.
+    let c = open("class=\"nowrap\"");
+    for t in [ru_ui(), ru_prose()] {
+        let dash = |slot: Slot| {
+            let out =
+                t.typeset_template([Piece::Slot("x", slot), Piece::Text(" - слово")], nowrap());
+            out.texts()
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(dash(Slot::OTHER), ["", "&nbsp;&mdash; слово"]);
+        assert_eq!(
+            dash(Slot::WORD),
+            [c.clone(), " &mdash;</span> слово".to_owned()]
+        );
+        // A quoted `Other` slot: the group starts after the slot.
+        let out = t.typeset_template(
+            [
+                Piece::Text("\""),
+                Piece::Slot("x", Slot::OTHER),
+                Piece::Text("\" - слово"),
+            ],
+            nowrap(),
+        );
+        assert_eq!(
+            out.texts(),
+            [
+                "&laquo;".to_owned(),
+                format!("{c}&raquo; &mdash;</span> слово")
+            ]
+        );
+        // Glue the caller typed next to an `Other` slot is an entity too, on either side.
+        let out = t.typeset_template(
+            [
+                Piece::Text("a\u{a0}"),
+                Piece::Slot("x", Slot::OTHER),
+                Piece::Text("\u{a0}b"),
+            ],
+            nowrap(),
+        );
+        assert_eq!(out.texts(), ["a&nbsp;", "&nbsp;b"]);
+        let out = t.typeset_template(
+            [
+                Piece::Text("a\u{a0}"),
+                Piece::Slot("x", Slot::WORD),
+                Piece::Text("\u{a0}b"),
+            ],
+            nowrap(),
+        );
+        assert_eq!(out.texts(), [format!("{c}a "), " b</span>".to_owned()]);
+        // Without a nowrap style the glue is the entity it always was.
+        let out = t.typeset_template(
+            [Piece::Slot("x", Slot::OTHER), Piece::Text(" - слово")],
+            NAMED,
+        );
+        assert_eq!(out.texts(), ["", "&nbsp;&mdash; слово"]);
+    }
+}
+
+#[test]
 fn a_group_is_split_at_markup_with_a_diagnostic() {
     let t = ru_ui();
     let pieces = || [Piece::Text("в "), Piece::Markup("<b>"), Piece::Text("дом")];
