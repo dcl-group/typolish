@@ -926,7 +926,9 @@ impl Typographer {
 
     /// The same result as [`Typographer::typeset_template`], plus every edit, every protected
     /// span and every diagnostic; a span over several pieces gives one record per piece, and a
-    /// diagnostic is reported at its first piece (design section 3.11).
+    /// diagnostic is reported at its first piece (design section 3.11). The piece of a record is
+    /// always a `Text` piece; [`Change::piece`](crate::Change::piece) says which one owns an
+    /// insertion next to a slot, a protected piece or markup.
     ///
     /// ```
     /// use typolish::{Language, Output, Piece, ProtectedKind, RuleSet, Typographer};

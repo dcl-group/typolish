@@ -342,13 +342,36 @@ impl Change {
         self.rule
     }
 
-    /// The index of the input piece (0 for string input).
+    /// The index of the input piece (0 for string input). It is always a `Text` piece: an edit is
+    /// never owned by a slot, a protected piece or markup.
+    ///
+    /// A replaced or removed character belongs to the piece that holds it. An insertion (the
+    /// no-break space of a glue rule) belongs to the `Text` piece on its left when a text token
+    /// precedes it or no text token follows it (a slot, a protected piece or markup follows), and
+    /// to the `Text` piece on its right otherwise. No rule inserts where a slot or a protected
+    /// piece lies on each side of the point.
     ///
     /// ```
     /// # use typolish::{Language, Output, RuleSet, Typographer};
     /// # let t = Typographer::new(Language::EN_US, RuleSet::PROSE);
     /// let r = t.report("She said \"hi\" - and left", Output::Unicode);
     /// assert_eq!(r.changes()[0].piece(), 0);
+    /// ```
+    ///
+    /// An insertion before a slot belongs to the text on its left, one after a slot to the text
+    /// on its right:
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Piece, RuleSet, Slot, Typographer};
+    ///
+    /// let t = Typographer::new(Language::RU_RU, RuleSet::PROSE);
+    /// let r = t.report_template(
+    ///     [Piece::Text("Дом №"), Piece::Slot("n", Slot::NUMBER)],
+    ///     Output::Unicode,
+    /// );
+    /// let c = &r.changes()[0];
+    /// assert_eq!((c.piece(), c.range()), (0, 10..10));
+    /// assert_eq!(r.result().texts(), ["Дом №\u{a0}", ""]);
     /// ```
     #[must_use]
     pub fn piece(&self) -> usize {

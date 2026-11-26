@@ -21,6 +21,15 @@ In development: changes since 0.1.2, not tagged and not published. Minimum suppo
   names the kind, not its severity, rule or data, and never changes meaning, as a rule id does not.
   The output and the `Display` of `Diagnostic` do not change.
 
+### Documentation
+
+- Which piece owns an edit in a template report (design sections 2.6, 2.9 and 3.11): a replaced or
+  removed character belongs to the `Text` piece that holds it; an inserted no-break space belongs to
+  the `Text` piece on its left when a text token precedes it or no text token follows it, and to the
+  one on its right otherwise; a slot, a protected piece or markup never owns an edit, and no rule
+  inserts between a protected piece and a slot. Stated in the rustdoc of `Change::piece` and
+  `Typographer::report_template` and pinned by tests. No output changes.
+
 ### Changed
 
 - A dash never starts a line after a slot, whatever its kind (design sections 2.6, 8.7 and 15.5,

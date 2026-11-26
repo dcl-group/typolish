@@ -632,15 +632,18 @@ path contains no recording code; `lint` uses `Diagnostics`; `report` uses `Journ
 depend on the recorder; a test compares the three modes on the corpus. An insertion belongs to the
 text on its left when a text token precedes it or no text token follows it (a slot, a protected
 piece or markup follows): `№<b>{n}` → `№⍽<b>{n}`; otherwise it belongs to the text on its right
-(`5<b>%` → `5<b>⍽%`). The phase that inserts the space decides this over its own output and marks
-the inserted token, so the output texts (section 2.6) and the records place it alike even where a
-later phase removed a neighbor. The engine resolves the positions of the call's text to pieces
-before it calls the recorder, and splits a span that crosses piece boundaries: a change becomes one
-record per piece in input order, the first holding the whole replacement and the others an empty
-replacement (a deletion); a protected span becomes one record per piece it covers; a diagnostic is
-reported at its first piece, with the range clipped to that piece. A span or a diagnostic that
-starts at a slot or a protected piece is reported at that piece. `Diagnostics` gets diagnostics
-clipped the same way, so `lint` and `report` give equal diagnostics (section 12.3).
+(`5<b>%` → `5<b>⍽%`). The owner is always a `Text` piece: a slot, a protected piece or markup is
+never an owner, and no shipped rule inserts at a point that has a protected piece or a slot on both
+sides, so the case has no owner to define (a rule that inserted there would need this paragraph
+extended in the same change). The phase that inserts the space decides this over its own output and
+marks the inserted token, so the output texts (section 2.6) and the records place it alike even
+where a later phase removed a neighbor. The engine resolves the positions of the call's text to
+pieces before it calls the recorder, and splits a span that crosses piece boundaries: a change
+becomes one record per piece in input order, the first holding the whole replacement and the others
+an empty replacement (a deletion); a protected span becomes one record per piece it covers; a
+diagnostic is reported at its first piece, with the range clipped to that piece. A span or a
+diagnostic that starts at a slot or a protected piece is reported at that piece. `Diagnostics` gets
+diagnostics clipped the same way, so `lint` and `report` give equal diagnostics (section 12.3).
 
 ### 3.12 Complexity and pathological input
 

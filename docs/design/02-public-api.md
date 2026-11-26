@@ -587,6 +587,16 @@ Output contract:
    `texts()[j + 1]` (section 11.5).
 6. `changed()` is true when any text differs from the input text it came from: a rule edited it or
    the output kind encoded it. Merging adjacent pieces into one text is not a change.
+7. An edit never crosses a slot, and it is never owned by a slot, a `Protected` piece or markup. A
+   replaced or removed character belongs to the `Text` piece that holds it. An inserted character
+   (the no-break space of `nbsp.signs`, `nbsp.units` and `nbsp.abbreviations` is the only insertion
+   today) belongs to the `Text` piece on its left when a text token precedes it or no text token
+   follows it, and to the `Text` piece on its right otherwise (section 3.11). It lands in the text
+   of the output on that side of a slot: `Text("№")`, `Slot(Number)` gives `№⍽` before the slot,
+   `Slot(Number)`, `Text("%")` with `PercentSpacing::Spaced` gives `⍽%` after it. No rule inserts
+   where a slot or a `Protected` piece lies on each side of the point (protected | slot, slot |
+   protected, text | protected | slot): such a template is unchanged and its journal is empty. A
+   rule that inserted there would extend this item and section 3.11 in the same change.
 
 How a slot takes part in rules (the slot participation table). A slot is one opaque, frozen token;
 for its neighbors it behaves as its kind says. The rustdoc of `SlotKind` holds the same table, since
@@ -898,7 +908,8 @@ impl<T> core::fmt::Display for Report<'_, T> { /* one line per record of changes
 pub struct Change { /* rule, piece, range, replacement */ }
 impl Change {
     pub fn rule(&self) -> Rule;
-    /// Index of the input piece (0 for string input).
+    /// Index of the input piece (0 for string input). Always a `Text` piece; the owner of an
+    /// insertion is decided by section 3.11 (output contract 7 of section 2.6).
     pub fn piece(&self) -> usize;
     /// Byte range in that piece; empty for an insertion.
     pub fn range(&self) -> core::ops::Range<usize>;

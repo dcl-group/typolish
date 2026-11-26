@@ -712,3 +712,180 @@ proptest! {
         assert_template(&t, &parts)?;
     }
 }
+
+// --- Which piece owns an insertion or an edit at a boundary (design sections 2.9 and 3.11) -------
+
+type Ps = Vec<Piece<'static, &'static str>>;
+type Owner = (&'static str, usize, Range<usize>);
+
+fn spaced_percent() -> Typographer {
+    Typographer::builder(Language::RU_RU, RuleSet::PROSE)
+        .percent(typolish::PercentSpacing::Spaced)
+        .build()
+        .unwrap()
+}
+
+fn prose() -> Typographer {
+    Typographer::new(Language::RU_RU, RuleSet::PROSE)
+}
+
+/// The records of a report as `(rule id, piece, range, replacement)`.
+fn journal(t: &Typographer, pieces: Ps) -> Vec<(&'static str, usize, Range<usize>, String)> {
+    t.report_template(pieces, Output::Unicode)
+        .changes()
+        .iter()
+        .map(|c| {
+            (
+                c.rule().id(),
+                c.piece(),
+                c.range(),
+                c.replacement().to_owned(),
+            )
+        })
+        .collect()
+}
+
+const NB: &str = "\u{a0}";
+
+/// The owner of an insertion is the `Text` piece on the left when a text token precedes it or no
+/// text token follows it, and the `Text` piece on the right otherwise; it is never a slot, a
+/// protected piece or markup, and the space never crosses a slot.
+#[test]
+fn an_insertion_belongs_to_a_text_piece_by_its_text_neighbors() {
+    let ru = prose();
+    let pct = spaced_percent();
+    let n = || Piece::Slot("n", Slot::NUMBER);
+    let m = || Piece::Markup("<b>");
+    let cases: Vec<(&Typographer, Ps, Owner)> = vec![
+        // text | slot: the text on the left.
+        (
+            &ru,
+            vec![Piece::Text("Дом №"), n()],
+            ("nbsp.signs", 0, 10..10),
+        ),
+        // text | markup | slot: still the text on the left.
+        (
+            &ru,
+            vec![Piece::Text("Дом №"), m(), n()],
+            ("nbsp.signs", 0, 10..10),
+        ),
+        // text | markup | text: the text on the right.
+        (
+            &ru,
+            vec![Piece::Text("Дом №"), m(), Piece::Text("5")],
+            ("nbsp.signs", 2, 0..0),
+        ),
+        // slot | text: the text on the right.
+        (&pct, vec![n(), Piece::Text("%")], ("nbsp.units", 1, 0..0)),
+        // slot | markup | text: the text on the right.
+        (
+            &pct,
+            vec![n(), m(), Piece::Text("%")],
+            ("nbsp.units", 2, 0..0),
+        ),
+        // text | markup | text: a number before the sign takes it on the right.
+        (
+            &pct,
+            vec![Piece::Text("5"), m(), Piece::Text("%")],
+            ("nbsp.units", 2, 0..0),
+        ),
+    ];
+    for (t, pieces, (rule, piece, range)) in cases {
+        let got = journal(t, pieces.clone());
+        assert_eq!(got.len(), 1, "{pieces:?}: {got:?}");
+        assert_eq!(
+            (got[0].0, got[0].1, got[0].2.clone(), got[0].3.as_str()),
+            (rule, piece, range, NB),
+            "{pieces:?}"
+        );
+    }
+}
+
+/// No rule inserts at a boundary that a protected piece touches, so no insertion has a protected
+/// piece as its owner or neighbor: protected | slot, slot | protected and text | protected | slot
+/// leave the template as it is and journal nothing.
+#[test]
+fn no_insertion_falls_between_a_protected_piece_and_a_slot() {
+    let ru = prose();
+    let pct = spaced_percent();
+    let n = || Piece::Slot("n", Slot::NUMBER);
+    let o = || Piece::Slot("o", Slot::OTHER);
+    let cases: Vec<(&Typographer, Ps)> = vec![
+        (&ru, vec![Piece::Protected("x"), n()]),
+        (&ru, vec![n(), Piece::Protected("x")]),
+        (&ru, vec![Piece::Text("Дом №"), Piece::Protected("x"), n()]),
+        (&ru, vec![Piece::Protected("x"), o()]),
+        (&pct, vec![Piece::Protected("5"), Piece::Text("%")]),
+        (&pct, vec![n(), Piece::Protected("x"), Piece::Text("%")]),
+    ];
+    for (t, pieces) in cases {
+        let report = t.report_template(pieces.clone(), Output::Unicode);
+        assert!(
+            report.changes().is_empty(),
+            "{pieces:?}: {:?}",
+            report.changes()
+        );
+    }
+}
+
+/// A replaced or glued character belongs to the piece that holds it, whatever its neighbors are.
+#[test]
+fn a_replaced_character_belongs_to_the_piece_that_holds_it() {
+    let ru = prose();
+    let w = || Piece::Slot("w", Slot::WORD);
+    let cases: Vec<(Ps, usize)> = vec![
+        // protected | text, slot | text, text | slot: the hyphen is in the text piece.
+        (vec![Piece::Protected("x"), Piece::Text(" - слово")], 1),
+        (vec![w(), Piece::Text(" - слово")], 1),
+        (vec![Piece::Text("слово - "), w()], 0),
+        (vec![Piece::Protected("x"), w(), Piece::Text(" - слово")], 2),
+    ];
+    for (pieces, owner) in cases {
+        let got = journal(&ru, pieces.clone());
+        let dash: Vec<_> = got.iter().filter(|r| r.0 == "dash.spaced-hyphen").collect();
+        assert_eq!(dash.len(), 1, "{pieces:?}: {got:?}");
+        assert_eq!((dash[0].1, dash[0].3.as_str()), (owner, "—"), "{pieces:?}");
+        assert!(got.iter().all(|r| r.1 == owner), "{pieces:?}: {got:?}");
+    }
+}
+
+/// Replaying the journal over the input pieces reproduces the texts of the result, so no record
+/// disagrees with the renderer about the piece it belongs to.
+#[test]
+fn the_journal_replays_to_the_result_of_a_template() {
+    let ru = prose();
+    let pct = spaced_percent();
+    let n = || Piece::Slot("n", Slot::NUMBER);
+    let m = || Piece::Markup("<b>");
+    let cases: Vec<(&Typographer, Ps)> = vec![
+        (&ru, vec![Piece::Text("Дом №"), n()]),
+        (&ru, vec![Piece::Text("Дом №"), m(), n()]),
+        (&ru, vec![Piece::Text("Дом №"), m(), Piece::Text("5")]),
+        (&ru, vec![Piece::Text("Дом №"), Piece::Protected("x"), n()]),
+        (&ru, vec![Piece::Protected("x"), Piece::Text(" - слово")]),
+        (&ru, vec![Piece::Text("см. т."), m(), Piece::Text("е. да")]),
+        (&pct, vec![n(), Piece::Text("%")]),
+        (&pct, vec![n(), m(), Piece::Text("%")]),
+        (&pct, vec![Piece::Text("5"), m(), Piece::Text("%")]),
+        (&pct, vec![n(), Piece::Protected("x"), Piece::Text("%")]),
+    ];
+    for (t, pieces) in cases {
+        let report = t.report_template(pieces.clone(), Output::Unicode);
+        let plain = t.typeset_template(pieces.clone(), Output::Unicode);
+        assert_eq!(report.result(), &plain, "{pieces:?}");
+        let mut replayed = String::new();
+        for (i, piece) in pieces.iter().enumerate() {
+            let mut s = match piece {
+                Piece::Text(x) | Piece::Protected(x) | Piece::Markup(x) => (*x).to_owned(),
+                _ => String::new(),
+            };
+            let mut mine: Vec<_> = report.changes().iter().filter(|c| c.piece() == i).collect();
+            mine.reverse();
+            for c in mine {
+                s.replace_range(c.range(), c.replacement());
+            }
+            replayed.push_str(&s);
+        }
+        assert_eq!(replayed, report.result().texts().concat(), "{pieces:?}");
+    }
+}
