@@ -388,6 +388,11 @@ The rules read the shape of the text, not its meaning. These cases are known and
   `number.minus` turns `tail -5` into `tail −5`, `range.digits` turns a telephone fragment
   `123-4567` into a range, and `ellipsis.inner` turns `...args` into `…args`. `PROSE` assumes
   commands are protected; `INTERFACE` has none of these rules.
+- `INTERFACE` leaves literal ranges such as `5-10` alone. Strings that hold them can add the rule
+  (`"interface,+range.digits"`, or `RuleSet::INTERFACE.with(Rule::RangeDigits)`), at the price of
+  the same false positives as in `PROSE`: a telephone fragment `123-4567`, a month and a day
+  `11-26`, a version `ver 1-2`, a score `2-3` and a port range `8000-8100` get an en dash; a full
+  date `2026-11-26` and `+7 495 123-45-67` keep their hyphens.
 - A mention such as `@user` is frozen whole, like an e-mail address: rules never edit inside it.
 - Swiss grouping `1'000'000` and digit separators `0b1'0000` are frozen and keep `'`.
 - A number grouped with commas is read as a number only with one group and no decimal part

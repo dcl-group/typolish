@@ -566,6 +566,30 @@ impl RuleSet {
     /// assert_eq!(RuleSet::INTERFACE.len(), 13);
     /// assert!(!RuleSet::INTERFACE.contains(Rule::DashDoubleHyphen));
     /// ```
+    ///
+    /// Interface has no `range.digits` (design sections 9.2 and 15.5, item 7): in UI strings two
+    /// numbers joined by `-` are as often a telephone fragment, a month and a day, a version or a
+    /// score as a range. Strings that hold literal ranges can add it, as
+    /// `RuleSet::INTERFACE.with(Rule::RangeDigits)` or `"interface,+range.digits"`, with these
+    /// known false positives: `123-4567`, `11-26`, `ver 1-2`, `2-3` and `8000-8100` get an en dash
+    /// too. A full date `2026-11-26`, a grouped telephone number `+7 495 123-45-67`, `1.2-3`,
+    /// `10:00-12:00` and a descending pair `3-2` keep their hyphen.
+    ///
+    /// ```
+    /// use typolish::{Language, Output, Rule, RuleSet, Typographer};
+    ///
+    /// let rules: RuleSet = "interface,+range.digits".parse()?;
+    /// assert_eq!(rules, RuleSet::INTERFACE.with(Rule::RangeDigits));
+    /// let t = Typographer::new(Language::EN_US, rules);
+    /// assert_eq!(t.typeset("Pages 5-10", Output::Unicode), "Pages 5–10");
+    /// // A known false positive: a telephone fragment reads as a range.
+    /// assert_eq!(t.typeset("Call 555-1234", Output::Unicode), "Call 555–1234");
+    /// assert_eq!(t.typeset("Due 2026-11-26", Output::Unicode), "Due 2026-11-26");
+    ///
+    /// let ui = Typographer::new(Language::EN_US, RuleSet::INTERFACE);
+    /// assert_eq!(ui.typeset("Pages 5-10", Output::Unicode), "Pages 5-10");
+    /// # Ok::<(), typolish::Error>(())
+    /// ```
     pub const INTERFACE: RuleSet = RuleSet::from_slice(&[
         Rule::EllipsisDots,
         Rule::DashSpacedHyphen,

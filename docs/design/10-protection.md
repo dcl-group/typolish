@@ -234,6 +234,11 @@ expectation):
 - In Prose, `dash.double-hyphen` turns `git checkout -- file` into a dash in English text, and
   `number.minus` turns `tail -5` into `tail −5`; `range.digits` turns a telephone fragment
   `123-4567` into a range. Prose assumes commands are protected; Interface has none of these rules.
+- Interface leaves literal ranges such as `5-10` alone. Strings that hold them can add the rule
+  (`"interface,+range.digits"`, or `RuleSet::INTERFACE.with(Rule::RangeDigits)`), at the price of
+  the same false positives as in Prose: a telephone fragment `123-4567`, a month and a day `11-26`,
+  a version `ver 1-2`, a score `2-3` and a port range `8000-8100` get an en dash; a full date
+  `2026-11-26` and `+7 495 123-45-67` keep their hyphens (section 15.3, C68).
 - `ellipsis.inner` turns `...args` into `…args` in Prose.
 - A mention such as `@user` is frozen whole as an `Email` (check 2): rules never edit inside it,
   while spaces and dashes next to it are typeset as next to any technical fragment.

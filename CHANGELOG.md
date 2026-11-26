@@ -42,6 +42,12 @@ In development: changes since 0.1.2, not tagged and not published. Minimum suppo
   edit, and no rule inserts between a protected piece and a slot. Stated in the rustdoc of
   `Change::piece` and `Typographer::report_template` and pinned by tests. No output changes.
 
+- The opt-in `"interface,+range.digits"` (`RuleSet::INTERFACE.with(Rule::RangeDigits)`) for UI
+  strings that hold literal ranges, documented in the rustdoc of `RuleSet::INTERFACE` and the README
+  with its known false positives (`123-4567`, `11-26`, `ver 1-2`, `2-3`, `8000-8100` get an en
+  dash); `range.digits` stays out of `INTERFACE` (design sections 9.2, 10.8 and 15.3, C68). No
+  output changes.
+
 ### Changed
 
 - In a language whose dash style glues the space before the dash (`DashStyle::SpacedGlued`: ru-RU

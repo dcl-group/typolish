@@ -195,7 +195,12 @@ gives the output of the whole set.
   `HtmlStyle::NAMED` writes a numeric reference for a character that has a name there; en with
   `quote_pairs` set to primary `« »` and nested `‹ ›` turns `"a "b" c"` into
   `&laquo;a &lsaquo;b&rsaquo; c&raquo;` with `HtmlStyle::NAMED` and into
-  `\u00ABa \u2039b\u203A c\u00BB` with `EscapeStyle::JS`.
+  `\u00ABa \u2039b\u203A c\u00BB` with `EscapeStyle::JS`; an `Other` slot never belongs to a nowrap
+  group (`an_other_slot_never_belongs_to_a_nowrap_group`, section 11.5): in ru the glue of
+  `nbsp.dash` after it is an entity (`{o} - слово` → `["", "&nbsp;&mdash; слово"]`), and in ru-RU,
+  en-US and `Language::COMMON`, both sets, glue typed next to it is an entity (`a⍽{o}⍽b` →
+  `["a&nbsp;", "&nbsp;b"]`) and a group that ends at it closes before it (`a⍽b{o} c⍽d`), while
+  English and `COMMON` glue no dash after a slot of any kind.
 - `tests/parts.rs`: templates, including the Fluent mapping table of section 2.14 (each row as a
   piece list), select variants, `Other` slots, nowrap groups starting and ending at slots, the slot
   participation table of section 2.6 row by row (with `{Date}-{Date}` → `{Date}–{Date}` and
@@ -214,7 +219,19 @@ gives the output of the whole set.
   U+00A0, equal to `fill` of the `Output::Unicode` template, and contains no `\`; the same flow for
   `Output::Html(HtmlStyle::NAMED.nowrap_class("nowrap"))` with ``Цена - 5 руб. в `C:\temp` `` writes
   each text with `{t:?}` (section 2.14), and the test decoder of `EscapeStyle::RUST` reads the body
-  of every such literal back to the text unchanged.
+  of every such literal back to the text unchanged; the dash after a slot (section 15.5, item 18):
+  in ru, both sets, the space before a dash after a slot of every kind, `Other` included, bare,
+  quoted, bracketed or before a comma, is glued as after a word
+  (`a_dash_never_starts_a_line_after_a_slot_of_any_kind`, with the output idempotent and
+  `to_plain_template` giving back the input, a typed `—` as `-`), while the space after the dash in
+  ru and the space before a dash after a slot in en-US and `Language::COMMON` keep the 0.1.2 output
+  for every kind (`the_space_after_the_dash_and_other_languages_stay_as_they_were`).
+- `tests/pieces_report.rs`: atoms, protection, windows and the classifier for pieces, observed
+  through `report_template`, and the owner of each edit (sections 2.6 and 3.11): an insertion
+  belongs to the `Text` piece by its text neighbors, also across markup (`Дом №`, `<b>`, `5` → piece
+  2, `0..0`) and next to slots and protected pieces; no insertion falls between a protected piece
+  and a slot; a replaced character belongs to the piece that holds it; and replaying the journal
+  over the input pieces gives the texts of the `Output::Unicode` result.
 - `tests/api.rs`: the API contracts of section 2 that are not output: builder validation and error
   choice, `FromStr` of `Rule`, `RuleSet` and `Language`, tag round trips, accessors of `Report`,
   `Change`, `ProtectedSpan` and `Diagnostic`. Rows: a builder with two violations (`RuleConflict`
