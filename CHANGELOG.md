@@ -29,9 +29,10 @@ In development: changes since 0.1.2, not tagged and not published. Minimum suppo
   that `Change::piece` and `Change::range` locate each edit in the input, that the first record of a
   split edit holds the replacement, and show a compiled example that splits a result back over three
   pieces. The replacements are Unicode, so the records rebuild the result of `Output::Unicode`; for
-  HTML or an escaped output each rebuilt part is encoded on its own (a compiled example encodes the
-  parts as one-piece templates with `RuleSet::EMPTY`), and nowrap groups that span pieces are not
-  rebuilt that way. No output changes.
+  HTML or an escaped output each rebuilt part is encoded on its own as a one-piece template of the
+  kind of its input piece (`Text`, `Protected`, `Markup` or `BlockMarkup`) with `RuleSet::EMPTY`, as
+  a compiled example over all four kinds shows, and nowrap groups that span pieces are not rebuilt
+  that way. No output changes.
 - Which piece owns an edit in a template report (design sections 2.6, 2.9 and 3.11): a replaced or
   removed character belongs to the `Text` piece that holds it; an inserted no-break space belongs to
   the `Text` piece of the token immediately before the insertion point when that token is text, and

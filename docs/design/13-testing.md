@@ -229,9 +229,13 @@ gives the output of the whole set.
 - `tests/pieces_report.rs`: atoms, protection, windows and the classifier for pieces, observed
   through `report_template`, and the owner of each edit (sections 2.6 and 3.11): an insertion
   belongs to the `Text` piece by its text neighbors, also across markup (`Дом №`, `<b>`, `5` → piece
-  2, `0..0`) and next to slots and protected pieces; no insertion falls between a protected piece
-  and a slot; a replaced character belongs to the piece that holds it; and replaying the journal
-  over the input pieces gives the texts of the `Output::Unicode` result.
+  2, `0..0`) and next to slots and protected pieces
+  (`an_insertion_belongs_to_a_text_piece_by_its_text_neighbors`); no insertion falls between a
+  protected piece and a slot (`no_insertion_falls_between_a_protected_piece_and_a_slot`); a replaced
+  character belongs to the piece that holds it
+  (`a_replaced_character_belongs_to_the_piece_that_holds_it`); and replaying the journal over the
+  input pieces gives the texts of the `Output::Unicode` result
+  (`the_journal_replays_to_the_result_of_a_template`).
 - `tests/api.rs`: the API contracts of section 2 that are not output: builder validation and error
   choice, `FromStr` of `Rule`, `RuleSet` and `Language`, tag round trips, accessors of `Report`,
   `Change`, `ProtectedSpan` and `Diagnostic`. Rows: a builder with two violations (`RuleConflict`

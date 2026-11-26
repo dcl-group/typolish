@@ -930,7 +930,7 @@ impl Typographer {
     /// always a `Text` piece; [`Change::piece`](crate::Change::piece) says which one owns an
     /// insertion next to a slot, a protected piece or markup.
     ///
-    /// Adjacent `Text`, `Protected` and `Markup` pieces merge into one entry of
+    /// Adjacent `Text`, `Protected`, `Markup` and `BlockMarkup` pieces merge into one entry of
     /// [`Template::texts`](crate::Template::texts), so the result alone does not say where one
     /// piece ends. The journal of edits does: [`Report::changes`](crate::Report::changes) gives
     /// every edit with the index of the input piece that owns it and a byte range in that piece,
@@ -940,8 +940,11 @@ impl Typographer {
     ///
     /// A replacement is Unicode, before output encoding, so the records rebuild the result of
     /// [`Output::Unicode`]. For another output kind, rebuild the parts from a report with
-    /// `Output::Unicode` and then encode each part on its own as a one-piece template of its kind
-    /// (`Piece::Text` or `Piece::Markup`) with [`RuleSet::EMPTY`] in the target output. Nowrap
+    /// `Output::Unicode` and then encode each part on its own as a one-piece template of the kind
+    /// of its input piece, with [`RuleSet::EMPTY`] in the target output: a `Text` part as
+    /// `Piece::Text`, a `Protected` part as `Piece::Protected`, a `Markup` part as `Piece::Markup`
+    /// and a `BlockMarkup` part as `Piece::BlockMarkup`, since each kind is encoded in its own way
+    /// (markup is written as is in HTML, protected text is escaped); a slot has no part. Nowrap
     /// groups are not rebuilt that way: with a nowrap style each part gets only the groups inside
     /// it, and a group that spans several pieces in the result is lost.
     ///
@@ -967,7 +970,8 @@ impl Typographer {
     /// assert_eq!(r.original(&r.changes()[1]), "..");
     /// ```
     ///
-    /// For HTML, the parts rebuilt in Unicode are encoded one by one:
+    /// For HTML, the parts rebuilt in Unicode are encoded one by one, each as a piece of its own
+    /// kind; a slot has no part to encode:
     ///
     /// ```
     /// use typolish::{HtmlStyle, Language, Output, Piece, RuleSet, Typographer};
@@ -975,32 +979,58 @@ impl Typographer {
     /// static RU: Typographer = Typographer::new(Language::RU_RU, RuleSet::PROSE);
     /// static ENCODE: Typographer = Typographer::new(Language::RU_RU, RuleSet::EMPTY);
     ///
+    /// // The input text of a piece, and a piece of the same kind that holds a rebuilt part.
+    /// fn text_of<'t>(piece: &Piece<'t, ()>) -> &'t str {
+    ///     match *piece {
+    ///         Piece::Text(s) | Piece::Protected(s) | Piece::Markup(s) | Piece::BlockMarkup(s) => s,
+    ///         _ => "",
+    ///     }
+    /// }
+    /// fn same_kind<'p>(piece: &Piece<'_, ()>, part: &'p str) -> Option<Piece<'p, ()>> {
+    ///     match piece {
+    ///         Piece::Text(_) => Some(Piece::Text(part)),
+    ///         Piece::Protected(_) => Some(Piece::Protected(part)),
+    ///         Piece::Markup(_) => Some(Piece::Markup(part)),
+    ///         Piece::BlockMarkup(_) => Some(Piece::BlockMarkup(part)),
+    ///         _ => None,
+    ///     }
+    /// }
+    ///
     /// let html = Output::Html(HtmlStyle::NAMED);
     /// let pieces = [
     ///     Piece::<()>::Text("Ждём."),
     ///     Piece::Text(".."),
     ///     Piece::Markup("<b>"),
-    ///     Piece::Text(" \"дальше\""),
+    ///     Piece::Text(" \"дальше\" в "),
+    ///     Piece::Protected("a<b"),
+    ///     Piece::BlockMarkup("</p><p>"),
+    ///     Piece::Text("- Да."),
     /// ];
     /// let r = RU.report_template(pieces, Output::Unicode);
-    /// let mut split: Vec<String> = ["Ждём.", "..", "<b>", " \"дальше\""].map(String::from).into();
+    /// let mut split: Vec<String> = pieces.iter().map(|p| text_of(p).to_string()).collect();
     /// for c in r.changes().iter().rev() {
     ///     split[c.piece()].replace_range(c.range(), c.replacement());
     /// }
-    /// assert_eq!(split, ["Ждём…", "", "<b>", " «дальше»"]);
+    /// assert_eq!(split, ["Ждём…", "", "<b>", " «дальше» в\u{a0}", "a<b", "</p><p>", "—\u{a0}Да."]);
     ///
     /// let encoded: Vec<String> = pieces
     ///     .iter()
     ///     .zip(&split)
-    ///     .map(|(piece, part)| {
-    ///         let one = match piece {
-    ///             Piece::Markup(_) => Piece::<()>::Markup(part),
-    ///             _ => Piece::Text(part),
-    ///         };
-    ///         ENCODE.typeset_template([one], html).texts().concat()
-    ///     })
+    ///     .filter_map(|(piece, part)| same_kind(piece, part))
+    ///     .map(|one| ENCODE.typeset_template([one], html).texts().concat())
     ///     .collect();
-    /// assert_eq!(encoded, ["Ждём&hellip;", "", "<b>", " &laquo;дальше&raquo;"]);
+    /// assert_eq!(
+    ///     encoded,
+    ///     [
+    ///         "Ждём&hellip;",
+    ///         "",
+    ///         "<b>",
+    ///         " &laquo;дальше&raquo; в&nbsp;",
+    ///         "a&lt;b",
+    ///         "</p><p>",
+    ///         "&mdash;&nbsp;Да.",
+    ///     ]
+    /// );
     /// assert_eq!(encoded.concat(), RU.typeset_template(pieces, html).texts()[0]);
     /// ```
     ///

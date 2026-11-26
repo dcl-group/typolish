@@ -1005,9 +1005,12 @@ Choices:
   and `Report::changes` and the README give this as the supported way to distribute a result over
   adjacent text pieces, with a compiled example. A replacement is Unicode, before output encoding,
   so the records rebuild the `Output::Unicode` result; for another output kind the caller encodes
-  each rebuilt part on its own (a one-piece template of its kind with `RuleSet::EMPTY` in the target
-  output), and a nowrap group that spans several pieces is not rebuilt that way. A report of
-  differences against the reference implementation is printed from them without a second run.
+  each rebuilt part on its own as a one-piece template of the kind of its input piece, with
+  `RuleSet::EMPTY` in the target output (a `Text` part as `Piece::Text`, a `Protected` part as
+  `Piece::Protected`, a `Markup` part as `Piece::Markup`, a `BlockMarkup` part as
+  `Piece::BlockMarkup`; each kind is encoded in its own way, and a slot has no part), and a nowrap
+  group that spans several pieces is not rebuilt that way. A report of differences against the
+  reference implementation is printed from them without a second run.
 - **`report` and `typeset` are one engine**; `report` turns on a recorder that the plain path
   compiles out (section 3.11). A property test checks `report(x).result() == typeset(x)` and that
   applying `changes()` to the input yields the result.

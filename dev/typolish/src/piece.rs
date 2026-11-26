@@ -14,9 +14,9 @@ use std::borrow::Cow;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Piece<'t, S> {
-    /// Text to typeset. Adjacent `Text`, `Protected` and `Markup` pieces come out as one entry of
-    /// [`Template::texts`]; to tell which input piece an edit belongs to, use the journal of
-    /// [`Typographer::report_template`](crate::Typographer::report_template), made with
+    /// Text to typeset. Adjacent `Text`, `Protected`, `Markup` and `BlockMarkup` pieces come out as
+    /// one entry of [`Template::texts`]; to tell which input piece an edit belongs to, use the
+    /// journal of [`Typographer::report_template`](crate::Typographer::report_template), made with
     /// [`Output::Unicode`](crate::Output::Unicode).
     ///
     /// ```
