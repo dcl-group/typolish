@@ -83,6 +83,12 @@ In development: changes since 0.1.2, not tagged and not published. Minimum suppo
   The output without a nowrap style, and the groups next to a slot of the other kinds, do not
   change.
 
+- The two output changes above ship in this patch release as a dated exception to the output
+  stability policy (design sections 15.1 and 15.5, items 13 and 18), decided by the maintainer on
+  2026-11-26: the crate is not published on crates.io yet, so the policy protects no published
+  output. The exception covers these two changes only; the policy holds as before for every later
+  release.
+
 ## 0.1.2 - 2026-11-26
 
 A patch release, tagged on 2026-11-26 and not published yet; publication follows the tag. It holds

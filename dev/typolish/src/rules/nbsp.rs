@@ -135,7 +135,8 @@ fn glue_of(cx: &Cx<'_>, place: NarrowGlue) -> Glue {
 /// Whether a token is a slot of kind `Other` or belongs to a fragment that holds one: no glue
 /// sticks to such a fragment, quoted or bracketed alike (`and "{o}"`), because a nowrap group
 /// would take the whole fragment, slot included (design sections 2.6, 8.2 and 11.5). `nbsp.dash`
-/// does not ask: a dash never starts a line after a slot (design section 15.5, item 18).
+/// does not ask: where the dash style is `SpacedGlued`, a dash never starts a line after a slot
+/// (design section 15.5, item 18).
 pub(crate) fn holds_other(cx: &Cx<'_>, i: usize) -> bool {
     cx.kind(i) == Some(Kind::Slot(SlotKind::Other)) || cx.frag_of(i).is_some_and(|f| f.other_slot)
 }

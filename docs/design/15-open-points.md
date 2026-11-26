@@ -6,29 +6,31 @@ Part of the [typolish design](./README.md). Section numbers are those of the who
 
 No point is open. The maintainer settled points 1 to 17 on 2026-11-22 and point 18 on 2026-11-26;
 each records the option chosen, and the rest of the design follows it. The other decisions of the
-maintainer, those of 2026-11-21 and of 2026-11-22, are listed in section 15.2. Numbers never change;
-settled points keep their number and record the date of the decision.
+maintainer are listed in section 15.2: those of 2026-11-21, 2026-11-22, 2026-11-23 and 2026-11-24,
+with the amendments of 2026-11-26 recorded in its items 3, 20 and 28. A point amended or confirmed
+later records that date in its text (items 7, 13 and 16). Numbers never change; settled points keep
+their number and record the date of the decision.
 
-| Item | Subject                                     | Status             | Decision                                                                                                                  |
-| ---- | ------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Language of `docs/design/`                  | Settled 2026-11-22 | American English, as in zonewright                                                                                        |
-| 2    | Repository URL                              | Settled 2026-11-22 | `https://github.com/dcl-group/typolish`                                                                                   |
-| 3    | Checking the name on crates.io              | Settled 2026-11-22 | one query to the crates.io API in stage 5, none before                                                                    |
-| 4    | Grouping threshold for ru                   | Settled 2026-11-22 | 1, as in CLDR 49: from 4 digits                                                                                           |
-| 5    | Group separator for ru                      | Settled 2026-11-22 | U+00A0                                                                                                                    |
-| 6    | Em dash style for en-US                     | Settled 2026-11-22 | closed, `word—word`                                                                                                       |
-| 7    | Literal numeric ranges in Prose             | Settled 2026-11-22 | shape and context rules in Prose, none in Interface                                                                       |
-| 8    | Scope of an unpaired quote                  | Settled 2026-11-22 | all or nothing per paragraph                                                                                              |
-| 9    | Single quotes at the top level              | Settled 2026-11-22 | `NestedOnly`                                                                                                              |
-| 10   | Narrow no-break space                       | Settled 2026-11-22 | U+00A0 everywhere, U+202F by setting                                                                                      |
-| 11   | Default spacing before `%`                  | Settled 2026-11-22 | `AsWritten`                                                                                                               |
-| 12   | Dialogue dash in Prose                      | Settled 2026-11-22 | in Prose for Russian                                                                                                      |
-| 13   | Output stability policy                     | Settled 2026-11-22 | output of the sets changes only in breaking releases; `ALL` outside; Unicode tables of the dependency excepted 2026-11-26 |
-| 14   | Public language data in version 1           | Settled 2026-11-22 | public `LanguageData` and `LanguageBuilder`                                                                               |
-| 15   | `nbsp.phone` in Interface                   | Settled 2026-11-22 | Prose only                                                                                                                |
-| 16   | Word lists and norms from secondary sources | Settled 2026-11-22 | lists as in section 7; unit lists extended 2026-11-24                                                                     |
-| 17   | Digit grouping in text                      | Settled 2026-11-22 | no text rule; `format_number` groups values                                                                               |
-| 18   | Dash after a slot                           | Settled 2026-11-26 | glued to a slot of any kind, `Other` included                                                                             |
+| Item | Subject                                     | Status             | Decision                                                                                                                                             |
+| ---- | ------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Language of `docs/design/`                  | Settled 2026-11-22 | American English, as in zonewright                                                                                                                   |
+| 2    | Repository URL                              | Settled 2026-11-22 | `https://github.com/dcl-group/typolish`                                                                                                              |
+| 3    | Checking the name on crates.io              | Settled 2026-11-22 | one query to the crates.io API in stage 5, none before                                                                                               |
+| 4    | Grouping threshold for ru                   | Settled 2026-11-22 | 1, as in CLDR 49: from 4 digits                                                                                                                      |
+| 5    | Group separator for ru                      | Settled 2026-11-22 | U+00A0                                                                                                                                               |
+| 6    | Em dash style for en-US                     | Settled 2026-11-22 | closed, `word—word`                                                                                                                                  |
+| 7    | Literal numeric ranges in Prose             | Settled 2026-11-22 | shape and context rules in Prose, none in Interface; confirmed 2026-11-26                                                                            |
+| 8    | Scope of an unpaired quote                  | Settled 2026-11-22 | all or nothing per paragraph                                                                                                                         |
+| 9    | Single quotes at the top level              | Settled 2026-11-22 | `NestedOnly`                                                                                                                                         |
+| 10   | Narrow no-break space                       | Settled 2026-11-22 | U+00A0 everywhere, U+202F by setting                                                                                                                 |
+| 11   | Default spacing before `%`                  | Settled 2026-11-22 | `AsWritten`                                                                                                                                          |
+| 12   | Dialogue dash in Prose                      | Settled 2026-11-22 | in Prose for Russian                                                                                                                                 |
+| 13   | Output stability policy                     | Settled 2026-11-22 | output of the sets changes only in breaking releases; `ALL` outside; Unicode tables of the dependency excepted 2026-11-26; 0.1.3 excepted by item 18 |
+| 14   | Public language data in version 1           | Settled 2026-11-22 | public `LanguageData` and `LanguageBuilder`                                                                                                          |
+| 15   | `nbsp.phone` in Interface                   | Settled 2026-11-22 | Prose only                                                                                                                                           |
+| 16   | Word lists and norms from secondary sources | Settled 2026-11-22 | lists as in section 7; unit lists extended 2026-11-24                                                                                                |
+| 17   | Digit grouping in text                      | Settled 2026-11-22 | no text rule; `format_number` groups values                                                                                                          |
+| 18   | Dash after a slot                           | Settled 2026-11-26 | glued to a slot of any kind where the style is `SpacedGlued`; ships in 0.1.3 as a dated exception to item 13                                         |
 
 #### Settled on 2026-11-22
 
@@ -73,7 +75,10 @@ Rejected: (b) only the context rule, as the reference implementation does for Ru
 text, only `range.placeholders` and `format_range`. Known cost in Prose: a port range `8000-8100`
 written as plain text and a telephone fragment `123-4567` get an en dash (section 10.5, row 10, for
 the port range; sections 10.7 and 10.8 for the telephone fragment); Interface and backticks keep
-them (sections 9.2, 10.6).
+them (sections 9.2, 10.6). Confirmed by the maintainer on 2026-11-26: `range.digits` is not added to
+Interface, because it would turn fragments such as `123-4567`, `11-26` and `8000-8100` into ranges;
+the set stays as it is, and a caller opts in with `RuleSet::INTERFACE.with(Rule::RangeDigits)`
+(section 15.3, C68).
 
 **8.** **Scope of an unpaired quote.** Settled 2026-11-22: (a) all or nothing per paragraph: an
 unpaired or crossing straight quote leaves every straight quote of its paragraph (of its template,
@@ -114,7 +119,9 @@ MSRV also wait for a release that raises the breaking number (section 15.1). Dec
 maintainer on 2026-11-26: the one exception that does not come from a release of typolish is output
 that changes only because a later 1.x of `unicode-segmentation` brings newer Unicode tables
 (sections 5.6, 15.1, C56); callers avoid it with their lock file, and the dependency is not pinned.
-Rejected: (b) output improvements in any release; (ii) `ALL` frozen at the rules of 0.1; pinning
+Decided by the maintainer on 2026-11-26: release 0.1.3 changes output in a patch release under a
+dated exception recorded in item 18, which covers that change only. Rejected: (b) output
+improvements in any release; (ii) `ALL` frozen at the rules of 0.1; pinning
 `unicode-segmentation = "=1.13.3"` without the exception.
 
 **14.** **Public language data in version 1.** Settled 2026-11-22: (a) `LanguageData` is public with
@@ -155,15 +162,31 @@ outside both sets (section 15.1).
 
 #### Settled on 2026-11-26
 
-**18.** **Dash after a slot.** Settled 2026-11-26: (a) a dash never starts a line after a slot,
-whatever its kind. The space before the dash is glued after a slot of any kind with the same
-no-break space the language uses after a word, also after an `Other` slot, whose value is unknown:
-ru `{o} - слово` → `{o}⍽— слово`, as `{w} - слово` → `{w}⍽— слово` and `Москва - столица` →
-`Москва⍽— столица`. No slot kind is added. This is the one exception to section 15.2, item 20; the
-glue is that of `nbsp.dash` (section 8.7). Rejected: (b) the space stays after an `Other` slot, the
-behavior of 0.1.2, so that a dash after it could start a line. The consequences that are the lead's
-choices are C67 (section 15.3).
+**18.** **Dash after a slot.** Settled 2026-11-26: (a) in a language whose dash style glues the
+space before a dash after a word (`DashStyle::SpacedGlued`: ru-RU and declared languages of that
+style), that space is glued after a slot of any kind too, with the same no-break space, also after
+an `Other` slot, whose value is unknown: ru `{o} - слово` → `{o}⍽— слово`, as `{w} - слово` →
+`{w}⍽— слово` and `Москва - столица` → `Москва⍽— столица`. en-US (`Closed`) and `Language::COMMON`
+(no dash rules) keep the ordinary space after a slot, as after a word (en `{x} - word` →
+`{x} — word`); that is accepted, not a defect. No slot kind is added. In those languages this is the
+one exception to section 15.2, item 20; the glue is that of `nbsp.dash` (section 8.7). Rejected: (b)
+the space stays after an `Other` slot, the behavior of 0.1.2, so that a dash after it could start a
+line.
+
+The consequence for the renderer that the lead chose, C67 (section 15.3), is accepted by the
+maintainer on 2026-11-26: a slot of kind `Other` is no material of a nowrap group, so its unknown
+value never becomes unbreakable, and the HTML output with a nowrap style changes in every language
+(section 11.5). The other consequences of C67 remain the lead's choices.
+
+Exception to the output stability policy (item 13, section 15.1), decided by the maintainer on
+2026-11-26: the change of this item and its consequence for the nowrap output ship in the patch
+release 0.1.3, with "before → after" examples in the CHANGELOG, although they change the output of
+Prose and Interface for built-in languages and are no fix of output that contradicts the
+documentation. Reason: the crate is not published on crates.io yet, so the policy protects no
+published output. The exception covers this change and that consequence only, and does not relax the
+policy for any later change.
 
 #### Earlier decisions
 
-The other decisions of 2026-11-21 and 2026-11-22 are in section 15.2.
+The other decisions of the maintainer, those of 2026-11-21, 2026-11-22, 2026-11-23 and 2026-11-24
+and the amendments of 2026-11-26 to its items 3, 20 and 28, are in section 15.2.
