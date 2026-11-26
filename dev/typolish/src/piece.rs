@@ -235,12 +235,15 @@ impl Slot {
 /// | any rule across a `BlockMarkup` piece (`{x}</p><p> МБ`, `{a}</p><p>{b}`)              | no                                                              | no       | no                  | no                    |
 ///
 /// No glue sticks to an `Other` slot, nor to the fragment that holds it: `и "{o}"` and `в ({o})`
-/// keep their spaces. The one exception is the space before a dash: a dash never starts a line
-/// after a slot of any kind, so `nbsp.dash` binds it to the slot as it binds it to a word (ru
-/// `{o} - слово` → `{o}⍽— слово`, `"{o}" - слово` → `«{o}»⍽— слово`), and with a nowrap style that
-/// glue is written as an entity, so no nowrap group takes the value. A `Number` slot after `№`,
-/// `§` or `¶` is a label number: `nbsp.signs` glues it to the sign, and `nbsp.units` and
-/// `nbsp.dates` leave it alone.
+/// keep their spaces. The one exception is the space before a dash: in a language whose dash
+/// style is [`DashStyle::SpacedGlued`](crate::DashStyle::SpacedGlued) (ru-RU) a dash never starts
+/// a line after a slot of any kind, so `nbsp.dash` binds it to the slot as it binds it to a word
+/// (ru `{o} - слово` → `{o}⍽— слово`, `"{o}" - слово` → `«{o}»⍽— слово`), and with a nowrap style
+/// that glue is written as an entity, so no nowrap group takes the value. en-US, whose dash is
+/// closed, and `Language::COMMON` keep the author's space before a dash after a slot of every kind
+/// (en `{x} - word` → `{x} — word`; `Language::COMMON` keeps `{x} — word` as it is). A `Number`
+/// slot after `№`, `§` or `¶` is a label number: `nbsp.signs` glues it to the sign, and
+/// `nbsp.units` and `nbsp.dates` leave it alone.
 ///
 /// # When the kind is unknown
 ///
@@ -284,7 +287,7 @@ impl Slot {
 /// assert_eq!(texts(&hyphen, Slot::NUMBER), ["", " - ", ""]);
 /// assert_eq!(texts(&hyphen, Slot::OTHER), ["", "\u{a0}— ", ""]);
 ///
-/// // A dash never starts a line after a slot, whatever its kind.
+/// // In Russian a dash never starts a line after a slot, whatever its kind.
 /// let dash = [Piece::Slot((), Slot::OTHER), Piece::Text(" - слово")];
 /// assert_eq!(texts(&dash, Slot::WORD), ["", "\u{a0}— слово"]);
 /// assert_eq!(texts(&dash, Slot::OTHER), ["", "\u{a0}— слово"]);

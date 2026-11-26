@@ -121,8 +121,12 @@ elements is element content only; it is not an attribute value.
   of kind `Other` ends a group in the same way and never belongs to one: the only glue a rule puts
   next to it is the space before a dash (section 15.5, item 18), written as an entity, so ru
   `{o} - слово` gives the texts `["", "&nbsp;&mdash; слово"]` and `"{o}" - слово` gives
-  `["&laquo;", "<span class=\"nowrap\">&raquo; &mdash;</span> слово"]`. A slot of the other kinds is
-  group material, as above.
+  `["&laquo;", "<span class=\"nowrap\">&raquo; &mdash;</span> слово"]`. This holds in every
+  language: a group that touches an `Other` slot ends before it or starts after it, so glue the
+  caller typed next to the slot is an entity (`a⍽{o}⍽b` → `["a&nbsp;", "&nbsp;b"]`) and a group that
+  ends at the slot closes before it (`a⍽b{o} c⍽d` →
+  `["<span class=\"nowrap\">a b</span>", " <span class=\"nowrap\">c d</span>"]`). A slot of the
+  other kinds is group material, as above.
 
 ### 11.6 Escaped string bodies
 

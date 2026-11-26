@@ -38,21 +38,38 @@ In development: changes since 0.1.2, not tagged and not published. Minimum suppo
 
 ### Changed
 
-- A dash never starts a line after a slot, whatever its kind (design sections 2.6, 8.7 and 15.5,
-  item 18, decided by the maintainer). `nbsp.dash` now glues the space before the dash after a slot
-  of kind `Other` and after a fragment that holds one, as it already did after a `Number`, `Word` or
-  `Date` slot and after a word; it was the one place where a dash after a slot kept a breakable
-  space. Russian, both sets (`⍽` stands for U+00A0): `{o} - слово` gave `{o} — слово` and now gives
-  `{o}⍽— слово`; `"{o}" - слово` gave `«{o}» — слово`, now `«{o}»⍽— слово`; `{o} - {p}` gave
-  `{o} — {p}`, now `{o}⍽— {p}`. With a nowrap style an `Other` slot never belongs to a nowrap group,
-  so its value stays breakable: the glue next to it is written as an entity (design section 11.5),
-  `{o} - слово` gives the texts `["", "&nbsp;&mdash; слово"]`, and `"{o}" - слово` gives
-  `["&laquo;", "<span class=\"nw\">&raquo; &mdash;</span> слово"]` with `nowrap_class("nw")`. A
-  U+00A0 the caller typed next to an `Other` slot is written as an entity too, where it formed a
-  group with the slot before. Unchanged: the space after the dash (`слово - {o}`), the dialogue dash
-  before an `Other` slot (`- {o} пришёл` → `— {o} пришёл`), the ellipsis, English, whose closed dash
-  glues nothing before a dash and keeps the spaces next to a slot (`{x} - word` → `{x} — word` for
-  every kind), and `Language::COMMON`, which has no dash rules.
+- In a language whose dash style glues the space before the dash (`DashStyle::SpacedGlued`: ru-RU
+  and declared languages with that style), a dash never starts a line after a slot, whatever its
+  kind (design sections 2.6, 8.7 and 15.5, item 18, decided by the maintainer). `nbsp.dash` now
+  glues the space before the dash after a slot of kind `Other` and after a fragment that holds one,
+  as it already did after a `Number`, `Word` or `Date` slot and after a word; it was the one place
+  where a dash after a slot kept a breakable space. Russian, both sets (`⍽` stands for U+00A0):
+  `{o} - слово` gave `{o} — слово` and now gives `{o}⍽— слово`; `"{o}" - слово` gave
+  `«{o}» — слово`, now `«{o}»⍽— слово`; `{o} - {p}` gave `{o} — {p}`, now `{o}⍽— {p}`. Unchanged:
+  the space after the dash (`слово - {o}`), the dialogue dash before an `Other` slot (`- {o} пришёл`
+  → `— {o} пришёл`), the ellipsis, the Unicode and plain HTML output of English, whose closed dash
+  glues nothing before a dash and keeps the author's space next to a slot of every kind
+  (`{x} - word` → `{x} — word`, `{x} — word` stays), and that of `Language::COMMON`, which has no
+  dash rules and keeps the space too.
+- With a nowrap style (`HtmlStyle::nowrap_class`, `HtmlStyle::nowrap_style`) a slot of kind `Other`
+  never belongs to a nowrap group, in every language, `Language::COMMON` included (design section
+  11.5): its value stays breakable, the glue next to it is written as an entity, and a group that
+  touches the slot ends before it or starts after it. The texts of the result with
+  `nowrap_class("nw")`, where `<nw>` and `</nw>` stand for `<span class="nw">` and `</span>` and `⍽`
+  for a U+00A0 in the input:
+  - ru, glue of `nbsp.dash`: `{o} - слово` gave `["", " &mdash; слово"]` and now gives
+    `["", "&nbsp;&mdash; слово"]`; `"{o}" - слово` gave `["&laquo;", "&raquo; &mdash; слово"]`, now
+    `["&laquo;", "<nw>&raquo; &mdash;</nw> слово"]`;
+  - every language, glue the caller typed next to the slot: `a⍽{o}⍽b` gave `["<nw>a ", " b</nw>"]`,
+    now `["a&nbsp;", "&nbsp;b"]`; `{o}⍽{o}` gave `["<nw>", " ", "</nw>"]`, now `["", "&nbsp;", ""]`;
+    ru and en `{o}⍽- слово` gave `["<nw>", " &mdash;</nw> слово"]`, now
+    `["", "&nbsp;&mdash; слово"]`, and COMMON, which keeps the `-`, `["<nw>", " -</nw> слово"]`, now
+    `["", "&nbsp;- слово"]`;
+  - every language, a group that ends at the slot with no glue next to it: `a⍽b{o} c⍽d` gave
+    `["<nw>a b", "</nw> <nw>c d</nw>"]`, now `["<nw>a b</nw>", " <nw>c d</nw>"]`.
+
+  The output without a nowrap style, and the groups next to a slot of the other kinds, do not
+  change.
 
 ## 0.1.2 - 2026-11-26
 

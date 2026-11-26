@@ -1151,6 +1151,68 @@ fn an_other_slot_never_belongs_to_a_nowrap_group() {
         );
         assert_eq!(out.texts(), ["", "&nbsp;&mdash; слово"]);
     }
+    // Every language: a group that touches an `Other` slot ends before it or starts after it
+    // (design section 11.5); in 0.1.2 these groups took the slot.
+    let languages = [Language::RU_RU, Language::EN_US, Language::COMMON];
+    for language in languages {
+        for rules in [RuleSet::PROSE, RuleSet::INTERFACE] {
+            let t = Typographer::new(language.clone(), rules);
+            let texts = |pieces: &[Piece<'static, &'static str>]| {
+                let out = t.typeset_template(pieces.iter().copied(), nowrap());
+                out.texts()
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>()
+            };
+            let what = format!("{language} {rules}");
+            let x = Piece::Slot("x", Slot::OTHER);
+            assert_eq!(
+                texts(&[Piece::Text("a\u{a0}"), x, Piece::Text("\u{a0}b")]),
+                ["a&nbsp;", "&nbsp;b"],
+                "{what}"
+            );
+            assert_eq!(
+                texts(&[x, Piece::Text("\u{a0}"), x]),
+                ["", "&nbsp;", ""],
+                "{what}"
+            );
+            // A group that ends at the slot with no glue next to it closes before the slot.
+            assert_eq!(
+                texts(&[Piece::Text("a\u{a0}b"), x, Piece::Text(" c\u{a0}d")]),
+                [format!("{c}a b</span>"), format!(" {c}c d</span>")],
+                "{what}"
+            );
+        }
+    }
+    // English and `Language::COMMON` glue no dash after a slot of any kind; a U+00A0 the caller
+    // typed there is an entity next to an `Other` slot and joins a `Word` slot to the dash.
+    for rules in [RuleSet::PROSE, RuleSet::INTERFACE] {
+        let en = Typographer::new(Language::EN_US, rules);
+        let common = Typographer::new(Language::COMMON, rules);
+        let texts = |t: &Typographer, slot: Slot, text: &'static str| {
+            let out = t.typeset_template([Piece::Slot("x", slot), Piece::Text(text)], nowrap());
+            out.texts()
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+        };
+        for slot in [Slot::OTHER, Slot::WORD, Slot::NUMBER] {
+            assert_eq!(texts(&en, slot, " - word"), ["", " &mdash; word"]);
+            assert_eq!(texts(&common, slot, " - word"), ["", " - word"]);
+        }
+        assert_eq!(
+            texts(&en, Slot::OTHER, "\u{a0}- слово"),
+            ["", "&nbsp;&mdash; слово"]
+        );
+        assert_eq!(
+            texts(&common, Slot::OTHER, "\u{a0}- слово"),
+            ["", "&nbsp;- слово"]
+        );
+        assert_eq!(
+            texts(&en, Slot::WORD, "\u{a0}- слово"),
+            [c.clone(), " &mdash;</span> слово".to_owned()]
+        );
+    }
 }
 
 #[test]
